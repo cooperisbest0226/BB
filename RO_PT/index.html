@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>參宿四 PT 計算器 — 星座之塔</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #ede8de;
+    --paper:      #faf7f0;
+    --ink:        #2a2018;
+    --ink-light:  #6b5e4e;
+    --ink-faint:  #b8a898;
+    --rule:       rgba(100,80,60,0.12);
+    --sage:       #6b8f71;
+    --sage-light: #7aab81;
+    --terra:      #b5674a;
+    --amber:      #c89a4a;
+    --lavender:   #8b7fb5;
+    --shadow:     rgba(60,40,20,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Noto Serif TC', "Microsoft JhengHei", serif;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 20px 15px;
+    line-height: 1.5;
+  }
+
+  /* 紋理背景 */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 30px; }
+  .header-eyebrow { font-size: 11px; letter-spacing: 4px; color: var(--ink-light); margin-bottom: 5px; opacity: 0.8; }
+  .header-title {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: clamp(32px, 10vw, 52px);
+    letter-spacing: 5px; color: var(--ink); margin-bottom: 8px;
+  }
+  .header-sub { font-size: 12px; color: var(--ink-faint); letter-spacing: 2px; }
+
+  .section-label { display: flex; align-items: center; gap: 10px; margin: 25px 0 15px; }
+  .section-label-text { font-size: 11px; letter-spacing: 2px; color: var(--ink-light); font-weight: 600; }
+  .section-label-rule { flex: 1; height: 1px; background: var(--rule); }
+
+  /* 卡片佈局優化 */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+  }
+
+  .attr-card {
+    background: var(--paper); border-radius: 6px; padding: 18px;
+    box-shadow: 0 4px 12px var(--shadow);
+    border-top: 4px solid var(--c);
+    position: relative;
+  }
+
+  .attr-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .attr-name { font-family: 'ZCOOL XiaoWei', serif; font-size: 18px; font-weight: bold; }
+  .attr-pt-badge {
+    font-size: 13px; font-weight: 600; color: var(--c);
+    padding: 2px 10px; border: 1px solid currentColor; border-radius: 4px;
+    background: rgba(255,255,255,0.5);
+  }
+
+  .star-row { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+  .stars { display: flex; gap: 2px; }
+  .star-btn {
+    background: none; border: none; font-size: 26px; cursor: pointer; color: #ddd;
+    padding: 5px; transition: transform 0.1s, color 0.2s;
+    -webkit-tap-highlight-color: transparent; /* 移除手機點擊藍框 */
+  }
+  .star-btn.lit { color: var(--amber); }
+  .star-label { font-size: 11px; color: var(--ink-faint); min-width: 40px; text-align: right; }
+
+  /* 總分面板優化 */
+  .total-panel {
+    background: var(--paper); border-radius: 8px; padding: 25px 15px;
+    text-align: center; box-shadow: 0 6px 20px var(--shadow);
+    margin-bottom: 15px;
+  }
+  .total-number-wrap { display: flex; align-items: baseline; justify-content: center; gap: 5px; }
+  .total-number {
+    font-size: clamp(60px, 15vw, 90px); font-weight: 700;
+    line-height: 1; color: var(--ink);
+  }
+  .total-number.tier-high { color: var(--terra); }
+  .total-unit { font-size: 20px; color: var(--ink-faint); }
+
+  .progress-wrap { width: 100%; max-width: 300px; height: 4px; background: var(--rule); margin: 15px auto; border-radius: 2px; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0%; background: var(--sage); transition: width 0.5s ease; }
+  .progress-bar.tier-high { background: var(--terra); }
+
+  .tier-badge {
+    display: inline-block; padding: 6px 16px; border-radius: 20px;
+    font-size: 12px; letter-spacing: 1px;
+    border: 1px solid var(--sage); color: var(--sage); font-weight: 600;
+  }
+  .tier-badge.tier-high { border-color: var(--terra); color: var(--terra); }
+
+  /* 明細列表優化 */
+  .breakdown { background: var(--paper); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+  .breakdown-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px; border-bottom: 1px solid var(--rule); font-size: 14px;
+  }
+  .breakdown-row:last-child { border-bottom: none; }
+  .bd-pt { font-weight: 700; font-family: serif; }
+
+  .controls { display: flex; gap: 10px; margin-top: 20px; }
+  .btn {
+    flex: 1; padding: 12px; border-radius: 4px; border: 1px solid var(--ink-light);
+    background: transparent; color: var(--ink-light); cursor: pointer;
+    font-family: inherit; font-size: 14px; transition: all 0.2s;
+  }
+  .btn-max { border-color: var(--terra); color: var(--terra); }
+  .btn:active { background: rgba(0,0,0,0.05); transform: translateY(1px); }
+
+  footer { text-align: center; margin-top: 40px; font-size: 11px; color: var(--ink-faint); letter-spacing: 2px; }
+
+  /* 手機版微調 */
+  @media (max-width: 480px) {
+    body { padding: 15px 10px; }
+    .cards-grid { grid-template-columns: 1fr; }
+    .star-btn { font-size: 28px; padding: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="header-eyebrow">星座之塔 ✦ 秘境首領</div>
+    <h1 class="header-title">參宿四</h1>
+    <div class="header-sub">PT 等級計算器 By.BB</div>
+  </header>
+
+  <div class="section-label">
+    <span class="section-label-text">屬性配置</span>
+    <div class="section-label-rule"></div>
+  </div>
+  
+  <div class="cards-grid" id="cardsGrid"></div>
+
+  <div class="section-label">
+    <span class="section-label-text">挑戰評估</span>
+    <div class="section-label-rule"></div>
+  </div>
+
+  <div class="total-panel">
+    <div class="total-number-wrap">
+      <span class="total-number" id="totalPT">0</span>
+      <span class="total-unit">pt</span>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="tier-badge" id="tierBadge">50 層挑戰範圍</div>
+  </div>
+
+  <div class="breakdown" id="breakdownRows"></div>
+
+  <div class="controls">
+    <button class="btn" onclick="resetAll()">重置</button>
+    <button class="btn btn-max" onclick="setMax()">全滿 (1000pt)</button>
+  </div>
+
+  <footer>仙境傳說 RO — 星座之塔計算工具</footer>
+</div>
+
+<script>
+const ATTRS = [
+  { id:'hp',       label:'體力', color:'var(--sage)',     pts:[0,15,30,45,60,75]    },
+  { id:'attack',   label:'攻擊', color:'var(--terra)',    pts:[0,20,40,60,80,100]   },
+  { id:'recovery', label:'恢復', color:'var(--sage-light)',pts:[0,30,60,90,120,150] },
+  { id:'defense',  label:'防禦', color:'var(--amber)',    pts:[0,50,100,150,200,250]},
+  { id:'trap',     label:'陷阱', color:'var(--lavender)', pts:[0,85,170,255,340,425]},
+];
+
+// 從 LocalStorage 讀取紀錄，若無則設為 0
+let selected = JSON.parse(localStorage.getItem('betelgeuse_save')) || {hp:0, attack:0, recovery:0, defense:0, trap:0};
+
+function buildCards(){
+  const grid = document.getElementById('cardsGrid');
+  ATTRS.forEach(attr => {
+    const card = document.createElement('div');
+    card.className = 'attr-card';
+    card.style.setProperty('--c', attr.color);
+    card.innerHTML = `
+      <div class="attr-header">
+        <span class="attr-name">${attr.label}</span>
+        <span class="attr-pt-badge" id="badge-${attr.id}">0 pt</span>
+      </div>
+      <div class="star-row">
+        <div class="stars" id="stars-${attr.id}"></div>
+        <span class="star-label" id="label-${attr.id}">封印</span>
+      </div>`;
+    grid.appendChild(card);
+
+    const starContainer = card.querySelector(`#stars-${attr.id}`);
+    for(let i=1; i<=5; i++){
+      const btn = document.createElement('button');
+      btn.className = 'star-btn';
+      btn.innerHTML = '★';
+      btn.onclick = () => handleStar(attr.id, i);
+      starContainer.appendChild(btn);
+    }
+  });
+}
+
+function handleStar(id, idx){
+  selected[id] = (selected[id] === idx) ? 0 : idx;
+  saveData();
+  render();
+}
+
+function saveData(){
+  localStorage.setItem('betelgeuse_save', JSON.stringify(selected));
+}
+
+function render(){
+  let total = 0;
+  ATTRS.forEach(attr => {
+    const starCount = selected[attr.id];
+    const pt = attr.pts[starCount];
+    total += pt;
+
+    // 更新星星顏色
+    const btns = document.querySelectorAll(`#stars-${attr.id} .star-btn`);
+    btns.forEach((btn, i) => btn.classList.toggle('lit', i < starCount));
+    
+    // 更新標籤與數字
+    document.getElementById(`badge-${attr.id}`).textContent = pt + ' pt';
+    document.getElementById(`label-${attr.id}`).textContent = starCount === 0 ? '封印' : starCount + ' 顆星';
+  });
+
+  // 更新總分
+  const totalEl = document.getElementById('totalPT');
+  totalEl.textContent = total;
+  
+  // 更新進度條與等級
+  const pct = (total / 1000) * 100;
+  const bar = document.getElementById('progressBar');
+  const badge = document.getElementById('tierBadge');
+  bar.style.width = pct + '%';
+  
+  const isHigh = total > 600;
+  totalEl.classList.toggle('tier-high', isHigh);
+  bar.classList.toggle('tier-high', isHigh);
+  badge.classList.toggle('tier-high', isHigh);
+  badge.textContent = isHigh ? '75 層挑戰範圍' : '50 層挑戰範圍';
+
+  // 更新明細
+  updateBreakdown();
+}
+
+function updateBreakdown(){
+  const container = document.getElementById('breakdownRows');
+  container.innerHTML = '';
+  ATTRS.forEach(attr => {
+    const pt = attr.pts[selected[attr.id]];
+    const row = document.createElement('div');
+    row.className = 'breakdown-row';
+    row.innerHTML = `
+      <span>${attr.label}</span>
+      <span class="bd-pt" style="color:${attr.color}">${pt} pt</span>`;
+    container.appendChild(row);
+  });
+}
+
+function resetAll(){
+  selected = {hp:0, attack:0, recovery:0, defense:0, trap:0};
+  saveData();
+  render();
+}
+
+function setMax(){
+  selected = {hp:5, attack:5, recovery:5, defense:5, trap:5};
+  saveData();
+  render();
+}
+
+// 初始化
+buildCards();
+render();
+</script>
+</body>
+</html>
