@@ -1,0 +1,2844 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="費用管理">
+<meta name="theme-color" content="#EDE8DF">
+<title>費用管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Warm Beige · iOS Premium Style
+   ═══════════════════════════════════════════════════════════ */
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+input,select,textarea,button{font-family:inherit;font-size:16px}
+
+:root{
+  /* ── Warm beige background layers */
+  --bg:       #FDFAF5;   /* card surface (white-warm) */
+  --surface:  #EDE8DF;   /* page / screen background  */
+  --surface2: #E4DFDA;   /* subtle hover              */
+  --surface3: #F5F1EA;   /* input fills               */
+  --surface4: #DDD8D0;   /* pressed / active fill     */
+
+  /* ── Accent — green (positive, CTA, active tab) */
+  --green:    #2E9E72;
+  --green-lt: rgba(46,158,114,.10);
+  --green-dk: #25845F;
+
+  /* ── Expense red */
+  --red:      #D94B4B;
+  --red-lt:   rgba(217,75,75,.10);
+  --red-dk:   #B83C3C;
+
+  /* ── Advance orange */
+  --orange:   #D47830;
+  --orange-lt:rgba(212,120,48,.10);
+  --orange-dk:#B56624;
+
+  /* ── Blue (info) */
+  --blue:     #4A7FBF;
+  --blue-lt:  rgba(74,127,191,.10);
+
+  /* ── Amber (budget warn) */
+  --amber:    #C9943A;
+  --amber-lt: rgba(201,148,58,.10);
+
+  /* ── Text hierarchy */
+  --text:     #1A1916;   /* primary   */
+  --text2:    #6B6762;   /* secondary */
+  --text3:    #9E9A94;   /* tertiary  */
+
+  /* ── Borders */
+  --border:   rgba(0,0,0,.07);
+  --border2:  rgba(0,0,0,.12);
+
+  /* ── Radius */
+  --radius:   14px;
+  --radius-lg:20px;
+
+  /* ── Shadows (warm-tinted) */
+  --shadow-sm: 0 2px 8px rgba(90,70,40,.08),0 1px 2px rgba(90,70,40,.06);
+  --shadow-md: 0 6px 24px rgba(90,70,40,.10),0 2px 6px rgba(90,70,40,.06);
+  --shadow-lg: 0 12px 40px rgba(90,70,40,.13),0 4px 10px rgba(90,70,40,.07);
+
+  /* ── Z-index stack */
+  --z-card-row:1;--z-sticky:20;--z-fab:40;--z-tabs:50;
+  --z-fullscreen:60;--z-overlay:70;--z-toast:80;
+
+  /* ── Safe area */
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:env(safe-area-inset-top,0px);
+
+  /* ── Transitions */
+  --t-fast:100ms ease;
+  --t-base:180ms ease;
+  --t-slow:320ms cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(10px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+@keyframes countUp{
+  from{opacity:0;transform:translateY(4px) scale(.96)}
+  to  {opacity:1;transform:translateY(0) scale(1)}
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+html,body{
+  height:100%;overflow:hidden;overscroll-behavior:none;
+  background:var(--surface);
+  color:var(--text);
+  font-family:'Sora',-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang TC',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -webkit-overflow-scrolling:auto;
+}
+body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
+
+#app{
+  max-width:480px;margin:0 auto;
+  height:100vh;height:100dvh;
+  display:flex;flex-direction:column;
+  overflow:hidden;position:relative;
+  background:var(--surface);
+}
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+.tabs{
+  display:flex;align-items:center;
+  background:var(--bg);
+  border-top:0.5px solid var(--border);
+  padding-bottom:var(--safe-b);
+  flex-shrink:0;z-index:var(--z-tabs);
+  box-shadow:0 -1px 0 var(--border);
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:9px 0 6px;border:none;background:transparent;
+  color:var(--text3);font-size:10px;font-weight:500;cursor:pointer;
+  gap:3px;position:relative;transition:color var(--t-fast);
+  letter-spacing:.01em;
+}
+.tab.on{ color:var(--green); }
+/* Center tab gets a pill highlight */
+.tab:nth-child(3){
+  position:relative;
+}
+.tab:nth-child(3).on::before{
+  content:'';
+  position:absolute;
+  top:3px;left:50%;transform:translateX(-50%);
+  width:48px;height:48px;
+  background:var(--green-lt);
+  border-radius:50%;
+  z-index:-1;
+}
+.tab svg{
+  width:22px;height:22px;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
+  transition:stroke var(--t-fast);
+}
+.tab-dot{
+  position:absolute;top:5px;right:calc(50% - 18px);
+  background:var(--red);color:#fff;
+  font-size:9px;font-weight:700;line-height:15px;
+  padding:0 4px;border-radius:99px;min-width:15px;text-align:center;
+  display:none;
+}
+
+/* ── Screen shell ────────────────────────────────────────── */
+.screen{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
+.screen.on{display:flex}
+.scroll-body{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+  padding:14px 16px calc(24px + var(--safe-b));min-height:0;
+}
+.scroll-body::-webkit-scrollbar{display:none}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.top-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px 9px;
+  padding-top:calc(10px + var(--safe-t));
+  background:var(--surface);flex-shrink:0;
+}
+.top-bar-title{font-size:20px;font-weight:700;flex:1;letter-spacing:-.02em;color:var(--text)}
+.top-bar select{
+  height:36px;border:1px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text);
+  padding:0 26px 0 12px;font-size:14px;font-weight:500;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239E9A94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;
+  box-shadow:var(--shadow-sm);
+  transition:all var(--t-fast);
+}
+.top-bar select:focus{outline:2px solid var(--green);outline-offset:1px}
+.top-bar select.flex1{flex:1}
+.icon-btn{
+  width:36px;height:36px;border:none;background:var(--bg);
+  color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;flex-shrink:0;box-shadow:var(--shadow-sm);
+  transition:all var(--t-fast);
+}
+.icon-btn:active{background:var(--surface2)}
+.icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.month-nav-btn{
+  width:36px;height:36px;
+  border:1px solid var(--border2);border-radius:50%;
+  background:var(--bg);color:var(--text2);cursor:pointer;font-size:18px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.month-nav-btn:active{background:var(--surface2);border-color:var(--green);color:var(--green)}
+
+/* ═══ HOME HERO — Full-bleed large number section ══════════ */
+.home-hero{
+  background:var(--surface);
+  padding:8px 16px 0;flex-shrink:0;
+}
+
+/* Main expense display — mirrors the net-worth hero in screenshot */
+.hero-main-card{
+  background:var(--bg);
+  border-radius:var(--radius-lg);
+  padding:20px 20px 16px;
+  margin-bottom:10px;
+  box-shadow:var(--shadow-md);
+  position:relative;overflow:hidden;
+  animation:fadeUp .4s ease both;
+}
+/* Subtle warm gradient overlay */
+.hero-main-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.6) 0%,transparent 60%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-size:11px;font-weight:500;color:var(--text2);
+  letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;gap:6px;
+  margin-bottom:6px;
+}
+.hero-eyebrow svg{
+  width:13px;height:13px;stroke:var(--text3);fill:none;
+  stroke-width:1.8;stroke-linecap:round;
+}
+.hero-big-num{
+  font-family:'Sora',sans-serif;
+  font-size:40px;font-weight:700;
+  letter-spacing:-.04em;line-height:1;
+  color:var(--red);
+  margin-bottom:10px;
+  animation:countUp .5s .1s ease both;
+}
+.hero-big-num.good{color:var(--green)}
+.hero-big-num span.currency{font-size:24px;font-weight:600;margin-right:2px;opacity:.8}
+
+/* Inline sub-stat chips below the big number */
+.hero-chips{display:flex;gap:7px;flex-wrap:wrap}
+.hero-chip{
+  display:flex;align-items:center;gap:5px;
+  background:var(--surface3);
+  border-radius:99px;padding:4px 10px;
+  font-size:11.5px;font-weight:500;
+}
+.hero-chip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.hero-chip-lbl{color:var(--text3)}
+.hero-chip-val{font-family:'DM Mono',monospace;font-size:11.5px;font-weight:500}
+.hero-chip-val.g{color:var(--green)}.hero-chip-val.r{color:var(--red)}.hero-chip-val.o{color:var(--orange)}
+
+/* ── Hero budget row — inline inside hero-main-card ─────────── */
+.hero-remain-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+}
+.hero-remain-left{flex:1;min-width:0}
+.hero-remain-lbl{
+  font-size:10px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;
+}
+.hero-remain-val{
+  font-family:'DM Mono',monospace;
+  font-size:18px;font-weight:600;letter-spacing:-.02em;
+  color:var(--green);white-space:nowrap;
+}
+.hero-remain-val.r{color:var(--red)}
+.hero-remain-sub{font-size:10.5px;color:var(--text3);margin-top:2px}
+.hero-remain-right{
+  display:flex;flex-direction:column;align-items:flex-end;gap:5px;
+  flex-shrink:0;min-width:100px;
+}
+.hero-bud-inline-track{
+  width:100%;height:4px;
+  background:var(--surface4);border-radius:99px;overflow:hidden;
+}
+.hero-bud-pct{
+  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text2);
+}
+/* bud-bar-fill shared (used by inline track + chart screen) */
+.bud-bar-fill{height:100%;background:var(--green);border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bud-bar-fill.warn{background:var(--amber)}.bud-bar-fill.over{background:var(--red)}
+
+/* ── Cards ───────────────────────────────────────────────── */
+.card{
+  background:var(--bg);border-radius:var(--radius-lg);
+  padding:16px;margin-bottom:12px;
+  box-shadow:var(--shadow-sm);
+  border:none;
+}
+.card-title{
+  font-size:13px;font-weight:600;color:var(--text);
+  margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;
+  letter-spacing:.02em;
+}
+.card-title a{font-size:12px;color:var(--green);font-weight:600;cursor:pointer;transition:color var(--t-fast)}
+.card-title a:hover{color:var(--green-dk)}
+
+/* ── Summary strip (list / chart screens) ────────────────── */
+.summary-strip{
+  display:flex;gap:8px;padding:8px 16px;
+  background:var(--surface);flex-shrink:0;overflow-x:auto;scrollbar-width:none;
+}
+.summary-strip::-webkit-scrollbar{display:none}
+.sum-card{
+  background:var(--bg);border-radius:var(--radius);
+  padding:9px 12px;flex:1;min-width:72px;flex-shrink:0;
+  box-shadow:var(--shadow-sm);
+}
+.sum-lbl{font-size:10px;color:var(--text3);margin-bottom:3px;letter-spacing:.04em;text-transform:uppercase;font-weight:500}
+.sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;letter-spacing:-.02em;white-space:nowrap}
+.sum-val.g{color:var(--green)}.sum-val.r{color:var(--red)}.sum-val.o{color:var(--orange)}
+
+/* ── Badges ──────────────────────────────────────────────── */
+.badge{
+  font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;
+  white-space:nowrap;letter-spacing:.02em;
+}
+.badge.g{background:var(--green-lt);color:var(--green-dk)}
+.badge.r{background:var(--red-lt);color:var(--red-dk)}
+.badge.o{background:var(--orange-lt);color:var(--orange-dk)}
+
+/* ── Empty states ────────────────────────────────────────── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:16px 24px 24px;text-align:center;min-height:100%;
+}
+.empty-state svg{width:72px;height:72px;margin-bottom:16px;stroke:var(--text3);fill:none;stroke-width:1.2;stroke-linecap:round;opacity:.5}
+.empty-state h3{font-size:16px;font-weight:600;margin-bottom:7px}
+.empty-state p{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:20px;max-width:210px}
+.empty-cta{
+  height:44px;padding:0 28px;
+  background:var(--green);color:#fff;
+  border:none;border-radius:99px;font-size:14px;font-weight:600;
+  cursor:pointer;box-shadow:0 4px 16px rgba(46,158,114,.30);
+  transition:all var(--t-base);display:block;width:fit-content;
+}
+.empty-cta:active{transform:scale(.96);box-shadow:0 2px 8px rgba(46,158,114,.25)}
+.empty-cta-sec{
+  height:38px;padding:0 22px;
+  background:transparent;color:var(--text2);
+  border:1.5px solid var(--border2);border-radius:99px;
+  font-size:13px;cursor:pointer;display:block;width:fit-content;
+  margin-top:9px;transition:all var(--t-fast);
+}
+.empty-cta-sec:active{background:var(--surface2)}
+.empty-msg{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;color:var(--text3);font-size:14px;padding:32px 20px;
+}
+.empty-msg svg{width:40px;height:40px;stroke:var(--text3);fill:none;stroke-width:1.4;stroke-linecap:round;margin-bottom:10px;opacity:.45}
+
+/* ── List screen sticky filters ──────────────────────────── */
+.list-sticky{position:sticky;top:0;z-index:var(--z-sticky);background:var(--surface)}
+.range-bar{padding:8px 16px 6px;background:var(--surface);flex-shrink:0}
+.range-row{display:flex;align-items:center;gap:7px}
+.range-row select{
+  flex:1;height:34px;border:1px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text);padding:0 22px 0 10px;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 4L8 1' stroke='%239E9A94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;
+  font-size:13px;font-weight:500;box-shadow:var(--shadow-sm);
+}
+.range-row select:focus{outline:2px solid var(--green);outline-offset:1px}
+.range-sep{font-size:13px;color:var(--text3);flex-shrink:0}
+.range-info{font-size:11px;color:var(--text3);margin-top:5px;letter-spacing:.02em}
+.search-wrap{position:relative;padding:9px 16px 7px;background:var(--surface);flex-shrink:0}
+.search-wrap svg{position:absolute;left:26px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;pointer-events:none}
+.search-input{
+  width:100%;height:38px;
+  border:1px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text);padding:0 12px 0 36px;
+  font-size:15px;box-shadow:var(--shadow-sm);
+  transition:all var(--t-base);
+}
+.search-input::placeholder{color:var(--text3)}
+.search-input:focus{outline:2px solid var(--green);outline-offset:1px}
+.filter-row{
+  display:flex;gap:7px;padding:8px 16px;
+  background:var(--surface);flex-shrink:0;
+}
+.filter-btn{
+  flex:1;height:34px;border:1px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;
+  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.filter-btn:active{background:var(--surface2);transform:scale(.97)}
+.filter-btn.on{background:var(--green);border-color:transparent;color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(46,158,114,.25)}
+.list-footer{text-align:right;font-size:12px;color:var(--text3);padding:7px 2px 0;font-family:'DM Mono',monospace;letter-spacing:.01em}
+
+/* ── Swipe-delete background ──────────────────────────────── */
+.del-bg{
+  position:absolute;right:0;top:0;bottom:0;width:72px;
+  background:var(--red);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;
+  border-radius:0 var(--radius-lg) var(--radius-lg) 0;
+}
+.del-bg svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Advanced toggle ──────────────────────────────────────── */
+.adv-toggle{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 0 3px;cursor:pointer;color:var(--text2);font-size:13px;
+  border:none;background:transparent;width:100%;
+  transition:color var(--t-fast);font-weight:500;
+}
+.adv-toggle:hover{color:var(--green)}
+.adv-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;transition:transform .22s}
+.adv-toggle.open svg{transform:rotate(180deg)}
+.adv-fields{display:none;padding-top:4px}
+.adv-fields.open{display:block}
+
+/* ── FAB ─────────────────────────────────────────────────── */
+.fab{
+  position:fixed;right:18px;bottom:calc(60px + var(--safe-b));
+  width:52px;height:52px;
+  background:var(--green);
+  border:none;border-radius:50%;
+  box-shadow:0 4px 18px rgba(46,158,114,.40),0 2px 6px rgba(46,158,114,.20);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:var(--z-fab);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .2s,visibility .2s,transform .15s,box-shadow .2s;
+}
+.fab.on{opacity:1;visibility:visible;pointer-events:auto}
+.fab:active{transform:scale(.92);box-shadow:0 2px 10px rgba(46,158,114,.35)}
+.fab svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round}
+
+/* ── Section label ───────────────────────────────────────── */
+.sec-lbl{
+  font-size:11px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.08em;margin:14px 0 7px 2px;
+}
+
+/* ── Proxy-deduction note (below hero big number) ────────── */
+.hero-deduct-note{
+  display:flex;align-items:center;gap:7px;
+  margin-top:6px;margin-bottom:2px;flex-wrap:wrap;
+}
+.hero-deduct-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--orange-lt);color:var(--orange-dk);
+  border:0.5px solid rgba(212,120,48,.25);
+  border-radius:99px;padding:3px 10px;
+  font-size:11px;font-weight:600;white-space:nowrap;
+}
+.hero-deduct-sub{font-size:11px;color:var(--text3);white-space:nowrap}
+
+/* ── Proxy split-entry section (inside fsform) ───────────── */
+.proxy-section-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.proxy-section-lbl{
+  font-size:11.5px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.proxy-toggle-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 13px;border-radius:99px;
+  border:1.5px solid var(--border2);
+  background:var(--surface3);
+  color:var(--text2);font-size:12.5px;font-weight:500;
+  font-family:inherit;cursor:pointer;
+  transition:all var(--t-base);
+}
+.proxy-toggle-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-lt)}
+.proxy-toggle-btn.active{
+  background:var(--green-lt);border-color:rgba(46,158,114,.35);
+  color:var(--green-dk);font-weight:600;
+}
+.proxy-toggle-btn svg{transition:transform .22s}
+.proxy-toggle-btn.active svg{transform:rotate(45deg)}
+.proxy-section-note{
+  font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5;
+}
+.proxy-row{
+  display:grid;grid-template-columns:1fr 100px 34px;
+  gap:7px;align-items:center;margin-bottom:8px;
+}
+.proxy-row input{
+  height:40px;border:1.5px solid var(--border2);border-radius:var(--radius);
+  background:var(--surface3);color:var(--text);padding:0 10px;
+  font-size:15px;font-family:inherit;
+  transition:all var(--t-base);
+}
+.proxy-row input:focus{outline:2px solid var(--green);outline-offset:1px;background:var(--bg)}
+.proxy-row input::placeholder{color:var(--text3)}
+.proxy-amt-cell{
+  display:flex;align-items:center;
+  border:1.5px solid var(--border2);border-radius:var(--radius);
+  background:var(--surface3);height:40px;padding:0 8px;gap:4px;
+  transition:all var(--t-base);
+}
+.proxy-amt-cell:focus-within{outline:2px solid var(--green);outline-offset:1px;background:var(--bg)}
+.proxy-prefix{font-size:13px;color:var(--text3);flex-shrink:0}
+.proxy-amt-cell input{
+  flex:1;min-width:0;border:none;background:transparent;
+  color:var(--text);font-size:14px;font-family:'DM Mono',monospace;
+  padding:0;outline:none;
+}
+.proxy-amt-cell input::placeholder{
+  color:var(--text3);          /* ensures placeholder is visibly lighter */
+  font-family:inherit;         /* avoid monospace placeholder */
+  font-size:13px;
+}
+.proxy-del{
+  width:32px;height:32px;border:1.5px solid var(--border2);border-radius:50%;
+  background:var(--surface3);color:var(--text3);font-size:14px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all var(--t-fast);flex-shrink:0;
+}
+.proxy-del:active{background:var(--red-lt);border-color:rgba(217,75,75,.3);color:var(--red)}
+.proxy-add-btn{
+  width:100%;height:38px;
+  border:1.5px dashed var(--border2);border-radius:var(--radius);
+  background:transparent;color:var(--text2);cursor:pointer;
+  font-size:13px;font-weight:500;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  margin-top:2px;margin-bottom:12px;
+  transition:all var(--t-base);
+}
+.proxy-add-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-lt)}
+/* Live formula display */
+.proxy-calc{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:11px 14px;
+  display:flex;flex-direction:column;gap:5px;margin-bottom:4px;
+}
+.proxy-calc-row{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;color:var(--text2);
+}
+.proxy-calc-row span:last-child{
+  font-family:'DM Mono',monospace;font-weight:500;font-size:13px;
+}
+.proxy-calc-divider{height:1px;background:var(--border);margin:3px 0}
+.proxy-calc-result{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:14px;font-weight:600;color:var(--green);
+}
+.proxy-calc-result.over{color:var(--red)}
+.proxy-calc-result span:last-child{
+  font-family:'DM Mono',monospace;font-size:14px;font-weight:700;
+}
+.proxy-empty-hint{
+  font-size:12px;color:var(--text3);text-align:center;
+  padding:10px 0;
+}
+
+/* ── Feature 1: Date-group headers in list view ──────────── */
+.date-grp-hdr{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 2px 7px;
+  font-size:11.5px;font-weight:600;
+  color:var(--text2);letter-spacing:.02em;
+}
+.date-grp-hdr::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+.date-grp-subtotal{
+  font-family:'DM Mono',monospace;
+  font-size:11px;color:var(--text3);
+  flex-shrink:0;
+}
+.date-grp-hdr:first-child{padding-top:2px}
+
+/* ── Feature 2: Chart mode toggle ───────────────────────── */
+.chart-mode-row{
+  display:flex;gap:6px;padding:8px 16px 0;
+  background:var(--surface);flex-shrink:0;
+}
+.chart-mode-btn{
+  flex:1;height:34px;border:1.5px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text2);font-size:13px;font-weight:500;
+  cursor:pointer;box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.chart-mode-btn.on{
+  background:var(--green);border-color:transparent;
+  color:#fff;font-weight:600;
+  box-shadow:0 2px 10px rgba(46,158,114,.25);
+}
+/* Range selector row for multi-month chart */
+.chart-range-row{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 16px;background:var(--surface);
+  flex-shrink:0;
+}
+.chart-range-row select{
+  flex:1;height:34px;border:1px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text);padding:0 22px 0 11px;
+  font-size:13px;font-weight:500;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 4L8 1' stroke='%239E9A94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;
+  box-shadow:var(--shadow-sm);
+}
+.chart-range-row select:focus{outline:2px solid var(--green);outline-offset:1px}
+.chart-range-sep{font-size:13px;color:var(--text3);flex-shrink:0}
+/* Range chart summary strip */
+.range-summary-strip{
+  display:flex;gap:9px;margin-bottom:12px;
+}
+.range-sum-tile{
+  flex:1;background:var(--bg);border-radius:var(--radius);
+  padding:10px 13px;box-shadow:var(--shadow-sm);
+}
+.range-sum-lbl{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;font-weight:500}
+.range-sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;letter-spacing:-.02em}
+.range-sum-val.r{color:var(--red)}.range-sum-val.g{color:var(--green)}
+
+/* ── Item card ───────────────────────────────────────────── */
+.icard{
+  background:var(--bg);border-radius:var(--radius-lg);
+  margin-bottom:8px;overflow:hidden;position:relative;
+  box-shadow:var(--shadow-sm);transition:box-shadow var(--t-base);
+}
+.icard:active{box-shadow:none}
+.irow{
+  display:flex;align-items:center;gap:11px;padding:13px 14px;
+  background:var(--bg);position:relative;z-index:var(--z-card-row);
+  transition:transform .22s ease,background var(--t-fast);will-change:transform;
+}
+.irow:active{background:var(--surface3)}
+.ichk{width:20px;height:20px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+.iinfo{flex:1;min-width:0;cursor:pointer;border:none;background:transparent;padding:0;text-align:left;font:inherit;color:inherit;display:block}
+.iinfo:active{opacity:.7}
+.iname{font-size:14px;font-weight:500;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iname.done{color:var(--text3);text-decoration:line-through}
+.isub{font-size:11.5px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.overdue-dot{width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0}
+.iright{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.iamt{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;letter-spacing:-.01em}
+.iamt.g{color:var(--green)}.iamt.r{color:var(--red)}.iamt.o{color:var(--orange)}
+
+/* ── Reminder widgets ─────────────────────────────────────── */
+.rem-box{margin-bottom:12px}
+.rem-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.rem-hdr-lbl{font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px}
+.rem-hdr-lbl svg{width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2;stroke-linecap:round}
+.rem-dismiss{
+  font-size:11px;color:var(--text3);cursor:pointer;padding:2px 10px;
+  border:1px solid var(--border2);border-radius:99px;background:var(--bg);
+  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.rem-dismiss:active{background:var(--surface2)}
+.rem-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg);border-radius:var(--radius-lg);
+  padding:11px 13px;margin-bottom:8px;cursor:pointer;
+  box-shadow:var(--shadow-sm);transition:all var(--t-base);
+}
+.rem-row:active{opacity:.75}
+.rem-row.overdue{border-left:3px solid var(--red)}
+.rem-row.due-soon{border-left:3px solid var(--amber)}
+.rem-row.advance{border-left:3px solid var(--orange)}
+.rem-ico{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rem-ico svg{width:14px;height:14px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rem-ico.r{background:var(--red-lt)}.rem-ico.r svg{stroke:var(--red)}
+.rem-ico.a{background:var(--amber-lt)}.rem-ico.a svg{stroke:var(--amber)}
+.rem-ico.o{background:var(--orange-lt)}.rem-ico.o svg{stroke:var(--orange)}
+.rem-body{flex:1;min-width:0}
+.rem-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rem-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.rem-amt{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;flex-shrink:0}
+.rem-amt.r{color:var(--red)}.rem-amt.a{color:var(--amber)}.rem-amt.o{color:var(--orange)}
+
+/* ── Copy / advance banners ───────────────────────────────── */
+.copy-banner{
+  background:var(--green-lt);border-radius:var(--radius-lg);
+  padding:10px 14px;display:flex;align-items:center;gap:9px;
+  margin-bottom:10px;cursor:pointer;
+  border:1px solid rgba(46,158,114,.18);
+  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.copy-banner:active{opacity:.8}
+.copy-banner svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:1.8;flex-shrink:0}
+.copy-banner p{font-size:13px;color:var(--green);flex:1;line-height:1.3;font-weight:500}
+.copy-banner span{font-size:13px;color:var(--green-dk);font-weight:700;white-space:nowrap}
+.adv-banner{
+  background:var(--orange-lt);border-radius:var(--radius-lg);
+  padding:10px 14px;display:flex;align-items:center;gap:9px;margin-bottom:10px;
+  border:1px solid rgba(212,120,48,.18);
+}
+.adv-banner svg{width:14px;height:14px;stroke:var(--orange);fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+.adv-banner p{font-size:13px;color:var(--orange);flex:1;line-height:1.3;font-weight:500}
+
+/* ── Chart screen ────────────────────────────────────────── */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat-tile{background:var(--bg);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-sm)}
+.stat-lbl{font-size:10px;color:var(--text3);margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.stat-val{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-.02em}
+.stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}.stat-val.o{color:var(--orange)}
+.bud-total-card{
+  background:linear-gradient(135deg,rgba(74,127,191,.08),rgba(74,127,191,.04));
+  border-radius:var(--radius-lg);padding:14px;margin-bottom:12px;
+  box-shadow:var(--shadow-sm);
+}
+.bud-total-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:9px}
+.bud-total-lbl{font-size:11px;color:var(--blue);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.bud-total-nums{font-size:12px;color:var(--blue);text-align:right}
+.bud-total-nums strong{font-family:'DM Mono',monospace;font-size:19px;font-weight:600;display:block;letter-spacing:-.03em}
+.bud-total-track{background:rgba(74,127,191,.15);border-radius:4px;height:6px;overflow:hidden}
+.bud-total-fill{height:100%;background:var(--blue);border-radius:4px;transition:width .4s}
+.bud-total-fill.warn{background:var(--amber)}.bud-total-fill.over{background:var(--red)}
+.pie-wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
+.pie-legend{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);min-width:0}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.bud-cat-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;align-items:center}
+.bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden;margin-bottom:10px}
+.bud-cat-fill{height:100%;border-radius:4px;transition:width .4s}
+
+/* ── Trend screen ────────────────────────────────────────── */
+.yr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.yr-chip{
+  height:32px;padding:0 14px;
+  border:1.5px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;gap:5px;font-size:13px;font-weight:500;
+  white-space:nowrap;box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.yr-chip:active{transform:scale(.96)}
+.yr-chip.on{color:#fff;font-weight:600;border-color:transparent;box-shadow:0 2px 10px rgba(46,158,114,.25)}
+.yr-chip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chart-legend{display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:12px}
+.chart-leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);font-weight:500}
+.chart-leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.trend-stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+
+/* ── Overlays / modals ────────────────────────────────────── */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.35);z-index:var(--z-overlay);
+  align-items:flex-end;justify-content:center;overflow:hidden;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.overlay.on{display:flex}
+.sheet{
+  background:var(--bg);
+  border-radius:24px 24px 0 0;
+  padding:18px 18px calc(20px + var(--safe-b));
+  width:100%;max-width:480px;max-height:90vh;overflow-y:auto;
+  touch-action:pan-y;overscroll-behavior:contain;
+  box-shadow:0 -8px 40px rgba(90,70,40,.15);
+}
+.sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px;pointer-events:none}
+.sheet h3{font-size:18px;font-weight:700;margin-bottom:16px;letter-spacing:-.02em}
+.sheet-btns{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;height:48px;border:1.5px solid var(--border2);border-radius:var(--radius);cursor:pointer;background:var(--surface3);color:var(--text);font-weight:500;font-size:15px;transition:all var(--t-fast);box-shadow:var(--shadow-sm)}
+.btn:active{background:var(--surface4);transform:scale(.98)}
+.btn.primary{background:var(--green);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 4px 16px rgba(46,158,114,.30)}
+.btn.primary:active{background:var(--green-dk);transform:scale(.98)}
+.btn.danger{background:var(--red-lt);color:var(--red);border-color:rgba(217,75,75,.2)}
+.btn.danger:active{background:rgba(217,75,75,.18)}
+
+/* ── Form fields ──────────────────────────────────────────── */
+.field{margin-bottom:15px}
+.field label{font-size:11.5px;color:var(--text3);display:block;margin-bottom:7px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.field input,.field select,.field textarea{
+  width:100%;height:48px;
+  border:1.5px solid var(--border2);border-radius:var(--radius);
+  background:var(--surface3);color:var(--text);padding:0 14px;font-size:16px;
+  transition:all var(--t-base);box-shadow:var(--shadow-sm);
+}
+.field textarea{height:74px;padding:12px 14px;resize:none}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:2.5px solid var(--green);outline-offset:1px;background:var(--bg);
+}
+.field select{
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239E9A94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;
+  background-color:var(--surface3);
+}
+.radio-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:4px}
+.radio-opt{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--text);padding:5px 0;font-size:14px}
+.radio-opt input[type=radio]{width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+.fdivider{height:1px;background:var(--border);margin:16px 0}
+.field-note{font-size:11px;color:var(--text3);margin-top:5px}
+.adv-hint-box{
+  background:var(--orange-lt);border:1px solid rgba(212,120,48,.2);
+  border-radius:var(--radius);padding:10px 13px;margin-bottom:15px;
+}
+.adv-hint-box p{font-size:12px;color:var(--orange-dk);line-height:1.55}
+
+/* ── Amount input ─────────────────────────────────────────── */
+.amt-wrap{
+  width:100%;min-height:48px;
+  border:1.5px solid var(--border2);border-radius:var(--radius);
+  background:var(--surface3);color:var(--text);
+  display:flex;align-items:center;padding:0 14px;
+  position:relative;cursor:text;box-shadow:var(--shadow-sm);
+  transition:all var(--t-base);
+}
+.amt-wrap:focus-within{outline:2.5px solid var(--green);outline-offset:1px;background:var(--bg)}
+.amt-unit{font-size:15px;color:var(--text3);margin-right:5px;flex-shrink:0;font-weight:500}
+.amt-disp{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;flex:1;color:var(--text)}
+.amt-disp.ph{color:var(--text3);font-weight:400;font-size:16px;font-family:inherit}
+.amt-input{position:absolute;inset:0;opacity:0;border:none;background:transparent;font-size:16px;width:100%;height:100%;cursor:text}
+
+/* ── Full-screen form ─────────────────────────────────────── */
+.fsform{
+  position:fixed;inset:0;
+  background:var(--surface);z-index:var(--z-fullscreen);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;max-width:480px;left:50%;margin-left:-240px;
+}
+@media(max-width:480px){.fsform{left:0;margin-left:0}}
+.fsform.on{transform:translateX(0)}
+.fs-nav{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);
+  padding:11px 16px;flex-shrink:0;
+  padding-top:calc(11px + var(--safe-t));
+  box-shadow:var(--shadow-sm);
+}
+.fs-back{
+  width:36px;height:36px;border:none;background:var(--surface3);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;flex-shrink:0;box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.fs-back:active{background:var(--surface4)}
+.fs-back svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.fs-title{font-size:17px;font-weight:700;flex:1;letter-spacing:-.02em}
+.fs-del{height:36px;padding:0 14px;background:var(--red-lt);color:var(--red);border:1.5px solid rgba(217,75,75,.2);border-radius:99px;cursor:pointer;font-size:13px;font-weight:600;transition:all var(--t-fast)}
+.fs-del:active{background:rgba(217,75,75,.18)}
+.fs-save{
+  height:36px;padding:0 20px;
+  background:var(--green);color:#fff;border:none;border-radius:99px;
+  cursor:pointer;font-weight:700;font-size:14px;
+  box-shadow:0 2px 10px rgba(46,158,114,.30);transition:all var(--t-base);
+}
+.fs-save:active{background:var(--green-dk);transform:scale(.96)}
+.fs-body{
+  flex:1;overflow-y:auto;padding:20px 18px calc(26px + var(--safe-b));
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  background:var(--surface);
+}
+.fs-body::-webkit-scrollbar{display:none}
+
+/* ── Category tags ────────────────────────────────────────── */
+.cat-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}
+.cat-tag{display:flex;align-items:center;gap:5px;padding:6px 13px;border:1.5px solid var(--border2);border-radius:99px;font-size:13px;background:var(--surface3);color:var(--text);cursor:pointer;font-weight:500;transition:all var(--t-fast)}
+.cat-tag:active{background:var(--surface4)}
+.cat-del{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;cursor:pointer;flex-shrink:0;color:var(--text3)}
+.cat-add-row{display:flex;gap:8px}
+.cat-add-row input{flex:1;height:40px;border:1.5px solid var(--border2);border-radius:var(--radius);background:var(--surface3);color:var(--text);padding:0 12px;font-size:16px;transition:all var(--t-base)}
+.cat-add-row input:focus{outline:2px solid var(--green);outline-offset:1px;background:var(--bg)}
+.cat-add-row button{height:40px;padding:0 18px;border:none;border-radius:var(--radius);background:var(--green);color:#fff;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(46,158,114,.25);transition:all var(--t-fast)}
+.cat-add-row button:active{background:var(--green-dk);transform:scale(.96)}
+
+/* ── Toggle switch ────────────────────────────────────────── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-lbl{font-size:14px;color:var(--text);font-weight:500}
+.toggle-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.toggle{position:relative;width:46px;height:28px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:var(--surface4);border-radius:14px;transition:background .2s}
+.toggle input:checked~.toggle-track{background:var(--green)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:transform .2s;pointer-events:none}
+.toggle input:checked~.toggle-thumb{transform:translateX(18px)}
+.remind-info-box{background:var(--blue-lt);border:1px solid rgba(74,127,191,.18);border-radius:var(--radius);padding:10px 13px;margin-bottom:14px}
+.remind-info-box p{font-size:12px;color:var(--blue);line-height:1.55}
+
+/* ── Settings ─────────────────────────────────────────────── */
+.settings-group{background:var(--bg);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.settings-group-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:14px 16px 6px}
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:15px 16px;border-top:1px solid var(--border);cursor:pointer;
+  transition:background var(--t-fast);
+}
+.settings-row:first-of-type{border-top:none}
+.settings-row:active{background:var(--surface3)}
+.settings-row-lbl{font-size:15px;color:var(--text);font-weight:500}
+.settings-row-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.settings-row-right{display:flex;align-items:center;gap:6px;color:var(--text3)}
+.settings-row-right svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.settings-row-val{font-size:13px;color:var(--text2)}
+.app-info-card{
+  background:var(--bg);border-radius:var(--radius-lg);padding:24px 16px;
+  text-align:center;margin-top:24px;box-shadow:var(--shadow-sm);
+}
+.app-info-icon{
+  width:64px;height:64px;
+  background:linear-gradient(135deg,var(--green),#1E7A56);
+  border-radius:18px;margin:0 auto 14px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(46,158,114,.30);
+}
+.app-info-icon svg{width:30px;height:30px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.app-info-name{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px;color:var(--text);letter-spacing:-.02em}
+.app-info-version{font-size:13px;color:var(--text3);margin-bottom:16px}
+.app-info-rows{border-top:1px solid var(--border);padding-top:14px}
+.app-info-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+.app-info-row span:first-child{color:var(--text3)}
+.app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
+
+/* ── Add button ───────────────────────────────────────────── */
+.add-btn{
+  width:100%;height:46px;border:1.5px dashed var(--border2);border-radius:var(--radius-lg);
+  background:transparent;color:var(--text3);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:12px;transition:all var(--t-base);font-weight:500;
+}
+.add-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-lt)}
+.add-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;flex-shrink:0}
+
+/* ── Toast ────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:calc(72px + var(--safe-b) + 10px);
+  left:50%;transform:translateX(-50%) translateY(12px);
+  background:rgba(26,25,22,.9);color:#fff;font-size:14px;font-weight:500;
+  padding:10px 18px;border-radius:99px;
+  opacity:0;transition:all .25s;pointer-events:none;
+  white-space:nowrap;z-index:var(--z-toast);max-width:92vw;
+  display:flex;align-items:center;gap:4px;
+  box-shadow:var(--shadow-md);
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+
+/* ── Amber lit (missing from tokens) ─────────────────────── */
+.rem-ico.a{background:var(--amber-lt)}.rem-ico.a svg{stroke:var(--amber)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══════════════ HOME SCREEN ════════════════ -->
+<div id="s-home" class="screen on">
+
+  <!-- Month navigator -->
+  <div class="top-bar">
+    <button class="month-nav-btn" onclick="shiftM(-1)" aria-label="上個月">&#8249;</button>
+    <select id="hy" class="flex1" onchange="rHome()" aria-label="年份"></select>
+    <select id="hm" class="flex1" onchange="rHome()" aria-label="月份"></select>
+    <button class="month-nav-btn" onclick="shiftM(1)" aria-label="下個月">&#8250;</button>
+  </div>
+
+  <!-- ── Merged hero card: total + chips + budget (single surface) ── -->
+  <div class="home-hero">
+    <div class="hero-main-card">
+
+      <!-- Eyebrow -->
+      <div class="hero-eyebrow">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        本月個人實際支出
+      </div>
+
+      <!-- Primary big number — personal expenses ONLY (advance/proxy excluded) -->
+      <div class="hero-big-num" id="h-tot">—</div>
+
+      <!-- Deduction note: shown only when advance items exist in this month -->
+      <div class="hero-deduct-note" id="h-deduct-note" style="display:none" aria-live="polite"></div>
+
+      <!-- Sub-breakdown chips — 已繳/未繳 are personal only; 代墊待收 = receivable -->
+      <div class="hero-chips">
+        <div class="hero-chip">
+          <div class="hero-chip-dot" style="background:var(--green)"></div>
+          <span class="hero-chip-lbl">已繳</span>
+          <span class="hero-chip-val g" id="h-paid-d">—</span>
+        </div>
+        <div class="hero-chip">
+          <div class="hero-chip-dot" style="background:var(--red)"></div>
+          <span class="hero-chip-lbl">未繳</span>
+          <span class="hero-chip-val r" id="h-unpaid-d">—</span>
+        </div>
+        <div class="hero-chip">
+          <div class="hero-chip-dot" style="background:var(--orange)"></div>
+          <span class="hero-chip-lbl">代墊待收</span>
+          <span class="hero-chip-val o" id="h-adv-d">—</span>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="height:1px;background:var(--border);margin:12px 0 11px"></div>
+
+      <!-- Budget remain row (unique data, promoted here) -->
+      <div class="hero-remain-row">
+        <div class="hero-remain-left">
+          <div class="hero-remain-lbl">預算剩餘</div>
+          <div class="hero-remain-val" id="h-remain">未設定</div>
+          <div class="hero-remain-sub" id="h-remain-sub"></div>
+        </div>
+        <div class="hero-remain-right">
+          <div class="hero-bud-inline-track">
+            <div class="bud-bar-fill" id="h-bud-fill" style="width:0%"></div>
+          </div>
+          <div class="hero-bud-pct" id="h-bud-pct">—</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="scroll-body" id="home-scroll">
+    <div id="reminder-wrap"></div>
+    <div id="copy-wrap"></div>
+    <div id="home-list"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ LIST SCREEN ════════════════ -->
+<div id="s-list" class="screen">
+  <div class="search-wrap">
+    <svg viewBox="0 0 20 20"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5L18 18"/></svg>
+    <input class="search-input" id="search" type="search" placeholder="搜尋項目或備註…" aria-label="搜尋">
+  </div>
+  <div class="list-sticky">
+    <div class="top-bar" style="padding-top:10px">
+      <select id="ly" class="flex1" onchange="syncRange()" aria-label="年份"></select>
+      <select id="lm" class="flex1" onchange="syncRange()" aria-label="月份"></select>
+    </div>
+    <div class="range-bar">
+      <div class="range-row">
+        <select id="rf-y" onchange="rList()" aria-label="範圍起始年"></select>
+        <select id="rf-m" onchange="rList()" aria-label="範圍起始月"></select>
+        <span class="range-sep">—</span>
+        <select id="rt-y" onchange="rList()" aria-label="範圍結束年"></select>
+        <select id="rt-m" onchange="rList()" aria-label="範圍結束月"></select>
+      </div>
+      <div class="range-info" id="range-info">選擇日期範圍篩選</div>
+    </div>
+    <div class="filter-row" role="group" aria-label="篩選狀態">
+      <button class="filter-btn on" id="fa" onclick="setF('all')" aria-pressed="true">全部</button>
+      <button class="filter-btn" id="fu" onclick="setF('unpaid')" aria-pressed="false">未繳</button>
+      <button class="filter-btn" id="fp" onclick="setF('paid')" aria-pressed="false">已繳</button>
+      <button class="filter-btn" id="fv" onclick="setF('advance')" aria-pressed="false">代墊</button>
+    </div>
+  </div>
+  <div class="scroll-body"><div id="list-items"></div></div>
+</div>
+
+<!-- ═══════════════ CHART SCREEN ════════════════ -->
+<div id="s-chart" class="screen">
+
+  <!-- Mode toggle: 單月 / 跨月範圍 -->
+  <div class="chart-mode-row">
+    <button class="chart-mode-btn on" id="cmode-single" onclick="setChartMode('single')">單月分析</button>
+    <button class="chart-mode-btn"    id="cmode-range"  onclick="setChartMode('range')">跨月範圍</button>
+  </div>
+
+  <!-- Single-month selectors (shown in single mode) -->
+  <div class="top-bar" id="chart-single-bar">
+    <select id="cy2" class="flex1" onchange="rChart()"></select>
+    <select id="cm2" class="flex1" onchange="rChart()"></select>
+  </div>
+
+  <!-- Range selectors (shown in range mode) -->
+  <div class="chart-range-row" id="chart-range-bar" style="display:none">
+    <select id="cr-fy" onchange="rChart()"></select>
+    <select id="cr-fm" onchange="rChart()"></select>
+    <span class="chart-range-sep">→</span>
+    <select id="cr-ty" onchange="rChart()"></select>
+    <select id="cr-tm" onchange="rChart()"></select>
+  </div>
+
+  <div class="scroll-body">
+
+    <!-- ── SINGLE MODE ── -->
+    <div id="chart-single-view">
+      <div class="bud-total-card">
+        <div class="bud-total-row">
+          <div class="bud-total-lbl">本月總預算</div>
+          <div class="bud-total-nums"><strong id="bud-spent-txt">—</strong><span id="bud-limit-txt">（未設定）</span></div>
+        </div>
+        <div class="bud-total-track"><div class="bud-total-fill" id="bud-total-bar" style="width:0%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">分類支出佔比</div>
+        <div class="pie-wrap">
+          <canvas id="pie" width="200" height="200"></canvas>
+          <div class="pie-legend" id="pie-leg"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-tile"><div class="stat-lbl">項目數</div><div class="stat-val" id="cc">—</div></div>
+        <div class="stat-tile"><div class="stat-lbl">已繳比例</div><div class="stat-val g" id="cp">—</div></div>
+        <div class="stat-tile"><div class="stat-lbl">代墊筆數</div><div class="stat-val o" id="ca">—</div></div>
+        <div class="stat-tile"><div class="stat-lbl">代墊排除額</div><div class="stat-val o" id="cam" title="本月全部代墊款金額，已從個人支出中排除">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">分類預算 <a onclick="openBudModal()">設定</a></div>
+        <div id="bud-cat-rows"></div>
+      </div>
+    </div>
+
+    <!-- ── RANGE MODE ── -->
+    <div id="chart-range-view" style="display:none">
+      <div class="range-summary-strip" id="range-summary"></div>
+      <div class="card">
+        <div class="card-title" id="range-chart-title">支出走勢</div>
+        <canvas id="range-chart" style="width:100%"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">範圍分類合計</div>
+        <div id="range-cat-rows"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ TREND SCREEN ════════════════ -->
+<div id="s-trend" class="screen">
+  <div class="scroll-body">
+    <div class="card">
+      <div class="card-title">年度支出趨勢</div>
+      <div class="yr-chips" id="yr-chips"></div>
+      <canvas id="area-chart" style="width:100%"></canvas>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+    <div class="trend-stat-row" id="trend-stats"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ SETTINGS SCREEN ════════════════ -->
+<div id="s-settings" class="screen">
+  <div class="top-bar">
+    <div class="top-bar-title">設定</div>
+  </div>
+  <div class="scroll-body">
+    <div class="settings-group-title">資料管理</div>
+    <div class="settings-group">
+      <div class="settings-row" onclick="exportJSON()">
+        <div><div class="settings-row-lbl">匯出 JSON 備份</div><div class="settings-row-sub">完整備份，可還原所有資料</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="exportCSV()">
+        <div><div class="settings-row-lbl">匯出 CSV</div><div class="settings-row-sub">可用 Excel / Numbers 開啟分析</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="document.getElementById('imp').click()">
+        <div><div class="settings-row-lbl">匯入備份</div><div class="settings-row-sub">從 JSON 或 CSV 還原資料</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 14 12 9 17 14"/><line x1="12" y1="9" x2="12" y2="21"/></svg></div>
+      </div>
+      <input type="file" id="imp" accept=".json,.csv" style="display:none" onchange="importFile(event)">
+    </div>
+    <div class="settings-group-title">偏好設定</div>
+    <div class="settings-group">
+      <div class="settings-row" onclick="openCatModal()">
+        <div><div class="settings-row-lbl">費用類別管理</div><div class="settings-row-sub" id="cat-preview-settings">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="openBudModal()">
+        <div><div class="settings-row-lbl">預算設定</div><div class="settings-row-sub" id="bud-preview-settings">點此設定每月預算上限</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="openRemindModal()">
+        <div><div class="settings-row-lbl">到期提醒設定</div><div class="settings-row-sub" id="remind-preview-settings">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+    </div>
+    <div class="app-info-card">
+      <div class="app-info-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div class="app-info-name">費用管理</div>
+      <div class="app-info-version">個人記帳 PWA</div>
+      <div class="app-info-rows">
+        <div class="app-info-row"><span>版本</span><span>v1.0.0</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/04/24</span></div>
+        <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB BAR ════════════════ -->
+<div class="tabs" role="tablist" aria-label="主要導覽">
+  <button class="tab on" id="tab-home" role="tab" aria-selected="true" aria-controls="s-home" onclick="showS('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/></svg>
+    本月<span class="tab-dot" id="remind-badge" aria-label="未處理提醒數">0</span>
+  </button>
+  <button class="tab" id="tab-list" role="tab" aria-selected="false" aria-controls="s-list" onclick="showS('list')">
+    <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>明細
+  </button>
+  <button class="tab" id="tab-chart" role="tab" aria-selected="false" aria-controls="s-chart" onclick="showS('chart')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5.5 3"/></svg>圖表
+  </button>
+  <button class="tab" id="tab-trend" role="tab" aria-selected="false" aria-controls="s-trend" onclick="showS('trend')">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/></svg>趨勢
+  </button>
+  <button class="tab" id="tab-settings" role="tab" aria-selected="false" aria-controls="s-settings" onclick="showS('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>設定
+  </button>
+</div>
+</div>
+
+<!-- FAB -->
+<button class="fab on" id="fab" onclick="openForm()" aria-label="新增費用">
+  <svg viewBox="0 0 22 22"><path d="M11 3v16M3 11h16"/></svg>
+</button>
+
+<!-- ═══════════════ FULL-SCREEN FORM ════════════════ -->
+<div id="fsform" class="fsform" role="dialog" aria-modal="true" aria-labelledby="fs-title">
+  <div class="fs-nav">
+    <button class="fs-back" onclick="closeForm()">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="fs-title" id="fs-title">新增費用項目</div>
+    <button class="fs-del" id="fs-del" style="display:none" onclick="confirmDel()">刪除</button>
+    <button class="fs-save" onclick="saveItem()">儲存</button>
+  </div>
+  <div class="fs-body">
+    <div class="field">
+      <label>費用類型</label>
+      <div class="radio-row">
+        <label class="radio-opt"><input type="radio" name="itype" id="rt-normal" value="normal" onchange="onTypeChange()"> 一般費用</label>
+        <label class="radio-opt"><input type="radio" name="itype" id="rt-advance" value="advance" onchange="onTypeChange()"> 代墊款</label>
+      </div>
+    </div>
+    <div class="adv-hint-box" id="adv-hint" style="display:none"><p>代墊款：先代替他人支付，待對方償還。不計入個人支出，以橘色獨立追蹤。</p></div>
+    <div class="field"><label>類別</label><select id="f-cat" aria-label="費用類別"></select></div>
+    <div class="field"><label>項目名稱</label><input id="f-name" type="text" placeholder="例：中國信託信用卡費" autocomplete="off"></div>
+    <div class="field" id="f-payee-wrap" style="display:none">
+      <label>代墊對象</label><input id="f-payee" type="text" placeholder="例：小明" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>金額（元）</label>
+      <div class="amt-wrap" onclick="document.getElementById('f-amt-r').focus()">
+        <span class="amt-unit">$</span>
+        <span class="amt-disp ph" id="f-amt-d" aria-hidden="true">0</span>
+        <input class="amt-input" id="f-amt-r" type="number" inputmode="numeric" min="0" step="1" oninput="syncAmt('f-amt-r','f-amt-d');updateProxyCalc()" onfocus="this.select()">
+      </div>
+      <!-- Opt-in proxy toggle: hidden by default, shown only for new normal items -->
+      <div id="proxy-toggle-row" style="display:none;margin-top:9px">
+        <button type="button" id="proxy-toggle-btn" class="proxy-toggle-btn"
+                onclick="toggleProxySection()" aria-expanded="false"
+                aria-controls="f-proxy-section">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+               id="proxy-toggle-icon"><path d="M8 2v12M2 8h12"/></svg>
+          含代墊款（帳單拆分）
+        </button>
+      </div>
+    </div>
+
+    <!-- Proxy split section: collapsed by default, expanded via toggle only -->
+    <div class="field" id="f-proxy-section" style="display:none">
+      <div class="proxy-section-note">
+        帳單中包含的代墊費用，儲存後自動拆分為獨立代墊記錄，並從個人費用中扣除。
+      </div>
+      <div id="proxy-rows"></div>
+      <button type="button" class="proxy-add-btn" onclick="addProxyRow()" id="proxy-add-btn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg>
+        新增代墊對象
+      </button>
+      <div class="proxy-calc" id="proxy-calc" style="display:none">
+        <div class="proxy-calc-row">
+          <span>帳單總額</span><span id="pc-total">$0</span>
+        </div>
+        <div class="proxy-calc-row">
+          <span>代墊合計</span>
+          <span id="pc-proxy" style="color:var(--orange)">−$0</span>
+        </div>
+        <div class="proxy-calc-divider"></div>
+        <div class="proxy-calc-result" id="proxy-calc-result">
+          <span>個人費用</span><span id="pc-personal">$0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="field"><label>繳費 / 到期日</label><input id="f-date" type="date"></div>
+    <button class="adv-toggle" id="adv-toggle" type="button" onclick="toggleAdvFields()" aria-expanded="false">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      更多選項（提醒 / 備註 / 狀態）
+    </button>
+    <div class="adv-fields" id="adv-fields">
+      <div style="height:1px;background:var(--border);margin:0 0 14px"></div>
+      <div class="field">
+        <label>到期提醒</label>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="remind" id="rd-off" value="0"> 不提醒</label>
+          <label class="radio-opt"><input type="radio" name="remind" id="rd-3" value="3"> 提前 3 天</label>
+          <label class="radio-opt"><input type="radio" name="remind" id="rd-7" value="7"> 提前 7 天</label>
+        </div>
+      </div>
+      <div class="field"><label>備註（選填）</label><textarea id="f-note" placeholder="例：含年費、自動扣款…"></textarea></div>
+      <div class="fdivider"></div>
+      <div class="field" id="f-status-wrap">
+        <label>繳納狀態</label>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="paid" id="r-unpaid" value="0"> 尚未繳納</label>
+          <label class="radio-opt"><input type="radio" name="paid" id="r-paid" value="1"> 已繳納</label>
+        </div>
+      </div>
+      <div class="field" id="f-recovered-wrap" style="display:none">
+        <label>收回狀態</label>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="recovered" id="r-unrec" value="0"> 尚未收回</label>
+          <label class="radio-opt"><input type="radio" name="recovered" id="r-rec" value="1"> 已收回</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODALS ════════════════ -->
+<div class="overlay" id="bov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h3>設定預算</h3>
+    <div class="field">
+      <label>每月總支出上限</label>
+      <div class="amt-wrap" onclick="document.getElementById('bt-r').focus()">
+        <span class="amt-unit">$</span>
+        <span class="amt-disp ph" id="bt-d">0</span>
+        <input class="amt-input" id="bt-r" type="number" inputmode="numeric" min="0" step="1" oninput="syncAmt('bt-r','bt-d')" onfocus="this.select()">
+      </div>
+      <p class="field-note">設為 0 表示不設定總預算上限</p>
+    </div>
+    <div class="fdivider"></div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">各分類預算（元）</p>
+    <div id="b-fields"></div>
+    <div class="sheet-btns">
+      <button class="btn" onclick="document.getElementById('bov').classList.remove('on')">關閉</button>
+      <button class="btn primary" onclick="saveBudgets()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="cov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h3>管理費用類別</h3>
+    <div class="cat-grid" id="cat-tags"></div>
+    <div class="cat-add-row">
+      <input id="new-cat" type="text" placeholder="新增類別名稱" maxlength="10">
+      <button onclick="addCat()">新增</button>
+    </div>
+    <div class="sheet-btns" style="margin-top:14px">
+      <button class="btn primary" onclick="document.getElementById('cov').classList.remove('on');refreshCatSel();rTrend();rSettings()">完成</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rsov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h3>提醒設定</h3>
+    <div class="remind-info-box"><p>開啟 App 時自動掃描到期費用，於首頁顯示提醒卡片。不需要系統通知權限。</p></div>
+    <div id="remind-settings-rows"></div>
+    <div class="sheet-btns" style="margin-top:14px">
+      <button class="btn primary" onclick="saveRemindSettings()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+
+// ── Security & Formatting ────────────────────────────────
+// 新增 XSS 防護函式，過濾使用者輸入的特殊字元
+const esc = str => String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
+
+const NF  = new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0});
+const fmt  = n => '$' + NF.format(Math.round(n||0));
+const fmtN = n => NF.format(Math.round(n||0));
+
+function syncAmt(rId, dId){
+  const v = parseInt(document.getElementById(rId).value)||0;
+  const d = document.getElementById(dId); if(!d)return;
+  if(v>0){d.textContent=fmtN(v);d.classList.remove('ph');}
+  else{d.textContent='0';d.classList.add('ph');}
+}
+function getAmt(rId){return parseInt(document.getElementById(rId).value)||0;}
+function setAmt(rId, dId, val){
+  const v=Math.round(val)||0;
+  document.getElementById(rId).value=v||'';
+  const d=document.getElementById(dId); if(!d)return;
+  if(v>0){d.textContent=fmtN(v);d.classList.remove('ph');}
+  else{d.textContent='0';d.classList.add('ph');}
+}
+
+// ── Constants ────────────────────────────────────────────
+const DEFAULT_CATS=['信用卡','保險','訂閱','水電瓦斯','房租/房貸','電話/網路','醫療','交通','餐飲','其他'];
+const PIE_COLORS=['#1D9E75','#378ADD','#D85A30','#7F77DD','#BA7517','#D4537E','#639922','#5F5E5A','#0F6E56','#A32D2D','#185FA5','#E24B4A'];
+const YR_PAL=[
+  {line:'#1D9E75',fill:'rgba(29,158,117,.12)'},
+  {line:'#378ADD',fill:'rgba(55,138,221,.12)'},
+  {line:'#D85A30',fill:'rgba(216,90,48,.12)'},
+  {line:'#7F77DD',fill:'rgba(127,119,221,.12)'},
+  {line:'#BA7517',fill:'rgba(186,117,23,.12)'},
+];
+const DEF_REM={enabled:true,showOverdue:true,showDueSoon:true,dueSoonDays:3,showAdvanceUnrec:true};
+
+// ── State ────────────────────────────────────────────────
+let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0;
+let dirty={home:true,list:true,chart:true,trend:true};
+let budStore=JSON.parse(localStorage.getItem('ep_bud_v2')||'{"byIdx":{},"total":0}');
+let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
+let selYears=JSON.parse(localStorage.getItem('ep_sel_yrs')||'null');
+let remCfg=JSON.parse(localStorage.getItem('ep_rem_cfg')||'null')||{...DEF_REM};
+let remDismissed=localStorage.getItem('ep_rem_dis')||'';
+if(!userCats){userCats=[...DEFAULT_CATS];saveCats();}
+
+function getCats(){return userCats;}
+function saveCats(){localStorage.setItem('ep_cats',JSON.stringify(userCats));}
+function saveSelYrs(){localStorage.setItem('ep_sel_yrs',JSON.stringify(selYears));}
+function saveBudStore(){localStorage.setItem('ep_bud_v2',JSON.stringify(budStore));}
+function saveRemCfg(){localStorage.setItem('ep_rem_cfg',JSON.stringify(remCfg));}
+
+// ── Helpers ──────────────────────────────────────────────
+const pad=(n)=>n<10?'0'+n:''+n;
+const ymStr=(y,m)=>`${y}-${pad(m)}`;
+const cy=()=>new Date().getFullYear();
+const cm=()=>new Date().getMonth()+1;
+const today=()=>new Date().toISOString().slice(0,10);
+function addDays(ds,n){const d=new Date(ds);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function diffDays(ds){return Math.round((new Date(ds)-new Date(today()))/86400000);}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2300);
+}
+
+// UX5: Undo-toast — shows message + tappable Undo action for 4 seconds
+let _undoTimer=null;
+function toastUndo(msg, undoFn){
+  const t=document.getElementById('toast');
+  t.innerHTML=`${esc(msg)} <button onclick="doUndo()" style="margin-left:10px;background:rgba(255,255,255,.22);border:none;color:#fff;padding:2px 10px;border-radius:99px;cursor:pointer;font-size:13px">復原</button>`;
+  t._undoFn=undoFn;
+  t.classList.add('on');
+  clearTimeout(_undoTimer);
+  _undoTimer=setTimeout(()=>{t.classList.remove('on');t._undoFn=null;},4000);
+}
+function doUndo(){
+  const t=document.getElementById('toast');
+  if(t._undoFn){clearTimeout(_undoTimer);t._undoFn();t._undoFn=null;}
+  t.classList.remove('on');
+}
+
+// UX1: toggle collapsible detail panel on home screen
+function toggleDetail(){
+  const panel=document.getElementById('detail-panel');
+  const toggle=document.getElementById('detail-toggle');
+  if(!panel||!toggle)return; // elements removed from DOM — no-op
+  const open=panel.classList.toggle('open');
+  toggle.classList.toggle('open',open);
+  toggle.setAttribute('aria-expanded',open);
+}
+
+// UX7: toggle advanced fields in add/edit form
+function toggleAdvFields(){
+  const fields=document.getElementById('adv-fields');
+  const btn=document.getElementById('adv-toggle');
+  const open=fields.classList.toggle('open');
+  btn.classList.toggle('open',open);
+  btn.setAttribute('aria-expanded',open);
+}
+
+// ── IndexedDB (Optimized Layers) ─────────────────────────
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('expense_v8',1);
+    r.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('items'))
+        db.createObjectStore('items',{keyPath:'id',autoIncrement:true}).createIndex('ym','ym');
+    };
+    r.onsuccess=e=>{DB=e.target.result;res();};
+    r.onerror=()=>rej(r.error);
+  });
+}
+const store=m=>DB.transaction('items',m).objectStore('items');
+const getAll=()=>new Promise(res=>{store('readonly').getAll().onsuccess=e=>res(e.target.result||[]);});
+
+// 新增：利用 Index 進行 O(1) 範圍查詢，避免每次都撈出全部資料過濾
+const getByYM=(ym)=>new Promise(res=>{store('readonly').index('ym').getAll(IDBKeyRange.only(ym)).onsuccess=e=>res(e.target.result||[]);});
+const getByRange=(from,to)=>new Promise(res=>{store('readonly').index('ym').getAll(IDBKeyRange.bound(from,to)).onsuccess=e=>res(e.target.result||[]);});
+// Fix 1: getById — primary-key lookup, O(log n), used by event delegation
+// for delete and checkbox toggle (avoids full table scan with getAll().find())
+const getById=id=>new Promise(res=>{store('readonly').get(id).onsuccess=e=>res(e.target.result||null);});
+
+const putItem=item=>new Promise(res=>{
+  const r=store('readwrite').put(item);
+  r.onsuccess=e=>{if(!item.id)item.id=e.target.result;res(item);};
+});
+const delItem=id=>new Promise(res=>{store('readwrite').delete(id).onsuccess=res;});
+
+// ── Selects ──────────────────────────────────────────────
+function buildSelects(){
+  const nowY=cy(),nowM=cm();
+  const yrs=Array.from({length:21},(_,i)=>2026+i);
+  const ms=Array.from({length:12},(_,i)=>i+1);
+  const yO=yrs.map(yr=>`<option value="${yr}"${yr===nowY?' selected':''}>${yr}年</option>`).join('');
+  const mO=ms.map(mn=>`<option value="${mn}"${mn===nowM?' selected':''}>${mn}月</option>`).join('');
+  ['hy','ly','cy2'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yO;});
+  ['hm','lm','cm2'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=mO;});
+  ['hy','ly','cy2'].forEach(id=>{const s=document.getElementById(id);if(s)s.value=nowY;});
+  ['hm','lm','cm2'].forEach(id=>{const s=document.getElementById(id);if(s)s.value=nowM;});
+  const yOS=yrs.map(yr=>`<option value="${yr}"${yr===nowY?' selected':''}>${yr}</option>`).join('');
+  ['rf-y','rt-y'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yOS;});
+  ['rf-m','rt-m'].forEach(id=>{const s=document.getElementById(id);if(s){s.innerHTML=mO;s.value=nowM;}});
+  // Range chart selectors — from = 3 months ago, to = current month
+  ['cr-fy','cr-ty'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yOS;});
+  ['cr-fm','cr-tm'].forEach(id=>{const s=document.getElementById(id);if(s){s.innerHTML=mO;s.value=nowM;}});
+  const s_crfy=document.getElementById('cr-fy'),s_crfm=document.getElementById('cr-fm');
+  if(s_crfy&&s_crfm){
+    let fy=nowY,fm=nowM-3;if(fm<1){fm+=12;fy--;}
+    s_crfy.value=Math.max(2026,fy);s_crfm.value=fm;
+  }
+  const s_crty=document.getElementById('cr-ty'),s_crtm=document.getElementById('cr-tm');
+  if(s_crty&&s_crtm){s_crty.value=nowY;s_crtm.value=nowM;}
+}
+const curYM=()=>({y:+document.getElementById('hy').value,m:+document.getElementById('hm').value});
+function shiftM(d){
+  const sy=document.getElementById('hy'),sm=document.getElementById('hm');
+  let y=+sy.value,m=+sm.value+d;
+  if(m>12){m=1;y++;}if(m<1){m=12;y--;}
+  y=Math.max(2026,Math.min(2046,y));
+  sy.value=y;sm.value=m;dirtyAll();rHome();
+}
+function syncRange(){
+  document.getElementById('rf-y').value=document.getElementById('ly').value;
+  document.getElementById('rf-m').value=document.getElementById('lm').value;
+  document.getElementById('rt-y').value=document.getElementById('ly').value;
+  document.getElementById('rt-m').value=document.getElementById('lm').value;
+  rList();
+}
+const dirtyAll=()=>Object.keys(dirty).forEach(k=>dirty[k]=true);
+
+function refreshCatSel(){
+  const cats=getCats(),sel=document.getElementById('f-cat'),cur=sel.value;
+  sel.innerHTML=cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if(cats.includes(cur))sel.value=cur;
+}
+// ── Proxy split-entry helpers ─────────────────────────────
+let _proxyCount = 0;
+
+// ── Shared proxy reset — call whenever the form closes or type changes ──
+function _resetProxy(){
+  const rows = document.getElementById('proxy-rows');
+  const sec  = document.getElementById('f-proxy-section');
+  const tRow = document.getElementById('proxy-toggle-row');
+  const tBtn = document.getElementById('proxy-toggle-btn');
+  const icon = document.getElementById('proxy-toggle-icon');
+  if(rows) rows.innerHTML = '';
+  _proxyCount = 0;
+  if(sec)  sec.style.display  = 'none';
+  if(tRow) tRow.style.display = 'none';
+  if(tBtn){ tBtn.classList.remove('active'); tBtn.setAttribute('aria-expanded','false'); }
+  if(icon) icon.querySelector('path')?.setAttribute('d','M8 2v12M2 8h12');
+  updateProxyCalc();
+}
+
+// ── Toggle expand/collapse of proxy section ──────────────────────
+function toggleProxySection(){
+  const sec  = document.getElementById('f-proxy-section');
+  const tBtn = document.getElementById('proxy-toggle-btn');
+  const isOpen = sec && sec.style.display !== 'none';
+
+  if(isOpen){
+    // Collapse: clear all rows and hide
+    _resetProxy();
+    // Keep toggle button visible (user can re-open)
+    const tRow = document.getElementById('proxy-toggle-row');
+    if(tRow) tRow.style.display = '';
+  } else {
+    // Expand: show section, auto-add first empty row
+    if(sec) sec.style.display = '';
+    if(tBtn){ tBtn.classList.add('active'); tBtn.setAttribute('aria-expanded','true'); }
+    if(document.querySelectorAll('#proxy-rows .proxy-row').length === 0){
+      addProxyRow();
+    }
+  }
+}
+
+// Returns [{payee, amount}] for all filled proxy rows
+function getProxyRows(){
+  // Only return rows with BOTH a payee name AND amount > 0 (partial rows are ignored)
+  return Array.from(document.querySelectorAll('#proxy-rows .proxy-row')).map(row=>({
+    payee : (row.querySelector('.proxy-payee')?.value||'').trim(),
+    amount: parseFloat((row.querySelector('.proxy-amt')?.value||'').replace(/[^0-9.]/g,''))||0
+  })).filter(r=>r.amount>0&&r.payee.length>0);
+}
+
+// Adds a new proxy-row to the form
+function addProxyRow(){
+  const container=document.getElementById('proxy-rows');
+  const idx=++_proxyCount;
+  const row=document.createElement('div');
+  row.className='proxy-row';
+  row.dataset.idx=idx;
+  row.innerHTML=
+    `<input class="proxy-payee" type="text" placeholder="代墊對象（如：小明）" `+
+    `autocomplete="off" oninput="updateProxyCalc()" aria-label="代墊對象">`+
+    `<div class="proxy-amt-cell">`+
+      `<span class="proxy-prefix">$</span>`+
+      `<input class="proxy-amt" type="text" inputmode="decimal" `+
+      `placeholder="輸入金額" autocomplete="off" `+
+      `oninput="updateProxyCalc()" aria-label="代墊金額">`+
+    `</div>`+
+    `<button type="button" class="proxy-del" onclick="removeProxyRow(this)" aria-label="移除">✕</button>`;
+  container.appendChild(row);
+  row.querySelector('.proxy-payee').focus();
+  updateProxyCalc();
+}
+
+// Removes a proxy row and refreshes formula
+function removeProxyRow(btn){
+  btn.closest('.proxy-row').remove();
+  updateProxyCalc();
+}
+
+// Updates the live formula card below the proxy rows
+function updateProxyCalc(){
+  const calcEl=document.getElementById('proxy-calc');
+  if(!calcEl) return;
+  const billAmt =parseFloat(document.getElementById('f-amt-r')?.value)||0;
+  const rows    =getProxyRows();
+  const proxySum=rows.reduce((s,r)=>s+r.amount,0);
+  const personal=billAmt-proxySum;
+  const hasRows =document.querySelectorAll('#proxy-rows .proxy-row').length>0;
+
+  // Show formula only when there are rows with real amounts AND bill amount is filled
+  const hasFilledRows = getProxyRows().length > 0;  // use filtered list (amount>0 AND payee)
+  if(hasFilledRows && billAmt > 0){
+    calcEl.style.display='';
+    document.getElementById('pc-total').textContent    = fmt(billAmt);
+    document.getElementById('pc-proxy').textContent    = '−'+fmt(proxySum);
+    document.getElementById('pc-personal').textContent = fmt(Math.max(personal,0));
+    const res=document.getElementById('proxy-calc-result');
+    if(res) res.classList.toggle('over', personal<0);
+  } else {
+    calcEl.style.display='none';
+  }
+}
+
+function onTypeChange(){
+  const a=document.getElementById('rt-advance').checked;
+  document.getElementById('adv-hint').style.display=a?'block':'none';
+  document.getElementById('f-payee-wrap').style.display=a?'block':'none';
+  document.getElementById('f-status-wrap').style.display=a?'none':'block';
+  document.getElementById('f-recovered-wrap').style.display=a?'block':'none';
+  // Proxy split-entry: opt-in toggle only for normal (new items)
+  const tRow = document.getElementById('proxy-toggle-row');
+  if(a){
+    // Advance type: clear and hide everything
+    _resetProxy();
+  } else {
+    // Normal type: show the opt-in toggle button (section stays hidden until user taps it)
+    if(tRow) tRow.style.display = '';
+  }
+}
+
+// ── Range YM ─────────────────────────────────────────────
+function getRangeYM(){
+  const fy=+document.getElementById('rf-y').value,fm=+document.getElementById('rf-m').value;
+  const ty=+document.getElementById('rt-y').value,tm=+document.getElementById('rt-m').value;
+  const f=ymStr(fy,fm),t=ymStr(ty,tm);
+  return f<=t?{from:f,to:t}:{from:t,to:f};
+}
+
+// ── Reminders ────────────────────────────────────────────
+async function buildRems(){
+  if(!remCfg.enabled)return[];
+  // 提醒功能涉及跨月份逾期，仍需 getAll()
+  const all=await getAll(),td=today(),thr=addDays(td,remCfg.dueSoonDays);
+  const rems=[];
+  all.forEach(x=>{
+    if(remCfg.showOverdue&&x.itype!=='advance'&&x.paid!==1&&x.date&&x.date<td)
+      rems.push({item:x,type:'overdue',diff:diffDays(x.date)});
+    else if(remCfg.showDueSoon&&x.itype!=='advance'&&x.paid!==1&&x.date&&x.date>=td&&x.date<=thr)
+      rems.push({item:x,type:'due-soon',diff:diffDays(x.date)});
+    if(remCfg.showAdvanceUnrec&&x.itype==='advance'&&x.recovered!==1)
+      rems.push({item:x,type:'advance',diff:x.date?diffDays(x.date):null});
+  });
+  rems.sort((a,b)=>{const o={overdue:0,'due-soon':1,advance:2};return o[a.type]!==o[b.type]?o[a.type]-o[b.type]:(a.diff!==null&&b.diff!==null?a.diff-b.diff:0);});
+  return rems;
+}
+
+function renderRems(rems,max){
+  max=max||5;
+  const wrap=document.getElementById('reminder-wrap');
+  const badge=document.getElementById('remind-badge');
+  const n=rems.length;
+  if(n>0){badge.textContent=n>9?'9+':n;badge.style.display='';}else badge.style.display='none';
+  if(!n||!remCfg.enabled||remDismissed===today()){wrap.innerHTML='';return;}
+  
+  const sec=document.createElement('div');sec.className='rem-box';
+  const hdr=document.createElement('div');hdr.className='rem-hdr';
+  const htl=document.createElement('div');htl.className='rem-hdr-lbl';
+  htl.innerHTML=`<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>待處理提醒（${n}）`;
+  
+  const dis=document.createElement('button');dis.className='rem-dismiss';dis.textContent='今日不顯示';
+  dis.onclick=()=>{remDismissed=today();localStorage.setItem('ep_rem_dis',remDismissed);wrap.innerHTML='';badge.style.display='none';};
+  hdr.append(htl,dis);sec.appendChild(hdr);
+  
+  const frag = document.createDocumentFragment();
+  rems.slice(0,max).forEach(r=>{
+    const row=document.createElement('div');row.className=`rem-row ${r.type}`;
+    row.onclick=()=>openForm(r.item.id);
+    let ic,sv,meta,ac;
+    if(r.type==='overdue'){ic='r';sv='<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>';meta=`逾期 ${Math.abs(r.diff)} 天 · ${r.item.cat}`;ac='r';}
+    else if(r.type==='due-soon'){ic='a';sv='<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>';meta=r.diff===0?`今天到期 · ${r.item.cat}`:`${r.diff} 天後到期 · ${r.item.date}`;ac='a';}
+    else{ic='o';sv='<circle cx="12" cy="12" r="10"/><path d="M16 8l-4 4-4-4"/><path d="M12 12v5"/>';meta=`${r.item.payee?'代墊：'+r.item.payee:'代墊未收回'} · ${r.item.ym}`;ac='o';}
+    // 加入 XSS esc() 防護
+    row.innerHTML=`<div class="rem-ico ${ic}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${sv}</svg></div><div class="rem-body"><div class="rem-name">${esc(r.item.name)}</div><div class="rem-meta">${esc(meta)}</div></div><div class="rem-amt ${ac}">${fmt(r.item.amount)}</div>`;
+    frag.appendChild(row);
+  });
+  
+  if(n>max){
+    const m=document.createElement('div');
+    m.style.cssText='text-align:center;font-size:12px;color:var(--text3);padding:4px 0';
+    m.textContent=`還有 ${n-max} 筆…`;
+    frag.appendChild(m);
+  }
+  sec.appendChild(frag);
+  wrap.innerHTML='';wrap.appendChild(sec);
+}
+
+// ── Proxy deduction note helper ─────────────────────────
+// Called by rHome() and _patchHomeMetrics() to keep deduction note in sync.
+//   advTotal : sum of ALL advance items this period (the full exclusion amount)
+//   personal : personal expense total already shown in h-tot
+function _setDeductNote(advTotal, personal){
+  const el = document.getElementById('h-deduct-note');
+  if(!el) return;
+  if(advTotal > 0){
+    // Formula: Personal = TotalOutflow − ProxyPayments
+    const outflow = personal + advTotal;
+    el.style.display = '';
+    el.innerHTML =
+      `<span class="hero-deduct-badge">代墊 ${fmt(advTotal)} 已排除</span>`+
+      `<span class="hero-deduct-sub">總流出 ${fmt(outflow)} &minus; 代墊 ${fmt(advTotal)}</span>`;
+  } else {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
+}
+
+// ── HOME ─────────────────────────────────────────────────
+async function rHome(){
+  dirty.home=false;
+  const{y,m}=curYM(),key=ymStr(y,m);
+  const items = await getByYM(key);
+  // ── Accounting: separate personal expenses from proxy payments ──────
+  // Formula: Personal Expense = Total Outflow − Proxy/Advance Payments
+  const normal  = items.filter(x => x.itype !== 'advance');  // personal only
+  const advance = items.filter(x => x.itype === 'advance');  // proxy / reimbursable
+
+  const total   = normal.reduce((s,x) => s+x.amount, 0);    // personal total
+  const paid    = normal.filter(x => x.paid===1).reduce((s,x) => s+x.amount, 0);
+  const unpaid  = total - paid;
+
+  // Proxy accounting — all advances excluded from personal total
+  const advTotal  = advance.reduce((s,x) => s+x.amount, 0); // full proxy outflow
+  const advUnrec  = advance.filter(x => x.recovered!==1)    // outstanding receivable
+                           .reduce((s,x) => s+x.amount, 0);
+
+  // h-tot = personal expense ONLY (proxy payments never included)
+  document.getElementById('h-tot').textContent = fmt(total);
+  document.getElementById('h-paid-d').textContent   = fmt(paid);
+  document.getElementById('h-unpaid-d').textContent = fmt(unpaid);
+  document.getElementById('h-adv-d').textContent    = fmt(advUnrec); // receivable
+
+  // Deduction note — visible only when proxy items exist this month
+  _setDeductNote(advTotal, total);
+  // remaining budget hero
+  const bTotal=budStore.total||0;
+  const remain=bTotal>0?bTotal-total:null;
+  const remEl=document.getElementById('h-remain');
+  const remSub=document.getElementById('h-remain-sub');
+  if(bTotal>0){
+    remEl.textContent=fmt(Math.max(remain,0));
+    remEl.className='hero-remain-val'+(remain<0?' r':'');
+    remSub.textContent=`預算 ${fmt(bTotal)}`;
+  }else{
+    remEl.textContent='未設定';remEl.className='hero-remain-val';remSub.textContent='點設定頁面設定預算';
+  }
+
+  // Budget bar
+  const pct=bTotal>0?Math.min(Math.round(total/bTotal*100),100):0;
+  const fill=document.getElementById('h-bud-fill');
+  const pctLbl=document.getElementById('h-bud-pct');
+  if(bTotal>0){
+    fill.style.width=pct+'%';
+    fill.className='bud-bar-fill'+(pct>=100?' over':pct>=80?' warn':'');
+    pctLbl.textContent=pct+'%';
+  }else{fill.style.width='0%';fill.className='bud-bar-fill';pctLbl.textContent='未設定';}
+
+  const rems=await buildRems();renderRems(rems,3);
+
+  const prevM=m===1?12:m-1,prevY=m===1?y-1:y;
+  const prevItems=await getByYM(ymStr(prevY,prevM));
+  document.getElementById('copy-wrap').innerHTML=(!items.length&&prevItems.length)
+    ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到本月？</p><span>複製</span></div>`:'';
+
+  const el=document.getElementById('home-list');
+  if(!items.length){
+    // UX6: actionable empty state — both primary CTA and copy shortcut
+    el.innerHTML=`<div class="empty-state">
+      <svg viewBox="0 0 100 100" fill="none">
+        <rect x="15" y="25" width="70" height="55" rx="9" fill="var(--surface2)"/>
+        <rect x="15" y="25" width="70" height="17" rx="9" fill="var(--border2)"/>
+        <rect x="25" y="52" width="28" height="5" rx="2.5" fill="var(--green)" opacity=".5"/>
+        <rect x="25" y="63" width="44" height="5" rx="2.5" fill="var(--border2)"/>
+        <circle cx="78" cy="78" r="16" fill="var(--green)"/>
+        <path d="M78 72v12M72 78h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      <h3>本月尚無費用項目</h3>
+      <p>點下方 + 新增第一筆費用<br>開始追蹤每月支出</p>
+      <button class="empty-cta" onclick="openForm()">新增費用項目</button>
+      ${prevItems.length?`<button class="empty-cta-sec" onclick="copyPrev()">複製上月 ${prevItems.length} 筆</button>`:''}
+    </div>`;
+    return;
+  }
+  el.innerHTML='';
+  const frag = document.createDocumentFragment();
+  if(advance.filter(x=>x.recovered!==1).length){
+    const unrec=advance.filter(x=>x.recovered!==1);
+    const b=document.createElement('div');b.className='adv-banner';
+    b.innerHTML=`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg><p>本月有 <strong>${unrec.length} 筆代墊款</strong>（共 ${fmt(unrec.reduce((s,x)=>s+x.amount,0))}）尚未收回</p>`;
+    frag.appendChild(b);
+  }
+  const cats={};
+  normal.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(x=>(cats[x.cat]=cats[x.cat]||[]).push(x));
+  Object.keys(cats).forEach(cat=>{
+    const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent=cat;frag.appendChild(lbl);
+    cats[cat].forEach(x=>frag.appendChild(makeCard(x)));
+  });
+  if(advance.length){
+    const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent='代墊款';frag.appendChild(lbl);
+    advance.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(x=>frag.appendChild(makeCard(x)));
+  }
+  el.appendChild(frag);
+}
+
+// ── Item card (listener-free — all events handled by delegation) ──
+// OPT1: No addEventListener calls here. Data attributes carry the context
+// the delegation handler needs. This means N cards = 0 extra listeners.
+function makeCard(x){
+  const isAdv=x.itype==='advance';
+  const isDone=isAdv?x.recovered===1:x.paid===1;
+
+  const card=document.createElement('div');
+  card.className='icard';
+  card.dataset.id=x.id;          // OPT1: delegation key
+  card.dataset.isadv=isAdv?'1':'0';
+  card.dataset.amt=x.amount;     // Fix 2: raw integer — never parse formatted text
+
+  // Delete background — data-action tells the delegation handler what to do
+  const bg=document.createElement('div');
+  bg.className='del-bg';
+  bg.dataset.action='delete';
+  bg.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>刪除';
+
+  // Row — swipe state stored directly on the element (avoids closure leak)
+  const row=document.createElement('div');
+  row.className='irow';
+  row.dataset.action='row';
+
+  // Checkbox — data-action="toggle" triggers granular DOM update (OPT2)
+  const chk=document.createElement('input');
+  chk.type='checkbox';chk.className='ichk';
+  chk.checked=isDone;
+  chk.dataset.action='toggle';
+  chk.setAttribute('aria-label', isAdv
+    ? (isDone?'已收回，點擊取消':'未收回，點擊標記收回')
+    : (isDone?'已繳，點擊取消':'未繳，點擊標記繳納'));
+
+  // Fix 3: use native <button> instead of div[role=button] so Enter and Space
+  // trigger click events natively — no extra keydown handler needed on the card.
+  const info=document.createElement('button');
+  info.className='iinfo';
+  info.type='button';           // prevent accidental form submission
+  info.dataset.action='edit';
+  info.setAttribute('aria-label',`編輯：${x.name}`);
+
+  const nm=document.createElement('div');
+  nm.className='iname'+(isDone?' done':'');
+  nm.appendChild(document.createTextNode(x.name));
+  if(!isDone&&x.date&&x.date<today()){
+    const dot=document.createElement('span');dot.className='overdue-dot';dot.setAttribute('aria-label','逾期');nm.appendChild(dot);
+  }
+  info.appendChild(nm);
+
+  const subs=[];
+  if(isAdv&&x.payee)subs.push('代墊：'+x.payee);
+  if(x.date)subs.push(x.date);
+  if(x.note)subs.push(x.note);
+  if(subs.length){
+    const st=document.createElement('div');st.className='isub';
+    st.textContent=subs.join('　');info.appendChild(st);
+  }
+
+  // Amount + badge
+  const right=document.createElement('div');right.className='iright';
+  const ac=isAdv?(isDone?'g':'o'):(isDone?'g':'r');
+  const amt=document.createElement('div');amt.className=`iamt ${ac}`;amt.textContent=fmt(x.amount);
+  const bt=isAdv?(isDone?'已收回':'代墊中'):(isDone?'已繳':'未繳');
+  const badge=document.createElement('span');badge.className=`badge ${ac}`;badge.textContent=bt;
+
+  right.append(amt,badge);
+  row.append(chk,info,right);
+  card.append(bg,row);
+  return card;
+}
+
+// ── OPT2: Lightweight home metric patch ──────────────────
+// Called after a checkbox toggle on the home list.
+// Reads amounts directly from the existing card DOM —
+// no DB query, no DOM rebuild, just arithmetic + textContent.
+function _patchHomeMetrics(){
+  const list = document.getElementById('home-list');
+  if(!list) return;
+
+  // Accounting: personal total never includes proxy/advance amounts
+  let total=0, paid=0, advTotal=0, advUnrec=0;
+  list.querySelectorAll('.icard').forEach(card=>{
+    const isAdv = card.dataset.isadv === '1';
+    const raw   = parseInt(card.dataset.amt) || 0;
+    const isDone= card.querySelector('.iname')?.classList.contains('done');
+    if(isAdv){
+      advTotal += raw;                    // track ALL proxy outflow
+      if(!isDone) advUnrec += raw;        // outstanding receivable
+    } else {
+      total += raw;                       // personal expense only
+      if(isDone) paid += raw;
+    }
+  });
+
+  document.getElementById('h-tot').textContent      = fmt(total);
+  document.getElementById('h-paid-d').textContent   = fmt(paid);
+  document.getElementById('h-unpaid-d').textContent = fmt(total - paid);
+  document.getElementById('h-adv-d').textContent    = fmt(advUnrec);
+  _setDeductNote(advTotal, total);
+  // Budget bar
+  const bTotal = budStore.total || 0;
+  const pct = bTotal > 0 ? Math.min(Math.round(total/bTotal*100), 100) : 0;
+  const fill = document.getElementById('h-bud-fill');
+  const pctLbl = document.getElementById('h-bud-pct');
+  if(bTotal > 0){
+    fill.style.width = pct + '%';
+    fill.className = 'bud-bar-fill' + (pct>=100?' over':pct>=80?' warn':'');
+    pctLbl.textContent = pct + '%';
+    // remaining hero
+    const remain = bTotal - total;
+    const remEl = document.getElementById('h-remain');
+    if(remEl) remEl.textContent = fmt(Math.max(remain, 0));
+  }
+}
+let _searchTimer=null, isComposing=false;
+function debouncedSearch(){
+  if(isComposing) return; // 避免中文選字過程中頻繁觸發刷新
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(rList,220);
+}
+
+function setF(f){
+  listFilter=f;
+  ['fa','fu','fp','fv'].forEach((id,i)=>{
+    const btn=document.getElementById(id);
+    const isActive=['all','unpaid','paid','advance'][i]===f;
+    btn.classList.toggle('on',isActive);
+    btn.setAttribute('aria-pressed',isActive);  // UX4: A11y
+  });
+  rList();
+}
+
+// ── Feature 1: Date-group header formatter ───────────────
+function fmtDateHdr(ds){
+  if(!ds) return '未設定日期';
+  const d=new Date(ds+'T00:00:00');
+  const m=d.getMonth()+1, day=d.getDate();
+  const wd=['日','一','二','三','四','五','六'][d.getDay()];
+  const diff=Math.round((new Date(ds)-new Date(today()))/86400000);
+  let tag='';
+  if(diff===0)tag=' · 今天';
+  else if(diff===-1)tag=' · 昨天';
+  else if(diff===-2)tag=' · 前天';
+  else if(diff>0&&diff<=7)tag=` · ${diff}天後`;
+  return `${m}月${day}日 週${wd}${tag}`;
+}
+
+async function rList(){
+  dirty.list=false;
+  const{from,to}=getRangeYM();
+  const q=document.getElementById('search').value.trim().toLowerCase();
+
+  // Fetch items within selected range
+  let items = await getByRange(from, to);
+
+  if(listFilter==='paid')items=items.filter(x=>x.paid===1&&x.itype!=='advance');
+  else if(listFilter==='unpaid')items=items.filter(x=>x.paid!==1&&x.itype!=='advance');
+  else if(listFilter==='advance')items=items.filter(x=>x.itype==='advance');
+
+  if(q)items=items.filter(x=>(x.name||'').toLowerCase().includes(q)||(x.note||'').toLowerCase().includes(q)||(x.payee||'').toLowerCase().includes(q));
+
+  // Sort descending by date (nulls last)
+  items.sort((a,b)=>{
+    if(!a.date&&!b.date)return 0;
+    if(!a.date)return 1;
+    if(!b.date)return -1;
+    return b.date.localeCompare(a.date);
+  });
+
+  document.getElementById('range-info').textContent=`${from===to?from:from+' ~ '+to}，共 ${items.length} 筆`;
+  const el=document.getElementById('list-items');
+
+  if(!items.length){
+    let emptyIcon='<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>';
+    let emptyTitle='無符合條件的項目', emptySub='', emptyCTA='';
+    if(q){
+      emptyTitle=`找不到「${esc(q)}」`;emptySub='試試其他關鍵字，或清空搜尋';
+      emptyCTA=`<button class="empty-cta-sec" onclick="document.getElementById('search').value='';rList()">清空搜尋</button>`;
+    } else if(listFilter==='unpaid'){emptyTitle='沒有未繳項目';emptySub='本期所有費用均已繳納 ✓';
+    } else if(listFilter==='paid'){emptyTitle='沒有已繳項目';emptySub='本期尚無已繳費用';
+    } else if(listFilter==='advance'){emptyTitle='沒有代墊項目';emptySub='本期無代墊款紀錄';
+    } else {emptyTitle='本期無費用記錄';emptySub='換一個時間範圍試試';}
+    el.innerHTML=`<div class="empty-msg"><svg viewBox="0 0 24 24">${emptyIcon}</svg>
+      <strong style="font-size:14px;color:var(--text2);margin-bottom:5px">${emptyTitle}</strong>
+      ${emptySub?`<span style="font-size:12px">${emptySub}</span>`:''}${emptyCTA}</div>`;
+    return;
+  }
+
+  el.innerHTML='';
+  const frag=document.createDocumentFragment();
+
+  // ── Group items by date key ───────────────────────────────
+  const groups=new Map();  // preserves insertion order (sorted)
+  items.forEach(x=>{
+    const key=x.date||'__no_date__';
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(x);
+  });
+
+  // ── Render each date group ────────────────────────────────
+  groups.forEach((groupItems,dateKey)=>{
+    // Group header
+    const hdr=document.createElement('div');
+    hdr.className='date-grp-hdr';
+    const label=dateKey==='__no_date__'?'未設定日期':fmtDateHdr(dateKey);
+    // Subtotal (exclude advances from amount)
+    const subtotal=groupItems.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+    const subtotalStr=subtotal>0?fmt(subtotal):'';
+    hdr.innerHTML=`<span>${label}</span>${subtotalStr?`<span class="date-grp-subtotal">${subtotalStr}</span>`:''}`;
+    frag.appendChild(hdr);
+    groupItems.forEach(x=>frag.appendChild(makeCard(x)));
+  });
+
+  // Footer
+  const totalAmt=items.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+  const foot=document.createElement('div');foot.className='list-footer';
+  foot.textContent=`共 ${items.length} 筆　合計 ${fmt(totalAmt)}`;
+  frag.appendChild(foot);
+  el.appendChild(frag);
+}
+
+// ── CHART ────────────────────────────────────────────────
+let chartMode = 'single'; // 'single' | 'range'
+let rangeChart = null;
+
+// Feature 2: mode switcher
+function setChartMode(mode){
+  chartMode = mode;
+  document.getElementById('cmode-single').classList.toggle('on', mode==='single');
+  document.getElementById('cmode-range').classList.toggle('on', mode==='range');
+  document.getElementById('chart-single-bar').style.display = mode==='single' ? '' : 'none';
+  document.getElementById('chart-range-bar').style.display  = mode==='range'  ? '' : 'none';
+  document.getElementById('chart-single-view').style.display = mode==='single' ? '' : 'none';
+  document.getElementById('chart-range-view').style.display  = mode==='range'  ? '' : 'none';
+  rChart();
+}
+
+async function rChart(){
+  dirty.chart=false;
+  if(chartMode==='range') return rChartRange();
+
+  // ── Single-month mode (original logic) ──────────────────
+  const y=+document.getElementById('cy2').value,m=+document.getElementById('cm2').value;
+  const items = await getByYM(ymStr(y,m));
+  const normal=items.filter(x=>x.itype!=='advance'),advance=items.filter(x=>x.itype==='advance');
+
+  const catMap={};normal.forEach(x=>catMap[x.cat]=(catMap[x.cat]||0)+x.amount);
+  const cats=Object.keys(catMap),vals=cats.map(c=>catMap[c]);
+  const total=vals.reduce((s,v)=>s+v,0);
+  const paidCnt=normal.filter(x=>x.paid===1).length;
+  const advUnrec=advance.filter(x=>x.recovered!==1);
+
+  // Personal-only accounting: advances excluded from all personal metrics
+  const advTotal   = advance.reduce((s,x)=>s+x.amount, 0);  // full proxy outflow
+  const advUnrecAmt= advUnrec.reduce((s,x)=>s+x.amount, 0); // outstanding receivable
+
+  document.getElementById('cc').textContent  = normal.length;
+  document.getElementById('cp').textContent  = normal.length?Math.round(paidCnt/normal.length*100)+'%':'—';
+  document.getElementById('ca').textContent  = advance.length;
+  // cam = full proxy exclusion amount (not just unreimbursed) so it matches the formula
+  document.getElementById('cam').textContent = fmt(advTotal);
+
+  // totalSpent = personal expenses ONLY — never inflated by proxy payments
+  const totalSpent=normal.reduce((s,x)=>s+x.amount,0);
+  const totalBudget=budStore.total||0;
+  document.getElementById('bud-spent-txt').textContent=fmt(totalSpent);
+  if(totalBudget>0){
+    document.getElementById('bud-limit-txt').textContent=` / 上限 ${fmt(totalBudget)}`;
+    const pct=Math.min(Math.round(totalSpent/totalBudget*100),100);
+    const bar=document.getElementById('bud-total-bar');
+    bar.style.width=pct+'%';
+    bar.className='bud-total-fill'+(pct>=100?' over':pct>=80?' warn':'');
+  }else{
+    document.getElementById('bud-limit-txt').textContent='（未設定）';
+    document.getElementById('bud-total-bar').style.width='0%';
+  }
+
+  const canvas=document.getElementById('pie');
+  if(pieChart){pieChart.destroy();pieChart=null;}
+  if(!cats.length){
+    canvas.getContext('2d').clearRect(0,0,200,200);
+    document.getElementById('pie-leg').innerHTML='<div style="text-align:center;color:var(--text3);font-size:13px;grid-column:1/-1;padding:20px 0">本月無支出資料</div>';
+  }else{
+    const colors=cats.map((_,i)=>PIE_COLORS[i%PIE_COLORS.length]);
+    pieChart=new Chart(canvas,{type:'doughnut',data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:{cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)} (${Math.round(ctx.raw/total*100)}%)`}}}}});
+    const leg=document.getElementById('pie-leg');leg.innerHTML='';
+    const frag=document.createDocumentFragment();
+    cats.forEach((c,i)=>{const li=document.createElement('div');li.className='leg-item';li.innerHTML=`<div class="leg-dot" style="background:${colors[i]}"></div>${esc(c)}<span style="margin-left:auto;font-weight:700;color:var(--text)">${Math.round(catMap[c]/total*100)}%</span>`;frag.appendChild(li);});
+    leg.appendChild(frag);
+  }
+
+  const bEl=document.getElementById('bud-cat-rows');bEl.innerHTML='';let any=false;
+  const bFrag=document.createDocumentFragment();
+  getCats().forEach((cat,idx)=>{
+    const spent=catMap[cat]||0,limit=budStore.byIdx[idx]||0;
+    if(!spent&&!limit)return;any=true;
+    const pct=limit>0?Math.min(Math.round(spent/limit*100),100):0;
+    const over=limit>0&&spent>limit;
+    const color=over?'var(--red)':pct>80?'var(--amber)':'var(--green)';
+    const d=document.createElement('div');
+    d.innerHTML=`<div class="bud-cat-row"><span style="color:var(--text2)">${esc(cat)}</span><span style="color:${over?'var(--red)':'var(--text2)'}"><strong>${fmt(spent)}</strong>${limit?' / '+fmt(limit):''}</span></div>${limit?`<div class="bud-cat-track"><div class="bud-cat-fill" style="width:${pct}%;background:${color}"></div></div>`:''}`;
+    bFrag.appendChild(d);
+  });
+  if(!any){bEl.innerHTML='<div style="font-size:13px;color:var(--text3)">本月無支出，或尚未設定預算</div>';}
+  else{bEl.appendChild(bFrag);}
+}
+
+// ── Feature 2: Range chart renderer ─────────────────────
+async function rChartRange(){
+  // Read from/to selectors
+  const fy=+document.getElementById('cr-fy').value, fm=+document.getElementById('cr-fm').value;
+  const ty=+document.getElementById('cr-ty').value, tm=+document.getElementById('cr-tm').value;
+  const fromKey=ymStr(fy,fm), toKey=ymStr(ty,tm);
+
+  // Guard: from must be ≤ to
+  if(fromKey>toKey){
+    document.getElementById('range-summary').innerHTML=
+      '<div style="font-size:13px;color:var(--red);padding:8px 2px">起始月份不能晚於結束月份</div>';
+    if(rangeChart){rangeChart.destroy();rangeChart=null;}
+    return;
+  }
+
+  // Build ordered list of YM keys in range
+  const ymKeys=[];
+  let cy2=fy,cm3=fm;
+  while(ymStr(cy2,cm3)<=toKey){
+    ymKeys.push(ymStr(cy2,cm3));
+    cm3++;if(cm3>12){cm3=1;cy2++;}
+    if(ymKeys.length>60)break; // safety cap: 5 years
+  }
+
+  // Fetch all items in range — separate personal from proxy up front
+  const items   = await getByRange(fromKey, toKey);
+  const normal  = items.filter(x => x.itype !== 'advance');  // personal only
+  const advItems= items.filter(x => x.itype === 'advance');  // proxy / reimbursable
+
+  // Personal monthly totals (budget & chart use this — never includes proxy)
+  const monthTotals    = ymKeys.map(k => normal.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
+  // Proxy monthly totals (for deduction transparency in summary)
+  const advMonthTotals = ymKeys.map(k => advItems.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
+
+  const allCatMap={};
+  normal.forEach(x=>allCatMap[x.cat]=(allCatMap[x.cat]||0)+x.amount);
+
+  // Summary stats — grandTotal is PERSONAL only
+  const grandTotal   = monthTotals.reduce((s,v)=>s+v,0);
+  const grandAdvTotal= advMonthTotals.reduce((s,v)=>s+v,0);
+  const activeMths   = monthTotals.filter(v=>v>0).length;
+  const avgMth       = activeMths>0?grandTotal/activeMths:0;
+  const maxMth       = Math.max(...monthTotals,0);
+  const maxMthKey    = ymKeys[monthTotals.indexOf(maxMth)]||'—';
+
+  // Build summary — deduction tile only shown when proxy items exist in range
+  const deductTile = grandAdvTotal>0
+    ? `<div class="range-sum-tile">
+         <div class="range-sum-lbl">代墊已排除</div>
+         <div class="range-sum-val o">${fmt(grandAdvTotal)}</div>
+       </div>`
+    : '';
+  document.getElementById('range-summary').innerHTML=
+    `<div class="range-sum-tile"><div class="range-sum-lbl">個人實際支出</div><div class="range-sum-val r">${fmt(grandTotal)}</div></div>`+
+    `<div class="range-sum-tile"><div class="range-sum-lbl">月均支出</div><div class="range-sum-val">${fmt(Math.round(avgMth))}</div></div>`+
+    deductTile+
+    (grandAdvTotal===0?`<div class="range-sum-tile"><div class="range-sum-lbl">最高月份</div><div class="range-sum-val r">${maxMthKey}</div></div>`:'');
+
+  // X-axis labels: shorten if many months
+  const labels=ymKeys.map(k=>{
+    const [y,m]=k.split('-');
+    return ymKeys.length>12 ? `${m}月` : `${+y%100}/${+m}`;
+  });
+
+  // Highlight max month bar
+  const bgColors=monthTotals.map((v,i)=>v===maxMth&&maxMth>0
+    ? 'rgba(217,75,75,.85)'
+    : PIE_COLORS[i%PIE_COLORS.length]+'CC');
+
+  // Update chart title
+  document.getElementById('range-chart-title').textContent=
+    `${fy}/${pad(fm)} → ${ty}/${pad(tm)}　支出走勢（${ymKeys.length} 個月）`;
+
+  // Render bar chart with dynamic X-axis
+  if(rangeChart){rangeChart.destroy();rangeChart=null;}
+  const cv=document.getElementById('range-chart');
+  if(!normal.length){
+    cv.style.display='none';
+    cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+  }else{
+    cv.style.display='';
+    rangeChart=new Chart(cv,{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[{
+          label:'月支出',data:monthTotals,
+          backgroundColor:bgColors,
+          borderRadius:6,borderSkipped:false,
+          hoverBackgroundColor:'rgba(46,158,114,.9)'
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            title:ctx=>ymKeys[ctx[0].dataIndex],
+            label:ctx=>` ${fmt(ctx.raw)}`
+          }}
+        },
+        scales:{
+          x:{
+            grid:{color:'rgba(128,128,128,.06)'},
+            ticks:{
+              font:{size:ymKeys.length>18?9:11},
+              color:'var(--text3)',
+              maxRotation:ymKeys.length>12?45:0
+            }
+          },
+          y:{
+            grid:{color:'rgba(128,128,128,.06)'},
+            beginAtZero:true,
+            ticks:{
+              font:{size:11},color:'var(--text3)',
+              callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Category breakdown table for the range
+  const sortedCats=Object.entries(allCatMap).sort((a,b)=>b[1]-a[1]);
+  const rcEl=document.getElementById('range-cat-rows');
+  if(!sortedCats.length){
+    rcEl.innerHTML='<div style="font-size:13px;color:var(--text3)">此範圍無支出資料</div>';
+    return;
+  }
+  const rcFrag=document.createDocumentFragment();
+  sortedCats.forEach(([cat,amt],i)=>{
+    const pct=grandTotal>0?Math.round(amt/grandTotal*100):0;
+    const color=PIE_COLORS[i%PIE_COLORS.length];
+    const d=document.createElement('div');
+    d.innerHTML=`
+      <div class="bud-cat-row">
+        <span style="display:flex;align-items:center;gap:7px;color:var(--text2)">
+          <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
+          ${esc(cat)}
+        </span>
+        <span style="color:var(--text2)"><strong>${fmt(amt)}</strong><span style="color:var(--text3);margin-left:6px">${pct}%</span></span>
+      </div>
+      <div class="bud-cat-track"><div class="bud-cat-fill" style="width:${pct}%;background:${color}"></div></div>`;
+    rcFrag.appendChild(d);
+  });
+  rcEl.innerHTML='';
+  rcEl.appendChild(rcFrag);
+}
+
+function openBudModal(){
+  const el=document.getElementById('b-fields');el.innerHTML='';
+  setAmt('bt-r','bt-d',budStore.total||0);
+  const frag = document.createDocumentFragment();
+  getCats().forEach((cat,idx)=>{
+    const cur=budStore.byIdx[idx]||0;
+    const div=document.createElement('div');div.className='field';
+    div.innerHTML=`<label>${esc(cat)}</label><div class="amt-wrap" onclick="document.getElementById('bd-r-${idx}').focus()"><span class="amt-unit">$</span><span class="amt-disp${cur>0?'':' ph'}" id="bd-d-${idx}">${cur>0?fmtN(cur):'0'}</span><input class="amt-input" id="bd-r-${idx}" type="number" inputmode="numeric" min="0" step="1" value="${cur||''}" oninput="syncAmt('bd-r-${idx}','bd-d-${idx}')" onfocus="this.select()"></div>`;
+    frag.appendChild(div);
+  });
+  el.appendChild(frag);
+  document.getElementById('bov').classList.add('on');
+}
+function saveBudgets(){
+  budStore.total=getAmt('bt-r');
+  getCats().forEach((_,idx)=>{
+    const el=document.getElementById(`bd-r-${idx}`);if(!el)return;
+    const v=parseInt(el.value)||0;
+    if(v>0)budStore.byIdx[idx]=v;else delete budStore.byIdx[idx];
+  });
+  saveBudStore();
+  document.getElementById('bov').classList.remove('on');
+  rHome(); rChart(); dirty.trend=true;
+  rSettings();
+  toast('預算已儲存');
+}
+
+// ── TREND ────────────────────────────────────────────────
+async function rTrend(){
+  dirty.trend=false;
+  const nowY=cy(),all=await getAll();
+  const dataYears=[...new Set(all.map(x=>x.ym?parseInt(x.ym.slice(0,4)):0).filter(y=>y>=2026&&y<=2046))];
+  if(!dataYears.includes(nowY))dataYears.push(nowY);
+  dataYears.sort((a,b)=>a-b);
+  if(!selYears){selYears=[nowY];saveSelYrs();}
+  selYears=selYears.filter(y=>y>=2026&&y<=2046);
+  if(!selYears.length){selYears=[nowY];saveSelYrs();}
+
+  const chipsEl=document.getElementById('yr-chips');chipsEl.innerHTML='';
+  const cFrag = document.createDocumentFragment();
+  dataYears.forEach(yr=>{
+    const on=selYears.includes(yr),pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
+    const chip=document.createElement('button');chip.className='yr-chip'+(on?' on':'');
+    if(on)chip.style.background=pal.line;
+    chip.innerHTML=`<span class="yr-chip-dot" style="background:${on?'#fff':pal.line}"></span>${yr}年`;
+    chip.onclick=()=>toggleYear(yr,dataYears);cFrag.appendChild(chip);
+  });
+  chipsEl.appendChild(cFrag);
+
+  const labels=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const datasets=selYears.map(yr=>{
+    const palIdx=dataYears.indexOf(yr)%YR_PAL.length,pal=YR_PAL[palIdx];
+    const data=Array.from({length:12},(_,i)=>{const k=ymStr(yr,i+1);return all.filter(x=>x.ym===k&&x.itype!=='advance').reduce((s,x)=>s+x.amount,0);});
+    return{label:yr+'年',data,borderColor:pal.line,backgroundColor:pal.fill,borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:true,tension:.38};
+  });
+  if(areaChart){areaChart.destroy();areaChart=null;}
+  areaChart=new Chart(document.getElementById('area-chart'),{type:'line',data:{labels,datasets},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}：${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)'}},y:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)',callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'},beginAtZero:true}}}});
+
+  const legEl=document.getElementById('chart-legend');legEl.innerHTML='';
+  selYears.forEach(yr=>{const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];const li=document.createElement('div');li.className='chart-leg-item';li.innerHTML=`<div class="chart-leg-dot" style="background:${pal.line}"></div>${yr}年`;legEl.appendChild(li);});
+
+  const statsEl=document.getElementById('trend-stats');statsEl.innerHTML='';
+  selYears.forEach(yr=>{
+    const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
+    const yItems=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance');
+    const yTotal=yItems.reduce((s,x)=>s+x.amount,0);
+    const active=Array.from({length:12},(_,i)=>ymStr(yr,i+1)).filter(k=>yItems.some(x=>x.ym===k));
+    const avg=active.length?yTotal/active.length:0;
+    statsEl.innerHTML+=`<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均</div><div class="stat-val">${fmt(avg)}</div></div>`;
+  });
+  document.getElementById('cat-preview') && (document.getElementById('cat-preview').textContent=getCats().join('、'));
+  document.getElementById('remind-preview') && (document.getElementById('remind-preview').textContent=remCfg.enabled?`已啟用 · 提前 ${remCfg.dueSoonDays} 天提醒`:'已停用');
+  // Also keep settings screen in sync if it was previously visited
+  rSettings();
+}
+function toggleYear(yr,dataYears){
+  if(selYears.includes(yr)){if(selYears.length<=1){toast('至少選擇一個年份');return;}selYears=selYears.filter(y=>y!==yr);}
+  else{if(selYears.length>=5){toast('最多同時比較 5 個年份');return;}selYears.push(yr);selYears.sort((a,b)=>a-b);}
+  saveSelYrs();rTrend();
+}
+
+// ── Navigation ───────────────────────────────────────────
+const SCREENS=['home','list','chart','trend','settings'];
+function showS(name){
+  SCREENS.forEach(s=>{
+    document.getElementById('s-'+s).classList.toggle('on',s===name);
+    const tab=document.getElementById('tab-'+s);
+    tab.classList.toggle('on',s===name);
+    tab.setAttribute('aria-selected',s===name); // OPT3: ARIA tablist
+  });
+  // FAB only on home screen
+  document.getElementById('fab').classList.toggle('on',name==='home');
+  window.scrollTo(0,0);
+  if(name==='chart'&&dirty.chart)rChart();
+  else if(name==='trend'&&dirty.trend)rTrend();
+  else if(name==='list'&&dirty.list)rList();
+  else if(name==='home'&&dirty.home)rHome();
+  else if(name==='settings')rSettings();
+}
+
+// ── Settings render ──────────────────────────────────────
+// Refreshes the Settings screen's preview texts whenever it is visited
+// or whenever categories / reminders / budget are updated.
+function rSettings(){
+  // Category preview
+  const cp=document.getElementById('cat-preview-settings');
+  if(cp) cp.textContent=getCats().join('、');
+  // Reminder preview
+  const rp=document.getElementById('remind-preview-settings');
+  if(rp) rp.textContent=remCfg.enabled?`已啟用 · 提前 ${remCfg.dueSoonDays} 天提醒`:'已停用';
+  // Budget preview
+  const bp=document.getElementById('bud-preview-settings');
+  if(bp) bp.textContent=budStore.total>0?`每月上限 ${fmt(budStore.total)}`:'尚未設定';
+}
+
+// ── Full-screen form ─────────────────────────────────────
+async function openForm(id){
+  editId=id||null;refreshCatSel();
+  document.getElementById('fs-title').textContent=id?'編輯費用項目':'新增費用項目';
+  document.getElementById('fs-del').style.display=id?'':'none';
+
+  // ── Clear all proxy state FIRST before any onTypeChange() call ──
+  _resetProxy();
+
+  if(id){
+    // 這裡只需要撈一筆，不影響大局
+    const all=await getAll(),x=all.find(a=>a.id===id);if(!x)return;
+    const isAdv=x.itype==='advance';
+    document.getElementById('rt-advance').checked=isAdv;
+    document.getElementById('rt-normal').checked=!isAdv;
+    onTypeChange();
+    document.getElementById('f-cat').value=x.cat;
+    document.getElementById('f-name').value=x.name;
+    setAmt('f-amt-r','f-amt-d',x.amount);
+    document.getElementById('f-date').value=x.date||'';
+    document.getElementById('f-note').value=x.note||'';
+    document.getElementById('f-payee').value=x.payee||'';
+    const rd=x.remindDays||0;
+    document.getElementById('rd-off').checked=rd===0;
+    document.getElementById('rd-3').checked=rd===3;
+    document.getElementById('rd-7').checked=rd===7;
+    if(isAdv){document.getElementById('r-unrec').checked=x.recovered!==1;document.getElementById('r-rec').checked=x.recovered===1;}
+    else{document.getElementById('r-unpaid').checked=x.paid!==1;document.getElementById('r-paid').checked=x.paid===1;}
+  }else{
+    document.getElementById('rt-normal').checked=true;document.getElementById('rt-advance').checked=false;onTypeChange();
+    document.getElementById('f-cat').value=getCats()[0];
+    document.getElementById('f-name').value='';
+    setAmt('f-amt-r','f-amt-d',0);
+    document.getElementById('f-date').value=today();
+    document.getElementById('f-note').value='';document.getElementById('f-payee').value='';
+    document.getElementById('rd-3').checked=true;
+    document.getElementById('r-unpaid').checked=true;document.getElementById('r-paid').checked=false;
+    document.getElementById('r-unrec').checked=true;document.getElementById('r-rec').checked=false;
+  }
+  // UX7: always start with advanced fields collapsed for new entries
+  const advFields=document.getElementById('adv-fields');
+  const advBtn=document.getElementById('adv-toggle');
+  if(!id){
+    advFields.classList.remove('open');advBtn.classList.remove('open');
+    advBtn.setAttribute('aria-expanded','false');
+  } else {
+    // editing: open advanced section so all fields are visible
+    advFields.classList.add('open');advBtn.classList.add('open');
+    advBtn.setAttribute('aria-expanded','true');
+  }
+
+  // Edit mode: proxy toggle hidden (can't re-split existing items)
+  // New mode:  onTypeChange() already showed the toggle — nothing more needed
+  if(id){
+    const tRow=document.getElementById('proxy-toggle-row');
+    if(tRow) tRow.style.display='none';
+  }
+  document.getElementById('fsform').classList.add('on');
+  _savedScroll=window.scrollY;
+  document.body.style.top=`-${_savedScroll}px`;
+  document.body.classList.add('locked');
+  
+  // 優化：取消手機版自動 focus 導致鍵盤彈出畫面閃動，保留電腦版 (大於 480px) focus
+  if (window.innerWidth > 480) {
+    setTimeout(() => document.getElementById('f-name').focus(), 320);
+  }
+}
+
+function closeForm(){
+  _resetProxy();                                     // clear all proxy state
+  document.getElementById('fsform').classList.remove('on');
+  editId=null;
+  document.body.classList.remove('locked');
+  document.body.style.top='';
+  window.scrollTo(0,_savedScroll||0);
+}
+
+async function saveItem(){
+  const name    = document.getElementById('f-name').value.trim();
+  const billAmt = getAmt('f-amt-r');            // user-entered total (e.g. full credit card bill)
+  if(!name){ alert('請填寫項目名稱'); return; }
+  if(!billAmt||billAmt<=0){ alert('請填寫正確金額（需大於 0）'); return; }
+
+  const isAdv = document.getElementById('rt-advance').checked;
+  const{y,m}  = curYM();
+  const ym     = ymStr(y,m);
+  const remDays= parseInt(document.querySelector('input[name="remind"]:checked')?.value||'0');
+  const cat    = document.getElementById('f-cat').value;
+  const date   = document.getElementById('f-date').value;
+  const rawNote= document.getElementById('f-note').value.trim();
+
+  // ── Proxy split: collect rows (only for normal-type entries) ─────────
+  const proxyRows = (!isAdv) ? getProxyRows() : [];
+  const proxySum  = proxyRows.reduce((s,r) => s+r.amount, 0);
+
+  if(proxySum > billAmt){
+    alert(`代墊金額合計 ${fmt(proxySum)} 超過帳單 ${fmt(billAmt)}，請確認金額`);
+    return;
+  }
+  // getProxyRows() already filters partial rows (requires both payee + amount>0)
+  // Validate: any DOM row that has amount but no payee is a data entry error
+  const rawRows = Array.from(document.querySelectorAll('#proxy-rows .proxy-row'));
+  const hasIncomplete = rawRows.some(row=>{
+    const payee   = (row.querySelector('.proxy-payee')?.value||'').trim();
+    const rawAmt  = (row.querySelector('.proxy-amt')?.value||'').replace(/[^0-9.]/g,'');
+    const amount  = parseFloat(rawAmt)||0;
+    return (amount>0&&!payee)||(payee&&!amount);
+  });
+  if(hasIncomplete){
+    alert('代墊明細有未填完的項目，請確認每筆都有對象姓名與金額');
+    return;
+  }
+
+  // Personal amount = bill total minus all proxy payments
+  const personalAmt = billAmt - proxySum;
+
+  // Auto-append deduction note to remind user that split happened
+  const splitNote = proxySum > 0
+    ? `帳單 ${fmt(billAmt)}，代墊 ${fmt(proxySum)} 已另立記錄`
+    : '';
+  const finalNote = [rawNote, splitNote].filter(Boolean).join('\n');
+
+  // ── Save main personal item ──────────────────────────────────────────
+  const item={
+    itype: 'normal',
+    cat, name,
+    amount: personalAmt,   // ← personal portion ONLY
+    date, note: finalNote,
+    remindDays: remDays, ym
+  };
+  if(isAdv){
+    // Advance entry (no proxy splitting for these)
+    item.itype     = 'advance';
+    item.amount    = billAmt;    // advance always stores full amount
+    item.payee     = document.getElementById('f-payee').value.trim();
+    item.recovered = document.getElementById('r-rec').checked?1:0;
+    item.paid      = 1;
+    delete item.note; item.note = rawNote;
+  } else {
+    item.paid = document.getElementById('r-paid').checked?1:0;
+  }
+  if(editId) item.id=editId;
+  await putItem(item);
+
+  // ── Save each proxy row as an independent advance item ───────────────
+  let proxyCreated=0;
+  for(const row of proxyRows){
+    if(row.amount>0 && row.payee){
+      await putItem({
+        itype:     'advance',
+        cat,
+        name:      `${name}（代墊-${row.payee}）`,
+        amount:    row.amount,
+        date,
+        note:      `來自帳單：${name}`,
+        remindDays:remDays,
+        ym,
+        payee:     row.payee,
+        paid:      1,
+        recovered: 0
+      });
+      proxyCreated++;
+    }
+  }
+
+  closeForm(); dirtyAll(); rHome();
+
+  const verb  = editId ? '已更新' : '已新增';
+  const suffix= proxyCreated>0 ? `，${proxyCreated} 筆代墊另立記錄` : '';
+  toast(`${verb}：${name}${suffix}`);
+}
+async function confirmDel(){
+  if(!editId||!confirm('確定刪除此項目？'))return;
+  await delItem(editId);closeForm();dirtyAll();rHome();toast('已刪除');
+}
+
+// ── Copy prev month ──────────────────────────────────────
+async function copyPrev(){
+  const{y,m}=curYM(),prevM=m===1?12:m-1,prevY=m===1?y-1:y;
+  const prev=await getByYM(ymStr(prevY,prevM));if(!prev.length)return;
+  for(const x of prev)await putItem({...x,id:undefined,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)});
+  dirtyAll();rHome();toast(`已複製 ${prev.length} 筆項目`);
+}
+
+// ── Categories ───────────────────────────────────────────
+function openCatModal(){renderCatTags();document.getElementById('new-cat').value='';document.getElementById('cov').classList.add('on');}
+function renderCatTags(){
+  const el=document.getElementById('cat-tags');el.innerHTML='';
+  getCats().forEach(cat=>{const tag=document.createElement('div');tag.className='cat-tag';const safe=cat.replace(/'/g,"\\'");tag.innerHTML=`${esc(cat)}<svg class="cat-del" viewBox="0 0 14 14" onclick="delCat('${safe}',event)"><path d="M2 2l10 10M12 2L2 12"/></svg>`;el.appendChild(tag);});
+}
+function addCat(){const inp=document.getElementById('new-cat'),name=inp.value.trim();if(!name)return;if(userCats.includes(name)){toast('類別已存在');return;}if(userCats.length>=12){toast('最多 12 個類別');return;}userCats.push(name);saveCats();renderCatTags();inp.value='';toast(`已新增「${name}」`);}
+function delCat(cat,e){if(e)e.stopPropagation();if(userCats.length<=1){toast('至少保留一個類別');return;}if(!confirm(`刪除「${cat}」？`))return;userCats=userCats.filter(c=>c!==cat);saveCats();renderCatTags();}
+
+// ── Reminder settings ────────────────────────────────────
+function openRemindModal(){
+  const rows=document.getElementById('remind-settings-rows');
+  const mk=(k,l,s)=>`<div class="toggle-row"><div><div class="toggle-lbl">${l}</div>${s?`<div class="toggle-sub">${s}</div>`:''}</div><label class="toggle"><input type="checkbox" id="rs-${k}" ${remCfg[k]?'checked':''}><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>`;
+  rows.innerHTML=mk('enabled','啟用到期提醒','開啟後首頁顯示提醒卡片')+mk('showOverdue','逾期未繳提醒','日期已過且未繳納')+mk('showDueSoon','即將到期提醒','繳費日即將到來')+mk('showAdvanceUnrec','代墊未收回提醒','代墊款尚未收回')+
+  `<div class="toggle-row"><div class="toggle-lbl">提前提醒天數</div><select id="rs-days" style="height:34px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface3);color:var(--text);padding:0 8px;-webkit-appearance:none;width:70px"><option value="1" ${remCfg.dueSoonDays===1?'selected':''}>1 天</option><option value="3" ${remCfg.dueSoonDays===3?'selected':''}>3 天</option><option value="7" ${remCfg.dueSoonDays===7?'selected':''}>7 天</option><option value="14" ${remCfg.dueSoonDays===14?'selected':''}>14 天</option></select></div>`;
+  document.getElementById('rsov').classList.add('on');
+}
+function saveRemindSettings(){
+  remCfg.enabled=document.getElementById('rs-enabled').checked;
+  remCfg.showOverdue=document.getElementById('rs-showOverdue').checked;
+  remCfg.showDueSoon=document.getElementById('rs-showDueSoon').checked;
+  remCfg.showAdvanceUnrec=document.getElementById('rs-showAdvanceUnrec').checked;
+  remCfg.dueSoonDays=parseInt(document.getElementById('rs-days').value);
+  saveRemCfg();document.getElementById('rsov').classList.remove('on');
+  remDismissed='';localStorage.removeItem('ep_rem_dis');
+  dirtyAll();rHome();rSettings();toast('提醒設定已儲存');
+}
+
+// ── Export / Import ──────────────────────────────────────
+async function exportJSON(){const all=await getAll();const blob=new Blob([JSON.stringify({v:8,exported:new Date().toISOString(),items:all},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`expenses-${today()}.json`;a.click();toast('JSON 備份已下載');}
+async function exportCSV(){
+  const all=await getAll();
+  const hdr='年月,類別,類型,項目名稱,金額,日期,備註,繳納狀態,代墊對象,收回狀態';
+  const rows=all.map(x=>[x.ym,x.cat,x.itype==='advance'?'代墊':'一般',`"${(x.name||'').replace(/"/g,'""')}"`,x.amount,x.date||'',`"${(x.note||'').replace(/"/g,'""')}"`,x.paid===1?'已繳':'未繳',x.payee||'',x.itype==='advance'?(x.recovered===1?'已收回':'未收回'):'—'].join(','));
+  const blob=new Blob(['\uFEFF'+hdr+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`expenses-${today()}.csv`;a.click();toast('CSV 已下載');
+}
+async function importFile(e){
+  const file=e.target.files[0];if(!file)return;
+  try{
+    const text=await file.text();let items;
+    if(file.name.endsWith('.json')){const d=JSON.parse(text);items=d.items||d;if(!Array.isArray(items))throw new Error('格式錯誤');}
+    else{const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());items=lines.map(l=>{const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};}).filter(x=>x.name&&x.amount>0);}
+    if(!confirm(`匯入 ${items.length} 筆？（不刪除現有資料）`))return;
+    for(const item of items){const c={...item};delete c.id;await putItem(c);}
+    dirtyAll();rHome();toast(`已匯入 ${items.length} 筆`);
+  }catch(err){alert('匯入失敗：'+err.message);}
+  e.target.value='';
+}
+
+// ── SW & Manifest (Optimized Caching) ────────────────────
+if('serviceWorker' in navigator){
+  // 優化：在 Service Worker 安裝時預先快取 Chart.js CDN，保證斷網可用性
+  const sw=`const C='ep-v8.1';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.add('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js').catch(()=>{})))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const f=fetch(e.request).then(res=>{if(res.ok)c.put(e.request,res.clone());return res;}).catch(()=>r);return r||f;})));});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+(function(){
+  const m={name:'費用管理',short_name:'費用管理',start_url:location.href,display:'standalone',theme_color:'#1D9E75',background_color:'#f7f6f2',icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231D9E75'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle' fill='white'%3E%24%3C/text%3E%3C/svg%3E",sizes:'512x512',type:'image/svg+xml'}]};
+  const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/json'}));document.head.appendChild(l);
+})();
+
+// ── Init ─────────────────────────────────────────────────
+openDB().then(()=>{
+  buildSelects();
+  refreshCatSel();
+  rSettings();  // populate settings previews on first load
+  
+  // 優化：處理中文輸入法 (IME) 的搜尋防抖事件
+  const sInput = document.getElementById('search');
+  if(sInput){
+    sInput.addEventListener('compositionstart',()=>isComposing=true);
+    sInput.addEventListener('compositionend',()=>{isComposing=false;debouncedSearch();});
+    // UX3: input listener wired here (not via oninput attr) to prevent IME double-fire
+    sInput.addEventListener('input',debouncedSearch);
+  }
+
+  // ── OPT1+OPT2: Single Event Delegation for all item lists ──────────────
+  // N cards × 0 listeners each. ONE set per container, shared handler logic.
+  // WeakMap stores swipe state per row — auto-GC'd when the row is removed.
+  const swipeState = new WeakMap();
+  const DIR = {IDLE:0, HORIZ:1, VERT:2};
+  const COMMIT=18, RATIO=2.0, TRIGGER=60, FULL=70;
+
+  function attachListDelegation(containerId){
+    const container = document.getElementById(containerId);
+    if(!container) return;
+
+    // click + change ────────────────────────────────────────────────────────
+    container.addEventListener('click', async e=>{
+      const card = e.target.closest('.icard');
+      if(!card) return;
+      const id = parseInt(card.dataset.id);
+      const isAdv = card.dataset.isadv === '1';
+
+      // [delete] explicit tap on del-bg (revealed by swipe)
+      if(e.target.closest('[data-action="delete"]')){
+        const x = await getById(id); if(!x) return;
+        const backup = {...x};
+        await delItem(id);
+        dirtyAll();
+        card.remove(); // OPT2: remove only this card, no full rebuild
+        toastUndo(`已刪除「${x.name}」`, async()=>{
+          delete backup.id; await putItem(backup); dirtyAll(); rHome(); toast('已復原');
+        });
+        return;
+      }
+
+      // [edit] tap on info area
+      if(e.target.closest('[data-action="edit"]')){ openForm(id); return; }
+
+      // [row tap] cancel if swipe is open
+      const row = card.querySelector('.irow');
+      if(row && row.style.transform){ row.style.transform = ''; }
+    });
+
+    // OPT2: checkbox toggle — patch only the 4 affected DOM nodes, no re-render
+    container.addEventListener('change', async e=>{
+      if(!e.target.classList.contains('ichk')) return;
+      const card = e.target.closest('.icard'); if(!card) return;
+      const id = parseInt(card.dataset.id);
+      const isAdv = card.dataset.isadv === '1';
+      const checked = e.target.checked;
+
+      // Write to DB
+      const x = await getById(id); if(!x) return;
+      if(isAdv){ x.recovered = checked ? 1 : 0; }
+      else      { x.paid      = checked ? 1 : 0; }
+      await putItem(x);
+      dirtyAll(); // mark other screens stale — they'll refresh on next visit
+
+      // Granular DOM patch — O(1) cost regardless of list size
+      const row    = card.querySelector('.irow');
+      const nm     = row.querySelector('.iname');
+      const badge  = row.querySelector('.badge');
+      const amtEl  = row.querySelector('.iamt');
+      const dot    = nm.querySelector('.overdue-dot');
+      const cc     = isAdv ? (checked?'g':'o') : (checked?'g':'r');
+      const bt     = isAdv ? (checked?'已收回':'代墊中') : (checked?'已繳':'未繳');
+
+      nm.classList.toggle('done', checked);
+      badge.className = `badge ${cc}`;   badge.textContent = bt;
+      amtEl.className = `iamt ${cc}`;
+      if(checked && dot) dot.remove();
+      e.target.setAttribute('aria-label', isAdv
+        ? (checked?'已收回，點擊取消':'未收回，點擊標記收回')
+        : (checked?'已繳，點擊取消':'未繳，點擊標記繳納'));
+
+      // Update home hero numbers without rebuilding the list
+      if(containerId === 'home-list') _patchHomeMetrics();
+
+      toast(isAdv ? (checked?'已標記收回 ✓':'已取消收回')
+                  : (checked?'已標記繳納 ✓':'已取消繳納'));
+    });
+
+    // Swipe-to-delete ───────────────────────────────────────────────────────
+    container.addEventListener('touchstart', e=>{
+      const row = e.target.closest('.irow'); if(!row) return;
+      swipeState.set(row, {phase:DIR.IDLE, sx:e.touches[0].clientX, sy:e.touches[0].clientY, dx:0});
+    }, {passive:true});
+
+    container.addEventListener('touchmove', e=>{
+      const row = e.target.closest('.irow'); if(!row) return;
+      const s = swipeState.get(row); if(!s || s.phase===DIR.VERT) return;
+      const rx = e.touches[0].clientX - s.sx;
+      const ry = e.touches[0].clientY - s.sy;
+      if(s.phase === DIR.IDLE){
+        if(Math.sqrt(rx*rx+ry*ry) < COMMIT) return;
+        s.phase = (Math.abs(rx)/Math.max(Math.abs(ry),.1) > RATIO && rx<0) ? DIR.HORIZ : DIR.VERT;
+        if(s.phase === DIR.VERT) return;
+      }
+      e.preventDefault();
+      s.dx = rx < -50 ? -50+(rx+50)*.3 : rx;
+      s.dx = Math.max(s.dx, -FULL);
+      if(s.dx < 0) row.style.transform = `translateX(${s.dx}px)`;
+    }, {passive:false});
+
+    container.addEventListener('touchend', e=>{
+      const row = e.target.closest('.irow'); if(!row) return;
+      const s = swipeState.get(row); if(!s) return;
+      if(s.phase === DIR.HORIZ && s.dx < -TRIGGER){
+        row.style.transform = `translateX(-${FULL}px)`;
+      } else {
+        row.style.transform = '';
+      }
+      swipeState.set(row, {...s, phase:DIR.IDLE, dx:0});
+    }, {passive:true});
+  }
+
+  attachListDelegation('home-list');
+  attachListDelegation('list-items');
+
+  // Fix 3b: Global Escape key handler — closes the topmost open modal/overlay.
+  // Priority order matches z-index stack: fsform > sheet overlays.
+  // After closing, focus returns to the element that opened the modal
+  // (stored in _lastFocus) so keyboard users don't lose their position.
+  let _lastFocus = null;
+
+  // Intercept openForm / sheet opens to save focus origin
+  const _origOpenForm = openForm;
+  window.openForm = async function(id){
+    _lastFocus = document.activeElement;
+    await _origOpenForm(id);
+  };
+  ['bov','cov','rsov'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const observer = new MutationObserver(()=>{
+      if(el.classList.contains('on') && !el._focusSaved){
+        el._focusSaved = true;
+        _lastFocus = document.activeElement;
+      } else if(!el.classList.contains('on')){
+        el._focusSaved = false;
+      }
+    });
+    observer.observe(el, {attributes:true, attributeFilter:['class']});
+  });
+
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Escape') return;
+
+    // Highest z-index first: full-screen form
+    const fsform = document.getElementById('fsform');
+    if(fsform && fsform.classList.contains('on')){
+      closeForm();
+      if(_lastFocus) _lastFocus.focus();
+      return;
+    }
+
+    // Sheet overlays: close whichever is open
+    const openSheet = document.querySelector('.overlay.on');
+    if(openSheet){
+      openSheet.classList.remove('on');
+      if(_lastFocus) _lastFocus.focus();
+    }
+  });
+
+  rHome();
+});
+
+</script>
+</body>
+</html>
