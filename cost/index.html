@@ -491,9 +491,14 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   margin-bottom:9px;
 }
 /* Payee field — fills all available space */
-.proxy-payee{
+/* ── Proxy row: specificity boosted with .proxy-row parent ──────
+   .proxy-row .proxy-payee         = 0,2,0  beats .field input 0,1,1
+   .proxy-row .proxy-amt-cell input = 0,2,1  beats .field input 0,1,1 */
+
+/* Payee — fills all remaining space */
+.proxy-row .proxy-payee{
   flex:1 1 0;
-  min-width:0;           /* allows shrinking below content size */
+  min-width:0;
   height:44px;
   border:1.5px solid var(--border2);
   border-radius:var(--radius);
@@ -502,13 +507,20 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   padding:0 12px;
   font-size:15px;
   font-family:inherit;
+  box-shadow:none;                 /* override .field input shadow */
   transition:all var(--t-base);
 }
-.proxy-payee:focus{outline:2px solid var(--green);outline-offset:1px;background:var(--bg)}
-.proxy-payee::placeholder{color:var(--text3)}
-/* Amount cell — fixed width, never shrinks, never grows */
+.proxy-row .proxy-payee:focus{
+  outline:2px solid var(--green);
+  outline-offset:1px;
+  background:var(--bg);
+  box-shadow:none;
+}
+.proxy-row .proxy-payee::placeholder{color:var(--text3)}
+
+/* Amount cell wrapper — fixed, never shrinks */
 .proxy-amt-cell{
-  flex:0 0 108px;        /* wider than before (was 100px incl. padding) */
+  flex:0 0 108px;
   width:108px;
   height:44px;
   display:flex;
@@ -519,33 +531,46 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   background:var(--surface3);
   padding:0 11px;
   transition:all var(--t-base);
-  overflow:hidden;       /* prevents inner input from bleeding out */
+  overflow:hidden;
 }
-.proxy-amt-cell:focus-within{outline:2px solid var(--green);outline-offset:1px;background:var(--bg)}
+.proxy-amt-cell:focus-within{
+  outline:2px solid var(--green);
+  outline-offset:1px;
+  background:var(--bg);
+}
+
 .proxy-prefix{
   font-size:13px;
   color:var(--text3);
   flex-shrink:0;
   line-height:1;
 }
-.proxy-amt-cell input{
+
+/* Inner amount input — transparent, no border, no shadow
+   Higher specificity (0,2,1) than .field input (0,1,1) */
+.proxy-row .proxy-amt-cell input{
   flex:1;
   min-width:0;
-  border:none;
-  background:transparent;
+  width:100%;
+  height:100%;                     /* fill container, not 48px from .field input */
+  border:none;                     /* no double box */
+  border-radius:0;                 /* no inner radius */
+  background:transparent;          /* no inner fill */
+  box-shadow:none;                 /* no inner shadow */
   color:var(--text);
   font-size:14px;
   font-family:'DM Mono',monospace;
   padding:0;
   outline:none;
-  width:100%;
+  transition:none;
 }
-.proxy-amt-cell input::placeholder{
+.proxy-row .proxy-amt-cell input::placeholder{
   color:var(--text3);
   font-family:inherit;
   font-size:13px;
 }
-/* Delete button — fixed square, vertically centred */
+
+/* Delete button — fixed, never squashed */
 .proxy-del{
   flex:0 0 34px;
   width:34px;
