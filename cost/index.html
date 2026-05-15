@@ -1241,7 +1241,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
         <div class="app-info-row"><span>版本</span><span>v1.0.0</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/04/24</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/05/15</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -1491,7 +1491,7 @@ const pad=(n)=>n<10?'0'+n:''+n;
 const ymStr=(y,m)=>`${y}-${pad(m)}`;
 const cy=()=>new Date().getFullYear();
 const cm=()=>new Date().getMonth()+1;
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
 function addDays(ds,n){const d=new Date(ds);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 function diffDays(ds){return Math.round((new Date(ds)-new Date(today()))/86400000);}
 function toast(msg){
@@ -1594,7 +1594,10 @@ function shiftM(d){
   const sy=document.getElementById('hy'),sm=document.getElementById('hm');
   let y=+sy.value,m=+sm.value+d;
   if(m>12){m=1;y++;}if(m<1){m=12;y--;}
-  y=Math.max(2026,Math.min(2046,y));
+  // Clamp both year AND month together so the pair stays valid at boundaries.
+  // Previously only year was clamped, causing e.g. Dec 2026 when backing before Jan 2026.
+  if(y<2026){y=2026;m=1;}
+  if(y>2046){y=2046;m=12;}
   sy.value=y;sm.value=m;dirtyAll();rHome();
 }
 function syncRange(){
@@ -2024,7 +2027,10 @@ function _patchHomeMetrics(){
     // remaining hero
     const remain = bTotal - total;
     const remEl = document.getElementById('h-remain');
-    if(remEl) remEl.textContent = fmt(Math.max(remain, 0));
+    if(remEl){
+      remEl.textContent = fmt(Math.max(remain, 0));
+      remEl.className = 'hero-remain-val' + (remain < 0 ? ' r' : ''); // keep colour in sync
+    }
   }
 }
 let _searchTimer=null, isComposing=false;
@@ -2440,8 +2446,6 @@ async function rTrend(){
     const avg=active.length?yTotal/active.length:0;
     statsEl.innerHTML+=`<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均</div><div class="stat-val">${fmt(avg)}</div></div>`;
   });
-  document.getElementById('cat-preview') && (document.getElementById('cat-preview').textContent=getCats().join('、'));
-  document.getElementById('remind-preview') && (document.getElementById('remind-preview').textContent=remCfg.enabled?`已啟用 · 提前 ${remCfg.dueSoonDays} 天提醒`:'已停用');
   // Also keep settings screen in sync if it was previously visited
   rSettings();
 }
@@ -2495,8 +2499,8 @@ async function openForm(id){
   _resetProxy();
 
   if(id){
-    // 這裡只需要撈一筆，不影響大局
-    const all=await getAll(),x=all.find(a=>a.id===id);if(!x)return;
+    // Fix: use O(log n) primary-key lookup instead of full table scan
+    const x = await getById(id); if(!x) return;
     const isAdv=x.itype==='advance';
     document.getElementById('rt-advance').checked=isAdv;
     document.getElementById('rt-normal').checked=!isAdv;
@@ -2607,27 +2611,31 @@ async function saveItem(){
     : '';
   const finalNote = [rawNote, splitNote].filter(Boolean).join('\n');
 
-  // ── Save main personal item ──────────────────────────────────────────
-  const item={
-    itype: 'normal',
-    cat, name,
-    amount: personalAmt,   // ← personal portion ONLY
-    date, note: finalNote,
-    remindDays: remDays, ym
-  };
-  if(isAdv){
-    // Advance entry (no proxy splitting for these)
-    item.itype     = 'advance';
-    item.amount    = billAmt;    // advance always stores full amount
-    item.payee     = document.getElementById('f-payee').value.trim();
-    item.recovered = document.getElementById('r-rec').checked?1:0;
-    item.paid      = 1;
-    delete item.note; item.note = rawNote;
+  // ── Save main personal item (skip if fully covered by proxy rows) ───────
+  if(!isAdv && personalAmt <= 0 && proxySum > 0){
+    // Entire bill is proxy-paid — no personal portion to record
   } else {
-    item.paid = document.getElementById('r-paid').checked?1:0;
+    const item={
+      itype: 'normal',
+      cat, name,
+      amount: personalAmt,   // ← personal portion ONLY
+      date, note: finalNote,
+      remindDays: remDays, ym
+    };
+    if(isAdv){
+      // Advance entry (no proxy splitting for these)
+      item.itype     = 'advance';
+      item.amount    = billAmt;    // advance always stores full amount
+      item.payee     = document.getElementById('f-payee').value.trim();
+      item.recovered = document.getElementById('r-rec').checked?1:0;
+      item.paid      = 1;
+      delete item.note; item.note = rawNote;
+    } else {
+      item.paid = document.getElementById('r-paid').checked?1:0;
+    }
+    if(editId) item.id=editId;
+    await putItem(item);
   }
-  if(editId) item.id=editId;
-  await putItem(item);
 
   // ── Save each proxy row as an independent advance item ───────────────
   let proxyCreated=0;
@@ -2673,10 +2681,39 @@ async function copyPrev(){
 function openCatModal(){renderCatTags();document.getElementById('new-cat').value='';document.getElementById('cov').classList.add('on');}
 function renderCatTags(){
   const el=document.getElementById('cat-tags');el.innerHTML='';
-  getCats().forEach(cat=>{const tag=document.createElement('div');tag.className='cat-tag';const safe=cat.replace(/'/g,"\\'");tag.innerHTML=`${esc(cat)}<svg class="cat-del" viewBox="0 0 14 14" onclick="delCat('${safe}',event)"><path d="M2 2l10 10M12 2L2 12"/></svg>`;el.appendChild(tag);});
+  getCats().forEach(cat=>{
+    const tag=document.createElement('div');tag.className='cat-tag';
+    tag.appendChild(document.createTextNode(cat)); // safe — no innerHTML, no XSS
+    const del=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    del.setAttribute('class','cat-del');del.setAttribute('viewBox','0 0 14 14');
+    del.innerHTML='<path d="M2 2l10 10M12 2L2 12"/>';
+    del.addEventListener('click',e=>{e.stopPropagation();delCat(cat,e);});
+    tag.appendChild(del);
+    el.appendChild(tag);
+  });
 }
 function addCat(){const inp=document.getElementById('new-cat'),name=inp.value.trim();if(!name)return;if(userCats.includes(name)){toast('類別已存在');return;}if(userCats.length>=12){toast('最多 12 個類別');return;}userCats.push(name);saveCats();renderCatTags();inp.value='';toast(`已新增「${name}」`);}
-function delCat(cat,e){if(e)e.stopPropagation();if(userCats.length<=1){toast('至少保留一個類別');return;}if(!confirm(`刪除「${cat}」？`))return;userCats=userCats.filter(c=>c!==cat);saveCats();renderCatTags();}
+function delCat(cat,e){
+  if(e)e.stopPropagation();
+  if(userCats.length<=1){toast('至少保留一個類別');return;}
+  if(!confirm(`刪除「${cat}」？`))return;
+  const idx=userCats.indexOf(cat);
+  userCats=userCats.filter(c=>c!==cat);
+  // Fix: shift budget byIdx entries above the deleted index down by 1,
+  // otherwise every category after the deleted one gets the wrong budget limit.
+  if(idx>=0){
+    const nb={};
+    Object.entries(budStore.byIdx).forEach(([k,v])=>{
+      const ki=parseInt(k);
+      if(ki<idx) nb[ki]=v;       // below deleted: unchanged
+      else if(ki>idx) nb[ki-1]=v; // above deleted: shift down
+      // ki===idx: budget for deleted category is dropped
+    });
+    budStore.byIdx=nb;
+    saveBudStore();
+  }
+  saveCats();renderCatTags();
+}
 
 // ── Reminder settings ────────────────────────────────────
 function openRemindModal(){
