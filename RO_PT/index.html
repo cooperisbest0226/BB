@@ -2,13 +2,14 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>參宿四 PT 計算器 — 星座之塔</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600;700&family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@300;400&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:         #ede8de;
     --paper:      #faf7f0;
+    --paper2:     #f5f0e6;
     --ink:        #2a2018;
     --ink-light:  #6b5e4e;
     --ink-faint:  #b8a898;
@@ -16,284 +17,656 @@
     --sage:       #6b8f71;
     --sage-light: #7aab81;
     --terra:      #b5674a;
+    --terra-light:#dba58e;
     --amber:      #c89a4a;
     --lavender:   #8b7fb5;
     --shadow:     rgba(60,40,20,0.10);
+    --shadow-deep:rgba(60,40,20,0.18);
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
 
   body {
     background: var(--bg);
-    font-family: 'Noto Serif TC', "Microsoft JhengHei", serif;
+    font-family: 'Noto Serif TC', serif;
     color: var(--ink);
     min-height: 100vh;
-    padding: 20px 15px;
-    line-height: 1.5;
+    position: relative;
+    overflow-x: hidden;
   }
 
-  /* 紋理背景 */
   body::before {
-    content: ''; position: fixed; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.6;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: repeating-linear-gradient(-45deg, transparent 0px, transparent 28px, rgba(140,110,80,0.025) 28px, rgba(140,110,80,0.025) 29px);
     pointer-events: none; z-index: 0;
   }
 
-  .wrapper { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; }
-
-  header { text-align: center; margin-bottom: 30px; }
-  .header-eyebrow { font-size: 11px; letter-spacing: 4px; color: var(--ink-light); margin-bottom: 5px; opacity: 0.8; }
-  .header-title {
-    font-family: 'ZCOOL XiaoWei', serif;
-    font-size: clamp(32px, 10vw, 52px);
-    letter-spacing: 5px; color: var(--ink); margin-bottom: 8px;
+  .wrapper {
+    position: relative; z-index: 1;
+    max-width: 780px; margin: 0 auto;
+    padding: 52px 24px 72px;
   }
-  .header-sub { font-size: 12px; color: var(--ink-faint); letter-spacing: 2px; }
 
-  .section-label { display: flex; align-items: center; gap: 10px; margin: 25px 0 15px; }
-  .section-label-text { font-size: 11px; letter-spacing: 2px; color: var(--ink-light); font-weight: 600; }
+  header { text-align: center; margin-bottom: 48px; animation: slideUp 0.6s ease both; }
+
+  .header-deco { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; }
+  .header-deco-line { flex: 1; max-width: 80px; height: 1px; background: linear-gradient(90deg, transparent, var(--ink-faint)); }
+  .header-deco-line:last-child { background: linear-gradient(90deg, var(--ink-faint), transparent); }
+  .header-deco-icon { font-size: 15px; color: var(--ink-faint); letter-spacing: 4px; }
+
+  .header-eyebrow {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px; font-weight: 300; letter-spacing: 5px;
+    color: var(--ink-light); margin-bottom: 10px;
+  }
+  .header-title {
+    font-family: 'ZCOOL XiaoWei', 'Noto Serif TC', serif;
+    font-size: clamp(32px, 8vw, 58px); font-weight: 400;
+    color: var(--ink); letter-spacing: 8px; line-height: 1.15;
+    margin-bottom: 10px; display: inline-block;
+  }
+  .header-title::after {
+    content: ''; display: block; width: 40px; height: 2px;
+    background: var(--terra); margin: 10px auto 0; border-radius: 2px;
+  }
+  .header-sub { font-size: 12px; color: var(--ink-faint); letter-spacing: 3px; margin-top: 14px; font-weight: 300; }
+
+  .section-label { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .section-label-text { font-size: 11px; letter-spacing: 3px; color: var(--ink-light); white-space: nowrap; }
   .section-label-rule { flex: 1; height: 1px; background: var(--rule); }
 
-  /* 卡片佈局優化 */
-  .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 15px;
-  }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; margin-bottom: 40px; }
 
   .attr-card {
-    background: var(--paper); border-radius: 6px; padding: 18px;
-    box-shadow: 0 4px 12px var(--shadow);
-    border-top: 4px solid var(--c);
-    position: relative;
+    background: var(--paper); border-radius: 4px; padding: 20px 22px 18px;
+    position: relative; box-shadow: 2px 3px 12px var(--shadow), 0 1px 2px var(--shadow);
+    border-top: 3px solid var(--card-rule, var(--sage));
+    transition: box-shadow 0.3s, transform 0.3s; overflow: hidden;
+    animation: slideUp 0.5s ease both;
   }
+  .attr-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(transparent 0px, transparent 27px, var(--rule) 27px, var(--rule) 28px);
+    background-position: 0 36px; pointer-events: none; opacity: 0.5;
+  }
+  .attr-card:hover { box-shadow: 3px 5px 20px var(--shadow-deep); transform: translateY(-2px); }
 
-  .attr-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .attr-name { font-family: 'ZCOOL XiaoWei', serif; font-size: 18px; font-weight: bold; }
+  .attr-card[data-attr="hp"]       { --card-rule: var(--sage); }
+  .attr-card[data-attr="attack"]   { --card-rule: var(--terra); }
+  .attr-card[data-attr="recovery"] { --card-rule: var(--sage-light); }
+  .attr-card[data-attr="defense"]  { --card-rule: var(--amber); }
+  .attr-card[data-attr="trap"]     { --card-rule: var(--lavender); }
+
+  .attr-card:nth-child(1) { animation-delay: 0.08s; }
+  .attr-card:nth-child(2) { animation-delay: 0.13s; }
+  .attr-card:nth-child(3) { animation-delay: 0.18s; }
+  .attr-card:nth-child(4) { animation-delay: 0.23s; }
+  .attr-card:nth-child(5) { animation-delay: 0.28s; }
+
+  .attr-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; position: relative; z-index: 1; }
+  .attr-name { font-family: 'ZCOOL XiaoWei', serif; font-size: 16px; letter-spacing: 2px; color: var(--ink); }
+  .attr-name-en { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; font-weight: 300; margin-left: 6px; }
   .attr-pt-badge {
-    font-size: 13px; font-weight: 600; color: var(--c);
-    padding: 2px 10px; border: 1px solid currentColor; border-radius: 4px;
-    background: rgba(255,255,255,0.5);
+    font-family: 'Noto Serif TC', serif; font-size: 12px; font-weight: 600;
+    color: var(--card-rule, var(--sage)); padding: 1px 8px; border: 1px solid;
+    border-color: color-mix(in srgb, var(--card-rule, var(--sage)) 40%, transparent);
+    border-radius: 2px; letter-spacing: 1px; min-width: 60px; text-align: center;
+    background: color-mix(in srgb, var(--card-rule, var(--sage)) 6%, transparent);
+    transition: all 0.2s;
   }
 
-  .star-row { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
-  .stars { display: flex; gap: 2px; }
+  .star-row { display: flex; gap: 6px; align-items: center; position: relative; z-index: 1; }
   .star-btn {
-    background: none; border: none; font-size: 26px; cursor: pointer; color: #ddd;
-    padding: 5px; transition: transform 0.1s, color 0.2s;
-    -webkit-tap-highlight-color: transparent; /* 移除手機點擊藍框 */
+    background: none; border: none; cursor: pointer; font-size: 22px; line-height: 1;
+    color: #d0c4b0; padding: 3px 1px; transition: color 0.18s, transform 0.18s;
+    -webkit-tap-highlight-color: transparent;
   }
-  .star-btn.lit { color: var(--amber); }
-  .star-label { font-size: 11px; color: var(--ink-faint); min-width: 40px; text-align: right; }
+  .star-btn:hover { transform: scale(1.2) rotate(-5deg); }
+  .star-btn.lit { color: var(--card-rule, var(--amber)); }
+  .star-btn.lit:hover { transform: scale(1.2) rotate(5deg); }
+  .star-label { margin-left: 6px; font-size: 10px; letter-spacing: 1px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; }
 
-  /* 總分面板優化 */
   .total-panel {
-    background: var(--paper); border-radius: 8px; padding: 25px 15px;
-    text-align: center; box-shadow: 0 6px 20px var(--shadow);
-    margin-bottom: 15px;
+    background: var(--paper); border-radius: 4px; padding: 36px 28px 30px;
+    box-shadow: 2px 3px 16px var(--shadow-deep); margin-bottom: 16px;
+    position: relative; overflow: hidden; text-align: center;
+    animation: slideUp 0.5s 0.33s ease both;
   }
-  .total-number-wrap { display: flex; align-items: baseline; justify-content: center; gap: 5px; }
+  .total-panel::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(transparent 0px, transparent 35px, var(--rule) 35px, var(--rule) 36px);
+    background-position: 0 48px; pointer-events: none; opacity: 0.4;
+  }
+  .total-panel::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 52px;
+    width: 1px; background: rgba(180,80,60,0.15); pointer-events: none;
+  }
+
+  .total-eyebrow { font-family: 'Noto Sans TC', sans-serif; font-size: 10px; letter-spacing: 5px; color: var(--ink-faint); margin-bottom: 4px; font-weight: 300; position: relative; z-index: 1; }
+  .total-number-wrap { position: relative; z-index: 1; display: inline-flex; align-items: baseline; gap: 6px; margin: 4px 0 8px; }
   .total-number {
-    font-size: clamp(60px, 15vw, 90px); font-weight: 700;
-    line-height: 1; color: var(--ink);
+    font-family: 'Noto Serif TC', serif; font-size: clamp(64px, 15vw, 108px); font-weight: 700;
+    line-height: 1; color: var(--ink); letter-spacing: -3px; transition: color 0.5s;
   }
   .total-number.tier-high { color: var(--terra); }
-  .total-unit { font-size: 20px; color: var(--ink-faint); }
+  .total-unit { font-family: 'Noto Serif TC', serif; font-size: 18px; color: var(--ink-faint); font-weight: 300; letter-spacing: 1px; }
 
-  .progress-wrap { width: 100%; max-width: 300px; height: 4px; background: var(--rule); margin: 15px auto; border-radius: 2px; overflow: hidden; }
-  .progress-bar { height: 100%; width: 0%; background: var(--sage); transition: width 0.5s ease; }
+  .progress-wrap { width: 100%; max-width: 320px; margin: 0 auto 16px; height: 3px; background: var(--rule); border-radius: 3px; position: relative; z-index: 1; }
+  .progress-bar { height: 100%; border-radius: 3px; background: var(--sage); width: 0%; transition: width 0.45s cubic-bezier(0.34,1.4,0.64,1), background 0.45s; }
   .progress-bar.tier-high { background: var(--terra); }
 
   .tier-badge {
-    display: inline-block; padding: 6px 16px; border-radius: 20px;
-    font-size: 12px; letter-spacing: 1px;
-    border: 1px solid var(--sage); color: var(--sage); font-weight: 600;
+    display: inline-flex; align-items: center; gap: 7px; padding: 5px 16px 5px 12px;
+    border-radius: 2px; font-size: 11px; letter-spacing: 2px;
+    font-family: 'Noto Sans TC', sans-serif; font-weight: 400;
+    border: 1px solid color-mix(in srgb, var(--sage) 50%, transparent);
+    color: var(--sage); background: color-mix(in srgb, var(--sage) 6%, transparent);
+    transition: all 0.4s; position: relative; z-index: 1;
   }
-  .tier-badge.tier-high { border-color: var(--terra); color: var(--terra); }
+  .tier-badge.tier-high { border-color: color-mix(in srgb, var(--terra) 50%, transparent); color: var(--terra); background: color-mix(in srgb, var(--terra) 6%, transparent); }
+  .tier-glyph { font-size: 16px; line-height: 1; transition: all 0.4s; }
 
-  /* 明細列表優化 */
-  .breakdown { background: var(--paper); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
-  .breakdown-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 18px; border-bottom: 1px solid var(--rule); font-size: 14px;
+  .breakdown {
+    background: var(--paper); border-radius: 4px; overflow: hidden;
+    box-shadow: 2px 3px 12px var(--shadow); margin-bottom: 22px;
+    position: relative; animation: slideUp 0.5s 0.38s ease both;
   }
+  .breakdown::after { content: ''; position: absolute; top: 0; bottom: 0; left: 52px; width: 1px; background: rgba(180,80,60,0.12); pointer-events: none; }
+  .breakdown-title-row { padding: 12px 18px 11px; border-bottom: 1px solid var(--rule); font-size: 10px; letter-spacing: 3px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; font-weight: 300; display: flex; align-items: center; gap: 8px; }
+  .breakdown-title-row::before { content: '◇'; font-size: 8px; }
+
+  .breakdown-row { display: flex; align-items: center; padding: 11px 18px; font-size: 13px; border-bottom: 1px solid var(--rule); transition: background 0.2s; position: relative; z-index: 1; }
   .breakdown-row:last-child { border-bottom: none; }
-  .bd-pt { font-weight: 700; font-family: serif; }
+  .breakdown-row:hover { background: rgba(100,80,60,0.03); }
+  .bd-name { flex: 1; color: var(--ink-light); font-size: 13px; }
+  .bd-stars { margin-right: 18px; font-size: 13px; letter-spacing: 2px; }
+  .bd-pt { font-family: 'Noto Serif TC', serif; font-size: 13px; font-weight: 600; min-width: 56px; text-align: right; letter-spacing: 1px; }
+  .bd-sealed { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; }
 
-  .controls { display: flex; gap: 10px; margin-top: 20px; }
-  .btn {
-    flex: 1; padding: 12px; border-radius: 4px; border: 1px solid var(--ink-light);
-    background: transparent; color: var(--ink-light); cursor: pointer;
-    font-family: inherit; font-size: 14px; transition: all 0.2s;
+  .controls { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; animation: slideUp 0.5s 0.43s ease both; }
+  .btn { font-family: 'Noto Serif TC', serif; font-size: 12px; letter-spacing: 3px; padding: 10px 26px; border-radius: 2px; cursor: pointer; transition: all 0.22s; border: 1px solid; }
+  .btn-reset { background: transparent; border-color: color-mix(in srgb, var(--ink-light) 35%, transparent); color: var(--ink-light); }
+  .btn-reset:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); border-color: var(--ink-light); }
+  .btn-max { background: transparent; border-color: color-mix(in srgb, var(--terra) 45%, transparent); color: var(--terra); }
+  .btn-max:hover { background: color-mix(in srgb, var(--terra) 8%, transparent); border-color: var(--terra); }
+
+  footer { text-align: center; margin-top: 56px; font-size: 10px; color: var(--ink-faint); letter-spacing: 3px; font-family: 'Noto Sans TC', sans-serif; font-weight: 300; }
+  footer::before { content: '— '; }
+  footer::after  { content: ' —'; }
+
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes numPop  { 0% { transform: scale(1); } 45% { transform: scale(1.04); } 100% { transform: scale(1); } }
+  .num-pop { animation: numPop 0.22s ease; }
+
+  /* ── Notebook ─────────────────────────────────────────────── */
+  .notebook {
+    background: var(--paper); border-radius: 4px;
+    box-shadow: 2px 3px 16px var(--shadow-deep);
+    overflow: hidden; margin-bottom: 22px;
+    position: relative; animation: slideUp 0.5s 0.5s ease both;
   }
-  .btn-max { border-color: var(--terra); color: var(--terra); }
-  .btn:active { background: rgba(0,0,0,0.05); transform: translateY(1px); }
-
-  footer { text-align: center; margin-top: 40px; font-size: 11px; color: var(--ink-faint); letter-spacing: 2px; }
-
-  /* 手機版微調 */
-  @media (max-width: 480px) {
-    body { padding: 15px 10px; }
-    .cards-grid { grid-template-columns: 1fr; }
-    .star-btn { font-size: 28px; padding: 4px; }
+  /* spine */
+  .notebook::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 52px;
+    width: 1px; background: rgba(180,80,60,0.15); pointer-events: none; z-index: 0;
   }
+  .notebook-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 18px 12px; border-bottom: 1px solid var(--rule);
+    position: relative; z-index: 1;
+  }
+  .notebook-header-left { display: flex; align-items: center; gap: 8px; }
+  .notebook-header-left::before { content: '◇'; font-size: 8px; color: var(--ink-faint); }
+  .notebook-header-title { font-size: 10px; letter-spacing: 3px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; font-weight: 300; }
+  .notebook-count { font-size: 10px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; letter-spacing: 1px; }
+
+  /* entries */
+  .nb-entries { position: relative; z-index: 1; }
+  .nb-empty {
+    padding: 28px 18px; text-align: center;
+    font-size: 12px; color: var(--ink-faint); letter-spacing: 2px;
+    font-family: 'Noto Sans TC', sans-serif; font-style: italic;
+  }
+  .nb-entry {
+    display: flex; align-items: flex-start; gap: 0;
+    padding: 13px 18px 12px; border-bottom: 1px solid var(--rule);
+    transition: background 0.18s; position: relative;
+    background: repeating-linear-gradient(transparent 0px, transparent 27px, var(--rule) 27px, var(--rule) 28px);
+    background-position: 0 0;
+  }
+  .nb-entry:last-child { border-bottom: none; }
+  .nb-entry:hover { background-color: rgba(100,80,60,0.025); }
+
+  .nb-date {
+    font-family: 'Noto Sans TC', sans-serif; font-size: 11px;
+    color: var(--ink-faint); letter-spacing: 1px; white-space: nowrap;
+    min-width: 44px; padding-top: 1px; flex-shrink: 0;
+  }
+  .nb-sep { color: var(--rule); margin: 0 10px; flex-shrink: 0; padding-top: 1px; font-size: 11px; }
+  .nb-body { flex: 1; min-width: 0; }
+  .nb-row1 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .nb-stars-compact {
+    font-size: 12px; letter-spacing: 2px;
+    color: var(--ink-light); flex-shrink: 0;
+  }
+  .nb-pt {
+    font-family: 'Noto Serif TC', serif; font-size: 12px; font-weight: 600;
+    color: var(--ink); background: rgba(100,80,60,0.07);
+    padding: 1px 7px; border-radius: 2px; letter-spacing: 1px; flex-shrink: 0;
+  }
+  .nb-result {
+    font-size: 10px; letter-spacing: 2px; padding: 1px 8px; border-radius: 2px;
+    font-family: 'Noto Sans TC', sans-serif; font-weight: 400; flex-shrink: 0;
+  }
+  .nb-result.win  { color: var(--sage);  background: color-mix(in srgb, var(--sage)  10%, transparent); border: 1px solid color-mix(in srgb, var(--sage)  35%, transparent); }
+  .nb-result.lose { color: var(--terra); background: color-mix(in srgb, var(--terra) 10%, transparent); border: 1px solid color-mix(in srgb, var(--terra) 35%, transparent); }
+  .nb-buffs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .nb-buff-tag {
+    font-size: 10px; letter-spacing: 1px; padding: 1px 7px; border-radius: 2px;
+    font-family: 'Noto Sans TC', sans-serif;
+    color: var(--lavender);
+    background: color-mix(in srgb, var(--lavender) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--lavender) 30%, transparent);
+  }
+  .nb-note { font-size: 11px; color: var(--ink-faint); margin-top: 4px; letter-spacing: 1px; font-style: italic; }
+  .nb-del {
+    background: none; border: none; cursor: pointer; flex-shrink: 0;
+    font-size: 14px; color: var(--ink-faint); padding: 2px 4px; margin-left: 4px;
+    transition: color 0.18s; line-height: 1; align-self: center;
+  }
+  .nb-del:hover { color: var(--terra); }
+
+  /* add form */
+  .nb-form {
+    border-top: 1px solid var(--rule); padding: 16px 18px 18px;
+    position: relative; z-index: 1;
+    background: color-mix(in srgb, var(--amber) 3%, var(--paper));
+  }
+  .nb-form-title {
+    font-size: 10px; letter-spacing: 3px; color: var(--ink-faint);
+    font-family: 'Noto Sans TC', sans-serif; margin-bottom: 12px;
+  }
+  .nb-form-grid {
+    display: grid;
+    grid-template-columns: 80px 1fr 1fr;
+    gap: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .nb-form-full { grid-column: 1 / -1; }
+  .nb-form-half { }
+  .nb-label {
+    font-size: 10px; letter-spacing: 2px; color: var(--ink-faint);
+    font-family: 'Noto Sans TC', sans-serif; display: block; margin-bottom: 4px;
+  }
+  .nb-input, .nb-select {
+    width: 100%; background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 2px; padding: 6px 8px; font-size: 12px; letter-spacing: 1px;
+    color: var(--ink); font-family: 'Noto Serif TC', serif;
+    outline: none; transition: border-color 0.2s;
+  }
+  .nb-input:focus, .nb-select:focus { border-color: var(--amber); }
+  .nb-input::placeholder { color: var(--ink-faint); font-size: 11px; }
+  .nb-form-row { display: flex; gap: 8px; align-items: flex-end; }
+  .nb-stars-form { display: flex; gap: 4px; }
+  .nb-star-input {
+    width: 36px; text-align: center; background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 2px; padding: 6px 4px;
+    font-size: 12px; color: var(--ink); font-family: 'Noto Serif TC', serif; outline: none;
+    transition: border-color 0.2s;
+  }
+  .nb-star-input:focus { border-color: var(--amber); }
+  .nb-form-hint { font-size: 10px; color: var(--ink-faint); margin-top: 2px; letter-spacing: 1px; font-family: 'Noto Sans TC', sans-serif; }
+  .btn-add {
+    background: color-mix(in srgb, var(--sage) 10%, transparent);
+    border-color: color-mix(in srgb, var(--sage) 45%, transparent); color: var(--sage);
+  }
+  .btn-add:hover { background: color-mix(in srgb, var(--sage) 16%, transparent); border-color: var(--sage); }
+
+  /* star config labels above inputs */
+  .nb-star-labels { display: flex; gap: 4px; margin-bottom: 3px; }
+  .nb-star-lbl { width: 36px; text-align: center; font-size: 9px; color: var(--ink-faint); font-family: 'Noto Sans TC', sans-serif; letter-spacing: 0; }
 </style>
 </head>
 <body>
 <div class="wrapper">
+
   <header>
-    <div class="header-eyebrow">星座之塔 ✦ 秘境首領</div>
+    <div class="header-eyebrow">星座之塔　秘境首領</div>
+    <div class="header-deco">
+      <div class="header-deco-line"></div>
+      <div class="header-deco-icon">✦ ✦ ✦</div>
+      <div class="header-deco-line"></div>
+    </div>
     <h1 class="header-title">參宿四</h1>
-    <div class="header-sub">PT 等級計算器 By.BB</div>
+    <div class="header-sub">PT 等級計算器</div>
   </header>
 
   <div class="section-label">
     <span class="section-label-text">屬性配置</span>
     <div class="section-label-rule"></div>
   </div>
-  
   <div class="cards-grid" id="cardsGrid"></div>
 
   <div class="section-label">
-    <span class="section-label-text">挑戰評估</span>
+    <span class="section-label-text">合計</span>
     <div class="section-label-rule"></div>
   </div>
-
   <div class="total-panel">
+    <div class="total-eyebrow">總 PT 等級</div>
     <div class="total-number-wrap">
       <span class="total-number" id="totalPT">0</span>
       <span class="total-unit">pt</span>
     </div>
     <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
-    <div class="tier-badge" id="tierBadge">50 層挑戰範圍</div>
+    <div class="tier-badge" id="tierBadge">
+      <span class="tier-glyph" id="tierGlyph">◎</span>
+      <span id="tierText">50 層挑戰範圍</span>
+    </div>
   </div>
 
-  <div class="breakdown" id="breakdownRows"></div>
+  <div class="breakdown">
+    <div class="breakdown-title-row">屬性明細</div>
+    <div id="breakdownRows"></div>
+  </div>
 
   <div class="controls">
-    <button class="btn" onclick="resetAll()">重置</button>
-    <button class="btn btn-max" onclick="setMax()">全滿 (1000pt)</button>
+    <button class="btn btn-reset" onclick="resetAll()">重置全部</button>
+    <button class="btn btn-max"   onclick="setMax()">★ 全滿</button>
   </div>
 
-  <footer>仙境傳說 RO — 星座之塔計算工具</footer>
+  <!-- Notebook -->
+  <div class="section-label" style="margin-top:40px">
+    <span class="section-label-text">攻略進度記事本</span>
+    <div class="section-label-rule"></div>
+  </div>
+  <div class="notebook">
+    <div class="notebook-header">
+      <div class="notebook-header-left">
+        <span class="notebook-header-title">挑戰紀錄</span>
+      </div>
+      <span class="notebook-count" id="nbCount">0 筆記錄</span>
+    </div>
+    <div class="nb-entries" id="nbEntries">
+      <div class="nb-empty" id="nbEmpty">尚無記錄，寫下第一筆吧。</div>
+    </div>
+    <!-- Add form -->
+    <div class="nb-form">
+      <div class="nb-form-title">＋ 新增記錄</div>
+      <div class="nb-form-grid">
+        <!-- date -->
+        <div>
+          <label class="nb-label">日期</label>
+          <input class="nb-input" id="nbDate" placeholder="5/12" maxlength="10">
+        </div>
+        <!-- result -->
+        <div>
+          <label class="nb-label">結果</label>
+          <select class="nb-select" id="nbResult">
+            <option value="win">通關 ✓</option>
+            <option value="lose">失敗 ✗</option>
+          </select>
+        </div>
+        <!-- PT (auto from stars) -->
+        <div>
+          <label class="nb-label">總 PT（自動）</label>
+          <input class="nb-input" id="nbPtDisplay" readonly placeholder="—" style="background:color-mix(in srgb,var(--ink-faint) 5%,var(--paper));cursor:default;">
+        </div>
+        <!-- stars row -->
+        <div class="nb-form-full">
+          <label class="nb-label">各屬性星數（0–5）</label>
+          <div class="nb-star-labels">
+            <span class="nb-star-lbl">體力</span>
+            <span class="nb-star-lbl">攻擊</span>
+            <span class="nb-star-lbl">恢復</span>
+            <span class="nb-star-lbl">防禦</span>
+            <span class="nb-star-lbl">陷阱</span>
+          </div>
+          <div class="nb-stars-form">
+            <input class="nb-star-input" id="ns0" type="number" min="0" max="5" value="0" oninput="recalcFormPT()">
+            <input class="nb-star-input" id="ns1" type="number" min="0" max="5" value="0" oninput="recalcFormPT()">
+            <input class="nb-star-input" id="ns2" type="number" min="0" max="5" value="0" oninput="recalcFormPT()">
+            <input class="nb-star-input" id="ns3" type="number" min="0" max="5" value="0" oninput="recalcFormPT()">
+            <input class="nb-star-input" id="ns4" type="number" min="0" max="5" value="0" oninput="recalcFormPT()">
+          </div>
+          <div class="nb-form-hint">體力・攻擊・恢復・防禦・陷阱</div>
+        </div>
+        <!-- buff -->
+        <div class="nb-form-full">
+          <label class="nb-label">BUFF 職業（逗號分隔）</label>
+          <input class="nb-input" id="nbBuff" placeholder="主教、忍者、基因、妖術">
+        </div>
+        <!-- note -->
+        <div class="nb-form-full">
+          <label class="nb-label">備註（選填）</label>
+          <input class="nb-input" id="nbNote" placeholder="這次防禦拉太高了⋯">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-add" onclick="addEntry()">記錄下來</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>仙境傳說　星座之塔　參宿四首領計算器</footer>
 </div>
 
 <script>
 const ATTRS = [
-  { id:'hp',       label:'體力', color:'var(--sage)',     pts:[0,15,30,45,60,75]    },
-  { id:'attack',   label:'攻擊', color:'var(--terra)',    pts:[0,20,40,60,80,100]   },
-  { id:'recovery', label:'恢復', color:'var(--sage-light)',pts:[0,30,60,90,120,150] },
-  { id:'defense',  label:'防禦', color:'var(--amber)',    pts:[0,50,100,150,200,250]},
-  { id:'trap',     label:'陷阱', color:'var(--lavender)', pts:[0,85,170,255,340,425]},
+  { id:'hp',       label:'體力', labelEn:'HP',       color:'var(--sage)',     pts:[0,15,30,45,60,75]    },
+  { id:'attack',   label:'攻擊', labelEn:'Attack',   color:'var(--terra)',    pts:[0,20,40,60,80,100]   },
+  { id:'recovery', label:'恢復', labelEn:'Recovery', color:'var(--sage-light)',pts:[0,30,60,90,120,150] },
+  { id:'defense',  label:'防禦', labelEn:'Defense',  color:'var(--amber)',    pts:[0,50,100,150,200,250]},
+  { id:'trap',     label:'陷阱', labelEn:'Trap',     color:'var(--lavender)', pts:[0,85,170,255,340,425]},
 ];
-
-// 從 LocalStorage 讀取紀錄，若無則設為 0
-let selected = JSON.parse(localStorage.getItem('betelgeuse_save')) || {hp:0, attack:0, recovery:0, defense:0, trap:0};
+const MAX_PT=1000, TIER_TH=600;
+const selected={hp:0,attack:0,recovery:0,defense:0,trap:0};
 
 function buildCards(){
-  const grid = document.getElementById('cardsGrid');
-  ATTRS.forEach(attr => {
-    const card = document.createElement('div');
-    card.className = 'attr-card';
-    card.style.setProperty('--c', attr.color);
-    card.innerHTML = `
+  const grid=document.getElementById('cardsGrid');
+  ATTRS.forEach(attr=>{
+    const card=document.createElement('div');
+    card.className='attr-card'; card.dataset.attr=attr.id;
+    card.innerHTML=`
       <div class="attr-header">
-        <span class="attr-name">${attr.label}</span>
+        <span class="attr-name">${attr.label}<span class="attr-name-en">${attr.labelEn}</span></span>
         <span class="attr-pt-badge" id="badge-${attr.id}">0 pt</span>
       </div>
-      <div class="star-row">
-        <div class="stars" id="stars-${attr.id}"></div>
-        <span class="star-label" id="label-${attr.id}">封印</span>
-      </div>`;
+      <div class="star-row" id="stars-${attr.id}"><span class="star-label">封印</span></div>`;
     grid.appendChild(card);
-
-    const starContainer = card.querySelector(`#stars-${attr.id}`);
-    for(let i=1; i<=5; i++){
-      const btn = document.createElement('button');
-      btn.className = 'star-btn';
-      btn.innerHTML = '★';
-      btn.onclick = () => handleStar(attr.id, i);
-      starContainer.appendChild(btn);
+    const row=card.querySelector(`#stars-${attr.id}`);
+    for(let i=1;i<=5;i++){
+      const btn=document.createElement('button');
+      btn.className='star-btn'; btn.innerHTML='★'; btn.title=`${i} 顆星 — ${attr.pts[i]} pt`;
+      btn.addEventListener('click',()=>handleStar(attr.id,i));
+      row.insertBefore(btn,row.querySelector('.star-label'));
     }
   });
 }
 
-function handleStar(id, idx){
-  selected[id] = (selected[id] === idx) ? 0 : idx;
-  saveData();
-  render();
+function handleStar(id,idx){ selected[id]=(selected[id]===idx)?0:idx; updateStarDisplay(id); updateTotals(); }
+
+function updateStarDisplay(id){
+  const row=document.getElementById(`stars-${id}`);
+  row.querySelectorAll('.star-btn').forEach((b,i)=>b.classList.toggle('lit',i<selected[id]));
+  row.querySelector('.star-label').textContent=selected[id]===0?'封印':`${selected[id]} 顆星`;
+  const attr=ATTRS.find(a=>a.id===id);
+  document.getElementById(`badge-${id}`).textContent=attr.pts[selected[id]]+' pt';
 }
 
-function saveData(){
-  localStorage.setItem('betelgeuse_save', JSON.stringify(selected));
-}
-
-function render(){
-  let total = 0;
-  ATTRS.forEach(attr => {
-    const starCount = selected[attr.id];
-    const pt = attr.pts[starCount];
-    total += pt;
-
-    // 更新星星顏色
-    const btns = document.querySelectorAll(`#stars-${attr.id} .star-btn`);
-    btns.forEach((btn, i) => btn.classList.toggle('lit', i < starCount));
-    
-    // 更新標籤與數字
-    document.getElementById(`badge-${attr.id}`).textContent = pt + ' pt';
-    document.getElementById(`label-${attr.id}`).textContent = starCount === 0 ? '封印' : starCount + ' 顆星';
-  });
-
-  // 更新總分
-  const totalEl = document.getElementById('totalPT');
-  totalEl.textContent = total;
-  
-  // 更新進度條與等級
-  const pct = (total / 1000) * 100;
-  const bar = document.getElementById('progressBar');
-  const badge = document.getElementById('tierBadge');
-  bar.style.width = pct + '%';
-  
-  const isHigh = total > 600;
-  totalEl.classList.toggle('tier-high', isHigh);
-  bar.classList.toggle('tier-high', isHigh);
-  badge.classList.toggle('tier-high', isHigh);
-  badge.textContent = isHigh ? '75 層挑戰範圍' : '50 層挑戰範圍';
-
-  // 更新明細
+function updateTotals(){
+  let total=0; ATTRS.forEach(a=>{total+=a.pts[selected[a.id]];});
+  const el=document.getElementById('totalPT');
+  animateNumber(el,parseInt(el.textContent)||0,total);
+  const pct=Math.min(100,(total/MAX_PT)*100);
+  const bar=document.getElementById('progressBar'); bar.style.width=pct+'%';
+  const isHigh=total>TIER_TH;
+  document.getElementById('tierBadge').classList.toggle('tier-high',isHigh);
+  bar.classList.toggle('tier-high',isHigh); el.classList.toggle('tier-high',isHigh);
+  document.getElementById('tierGlyph').textContent=isHigh?'◉':'◎';
+  document.getElementById('tierText').textContent=isHigh?'75 層挑戰範圍':'50 層挑戰範圍';
   updateBreakdown();
 }
 
+function animateNumber(el,from,to){
+  if(from===to)return;
+  const dur=300,start=performance.now();
+  el.classList.remove('num-pop'); void el.offsetWidth; el.classList.add('num-pop');
+  (function step(now){
+    const p=Math.min(1,(now-start)/dur), e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(from+(to-from)*e);
+    if(p<1)requestAnimationFrame(step); else el.textContent=to;
+  })(start);
+}
+
 function updateBreakdown(){
-  const container = document.getElementById('breakdownRows');
-  container.innerHTML = '';
-  ATTRS.forEach(attr => {
-    const pt = attr.pts[selected[attr.id]];
+  const c=document.getElementById('breakdownRows'); c.innerHTML='';
+  ATTRS.forEach(attr=>{
+    const stars=selected[attr.id],pt=attr.pts[stars];
+    const row=document.createElement('div'); row.className='breakdown-row';
+    const starStr=stars===0
+      ?'<span class="bd-sealed">封印中</span>'
+      :`<span style="color:${attr.color};letter-spacing:3px">${'★'.repeat(stars)}<span style="color:var(--ink-faint);opacity:0.3">${'★'.repeat(5-stars)}</span></span>`;
+    row.innerHTML=`<span class="bd-name">${attr.label}</span><span class="bd-stars">${starStr}</span><span class="bd-pt" style="color:${attr.color}">${pt} pt</span>`;
+    c.appendChild(row);
+  });
+}
+
+function resetAll(){ ATTRS.forEach(a=>{selected[a.id]=0;updateStarDisplay(a.id);}); updateTotals(); }
+function setMax()  { ATTRS.forEach(a=>{selected[a.id]=5;updateStarDisplay(a.id);}); updateTotals(); }
+
+// ─── 記事本 ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'betelgeuse-notebook-v1';
+
+const SEED_ENTRY = {
+  id: 'seed-001',
+  date: '5/12',
+  stars: [3,3,3,3,1],
+  pt: 430,
+  result: 'win',
+  buffs: ['主教','忍者','基因','妖術'],
+  note: ''
+};
+
+function calcPTFromStars(stars){
+  return stars.reduce((sum, s, i) => sum + (ATTRS[i].pts[Math.min(5, Math.max(0, s||0))]), 0);
+}
+
+function loadEntries(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  } catch(e){}
+  return [SEED_ENTRY];
+}
+
+function saveEntries(entries){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch(e){}
+}
+
+function renderEntries(){
+  const entries = loadEntries();
+  const container = document.getElementById('nbEntries');
+  const empty     = document.getElementById('nbEmpty');
+  document.getElementById('nbCount').textContent = entries.length + ' 筆記錄';
+
+  // remove old rendered rows (keep empty div)
+  container.querySelectorAll('.nb-entry').forEach(el=>el.remove());
+
+  if(entries.length === 0){ empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  [...entries].reverse().forEach(entry => {
     const row = document.createElement('div');
-    row.className = 'breakdown-row';
+    row.className = 'nb-entry';
+    row.dataset.id = entry.id;
+
+    // stars compact display
+    const starsHtml = entry.stars.map((s,i) => {
+      const col = ['var(--sage)','var(--terra)','var(--sage-light)','var(--amber)','var(--lavender)'][i];
+      return `<span style="color:${col}">${'★'.repeat(s)}<span style="opacity:.25;color:var(--ink-faint)">${'★'.repeat(5-s)}</span></span>`;
+    }).join('<span style="color:var(--rule);margin:0 3px">·</span>');
+
+    const resultLabel = entry.result==='win' ? '通關' : '失敗';
+    const resultCls   = entry.result==='win' ? 'win' : 'lose';
+
+    const buffsHtml = (entry.buffs||[]).filter(Boolean).map(b =>
+      `<span class="nb-buff-tag">${b.trim()}</span>`
+    ).join('');
+
+    const noteHtml = entry.note ? `<div class="nb-note">${entry.note}</div>` : '';
+
     row.innerHTML = `
-      <span>${attr.label}</span>
-      <span class="bd-pt" style="color:${attr.color}">${pt} pt</span>`;
+      <span class="nb-date">${entry.date}</span>
+      <span class="nb-sep">|</span>
+      <div class="nb-body">
+        <div class="nb-row1">
+          <span class="nb-stars-compact">${starsHtml}</span>
+          <span class="nb-pt">${entry.pt} pt</span>
+          <span class="nb-result ${resultCls}">${resultLabel}</span>
+        </div>
+        ${buffsHtml ? `<div class="nb-buffs">${buffsHtml}</div>` : ''}
+        ${noteHtml}
+      </div>
+      <button class="nb-del" title="刪除" onclick="deleteEntry('${entry.id}')">×</button>
+    `;
     container.appendChild(row);
   });
 }
 
-function resetAll(){
-  selected = {hp:0, attack:0, recovery:0, defense:0, trap:0};
-  saveData();
-  render();
+function deleteEntry(id){
+  const entries = loadEntries().filter(e => e.id !== id);
+  saveEntries(entries);
+  renderEntries();
 }
 
-function setMax(){
-  selected = {hp:5, attack:5, recovery:5, defense:5, trap:5};
-  saveData();
-  render();
+function recalcFormPT(){
+  const stars = [0,1,2,3,4].map(i => parseInt(document.getElementById('ns'+i).value)||0);
+  const pt = calcPTFromStars(stars);
+  document.getElementById('nbPtDisplay').value = pt + ' pt';
 }
 
-// 初始化
-buildCards();
-render();
+function addEntry(){
+  const date  = document.getElementById('nbDate').value.trim();
+  const stars = [0,1,2,3,4].map(i => {
+    const v = parseInt(document.getElementById('ns'+i).value)||0;
+    return Math.min(5, Math.max(0, v));
+  });
+  const result = document.getElementById('nbResult').value;
+  const buffRaw = document.getElementById('nbBuff').value;
+  const buffs  = buffRaw.split(/[,、，\s]+/).map(s=>s.trim()).filter(Boolean);
+  const note   = document.getElementById('nbNote').value.trim();
+  const pt     = calcPTFromStars(stars);
+
+  if(!date){ document.getElementById('nbDate').focus(); return; }
+
+  const entry = {
+    id: 'e-' + Date.now(),
+    date, stars, pt, result, buffs, note
+  };
+
+  const entries = loadEntries();
+  entries.push(entry);
+  saveEntries(entries);
+  renderEntries();
+
+  // reset form
+  document.getElementById('nbDate').value  = '';
+  document.getElementById('nbBuff').value  = '';
+  document.getElementById('nbNote').value  = '';
+  [0,1,2,3,4].forEach(i => document.getElementById('ns'+i).value = 0);
+  document.getElementById('nbPtDisplay').value = '';
+}
+
+// ─── 初始化 ───────────────────────────────────────────────────────────────────
+buildCards(); updateTotals(); recalcFormPT(); renderEntries();
 </script>
 </body>
 </html>
