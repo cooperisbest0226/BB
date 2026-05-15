@@ -1241,7 +1241,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
         <div class="app-info-row"><span>版本</span><span>v1.0.0</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/05/15</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/04/24</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -1584,7 +1584,10 @@ function buildSelects(){
   const s_crfy=document.getElementById('cr-fy'),s_crfm=document.getElementById('cr-fm');
   if(s_crfy&&s_crfm){
     let fy=nowY,fm=nowM-3;if(fm<1){fm+=12;fy--;}
-    s_crfy.value=Math.max(2026,fy);s_crfm.value=fm;
+    // Clamp both year AND month together — same fix as shiftM.
+    // Without this, Jan/Feb/Mar 2026 produce from=2026-10/11/12 > to=2026-01/02/03.
+    if(fy<2026){fy=2026;fm=1;}
+    s_crfy.value=fy;s_crfm.value=fm;
   }
   const s_crty=document.getElementById('cr-ty'),s_crtm=document.getElementById('cr-tm');
   if(s_crty&&s_crtm){s_crty.value=nowY;s_crtm.value=nowM;}
