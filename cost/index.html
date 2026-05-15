@@ -1471,7 +1471,7 @@ const YR_PAL=[
 const DEF_REM={enabled:true,showOverdue:true,showDueSoon:true,dueSoonDays:3,showAdvanceUnrec:true};
 
 // ── State ────────────────────────────────────────────────
-let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0;
+let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0, _lastFocus=null;
 let dirty={home:true,list:true,chart:true,trend:true};
 let budStore=JSON.parse(localStorage.getItem('ep_bud_v2')||'{"byIdx":{},"total":0}');
 let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
@@ -2238,6 +2238,7 @@ async function rChartRange(){
     document.getElementById('range-summary').innerHTML=
       '<div style="font-size:13px;color:var(--red);padding:8px 2px">起始月份不能晚於結束月份</div>';
     if(rangeChart){rangeChart.destroy();rangeChart=null;}
+    document.getElementById('range-cat-rows').innerHTML=''; // Bug 3: clear stale category rows
     return;
   }
 
@@ -2267,7 +2268,7 @@ async function rChartRange(){
   const grandTotal   = monthTotals.reduce((s,v)=>s+v,0);
   const grandAdvTotal= advMonthTotals.reduce((s,v)=>s+v,0);
   const activeMths   = monthTotals.filter(v=>v>0).length;
-  const avgMth       = activeMths>0?grandTotal/activeMths:0;
+  const avgMth       = ymKeys.length>0?grandTotal/ymKeys.length:0; // Bug 2: divide by full range, not just active months
   const maxMth       = Math.max(...monthTotals,0);
   const maxMthKey    = ymKeys[monthTotals.indexOf(maxMth)]||'—';
 
@@ -2491,6 +2492,7 @@ function rSettings(){
 
 // ── Full-screen form ─────────────────────────────────────
 async function openForm(id){
+  _lastFocus = document.activeElement; // Bug 4: capture focus origin here directly
   editId=id||null;refreshCatSel();
   document.getElementById('fs-title').textContent=id?'編輯費用項目':'新增費用項目';
   document.getElementById('fs-del').style.display=id?'':'none';
@@ -2806,6 +2808,7 @@ openDB().then(()=>{
         await delItem(id);
         dirtyAll();
         card.remove(); // OPT2: remove only this card, no full rebuild
+        if(containerId === 'home-list') _patchHomeMetrics(); // Bug 1: sync hero totals after swipe-delete
         toastUndo(`已刪除「${x.name}」`, async()=>{
           delete backup.id; await putItem(backup); dirtyAll(); rHome(); toast('已復原');
         });
@@ -2898,16 +2901,7 @@ openDB().then(()=>{
 
   // Fix 3b: Global Escape key handler — closes the topmost open modal/overlay.
   // Priority order matches z-index stack: fsform > sheet overlays.
-  // After closing, focus returns to the element that opened the modal
-  // (stored in _lastFocus) so keyboard users don't lose their position.
-  let _lastFocus = null;
-
-  // Intercept openForm / sheet opens to save focus origin
-  const _origOpenForm = openForm;
-  window.openForm = async function(id){
-    _lastFocus = document.activeElement;
-    await _origOpenForm(id);
-  };
+  // _lastFocus is captured directly inside openForm() and via MutationObserver below.
   ['bov','cov','rsov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
