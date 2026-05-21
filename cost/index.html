@@ -1283,7 +1283,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v3.0.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v3.1</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/05/21</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -2485,7 +2485,7 @@ async function rChartRange(){
   // Highlight max month bar
   const bgColors=monthTotals.map((v,i)=>v===maxMth&&maxMth>0
     ? 'rgba(217,75,75,.85)'
-    : PIE_COLORS[i%PIE_COLORS.length]+'CC');
+    : DONUT_COLORS[i%DONUT_COLORS.length]+'CC');
 
   // Update chart title
   document.getElementById('range-chart-title').textContent=
@@ -2551,7 +2551,7 @@ async function rChartRange(){
   const rcFrag=document.createDocumentFragment();
   sortedCats.forEach(([cat,amt],i)=>{
     const pct=grandTotal>0?Math.round(amt/grandTotal*100):0;
-    const color=PIE_COLORS[i%PIE_COLORS.length];
+    const color=DONUT_COLORS[i%DONUT_COLORS.length];
     const d=document.createElement('div');
     d.innerHTML=`
       <div class="bud-cat-row">
