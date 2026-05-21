@@ -788,6 +788,49 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden;margin-bottom:10px}
 .bud-cat-fill{height:100%;border-radius:4px;transition:width .4s}
 
+/* ── Donut chart (pure SVG — zero dependency) ────────────── */
+.donut-outer{display:flex;flex-direction:column;align-items:center;gap:0;width:100%}
+.donut-wrap{position:relative;display:flex;justify-content:center;padding:8px 0 2px;width:100%}
+.donut-svg{width:200px;height:200px;overflow:visible}
+.donut-seg{
+  cursor:pointer;
+  transition:stroke-dasharray .55s cubic-bezier(.4,0,.2,1),
+             opacity .18s ease;
+}
+.donut-lbl{
+  font-family:'Sora',sans-serif;font-size:11.5px;
+  fill:var(--text3);font-weight:500;letter-spacing:.06em;
+}
+.donut-amt{
+  font-family:'DM Mono',monospace;font-size:15px;
+  fill:var(--text);font-weight:700;letter-spacing:-.03em;
+}
+.donut-empty{
+  text-align:center;color:var(--text3);font-size:13px;
+  padding:52px 0;width:100%;
+}
+.donut-legend{width:100%;margin-top:4px}
+.donut-leg-row{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 10px;border-radius:var(--radius);cursor:pointer;
+  transition:background var(--t-fast),opacity .15s ease,transform var(--t-fast);
+}
+.donut-leg-row:hover,.donut-leg-row.active{background:var(--surface2);transform:translateX(3px)}
+.donut-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.donut-leg-name{
+  flex:1;font-size:13.5px;color:var(--text);font-weight:500;
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.donut-leg-pct{
+  font-size:12px;color:var(--text3);font-weight:600;
+  font-family:'DM Mono',monospace;min-width:40px;text-align:right;
+}
+.donut-leg-amt{
+  font-family:'DM Mono',monospace;font-size:13px;
+  color:var(--text2);font-weight:600;
+  min-width:64px;text-align:right;letter-spacing:-.02em;
+}
+
 /* ── Trend screen ────────────────────────────────────────── */
 .yr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
 .yr-chip{
@@ -1150,9 +1193,9 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
       <div class="card">
         <div class="card-title">分類支出佔比</div>
-        <div class="pie-wrap">
-          <canvas id="pie" width="200" height="200"></canvas>
-          <div class="pie-legend" id="pie-leg"></div>
+        <div class="donut-outer">
+          <div class="donut-wrap" id="donut-wrap"></div>
+          <div class="donut-legend" id="donut-legend"></div>
         </div>
       </div>
       <div class="stat-row">
@@ -1240,7 +1283,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v1.0.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v3.0.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/05/21</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -1460,7 +1503,9 @@ function setAmt(rId, dId, val){
 
 // ── Constants ────────────────────────────────────────────
 const DEFAULT_CATS=['信用卡','保險','訂閱','水電瓦斯','房租/房貸','電話/網路','醫療','交通','餐飲','其他'];
-const PIE_COLORS=['#1D9E75','#378ADD','#D85A30','#7F77DD','#BA7517','#D4537E','#639922','#5F5E5A','#0F6E56','#A32D2D','#185FA5','#E24B4A'];
+// Premium muted warm-beige iOS palette — Terracotta, Sage, Amber, Slate, Dusty Rose, Forest, etc.
+const DONUT_COLORS=['#C0714F','#7A9E7E','#C9943A','#7A8CA0','#C27A8E','#5E8B6E','#9B7DB5','#B5875A','#7B9CB5','#A87060','#8E9E6B','#B06E6E'];
+// Keep for area / range charts that reference YR_PAL
 const YR_PAL=[
   {line:'#1D9E75',fill:'rgba(29,158,117,.12)'},
   {line:'#378ADD',fill:'rgba(55,138,221,.12)'},
@@ -2162,6 +2207,140 @@ async function rList(){
 let chartMode = 'single'; // 'single' | 'range'
 let rangeChart = null;
 
+// ── Pure-SVG Donut Chart (zero dependency) ────────────────
+// sorted: [{cat, val, color}] sorted descending by val
+// total:  sum of all personal expenses this month
+function renderDonutChart(sorted, total){
+  const wrap = document.getElementById('donut-wrap');
+  const legEl = document.getElementById('donut-legend');
+  wrap._active = null;
+  wrap.innerHTML = '';
+  legEl.innerHTML = '';
+
+  if(!total || !sorted.length){
+    wrap.innerHTML = '<div class="donut-empty">本月無支出資料</div>';
+    return;
+  }
+
+  const R=54, CX=100, CY=100, SW=24;
+  const CIRC = 2*Math.PI*R;          // ≈ 339.29
+  const GAP  = sorted.length>1 ? 2.5 : 0; // px gap between segments
+  const ns   = 'http://www.w3.org/2000/svg';
+
+  // ── SVG canvas ──────────────────────────────────────────
+  const svg = document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 200 200');
+  svg.setAttribute('class','donut-svg');
+  svg.setAttribute('role','img');
+  svg.setAttribute('aria-label','分類支出圓餅圖');
+
+  // Background track ring
+  const bg = document.createElementNS(ns,'circle');
+  bg.setAttribute('cx',CX); bg.setAttribute('cy',CY); bg.setAttribute('r',R);
+  bg.setAttribute('fill','none');
+  bg.setAttribute('stroke','var(--surface2)');
+  bg.setAttribute('stroke-width',SW);
+  svg.appendChild(bg);
+
+  // Segment group — rotate -90° so 0° starts at 12 o'clock
+  const g = document.createElementNS(ns,'g');
+  g.setAttribute('transform',`rotate(-90 ${CX} ${CY})`);
+
+  const segs = [];     // [{el, segLen}]
+  let acc = 0;         // accumulated arc length so far
+
+  sorted.forEach((item,i)=>{
+    const portion = (item.val/total)*CIRC;
+    const segLen  = Math.max(0, portion-GAP);
+
+    const c = document.createElementNS(ns,'circle');
+    c.setAttribute('cx',CX); c.setAttribute('cy',CY); c.setAttribute('r',R);
+    c.setAttribute('fill','none');
+    c.setAttribute('stroke',item.color);
+    c.setAttribute('stroke-width',SW);
+    // Start invisible (dasharray=0) — animation sets final value after paint
+    c.setAttribute('stroke-dasharray',`0 ${CIRC}`);
+    // dashoffset: negative shifts the pattern forward by `acc` units
+    c.setAttribute('stroke-dashoffset',String(-acc));
+    c.setAttribute('class','donut-seg');
+    c.dataset.i = i;
+
+    segs.push({el:c, segLen});
+    acc += portion;
+    g.appendChild(c);
+  });
+  svg.appendChild(g);
+
+  // Center text (not inside rotated group — stays upright)
+  const lbl = document.createElementNS(ns,'text');
+  lbl.setAttribute('x',CX); lbl.setAttribute('y',CY-11);
+  lbl.setAttribute('text-anchor','middle');
+  lbl.setAttribute('class','donut-lbl');
+  lbl.textContent='總支出';
+
+  const amtT = document.createElementNS(ns,'text');
+  amtT.setAttribute('x',CX); amtT.setAttribute('y',CY+10);
+  amtT.setAttribute('text-anchor','middle');
+  amtT.setAttribute('class','donut-amt');
+  amtT.textContent=fmt(total);
+
+  svg.appendChild(lbl);
+  svg.appendChild(amtT);
+  wrap.appendChild(svg);
+
+  // ── Animate segments in (double rAF ensures initial 0 is painted first) ──
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    segs.forEach(({el,segLen})=>{
+      el.setAttribute('stroke-dasharray',`${segLen} ${CIRC}`);
+    });
+  }));
+
+  // ── Legend rows ──────────────────────────────────────────
+  const frag = document.createDocumentFragment();
+  sorted.forEach((item,i)=>{
+    const pct = (item.val/total*100).toFixed(1);
+    const li  = document.createElement('div');
+    li.className = 'donut-leg-row';
+    li.dataset.i = i;
+    li.innerHTML =
+      `<span class="donut-leg-dot" style="background:${item.color}"></span>`+
+      `<span class="donut-leg-name">${esc(item.cat)}</span>`+
+      `<span class="donut-leg-pct">${pct}%</span>`+
+      `<span class="donut-leg-amt">${fmt(item.val)}</span>`;
+    frag.appendChild(li);
+  });
+  legEl.appendChild(frag);
+
+  // ── Hover / click sync between ring segments and legend rows ──
+  const allSegs = segs.map(s=>s.el);
+  const allLegs = Array.from(legEl.querySelectorAll('.donut-leg-row'));
+
+  function activate(idx){
+    wrap._active = idx;
+    allSegs.forEach((s,i)=>s.style.opacity = i===idx?'1':'0.25');
+    allLegs.forEach((l,i)=>{
+      l.style.opacity = i===idx?'1':'0.45';
+      l.classList.toggle('active',i===idx);
+    });
+  }
+  function deactivate(){
+    wrap._active = null;
+    allSegs.forEach(s=>s.style.opacity='');
+    allLegs.forEach(l=>{l.style.opacity='';l.classList.remove('active');});
+  }
+
+  allSegs.forEach((seg,i)=>{
+    seg.addEventListener('pointerenter',()=>{ if(wrap._active===null) activate(i); });
+    seg.addEventListener('pointerleave',()=>{ if(wrap._active===null) deactivate(); });
+    seg.addEventListener('click',()=>wrap._active===i?deactivate():activate(i));
+  });
+  allLegs.forEach((leg,i)=>{
+    leg.addEventListener('pointerenter',()=>{ if(wrap._active===null) activate(i); });
+    leg.addEventListener('pointerleave',()=>{ if(wrap._active===null) deactivate(); });
+    leg.addEventListener('click',()=>wrap._active===i?deactivate():activate(i));
+  });
+}
+
 // Feature 2: mode switcher
 function setChartMode(mode){
   chartMode = mode;
@@ -2214,19 +2393,13 @@ async function rChart(){
     document.getElementById('bud-total-bar').style.width='0%';
   }
 
-  const canvas=document.getElementById('pie');
-  if(pieChart){pieChart.destroy();pieChart=null;}
-  if(!cats.length){
-    canvas.getContext('2d').clearRect(0,0,200,200);
-    document.getElementById('pie-leg').innerHTML='<div style="text-align:center;color:var(--text3);font-size:13px;grid-column:1/-1;padding:20px 0">本月無支出資料</div>';
-  }else{
-    const colors=cats.map((_,i)=>PIE_COLORS[i%PIE_COLORS.length]);
-    pieChart=new Chart(canvas,{type:'doughnut',data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:{cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)} (${Math.round(ctx.raw/total*100)}%)`}}}}});
-    const leg=document.getElementById('pie-leg');leg.innerHTML='';
-    const frag=document.createDocumentFragment();
-    cats.forEach((c,i)=>{const li=document.createElement('div');li.className='leg-item';li.innerHTML=`<div class="leg-dot" style="background:${colors[i]}"></div>${esc(c)}<span style="margin-left:auto;font-weight:700;color:var(--text)">${Math.round(catMap[c]/total*100)}%</span>`;frag.appendChild(li);});
-    leg.appendChild(frag);
-  }
+  // Build sorted data for donut (colors keyed to getCats() index for stability across months)
+  const allCats = getCats();
+  const sorted = cats.map(c=>{
+    const ci = allCats.indexOf(c);
+    return {cat:c, val:catMap[c], color:DONUT_COLORS[(ci>=0?ci:cats.indexOf(c))%DONUT_COLORS.length]};
+  }).sort((a,b)=>b.val-a.val);
+  renderDonutChart(sorted, total);
 
   const bEl=document.getElementById('bud-cat-rows');bEl.innerHTML='';let any=false;
   const bFrag=document.createDocumentFragment();
