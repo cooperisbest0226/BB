@@ -1241,7 +1241,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
         <div class="app-info-row"><span>版本</span><span>v1.0.0</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/05/18</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/05/21</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -1471,7 +1471,7 @@ const YR_PAL=[
 const DEF_REM={enabled:true,showOverdue:true,showDueSoon:true,dueSoonDays:3,showAdvanceUnrec:true};
 
 // ── State ────────────────────────────────────────────────
-let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0, _lastFocus=null;
+let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0, focusStack=[];
 let dirty={home:true,list:true,chart:true,trend:true};
 let budStore=JSON.parse(localStorage.getItem('ep_bud_v2')||'{"byIdx":{},"total":0}');
 let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
@@ -1493,7 +1493,7 @@ const cy=()=>new Date().getFullYear();
 const cm=()=>new Date().getMonth()+1;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
 function addDays(ds,n){const d=new Date(ds);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
-function diffDays(ds){return Math.round((new Date(ds)-new Date(today()))/86400000);}
+function diffDays(ds){return Math.round((new Date(ds+'T00:00:00')-new Date(today()+'T00:00:00'))/86400000);}
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('on');
@@ -1538,11 +1538,20 @@ function toggleAdvFields(){
 // ── IndexedDB (Optimized Layers) ─────────────────────────
 function openDB(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open('expense_v8',1);
+    const r=indexedDB.open('expense_v8',2); // v2: added parentId index
     r.onupgradeneeded=e=>{
       const db=e.target.result;
-      if(!db.objectStoreNames.contains('items'))
-        db.createObjectStore('items',{keyPath:'id',autoIncrement:true}).createIndex('ym','ym');
+      let itemStore;
+      if(!db.objectStoreNames.contains('items')){
+        itemStore=db.createObjectStore('items',{keyPath:'id',autoIncrement:true});
+        itemStore.createIndex('ym','ym');
+      } else {
+        itemStore=e.target.transaction.objectStore('items');
+      }
+      // v2: parentId index for proxy-split cascade delete / edit re-population
+      if(!itemStore.indexNames.contains('parentId')){
+        itemStore.createIndex('parentId','parentId');
+      }
     };
     r.onsuccess=e=>{DB=e.target.result;res();};
     r.onerror=()=>rej(r.error);
@@ -1557,6 +1566,8 @@ const getByRange=(from,to)=>new Promise(res=>{store('readonly').index('ym').getA
 // Fix 1: getById — primary-key lookup, O(log n), used by event delegation
 // for delete and checkbox toggle (avoids full table scan with getAll().find())
 const getById=id=>new Promise(res=>{store('readonly').get(id).onsuccess=e=>res(e.target.result||null);});
+// Fetch all advance items that are children of a given parent bill id
+const getByParentId=parentId=>new Promise(res=>{store('readonly').index('parentId').getAll(IDBKeyRange.only(parentId)).onsuccess=e=>res(e.target.result||[]);});
 
 const putItem=item=>new Promise(res=>{
   const r=store('readwrite').put(item);
@@ -1667,8 +1678,8 @@ function getProxyRows(){
   })).filter(r=>r.amount>0&&r.payee.length>0);
 }
 
-// Adds a new proxy-row to the form
-function addProxyRow(){
+// Adds a new proxy-row to the form; accepts optional prefill values for edit-mode repopulation
+function addProxyRow(prefillPayee='', prefillAmount=0){
   const container=document.getElementById('proxy-rows');
   const idx=++_proxyCount;
   const row=document.createElement('div');
@@ -1676,16 +1687,20 @@ function addProxyRow(){
   row.dataset.idx=idx;
   row.innerHTML=
     `<input class="proxy-payee" type="text" placeholder="代墊對象（如：小明）" `+
-    `autocomplete="off" oninput="updateProxyCalc()" aria-label="代墊對象">`+
+    `value="${esc(prefillPayee)}" autocomplete="off" oninput="updateProxyCalc()" aria-label="代墊對象">`+
     `<div class="proxy-amt-cell">`+
       `<span class="proxy-prefix">$</span>`+
       `<input class="proxy-amt" type="text" inputmode="decimal" `+
       `placeholder="輸入金額" autocomplete="off" `+
+      `value="${prefillAmount>0?prefillAmount:''}" `+
       `oninput="updateProxyCalc()" aria-label="代墊金額">`+
     `</div>`+
     `<button type="button" class="proxy-del" onclick="removeProxyRow(this)" aria-label="移除">✕</button>`;
   container.appendChild(row);
-  row.querySelector('.proxy-payee').focus();
+  // Only auto-focus for empty new rows — not pre-filled rows from edit mode
+  if(!prefillPayee && !prefillAmount){
+    row.querySelector('.proxy-payee').focus();
+  }
   updateProxyCalc();
 }
 
@@ -2060,7 +2075,7 @@ function fmtDateHdr(ds){
   const d=new Date(ds+'T00:00:00');
   const m=d.getMonth()+1, day=d.getDate();
   const wd=['日','一','二','三','四','五','六'][d.getDay()];
-  const diff=Math.round((new Date(ds)-new Date(today()))/86400000);
+  const diff=Math.round((new Date(ds+'T00:00:00')-new Date(today()+'T00:00:00'))/86400000);
   let tag='';
   if(diff===0)tag=' · 今天';
   else if(diff===-1)tag=' · 昨天';
@@ -2495,7 +2510,7 @@ function rSettings(){
 
 // ── Full-screen form ─────────────────────────────────────
 async function openForm(id){
-  _lastFocus = document.activeElement; // Bug 4: capture focus origin here directly
+  focusStack.push(document.activeElement); // Fix 4: push onto stack (handles nested overlays)
   editId=id||null;refreshCatSel();
   document.getElementById('fs-title').textContent=id?'編輯費用項目':'新增費用項目';
   document.getElementById('fs-del').style.display=id?'':'none';
@@ -2522,6 +2537,19 @@ async function openForm(id){
     document.getElementById('rd-7').checked=rd===7;
     if(isAdv){document.getElementById('r-unrec').checked=x.recovered!==1;document.getElementById('r-rec').checked=x.recovered===1;}
     else{document.getElementById('r-unpaid').checked=x.paid!==1;document.getElementById('r-paid').checked=x.paid===1;}
+
+    // Fix 1: repopulate existing proxy children so edits don't create duplicates/orphans
+    if(!isAdv){
+      const children = await getByParentId(id);
+      if(children.length > 0){
+        const sec  = document.getElementById('f-proxy-section');
+        const tBtn = document.getElementById('proxy-toggle-btn');
+        if(sec)  sec.style.display  = '';
+        if(tBtn){ tBtn.classList.add('active'); tBtn.setAttribute('aria-expanded','true'); }
+        children.forEach(c => addProxyRow(c.payee, c.amount));
+        updateProxyCalc();
+      }
+    }
   }else{
     document.getElementById('rt-normal').checked=true;document.getElementById('rt-advance').checked=false;onTypeChange();
     document.getElementById('f-cat').value=getCats()[0];
@@ -2544,13 +2572,7 @@ async function openForm(id){
     advFields.classList.add('open');advBtn.classList.add('open');
     advBtn.setAttribute('aria-expanded','true');
   }
-
-  // Edit mode: proxy toggle hidden (can't re-split existing items)
-  // New mode:  onTypeChange() already showed the toggle — nothing more needed
-  if(id){
-    const tRow=document.getElementById('proxy-toggle-row');
-    if(tRow) tRow.style.display='none';
-  }
+  // Fix 1: proxy toggle stays accessible in edit mode — onTypeChange() already handles show/hide
   document.getElementById('fsform').classList.add('on');
   _savedScroll=window.scrollY;
   document.body.style.top=`-${_savedScroll}px`;
@@ -2562,13 +2584,16 @@ async function openForm(id){
   }
 }
 
-function closeForm(){
+function closeForm(skipFocusRestore=false){
   _resetProxy();                                     // clear all proxy state
   document.getElementById('fsform').classList.remove('on');
   editId=null;
   document.body.classList.remove('locked');
   document.body.style.top='';
   window.scrollTo(0,_savedScroll||0);
+  // Fix 4: pop focus stack; restore focus unless caller says skip (e.g. after form submit)
+  const prev = focusStack.pop();
+  if(!skipFocusRestore && prev && typeof prev.focus === 'function') prev.focus();
 }
 
 async function saveItem(){
@@ -2616,9 +2641,21 @@ async function saveItem(){
     : '';
   const finalNote = [rawNote, splitNote].filter(Boolean).join('\n');
 
-  // ── Save main personal item (skip if fully covered by proxy rows) ───────
-  if(!isAdv && personalAmt <= 0 && proxySum > 0){
-    // Entire bill is proxy-paid — no personal portion to record
+  const wasEditing = !!editId; // capture BEFORE closeForm() resets editId to null
+
+  // Fix 1: In edit mode, delete ALL existing proxy children before re-saving
+  // This prevents duplicate/orphaned advance entries on repeated edits
+  if(editId && !isAdv){
+    const oldChildren = await getByParentId(editId);
+    for(const c of oldChildren) await delItem(c.id);
+  }
+
+  let savedId = editId; // will hold the parent item's final id (new or existing)
+
+  // ── Save main personal item ──────────────────────────────────────────
+  if(!isAdv && personalAmt <= 0 && proxySum > 0 && !editId){
+    // NEW item: entire bill is proxy-paid — skip creating a $0 personal item
+    // savedId stays undefined; proxy children will have no parentId (edge case)
   } else {
     const item={
       itype: 'normal',
@@ -2640,6 +2677,7 @@ async function saveItem(){
     }
     if(editId) item.id=editId;
     await putItem(item);
+    savedId = item.id; // capture assigned/existing id for parentId linking
   }
 
   // ── Save each proxy row as an independent advance item ───────────────
@@ -2657,14 +2695,14 @@ async function saveItem(){
         ym,
         payee:     row.payee,
         paid:      1,
-        recovered: 0
+        recovered: 0,
+        parentId:  savedId  // Fix 1: link to parent for cascade delete/edit
       });
       proxyCreated++;
     }
   }
 
-  const wasEditing = !!editId; // capture BEFORE closeForm() resets editId to null
-  closeForm(); dirtyAll(); rHome();
+  closeForm(true); dirtyAll(); rHome(); // skipFocusRestore=true after intentional submit
 
   const verb  = wasEditing ? '已更新' : '已新增';
   const suffix= proxyCreated>0 ? `，${proxyCreated} 筆代墊另立記錄` : '';
@@ -2672,7 +2710,11 @@ async function saveItem(){
 }
 async function confirmDel(){
   if(!editId||!confirm('確定刪除此項目？'))return;
-  await delItem(editId);closeForm();dirtyAll();rHome();toast('已刪除');
+  // Fix 1: cascade-delete all proxy children linked to this bill
+  const children = await getByParentId(editId);
+  for(const c of children) await delItem(c.id);
+  await delItem(editId);
+  closeForm(true); dirtyAll(); rHome(); toast('已刪除');
 }
 
 // ── Copy prev month ──────────────────────────────────────
@@ -2809,12 +2851,24 @@ openDB().then(()=>{
       if(e.target.closest('[data-action="delete"]')){
         const x = await getById(id); if(!x) return;
         const backup = {...x};
+        // Fix 1: cascade-delete proxy children; capture backups for undo
+        const children = await getByParentId(id);
+        const childBackups = children.map(c => ({...c}));
+        for(const c of children) await delItem(c.id);
         await delItem(id);
         dirtyAll();
         card.remove(); // OPT2: remove only this card, no full rebuild
-        if(containerId === 'home-list') _patchHomeMetrics(); // Bug 1: sync hero totals after swipe-delete
+        _patchHomeMetrics(); // sync hero totals after swipe-delete
         toastUndo(`已刪除「${x.name}」`, async()=>{
-          delete backup.id; await putItem(backup); dirtyAll(); rHome(); toast('已復原');
+          delete backup.id;
+          const restored = await putItem(backup);
+          // Fix 1: also restore proxy children re-linked to the new parent id
+          for(const cb of childBackups){
+            delete cb.id;
+            cb.parentId = restored.id;
+            await putItem(cb);
+          }
+          dirtyAll(); rHome(); toast('已復原');
         });
         return;
       }
@@ -2859,8 +2913,8 @@ openDB().then(()=>{
         ? (checked?'已收回，點擊取消':'未收回，點擊標記收回')
         : (checked?'已繳，點擊取消':'未繳，點擊標記繳納'));
 
-      // Update home hero numbers without rebuilding the list
-      if(containerId === 'home-list') _patchHomeMetrics();
+      // Update home hero numbers in real-time (regardless of which list triggered this)
+      _patchHomeMetrics();
 
       toast(isAdv ? (checked?'已標記收回 ✓':'已取消收回')
                   : (checked?'已標記繳納 ✓':'已取消繳納'));
@@ -2903,18 +2957,20 @@ openDB().then(()=>{
   attachListDelegation('home-list');
   attachListDelegation('list-items');
 
-  // Fix 3b: Global Escape key handler — closes the topmost open modal/overlay.
-  // Priority order matches z-index stack: fsform > sheet overlays.
-  // _lastFocus is captured directly inside openForm() and via MutationObserver below.
+  // Fix 4: Focus stack for nested overlays.
+  // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
+  // The full-screen form is handled separately in openForm/closeForm.
   ['bov','cov','rsov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
       if(el.classList.contains('on') && !el._focusSaved){
         el._focusSaved = true;
-        _lastFocus = document.activeElement;
-      } else if(!el.classList.contains('on')){
+        focusStack.push(document.activeElement); // push when overlay opens
+      } else if(!el.classList.contains('on') && el._focusSaved){
         el._focusSaved = false;
+        const prev = focusStack.pop();            // pop when overlay closes
+        if(prev && typeof prev.focus === 'function') prev.focus();
       }
     });
     observer.observe(el, {attributes:true, attributeFilter:['class']});
@@ -2926,16 +2982,14 @@ openDB().then(()=>{
     // Highest z-index first: full-screen form
     const fsform = document.getElementById('fsform');
     if(fsform && fsform.classList.contains('on')){
-      closeForm();
-      if(_lastFocus) _lastFocus.focus();
+      closeForm(); // closeForm pops stack and restores focus
       return;
     }
 
-    // Sheet overlays: close whichever is open
+    // Sheet overlays: close whichever is open (MutationObserver handles focus restore)
     const openSheet = document.querySelector('.overlay.on');
     if(openSheet){
       openSheet.classList.remove('on');
-      if(_lastFocus) _lastFocus.focus();
     }
   });
 
