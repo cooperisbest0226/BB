@@ -1283,8 +1283,8 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v3.1</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/05/21</span></div>
+        <div class="app-info-row"><span>版本</span><span>v2</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/05/22</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -1634,12 +1634,12 @@ function buildSelects(){
   const yOS=yrs.map(yr=>`<option value="${yr}"${yr===nowY?' selected':''}>${yr}</option>`).join('');
   ['rf-y','rt-y'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yOS;});
   ['rf-m','rt-m'].forEach(id=>{const s=document.getElementById(id);if(s){s.innerHTML=mO;s.value=nowM;}});
-  // Range chart selectors — from = 3 months ago, to = current month
+  // Range chart selectors — from = 1 month ago, to = current month
   ['cr-fy','cr-ty'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yOS;});
   ['cr-fm','cr-tm'].forEach(id=>{const s=document.getElementById(id);if(s){s.innerHTML=mO;s.value=nowM;}});
   const s_crfy=document.getElementById('cr-fy'),s_crfm=document.getElementById('cr-fm');
   if(s_crfy&&s_crfm){
-    let fy=nowY,fm=nowM-3;if(fm<1){fm+=12;fy--;}
+    let fy=nowY,fm=nowM-1;if(fm<1){fm+=12;fy--;}
     // Clamp both year AND month together — same fix as shiftM.
     // Without this, Jan/Feb/Mar 2026 produce from=2026-10/11/12 > to=2026-01/02/03.
     if(fy<2026){fy=2026;fm=1;}
@@ -2845,6 +2845,12 @@ async function saveItem(){
       item.recovered = document.getElementById('r-rec').checked?1:0;
       item.paid      = 1;
       delete item.note; item.note = rawNote;
+      // Fix: preserve parentId when editing a proxy-child advance item
+      // putItem does a full record replacement — without this the cascade link is lost
+      if(editId){
+        const existing = await getById(editId);
+        if(existing?.parentId) item.parentId = existing.parentId;
+      }
     } else {
       item.paid = document.getElementById('r-paid').checked?1:0;
     }
@@ -2894,7 +2900,11 @@ async function confirmDel(){
 async function copyPrev(){
   const{y,m}=curYM(),prevM=m===1?12:m-1,prevY=m===1?y-1:y;
   const prev=await getByYM(ymStr(prevY,prevM));if(!prev.length)return;
-  for(const x of prev)await putItem({...x,id:undefined,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)});
+  for(const x of prev){
+    const copied={...x,id:undefined,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)};
+    delete copied.parentId; // Fix: stale parentId would point to prev-month parent; drop the link
+    await putItem(copied);
+  }
   dirtyAll();rHome();toast(`已複製 ${prev.length} 筆項目`);
 }
 
@@ -2970,7 +2980,12 @@ async function importFile(e){
     if(file.name.endsWith('.json')){const d=JSON.parse(text);items=d.items||d;if(!Array.isArray(items))throw new Error('格式錯誤');}
     else{const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());items=lines.map(l=>{const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};}).filter(x=>x.name&&x.amount>0);}
     if(!confirm(`匯入 ${items.length} 筆？（不刪除現有資料）`))return;
-    for(const item of items){const c={...item};delete c.id;await putItem(c);}
+    for(const item of items){
+      const c={...item};
+      delete c.id;
+      delete c.parentId; // parentId refs use old IDs that don't exist after reimport — strip to prevent broken cascade
+      await putItem(c);
+    }
     dirtyAll();rHome();toast(`已匯入 ${items.length} 筆`);
   }catch(err){alert('匯入失敗：'+err.message);}
   e.target.value='';
