@@ -753,6 +753,20 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .copy-banner svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:1.8;flex-shrink:0}
 .copy-banner p{font-size:13px;color:var(--green);flex:1;line-height:1.3;font-weight:500}
 .copy-banner span{font-size:13px;color:var(--green-dk);font-weight:700;white-space:nowrap}
+/* Reminder entry line — .copy-banner's shape in the alert palette */
+.rem-entry{
+  width:100%;background:var(--red-lt);border:1px solid rgba(217,75,75,.18);
+  border-radius:var(--radius-lg);padding:10px 14px;
+  display:flex;align-items:center;gap:9px;margin-bottom:10px;
+  cursor:pointer;font-family:inherit;text-align:left;
+  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.rem-entry:active{opacity:.8}
+.rem-entry svg{width:14px;height:14px;stroke:var(--red);fill:none;stroke-width:1.9;stroke-linecap:round;flex-shrink:0}
+.rem-entry p{font-size:13px;color:var(--red-dk);flex:1;line-height:1.3;font-weight:500;margin:0}
+.rem-entry span{font-size:13px;color:var(--red-dk);font-weight:700;white-space:nowrap}
+.rem-modal-empty{padding:6px 0 2px}
+
 .adv-banner{
   background:var(--orange-lt);border-radius:var(--radius-lg);
   padding:10px 14px;display:flex;align-items:center;gap:9px;margin-bottom:10px;
@@ -1325,6 +1339,10 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="settings-row" onclick="openRemModal()">
+        <div><div class="settings-row-lbl">檢視待處理提醒</div><div class="settings-row-sub" id="rem-view-sub">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
       <div class="settings-row" onclick="openRemindModal()">
         <div><div class="settings-row-lbl">到期提醒設定</div><div class="settings-row-sub" id="remind-preview-settings">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
@@ -1530,6 +1548,34 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <div id="remind-settings-rows"></div>
     <div class="sheet-btns" style="margin-top:14px">
       <button class="btn primary" onclick="saveRemindSettings()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="remov" role="dialog" aria-modal="true" aria-labelledby="rem-modal-title"
+     onclick="if(event.target===this)closeRemModal()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr-row">
+      <h3 id="rem-modal-title">待處理提醒</h3>
+      <button class="fs-back" onclick="closeRemModal()" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="rem-modal-body"></div>
+    <div class="toggle-row" style="border-top:1px solid var(--border);margin-top:6px">
+      <div>
+        <div class="toggle-lbl">今日不再顯示</div>
+        <div class="toggle-sub">明天開啟時會再次提醒</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="rem-dismiss-chk" onchange="setRemDismissToday(this.checked)"
+               aria-label="今日不再顯示">
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="sheet-btns">
+      <button class="btn primary" onclick="closeRemModal()">知道了</button>
     </div>
   </div>
 </div>
@@ -1886,44 +1932,118 @@ async function buildRems(){
   return rems;
 }
 
-function renderRems(rems,max){
-  max=max||5;
-  const wrap=document.getElementById('reminder-wrap');
+// ── Pending reminders ────────────────────────────────────────────
+// Presented as a modal so it can't be scrolled past. The dashboard keeps a
+// one-line entry point, and Settings has a menu item, so the list stays
+// reachable after it's been dismissed for the day.
+let _remCache=[];        // last built list, shared by badge / entry / modal
+let _remAutoShown=false; // session flag: auto-open at most once per launch
+
+const remDismissedToday=()=>remDismissed===today();
+
+async function refreshRems(){
+  _remCache = await buildRems();
+  const n=_remCache.length;
+
   const badge=document.getElementById('remind-badge');
-  const n=rems.length;
-  if(n>0){badge.textContent=n>9?'9+':n;badge.style.display='';}else badge.style.display='none';
-  if(!n||!remCfg.enabled||remDismissed===today()){wrap.innerHTML='';return;}
-  
-  const sec=document.createElement('div');sec.className='rem-box';
-  const hdr=document.createElement('div');hdr.className='rem-hdr';
-  const htl=document.createElement('div');htl.className='rem-hdr-lbl';
-  htl.innerHTML=`<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>待處理提醒（${n}）`;
-  
-  const dis=document.createElement('button');dis.className='rem-dismiss';dis.textContent='今日不顯示';
-  dis.onclick=()=>{remDismissed=today();localStorage.setItem('ep_rem_dis',remDismissed);wrap.innerHTML='';badge.style.display='none';};
-  hdr.append(htl,dis);sec.appendChild(hdr);
-  
-  const frag = document.createDocumentFragment();
-  rems.slice(0,max).forEach(r=>{
-    const row=document.createElement('div');row.className=`rem-row ${r.type}`;
-    row.onclick=()=>openForm(r.item.id);
-    let ic,sv,meta,ac;
-    if(r.type==='overdue'){ic='r';sv='<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>';meta=`逾期 ${Math.abs(r.diff)} 天 · ${r.item.cat}`;ac='r';}
-    else if(r.type==='due-soon'){ic='a';sv='<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>';meta=r.diff===0?`今天到期 · ${r.item.cat}`:`${r.diff} 天後到期 · ${r.item.date}`;ac='a';}
-    else{ic='o';sv='<circle cx="12" cy="12" r="10"/><path d="M16 8l-4 4-4-4"/><path d="M12 12v5"/>';meta=`${r.item.payee?'代墊：'+r.item.payee:'代墊未收回'} · ${r.item.ym}`;ac='o';}
-    // 加入 XSS esc() 防護
-    row.innerHTML=`<div class="rem-ico ${ic}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${sv}</svg></div><div class="rem-body"><div class="rem-name">${esc(r.item.name)}</div><div class="rem-meta">${esc(meta)}</div></div><div class="rem-amt ${ac}">${fmt(r.item.amount)}</div>`;
-    frag.appendChild(row);
-  });
-  
-  if(n>max){
-    const m=document.createElement('div');
-    m.style.cssText='text-align:center;font-size:12px;color:var(--text3);padding:4px 0';
-    m.textContent=`還有 ${n-max} 筆…`;
-    frag.appendChild(m);
+  if(badge){
+    if(n>0){badge.textContent=n>9?'9+':n;badge.style.display='';}
+    else badge.style.display='none';
   }
-  sec.appendChild(frag);
-  wrap.innerHTML='';wrap.appendChild(sec);
+
+  const wrap=document.getElementById('reminder-wrap');
+  if(wrap){
+    wrap.innerHTML = n
+      ? `<button class="rem-entry" type="button" onclick="openRemModal()">
+           <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+           <p>有 <strong>${n} 筆</strong>待處理提醒</p><span>檢視</span>
+         </button>`
+      : '';
+  }
+
+  const sub=document.getElementById('rem-view-sub');
+  if(sub)sub.textContent = n ? `${n} 筆待處理${remDismissedToday()?'（今日已關閉自動提醒）':''}` : '目前沒有待處理提醒';
+  return n;
+}
+
+// Auto-open on launch / first visit to the dashboard, unless muted for today
+function maybeAutoShowRems(){
+  if(_remAutoShown || !remCfg.enabled) return;
+  if(!_remCache.length || remDismissedToday()) return;
+  _remAutoShown=true;
+  openRemModal();
+}
+
+function _remRowHTML(r){
+  let ic,sv,meta,ac;
+  if(r.type==='overdue'){
+    ic='r';ac='r';
+    sv='<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>';
+    meta=`逾期 ${Math.abs(r.diff)} 天 · ${r.item.cat}`;
+  }else if(r.type==='due-soon'){
+    ic='a';ac='a';
+    sv='<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>';
+    meta=r.diff===0?`今天到期 · ${r.item.cat}`:`${r.diff} 天後到期 · ${r.item.date}`;
+  }else{
+    ic='o';ac='o';
+    sv='<circle cx="12" cy="12" r="10"/><path d="M16 8l-4 4-4-4"/><path d="M12 12v5"/>';
+    meta=`${r.item.payee?'代墊：'+r.item.payee:'代墊未收回'} · ${r.item.ym}`;
+  }
+  return `<div class="rem-row ${r.type}" onclick="remOpenItem(${r.item.id})">
+      <div class="rem-ico ${ic}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${sv}</svg></div>
+      <div class="rem-body"><div class="rem-name">${esc(r.item.name)}</div><div class="rem-meta">${esc(meta)}</div></div>
+      <div class="rem-amt ${ac}">${fmt(r.item.amount)}</div>
+    </div>`;
+}
+
+function openRemModal(){
+  const body=document.getElementById('rem-modal-body');
+  const title=document.getElementById('rem-modal-title');
+  if(!body) return;
+
+  const n=_remCache.length;
+  if(title)title.textContent=n?`待處理提醒（${n}）`:'待處理提醒';
+
+  if(!n){
+    body.innerHTML=`<div class="empty-msg rem-modal-empty">
+      <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      <strong style="font-size:14px;color:var(--text2);margin-bottom:5px">目前沒有待處理提醒</strong>
+      <span style="font-size:12px">逾期、即將到期與未收回代墊都會出現在這裡</span></div>`;
+  }else{
+    // Grouped so 逾期 reads apart from 即將到期 at a glance
+    const groups=[
+      ['overdue','逾期未繳'],
+      ['due-soon','即將到期'],
+      ['advance','代墊待收回']
+    ];
+    body.innerHTML=groups.map(([type,label])=>{
+      const rows=_remCache.filter(r=>r.type===type);
+      if(!rows.length)return '';
+      return `<div class="sec-lbl">${label}（${rows.length}）</div>`+rows.map(_remRowHTML).join('');
+    }).join('');
+  }
+
+  const chk=document.getElementById('rem-dismiss-chk');
+  if(chk)chk.checked=remDismissedToday();
+  document.getElementById('remov').classList.add('on');
+}
+
+function closeRemModal(){
+  document.getElementById('remov').classList.remove('on');
+}
+
+// Tapping a reminder edits the item — close first so the full-screen form
+// (z-index 60) isn't covered by the overlay (z-index 70).
+function remOpenItem(id){
+  closeRemModal();
+  openForm(id);
+}
+
+function setRemDismissToday(on){
+  if(on){remDismissed=today();localStorage.setItem('ep_rem_dis',remDismissed);}
+  else  {remDismissed='';localStorage.removeItem('ep_rem_dis');}
+  refreshRems();
+  toast(on?'今日不再自動顯示提醒':'已恢復自動提醒');
 }
 
 // ── 代墊款 feature switch ─────────────────────────────────
@@ -2054,7 +2174,8 @@ async function rHome(){
     pctLbl.textContent=pct+'%';
   }else{fill.style.width='0%';fill.className='bud-bar-fill';pctLbl.textContent='未設定';}
 
-  const rems=await buildRems();renderRems(rems,3);
+  await refreshRems();
+  maybeAutoShowRems();
 
   // ── Copy-last-month banner ──────────────────────────────────────────
   const prevM=m===1?12:m-1,prevY=m===1?y-1:y;
@@ -3032,7 +3153,7 @@ function showS(name){
   window.scrollTo(0,0);
   if(name==='chart'&&dirty.chart)      rChart();
   else if(name==='list'&&dirty.list)   rList();
-  else if(name==='home'&&dirty.home)   rHome();
+  else if(name==='home'){ if(dirty.home) rHome(); else maybeAutoShowRems(); }
   else if(name==='settings')           rSettings();
 }
 
@@ -3559,7 +3680,7 @@ openDB().then(async ()=>{
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
   // The full-screen form is handled separately in openForm/closeForm.
-  ['bov','cov','rsov'].forEach(id=>{
+  ['bov','cov','rsov','remov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
