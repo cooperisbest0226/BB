@@ -788,6 +788,37 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden;margin-bottom:10px}
 .bud-cat-fill{height:100%;border-radius:4px;transition:width .4s}
 
+/* ── Budget-modal per-category status block ──────────────── */
+.field.bud-cat-block{margin-bottom:0;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.field.bud-cat-block:last-child{border-bottom:none;padding-bottom:4px}
+.bud-cat-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.field .bud-cat-head label{margin-bottom:0}
+.bud-prog{margin-top:10px}
+.bud-prog-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  font-size:12px;margin-bottom:6px;
+}
+.bud-prog-lbl{color:var(--text3);letter-spacing:.02em;flex-shrink:0}
+.bud-prog-val{
+  font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);
+  text-align:right;white-space:nowrap;
+}
+.bud-prog-val strong{font-weight:600;color:var(--text)}
+.bud-prog-val.over,.bud-prog-val.over strong{color:var(--red)}
+.bud-prog-val .pct{color:var(--text3);margin-left:3px}
+/* Mini 6-month trend line — non-scaling stroke keeps it crisp at any width */
+.bud-spark-wrap{margin-top:2px}
+.bud-spark{width:100%;height:30px;display:block;overflow:visible}
+.bud-spark-cap{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:.03em;
+}
+.bud-spark-empty{
+  font-size:11px;color:var(--text3);text-align:center;
+  padding:9px 0;background:var(--surface3);border-radius:var(--radius);
+}
+.badge.a{background:var(--amber-lt);color:#8A6420}
+
 /* ── Donut chart (pure SVG — zero dependency) ────────────── */
 .donut-outer{display:flex;flex-direction:column;align-items:center;gap:0;width:100%}
 .donut-wrap{position:relative;display:flex;justify-content:center;padding:8px 0 2px;width:100%}
@@ -867,6 +898,20 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px;pointer-events:none}
 .sheet h3{font-size:18px;font-weight:700;margin-bottom:16px;letter-spacing:-.02em}
 .sheet-btns{display:flex;gap:10px;margin-top:16px}
+/* Sticky sheet header — keeps the primary action (儲存) reachable at the
+   top-right no matter how far the category list is scrolled. */
+.sheet-hdr-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:0;z-index:2;
+  background:var(--bg);
+  margin:0 -18px 14px;padding:0 18px 12px;
+}
+.sheet-hdr-row h3{margin-bottom:0}
+/* Covers the sheet's own 18px top padding so rows don't peek above the header */
+.sheet-hdr-row::before{
+  content:'';position:absolute;left:0;right:0;bottom:100%;
+  height:20px;background:var(--bg);
+}
 .btn{flex:1;height:48px;border:1.5px solid var(--border2);border-radius:var(--radius);cursor:pointer;background:var(--surface3);color:var(--text);font-weight:500;font-size:15px;transition:all var(--t-fast);box-shadow:var(--shadow-sm)}
 .btn:active{background:var(--surface4);transform:scale(.98)}
 .btn.primary{background:var(--green);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 4px 16px rgba(46,158,114,.30)}
@@ -1426,7 +1471,10 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 <div class="overlay" id="bov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
-    <h3>設定預算</h3>
+    <div class="sheet-hdr-row">
+      <h3>設定預算</h3>
+      <button class="fs-save" onclick="saveBudgets()">儲存</button>
+    </div>
     <div class="field">
       <label>每月總支出上限</label>
       <div class="amt-wrap" onclick="document.getElementById('bt-r').focus()">
@@ -1437,11 +1485,10 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <p class="field-note">設為 0 表示不設定總預算上限</p>
     </div>
     <div class="fdivider"></div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">各分類預算（元）</p>
+    <p id="bud-cat-caption" style="font-size:12px;color:var(--text3);margin-bottom:10px">各分類預算（元）</p>
     <div id="b-fields"></div>
     <div class="sheet-btns">
       <button class="btn" onclick="document.getElementById('bov').classList.remove('on')">關閉</button>
-      <button class="btn primary" onclick="saveBudgets()">儲存</button>
     </div>
   </div>
 </div>
@@ -2568,19 +2615,167 @@ async function rChartRange(){
   rcEl.appendChild(rcFrag);
 }
 
-function openBudModal(){
+// ── Budget modal ─────────────────────────────────────────
+// idx -> this month's spend, cached while the modal is open so the progress
+// bar can re-render on every keystroke without touching IndexedDB again.
+let _budModalCatSpent = {};
+
+// Builds the last-6-months trend line for one category.
+// Uses preserveAspectRatio="none" + vector-effect so the path stretches to the
+// container width while the stroke stays a constant 2px, like a stock sparkline.
+function _budSparkSVG(vals){
+  const W=300,H=30,PAD=4,PX=3;   // PX insets the ends so round caps aren't clipped
+  const max=Math.max(...vals);
+  if(max<=0) return '<div class="bud-spark-empty">近 6 個月無此類別支出</div>';
+
+  const n=vals.length;
+  const span=W-PX*2;
+  const pts=vals.map((v,i)=>{
+    const x=n>1 ? PX+i*(span/(n-1)) : W/2;
+    const y=H-PAD-(v/max)*(H-PAD*2);
+    return [x,y];
+  });
+  const line=pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const area=`${PX},${H} ${line} ${W-PX},${H}`;
+  const last=pts[n-1];
+
+  return `<svg class="bud-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+    role="img" aria-label="近 6 個月支出趨勢">
+    <polygon points="${area}" fill="var(--blue-lt)"/>
+    <polyline points="${line}" fill="none" stroke="var(--blue)" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <line x1="${last[0].toFixed(1)}" y1="0" x2="${last[0].toFixed(1)}" y2="${H}"
+      stroke="var(--border2)" stroke-width="1" stroke-dasharray="2 2"
+      vector-effect="non-scaling-stroke"/>
+    <line x1="${last[0].toFixed(1)}" y1="${(last[1]-0.01).toFixed(2)}"
+      x2="${last[0].toFixed(1)}" y2="${(last[1]+0.01).toFixed(2)}"
+      stroke="var(--blue)" stroke-width="6" stroke-linecap="round"
+      vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+
+// Status badge text/colour for a category's current usage
+function _budBadge(spent,limit){
+  if(limit<=0) return {cls:'', txt:''};
+  const pct=Math.round(spent/limit*100);
+  if(spent>limit) return {cls:'r', txt:`超支 ${pct}%`};
+  if(pct>=80)     return {cls:'a', txt:`${pct}%`};
+  return {cls:'g', txt:`${pct}%`};
+}
+
+async function openBudModal(){
   const el=document.getElementById('b-fields');el.innerHTML='';
   setAmt('bt-r','bt-d',budStore.total||0);
-  const frag = document.createDocumentFragment();
+
+  // ── Pull the 6 months ending at the currently-selected month ──────────
+  // One indexed range query serves both the current-month figures and the
+  // per-category trend line, so the modal still opens with a single read.
+  const{y,m}=curYM();
+  let sy=y,sm=m-5; while(sm<1){sm+=12;sy--;}
+  const ymKeys=[];
+  let ky=sy,km=sm;
+  for(let i=0;i<6;i++){ymKeys.push(ymStr(ky,km));km++;if(km>12){km=1;ky++;}}
+
+  const rangeItems=await getByRange(ymKeys[0],ymKeys[ymKeys.length-1]);
+  const trendByCat={};   // cat -> [6 monthly totals], advances excluded
+  rangeItems.filter(x=>x.itype!=='advance').forEach(x=>{
+    const i=ymKeys.indexOf(x.ym); if(i<0)return;
+    (trendByCat[x.cat]=trendByCat[x.cat]||new Array(6).fill(0))[i]+=x.amount;
+  });
+
+  const capRange=`${ymKeys[0].replace('-','/')} → ${ymKeys[5].replace('-','/')}`;
+  const cap=document.getElementById('bud-cat-caption');
+  if(cap) cap.textContent=`各分類預算（元）· 顯示 ${y}/${pad(m)} 使用進度與近 6 個月趨勢`;
+
+  _budModalCatSpent={};
+  const frag=document.createDocumentFragment();
   getCats().forEach((cat,idx)=>{
-    const cur=budStore.byIdx[idx]||0;
-    const div=document.createElement('div');div.className='field';
-    div.innerHTML=`<label>${esc(cat)}</label><div class="amt-wrap" onclick="document.getElementById('bd-r-${idx}').focus()"><span class="amt-unit">$</span><span class="amt-disp${cur>0?'':' ph'}" id="bd-d-${idx}">${cur>0?fmtN(cur):'0'}</span><input class="amt-input" id="bd-r-${idx}" type="number" inputmode="numeric" min="0" step="1" value="${cur||''}" oninput="syncAmt('bd-r-${idx}','bd-d-${idx}')" onfocus="this.select()"></div>`;
+    const limit=budStore.byIdx[idx]||0;
+    const trend=trendByCat[cat]||new Array(6).fill(0);
+    const spent=trend[5];               // current month = last bucket
+    _budModalCatSpent[idx]=spent;
+
+    const pct=limit>0?Math.min(Math.round(spent/limit*100),100):0;
+    const over=limit>0&&spent>limit;
+    const barColor=over?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
+    const bdg=_budBadge(spent,limit);
+    const peak=Math.max(...trend);
+
+    const div=document.createElement('div');
+    div.className='field bud-cat-block';
+    div.innerHTML=
+      `<div class="bud-cat-head">
+        <label>${esc(cat)}</label>
+        <span class="badge ${bdg.cls}" id="bud-badge-${idx}"
+              style="${bdg.txt?'':'display:none'}">${bdg.txt}</span>
+      </div>
+      <div class="amt-wrap" onclick="document.getElementById('bd-r-${idx}').focus()">
+        <span class="amt-unit">$</span>
+        <span class="amt-disp${limit>0?'':' ph'}" id="bd-d-${idx}">${limit>0?fmtN(limit):'0'}</span>
+        <input class="amt-input" id="bd-r-${idx}" type="number" inputmode="numeric"
+               min="0" step="1" value="${limit||''}"
+               oninput="syncAmt('bd-r-${idx}','bd-d-${idx}');updateBudProgress(${idx})"
+               onfocus="this.select()" aria-label="${esc(cat)}預算上限">
+      </div>
+      <div class="bud-prog">
+        <div class="bud-prog-row">
+          <span class="bud-prog-lbl">本月已用</span>
+          <span class="bud-prog-val${over?' over':''}" id="bud-prog-val-${idx}">
+            <strong>${fmt(spent)}</strong>${limit>0?` / ${fmt(limit)}<span class="pct">(${pct}%)</span>`:'<span class="pct">未設上限</span>'}
+          </span>
+        </div>
+        <div class="bud-cat-track">
+          <div class="bud-cat-fill" id="bud-fill-${idx}"
+               style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        <div class="bud-spark-wrap">
+          ${_budSparkSVG(trend)}
+          <div class="bud-spark-cap">
+            <span>近 6 個月　${capRange}</span>
+            <span>${peak>0?'最高 '+fmt(peak):''}</span>
+          </div>
+        </div>
+      </div>`;
     frag.appendChild(div);
   });
   el.appendChild(frag);
   document.getElementById('bov').classList.add('on');
 }
+
+// Live-updates one category's bar, usage text and badge while its limit is
+// being typed. Reuses the same bud-cat-track / bud-cat-fill / badge classes as
+// the Chart screen so the visual language stays consistent app-wide.
+function updateBudProgress(idx){
+  const input=document.getElementById(`bd-r-${idx}`);
+  if(!input)return;
+  const limit=parseInt(input.value)||0;
+  const spent=_budModalCatSpent[idx]||0;
+  const pct=limit>0?Math.min(Math.round(spent/limit*100),100):0;
+  const over=limit>0&&spent>limit;
+
+  const fill=document.getElementById(`bud-fill-${idx}`);
+  if(fill){
+    fill.style.width=pct+'%';
+    fill.style.background=over?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
+  }
+
+  const val=document.getElementById(`bud-prog-val-${idx}`);
+  if(val){
+    val.classList.toggle('over',over);
+    val.innerHTML=`<strong>${fmt(spent)}</strong>`+
+      (limit>0?` / ${fmt(limit)}<span class="pct">(${pct}%)</span>`
+              :'<span class="pct">未設上限</span>');
+  }
+
+  const badge=document.getElementById(`bud-badge-${idx}`);
+  if(badge){
+    const b=_budBadge(spent,limit);
+    badge.className=`badge ${b.cls}`;
+    badge.textContent=b.txt;
+    badge.style.display=b.txt?'':'none';
+  }
+}
+
 function saveBudgets(){
   budStore.total=getAmt('bt-r');
   getCats().forEach((_,idx)=>{
