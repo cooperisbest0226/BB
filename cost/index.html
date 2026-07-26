@@ -244,19 +244,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .hero-big-num.good{color:var(--green)}
 .hero-big-num span.currency{font-size:24px;font-weight:600;margin-right:2px;opacity:.8}
 
-/* Inline sub-stat chips below the big number */
-.hero-chips{display:flex;gap:7px;flex-wrap:wrap}
-.hero-chip{
-  display:flex;align-items:center;gap:5px;
-  background:var(--surface3);
-  border-radius:99px;padding:4px 10px;
-  font-size:11.5px;font-weight:500;
-}
-.hero-chip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.hero-chip-lbl{color:var(--text3)}
-.hero-chip-val{font-family:'DM Mono',monospace;font-size:11.5px;font-weight:500}
-.hero-chip-val.g{color:var(--green)}.hero-chip-val.r{color:var(--red)}.hero-chip-val.o{color:var(--orange)}
-
 /* ── Hero budget row — inline inside hero-main-card ─────────── */
 .hero-remain-row{
   display:flex;align-items:center;justify-content:space-between;gap:14px;
@@ -441,19 +428,31 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   text-transform:uppercase;letter-spacing:.08em;margin:14px 0 7px 2px;
 }
 
-/* ── Proxy-deduction note (below hero big number) ────────── */
-.hero-deduct-note{
-  display:flex;align-items:center;gap:7px;
-  margin-top:6px;margin-bottom:2px;flex-wrap:wrap;
-}
+/* ── Hero supporting line (replaces the old three-chip strip) ── */
+.hero-subline{font-size:12.5px;color:var(--text2);margin-bottom:9px;letter-spacing:.01em}
+.hero-subline b{font-family:'DM Mono',monospace;font-weight:600}
+.hero-subline .g{color:var(--green)}
+.hero-subline .r{color:var(--red)}
+.hero-subline .o{color:var(--orange)}
+.hero-subline .sep{color:var(--text3);margin:0 6px}
+
+/* ── Proxy-deduction badge — tap to unfold the formula ───── */
 .hero-deduct-badge{
   display:inline-flex;align-items:center;gap:4px;
   background:var(--orange-lt);color:var(--orange-dk);
   border:0.5px solid rgba(212,120,48,.25);
   border-radius:99px;padding:3px 10px;
   font-size:11px;font-weight:600;white-space:nowrap;
+  font-family:inherit;cursor:pointer;
 }
-.hero-deduct-sub{font-size:11px;color:var(--text3);white-space:nowrap}
+.hero-deduct-badge::after{content:'▾';font-size:9px;display:inline-block;transition:transform .2s}
+.hero-deduct-badge.open::after{transform:rotate(180deg)}
+.hero-deduct-note{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.55}
+
+/* Horizontally scrollable variant for longer preset rows */
+.filter-row.scroll{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.filter-row.scroll::-webkit-scrollbar{display:none}
+.filter-row.scroll .filter-btn{flex:0 0 auto;padding:0 14px}
 
 /* ── Proxy split-entry section (inside fsform) ───────────── */
 .proxy-section-hdr{
@@ -1110,8 +1109,8 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   <!-- Month navigator -->
   <div class="top-bar">
     <button class="month-nav-btn" onclick="shiftM(-1)" aria-label="上個月">&#8249;</button>
-    <select id="hy" class="flex1" onchange="rHome()" aria-label="年份"></select>
-    <select id="hm" class="flex1" onchange="rHome()" aria-label="月份"></select>
+    <select id="hy" class="flex1" onchange="onHomeMonth()" aria-label="年份"></select>
+    <select id="hm" class="flex1" onchange="onHomeMonth()" aria-label="月份"></select>
     <button class="month-nav-btn" onclick="shiftM(1)" aria-label="下個月">&#8250;</button>
   </div>
 
@@ -1119,36 +1118,23 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   <div class="home-hero">
     <div class="hero-main-card">
 
-      <!-- Eyebrow -->
+      <!-- Eyebrow — names the month being viewed, never the ambiguous "本月" -->
       <div class="hero-eyebrow">
         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        本月個人實際支出
+        <span id="h-period">個人支出</span>
       </div>
 
       <!-- Primary big number — personal expenses ONLY (advance/proxy excluded) -->
       <div class="hero-big-num" id="h-tot">—</div>
 
-      <!-- Deduction note: shown only when advance items exist in this month -->
-      <div class="hero-deduct-note" id="h-deduct-note" style="display:none" aria-live="polite"></div>
+      <!-- Single supporting line replaces the old three-chip strip -->
+      <div class="hero-subline" id="h-subline">—</div>
 
-      <!-- Sub-breakdown chips — 已繳/未繳 are personal only; 代墊待收 = receivable -->
-      <div class="hero-chips">
-        <div class="hero-chip">
-          <div class="hero-chip-dot" style="background:var(--green)"></div>
-          <span class="hero-chip-lbl">已繳</span>
-          <span class="hero-chip-val g" id="h-paid-d">—</span>
-        </div>
-        <div class="hero-chip">
-          <div class="hero-chip-dot" style="background:var(--red)"></div>
-          <span class="hero-chip-lbl">未繳</span>
-          <span class="hero-chip-val r" id="h-unpaid-d">—</span>
-        </div>
-        <div class="hero-chip">
-          <div class="hero-chip-dot" style="background:var(--orange)"></div>
-          <span class="hero-chip-lbl">代墊待收</span>
-          <span class="hero-chip-val o" id="h-adv-d">—</span>
-        </div>
-      </div>
+      <!-- Proxy deduction: badge only; the formula stays folded until tapped -->
+      <button class="hero-deduct-badge" id="h-deduct-btn" type="button"
+              style="display:none" onclick="toggleDeduct()"
+              aria-expanded="false" aria-controls="h-deduct-note"></button>
+      <div class="hero-deduct-note" id="h-deduct-note" style="display:none" aria-live="polite"></div>
 
       <!-- Divider -->
       <div style="height:1px;background:var(--border);margin:12px 0 11px"></div>
@@ -1171,6 +1157,11 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     </div>
   </div>
 
+  <div class="filter-row" id="home-filter-row" role="group" aria-label="首頁顯示範圍">
+    <button class="filter-btn on" id="hf-todo" onclick="setHomeView('todo')" aria-pressed="true">待處理</button>
+    <button class="filter-btn" id="hf-all" onclick="setHomeView('all')" aria-pressed="false">全部</button>
+  </div>
+
   <div class="scroll-body" id="home-scroll">
     <div id="reminder-wrap"></div>
     <div id="copy-wrap"></div>
@@ -1185,11 +1176,12 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <input class="search-input" id="search" type="search" placeholder="搜尋項目或備註…" aria-label="搜尋">
   </div>
   <div class="list-sticky">
-    <div class="top-bar" style="padding-top:10px">
-      <select id="ly" class="flex1" onchange="syncRange()" aria-label="年份"></select>
-      <select id="lm" class="flex1" onchange="syncRange()" aria-label="月份"></select>
+    <div class="filter-row" role="group" aria-label="時間範圍">
+      <button class="filter-btn on" id="lr-month" onclick="setListRange('month')" aria-pressed="true">本月</button>
+      <button class="filter-btn" id="lr-3m" onclick="setListRange('3m')" aria-pressed="false">近 3 個月</button>
+      <button class="filter-btn" id="lr-custom" onclick="setListRange('custom')" aria-pressed="false">自訂</button>
     </div>
-    <div class="range-bar">
+    <div class="range-bar" id="list-custom-range" style="display:none">
       <div class="range-row">
         <select id="rf-y" onchange="rList()" aria-label="範圍起始年"></select>
         <select id="rf-m" onchange="rList()" aria-label="範圍起始月"></select>
@@ -1197,8 +1189,8 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
         <select id="rt-y" onchange="rList()" aria-label="範圍結束年"></select>
         <select id="rt-m" onchange="rList()" aria-label="範圍結束月"></select>
       </div>
-      <div class="range-info" id="range-info">選擇日期範圍篩選</div>
     </div>
+    <div class="range-info" id="range-info" style="padding:2px 16px 6px;margin-top:0">選擇日期範圍篩選</div>
     <div class="filter-row" role="group" aria-label="篩選狀態">
       <button class="filter-btn on" id="fa" onclick="setF('all')" aria-pressed="true">全部</button>
       <button class="filter-btn" id="fu" onclick="setF('unpaid')" aria-pressed="false">未繳</button>
@@ -1212,19 +1204,28 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 <!-- ═══════════════ CHART SCREEN ════════════════ -->
 <div id="s-chart" class="screen">
 
-  <!-- Mode toggle: 單月 / 跨月範圍 -->
+  <!-- Mode toggle: 組成 (one month) / 趨勢 (time) — the two questions charts answer -->
   <div class="chart-mode-row">
-    <button class="chart-mode-btn on" id="cmode-single" onclick="setChartMode('single')">單月分析</button>
-    <button class="chart-mode-btn"    id="cmode-range"  onclick="setChartMode('range')">跨月範圍</button>
+    <button class="chart-mode-btn on" id="cmode-single" onclick="setChartMode('single')">單月組成</button>
+    <button class="chart-mode-btn"    id="cmode-range"  onclick="setChartMode('range')">支出趨勢</button>
   </div>
 
   <!-- Single-month selectors (shown in single mode) -->
   <div class="top-bar" id="chart-single-bar">
-    <select id="cy2" class="flex1" onchange="rChart()"></select>
-    <select id="cm2" class="flex1" onchange="rChart()"></select>
+    <select id="cy2" class="flex1" onchange="onChartMonth()"></select>
+    <select id="cm2" class="flex1" onchange="onChartMonth()"></select>
   </div>
 
-  <!-- Range selectors (shown in range mode) -->
+  <!-- Trend presets — absorbed the old 趨勢 tab; 年度比較 is just another preset -->
+  <div class="filter-row scroll" id="chart-preset-row" style="display:none" role="group" aria-label="趨勢區間">
+    <button class="filter-btn on" id="tp-6m"   onclick="setTrendPreset('6m')"   aria-pressed="true">近 6 個月</button>
+    <button class="filter-btn"    id="tp-12m"  onclick="setTrendPreset('12m')"  aria-pressed="false">近 12 個月</button>
+    <button class="filter-btn"    id="tp-year" onclick="setTrendPreset('year')" aria-pressed="false">今年</button>
+    <button class="filter-btn"    id="tp-cmp"  onclick="setTrendPreset('cmp')"  aria-pressed="false">年度比較</button>
+    <button class="filter-btn"    id="tp-custom" onclick="setTrendPreset('custom')" aria-pressed="false">自訂</button>
+  </div>
+
+  <!-- Range selectors (custom preset only) -->
   <div class="chart-range-row" id="chart-range-bar" style="display:none">
     <select id="cr-fy" onchange="rChart()"></select>
     <select id="cr-fm" onchange="rChart()"></select>
@@ -1239,7 +1240,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <div id="chart-single-view">
       <div class="bud-total-card">
         <div class="bud-total-row">
-          <div class="bud-total-lbl">本月總預算</div>
+          <div class="bud-total-lbl" id="bud-total-lbl">總預算</div>
           <div class="bud-total-nums"><strong id="bud-spent-txt">—</strong><span id="bud-limit-txt">（未設定）</span></div>
         </div>
         <div class="bud-total-track"><div class="bud-total-fill" id="bud-total-bar" style="width:0%"></div></div>
@@ -1254,8 +1255,8 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="stat-row">
         <div class="stat-tile"><div class="stat-lbl">項目數</div><div class="stat-val" id="cc">—</div></div>
         <div class="stat-tile"><div class="stat-lbl">已繳比例</div><div class="stat-val g" id="cp">—</div></div>
-        <div class="stat-tile"><div class="stat-lbl">代墊筆數</div><div class="stat-val o" id="ca">—</div></div>
-        <div class="stat-tile"><div class="stat-lbl">代墊排除額</div><div class="stat-val o" id="cam" title="本月全部代墊款金額，已從個人支出中排除">—</div></div>
+        <div class="stat-tile" id="tile-adv-cnt"><div class="stat-lbl">代墊筆數</div><div class="stat-val o" id="ca">—</div></div>
+        <div class="stat-tile" id="tile-adv-amt"><div class="stat-lbl">代墊排除額</div><div class="stat-val o" id="cam" title="該月全部代墊款金額，已從個人支出中排除">—</div></div>
       </div>
       <div class="card">
         <div class="card-title">分類預算 <a onclick="openBudModal()">設定</a></div>
@@ -1263,32 +1264,25 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
     </div>
 
-    <!-- ── RANGE MODE ── -->
+    <!-- ── TREND MODE (absorbed the former 趨勢 tab) ── -->
     <div id="chart-range-view" style="display:none">
       <div class="range-summary-strip" id="range-summary"></div>
       <div class="card">
         <div class="card-title" id="range-chart-title">支出走勢</div>
         <canvas id="range-chart" style="width:100%"></canvas>
+        <div id="cmp-wrap" style="display:none">
+          <div class="yr-chips" id="yr-chips"></div>
+          <canvas id="area-chart" style="width:100%"></canvas>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
       </div>
-      <div class="card">
+      <div class="trend-stat-row" id="trend-stats" style="display:none"></div>
+      <div class="card" id="range-cat-card">
         <div class="card-title">範圍分類合計</div>
         <div id="range-cat-rows"></div>
       </div>
     </div>
 
-  </div>
-</div>
-
-<!-- ═══════════════ TREND SCREEN ════════════════ -->
-<div id="s-trend" class="screen">
-  <div class="scroll-body">
-    <div class="card">
-      <div class="card-title">年度支出趨勢</div>
-      <div class="yr-chips" id="yr-chips"></div>
-      <canvas id="area-chart" style="width:100%"></canvas>
-      <div class="chart-legend" id="chart-legend"></div>
-    </div>
-    <div class="trend-stat-row" id="trend-stats"></div>
   </div>
 </div>
 
@@ -1324,6 +1318,13 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
         <div><div class="settings-row-lbl">預算設定</div><div class="settings-row-sub" id="bud-preview-settings">點此設定每月預算上限</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
+      <div class="settings-row" onclick="document.getElementById('feat-adv-chk').click()">
+        <div><div class="settings-row-lbl">代墊款功能</div><div class="settings-row-sub" id="adv-feat-sub">—</div></div>
+        <label class="toggle" onclick="event.stopPropagation()">
+          <input type="checkbox" id="feat-adv-chk" onchange="setAdvanceFeature(this.checked)" aria-label="代墊款功能">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
       <div class="settings-row" onclick="openRemindModal()">
         <div><div class="settings-row-lbl">到期提醒設定</div><div class="settings-row-sub" id="remind-preview-settings">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
@@ -1356,9 +1357,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   <button class="tab" id="tab-chart" role="tab" aria-selected="false" aria-controls="s-chart" onclick="showS('chart')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5.5 3"/></svg>圖表
   </button>
-  <button class="tab" id="tab-trend" role="tab" aria-selected="false" aria-controls="s-trend" onclick="showS('trend')">
-    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/></svg>趨勢
-  </button>
   <button class="tab" id="tab-settings" role="tab" aria-selected="false" aria-controls="s-settings" onclick="showS('settings')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>設定
   </button>
@@ -1381,7 +1379,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <button class="fs-save" onclick="saveItem()">儲存</button>
   </div>
   <div class="fs-body">
-    <div class="field">
+    <div class="field" id="f-type-wrap">
       <label>費用類型</label>
       <div class="radio-row">
         <label class="radio-opt"><input type="radio" name="itype" id="rt-normal" value="normal" onchange="onTypeChange()"> 一般費用</label>
@@ -1440,7 +1438,15 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
     </div>
 
-    <div class="field"><label>繳費 / 到期日</label><input id="f-date" type="date"></div>
+    <div class="field"><label>繳費 / 到期日</label><input id="f-date" type="date" onchange="updateYmNote()"></div>
+    <div class="field">
+      <label>歸屬月份（計入哪個月的支出）</label>
+      <div class="range-row">
+        <select id="f-ym-y" onchange="updateYmNote()" aria-label="歸屬年"></select>
+        <select id="f-ym-m" onchange="updateYmNote()" aria-label="歸屬月"></select>
+      </div>
+      <p class="field-note" id="f-ym-note"></p>
+    </div>
     <button class="adv-toggle" id="adv-toggle" type="button" onclick="toggleAdvFields()" aria-expanded="false">
       <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
       更多選項（提醒 / 備註 / 狀態）
@@ -1511,7 +1517,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <button onclick="addCat()">新增</button>
     </div>
     <div class="sheet-btns" style="margin-top:14px">
-      <button class="btn primary" onclick="document.getElementById('cov').classList.remove('on');refreshCatSel();rTrend();rSettings()">完成</button>
+      <button class="btn primary" onclick="document.getElementById('cov').classList.remove('on');refreshCatSel();dirtyAll();renderActive();rSettings()">完成</button>
     </div>
   </div>
 </div>
@@ -1572,7 +1578,7 @@ const DEF_REM={enabled:true,showOverdue:true,showDueSoon:true,dueSoonDays:3,show
 
 // ── State ────────────────────────────────────────────────
 let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0, focusStack=[];
-let dirty={home:true,list:true,chart:true,trend:true};
+let dirty={home:true,list:true,chart:true};
 let budStore=JSON.parse(localStorage.getItem('ep_bud_v2')||'{"byIdx":{},"total":0}');
 let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
 let selYears=JSON.parse(localStorage.getItem('ep_sel_yrs')||'null');
@@ -1616,15 +1622,7 @@ function doUndo(){
   t.classList.remove('on');
 }
 
-// UX1: toggle collapsible detail panel on home screen
-function toggleDetail(){
-  const panel=document.getElementById('detail-panel');
-  const toggle=document.getElementById('detail-toggle');
-  if(!panel||!toggle)return; // elements removed from DOM — no-op
-  const open=panel.classList.toggle('open');
-  toggle.classList.toggle('open',open);
-  toggle.setAttribute('aria-expanded',open);
-}
+
 
 // UX7: toggle advanced fields in add/edit form
 function toggleAdvFields(){
@@ -1680,46 +1678,50 @@ function buildSelects(){
   const nowY=cy(),nowM=cm();
   const yrs=Array.from({length:21},(_,i)=>2026+i);
   const ms=Array.from({length:12},(_,i)=>i+1);
-  const yO=yrs.map(yr=>`<option value="${yr}"${yr===nowY?' selected':''}>${yr}年</option>`).join('');
-  const mO=ms.map(mn=>`<option value="${mn}"${mn===nowM?' selected':''}>${mn}月</option>`).join('');
-  ['hy','ly','cy2'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yO;});
-  ['hm','lm','cm2'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=mO;});
-  ['hy','ly','cy2'].forEach(id=>{const s=document.getElementById(id);if(s)s.value=nowY;});
-  ['hm','lm','cm2'].forEach(id=>{const s=document.getElementById(id);if(s)s.value=nowM;});
-  const yOS=yrs.map(yr=>`<option value="${yr}"${yr===nowY?' selected':''}>${yr}</option>`).join('');
-  ['rf-y','rt-y'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yOS;});
-  ['rf-m','rt-m'].forEach(id=>{const s=document.getElementById(id);if(s){s.innerHTML=mO;s.value=nowM;}});
-  // Range chart selectors — from = 1 month ago, to = current month
-  ['cr-fy','cr-ty'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=yOS;});
-  ['cr-fm','cr-tm'].forEach(id=>{const s=document.getElementById(id);if(s){s.innerHTML=mO;s.value=nowM;}});
-  const s_crfy=document.getElementById('cr-fy'),s_crfm=document.getElementById('cr-fm');
-  if(s_crfy&&s_crfm){
-    let fy=nowY,fm=nowM-1;if(fm<1){fm+=12;fy--;}
-    // Clamp both year AND month together — same fix as shiftM.
-    // Without this, Jan/Feb/Mar 2026 produce from=2026-10/11/12 > to=2026-01/02/03.
-    if(fy<2026){fy=2026;fm=1;}
-    s_crfy.value=fy;s_crfm.value=fm;
-  }
-  const s_crty=document.getElementById('cr-ty'),s_crtm=document.getElementById('cr-tm');
-  if(s_crty&&s_crtm){s_crty.value=nowY;s_crtm.value=nowM;}
+  const yO=yrs.map(yr=>`<option value="${yr}">${yr}年</option>`).join('');
+  const mO=ms.map(mn=>`<option value="${mn}">${mn}月</option>`).join('');
+  const yOS=yrs.map(yr=>`<option value="${yr}">${yr}</option>`).join('');
+
+  ['hy','cy2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=yO;});
+  ['hm','cm2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=mO;});
+  ['rf-y','rt-y','cr-fy','cr-ty','f-ym-y'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML=yOS;el.value=nowY;}});
+  ['rf-m','rt-m','cr-fm','cr-tm','f-ym-m'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML=mO;el.value=nowM;}});
+
+  setMonth(nowY,nowM,false);   // seeds hy/hm/cy2/cm2 from the shared state
 }
-const curYM=()=>({y:+document.getElementById('hy').value,m:+document.getElementById('hm').value});
-function shiftM(d){
-  const sy=document.getElementById('hy'),sm=document.getElementById('hm');
-  let y=+sy.value,m=+sm.value+d;
-  if(m>12){m=1;y++;}if(m<1){m=12;y--;}
-  // Clamp both year AND month together so the pair stays valid at boundaries.
-  // Previously only year was clamped, causing e.g. Dec 2026 when backing before Jan 2026.
+// ── Global viewed-month state ────────────────────────────
+// ONE month for the whole app. 本月 / 明細(本月模式) / 圖表單月分析 / 預算設定
+// all read SEL, so changing the month in one place no longer leaves the
+// other screens showing a different one. (syncRange() died with the duplicate
+// year/month selects that used to sit on 明細.)
+let SEL={y:cy(), m:cm()};
+const curYM=()=>({y:SEL.y,m:SEL.m});
+const monthLbl=(y,m)=>`${y} 年 ${m} 月`;
+let activeScreen='home';
+
+function setMonth(y,m,rerender=true){
   if(y<2026){y=2026;m=1;}
   if(y>2046){y=2046;m=12;}
-  sy.value=y;sm.value=m;dirtyAll();rHome();
+  SEL={y,m};
+  // Mirror onto every month selector so they can never disagree
+  const set=(id,v)=>{const el=document.getElementById(id); if(el)el.value=v;};
+  set('hy',y); set('hm',m); set('cy2',y); set('cm2',m);
+  dirtyAll();
+  if(rerender) renderActive();
 }
-function syncRange(){
-  document.getElementById('rf-y').value=document.getElementById('ly').value;
-  document.getElementById('rf-m').value=document.getElementById('lm').value;
-  document.getElementById('rt-y').value=document.getElementById('ly').value;
-  document.getElementById('rt-m').value=document.getElementById('lm').value;
-  rList();
+function onHomeMonth(){setMonth(+document.getElementById('hy').value,+document.getElementById('hm').value);}
+function onChartMonth(){setMonth(+document.getElementById('cy2').value,+document.getElementById('cm2').value);}
+function shiftM(d){
+  let y=SEL.y,m=SEL.m+d;
+  if(m>12){m=1;y++;} if(m<1){m=12;y--;}
+  setMonth(y,m);
+}
+// Re-render whichever screen is on screen right now
+function renderActive(){
+  if(activeScreen==='home')          rHome();
+  else if(activeScreen==='list')     rList();
+  else if(activeScreen==='chart')    rChart();
+  else if(activeScreen==='settings') rSettings();
 }
 const dirtyAll=()=>Object.keys(dirty).forEach(k=>dirty[k]=true);
 
@@ -1834,6 +1836,17 @@ function updateProxyCalc(){
   }
 }
 
+// 歸屬月份 vs 繳費日 — different on purpose for credit cards, so this is a
+// neutral note, not a warning.
+function updateYmNote(){
+  const note=document.getElementById('f-ym-note'); if(!note)return;
+  const d=document.getElementById('f-date').value;
+  const ym=ymStr(+document.getElementById('f-ym-y').value,+document.getElementById('f-ym-m').value);
+  note.textContent = (d && d.slice(0,7)!==ym)
+    ? `計入 ${ym.replace('-','/')} 的支出，繳費日在 ${d.slice(0,7).replace('-','/')}（信用卡常見）`
+    : '預設為目前檢視的月份，可自行調整';
+}
+
 function onTypeChange(){
   const a=document.getElementById('rt-advance').checked;
   document.getElementById('adv-hint').style.display=a?'block':'none';
@@ -1846,18 +1859,14 @@ function onTypeChange(){
     // Advance type: clear and hide everything
     _resetProxy();
   } else {
-    // Normal type: show the opt-in toggle button (section stays hidden until user taps it)
-    if(tRow) tRow.style.display = '';
+    // Normal type: show the opt-in toggle button (section stays hidden until
+    // user taps it) — but only when 代墊款 is switched on at all.
+    if(tRow) tRow.style.display = advOn() ? '' : 'none';
   }
 }
 
 // ── Range YM ─────────────────────────────────────────────
-function getRangeYM(){
-  const fy=+document.getElementById('rf-y').value,fm=+document.getElementById('rf-m').value;
-  const ty=+document.getElementById('rt-y').value,tm=+document.getElementById('rt-m').value;
-  const f=ymStr(fy,fm),t=ymStr(ty,tm);
-  return f<=t?{from:f,to:t}:{from:t,to:f};
-}
+
 
 // ── Reminders ────────────────────────────────────────────
 async function buildRems(){
@@ -1870,7 +1879,7 @@ async function buildRems(){
       rems.push({item:x,type:'overdue',diff:diffDays(x.date)});
     else if(remCfg.showDueSoon&&x.itype!=='advance'&&x.paid!==1&&x.date&&x.date>=td&&x.date<=thr)
       rems.push({item:x,type:'due-soon',diff:diffDays(x.date)});
-    if(remCfg.showAdvanceUnrec&&x.itype==='advance'&&x.recovered!==1)
+    if(advOn()&&remCfg.showAdvanceUnrec&&x.itype==='advance'&&x.recovered!==1)
       rems.push({item:x,type:'advance',diff:x.date?diffDays(x.date):null});
   });
   rems.sort((a,b)=>{const o={overdue:0,'due-soon':1,advance:2};return o[a.type]!==o[b.type]?o[a.type]-o[b.type]:(a.diff!==null&&b.diff!==null?a.diff-b.diff:0);});
@@ -1917,67 +1926,125 @@ function renderRems(rems,max){
   wrap.innerHTML='';wrap.appendChild(sec);
 }
 
-// ── Proxy deduction note helper ─────────────────────────
-// Called by rHome() and _patchHomeMetrics() to keep deduction note in sync.
+// ── 代墊款 feature switch ─────────────────────────────────
+// Off by default for people who never front money for others; when off the
+// whole 代墊 surface (type picker, payee field, split UI, chips, banners,
+// reminders, stat tiles, list filter) folds away instead of sitting there
+// as permanent noise. Existing 代墊 data is never deleted — only hidden.
+let featAdv=JSON.parse(localStorage.getItem('ep_feat_adv')||'null');
+const advOn=()=>featAdv===true;
+
+async function initAdvanceFeature(){
+  if(featAdv===null){                 // first run: infer from existing data
+    const all=await getAll();
+    featAdv=all.some(x=>x.itype==='advance');
+    localStorage.setItem('ep_feat_adv',JSON.stringify(featAdv));
+  }
+  applyAdvVisibility();
+}
+function setAdvanceFeature(on){
+  featAdv=!!on;
+  localStorage.setItem('ep_feat_adv',JSON.stringify(featAdv));
+  applyAdvVisibility();
+  if(!featAdv){                       // force any open form back to 一般費用
+    const n=document.getElementById('rt-normal');
+    if(n&&!n.checked){n.checked=true;onTypeChange();}
+  }
+  dirtyAll(); renderActive();
+  toast(featAdv?'已啟用代墊款功能':'已停用代墊款功能');
+}
+function applyAdvVisibility(){
+  const show=advOn()?'':'none';
+  [['f-type-wrap',show],['fv',show],['tile-adv-cnt',show],['tile-adv-amt',show]]
+    .forEach(([id,v])=>{const el=document.getElementById(id); if(el)el.style.display=v;});
+  if(!advOn()){   // clear the hero badge immediately, whatever screen we're on
+    const b=document.getElementById('h-deduct-btn'), n=document.getElementById('h-deduct-note');
+    if(b){b.style.display='none';b.classList.remove('open');}
+    if(n)n.style.display='none';
+  }
+  const chk=document.getElementById('feat-adv-chk'); if(chk)chk.checked=advOn();
+  const sub=document.getElementById('adv-feat-sub');
+  if(sub)sub.textContent=advOn()?'已啟用 · 可記錄代墊與帳單拆分':'已停用 · 介面不顯示代墊相關項目';
+  if(!advOn()&&listFilter==='advance')listFilter='all';
+}
+
+// ── Proxy deduction note ────────────────────────────────
+// Renders as a small badge; the arithmetic stays folded until tapped.
 //   advTotal : sum of ALL advance items this period (the full exclusion amount)
 //   personal : personal expense total already shown in h-tot
 function _setDeductNote(advTotal, personal){
-  const el = document.getElementById('h-deduct-note');
-  if(!el) return;
-  if(advTotal > 0){
-    // Formula: Personal = TotalOutflow − ProxyPayments
-    const outflow = personal + advTotal;
-    el.style.display = '';
-    el.innerHTML =
-      `<span class="hero-deduct-badge">代墊 ${fmt(advTotal)} 已排除</span>`+
-      `<span class="hero-deduct-sub">總流出 ${fmt(outflow)} &minus; 代墊 ${fmt(advTotal)}</span>`;
-  } else {
-    el.style.display = 'none';
-    el.innerHTML = '';
+  const btn=document.getElementById('h-deduct-btn');
+  const note=document.getElementById('h-deduct-note');
+  if(!btn||!note) return;
+  if(advOn() && advTotal>0){
+    btn.style.display='';
+    btn.textContent=`代墊 ${fmt(advTotal)} 已排除`;
+    note.textContent=`總流出 ${fmt(personal+advTotal)} − 代墊 ${fmt(advTotal)} = 個人支出 ${fmt(personal)}`;
+    note.style.display=btn.classList.contains('open')?'':'none';
+  }else{
+    btn.style.display='none';
+    note.style.display='none';
   }
+}
+function toggleDeduct(){
+  const btn=document.getElementById('h-deduct-btn');
+  const note=document.getElementById('h-deduct-note');
+  if(!btn||!note) return;
+  const open=btn.classList.toggle('open');
+  btn.setAttribute('aria-expanded',open);
+  note.style.display=open?'':'none';
+}
+
+// ── Home list scope: 待處理 (default) vs 全部 ──────────────
+let homeView='todo';
+function setHomeView(v){
+  homeView=v;
+  ['hf-todo','hf-all'].forEach((id,i)=>{
+    const on=(['todo','all'][i]===v), b=document.getElementById(id);
+    if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);}
+  });
+  rHome();
 }
 
 // ── HOME ─────────────────────────────────────────────────
 async function rHome(){
   dirty.home=false;
-  const{y,m}=curYM(),key=ymStr(y,m);
+  const{y,m}=curYM(), key=ymStr(y,m);
   const items = await getByYM(key);
-  // ── Accounting: separate personal expenses from proxy payments ──────
-  // Formula: Personal Expense = Total Outflow − Proxy/Advance Payments
-  const normal  = items.filter(x => x.itype !== 'advance');  // personal only
-  const advance = items.filter(x => x.itype === 'advance');  // proxy / reimbursable
 
-  const total   = normal.reduce((s,x) => s+x.amount, 0);    // personal total
-  const paid    = normal.filter(x => x.paid===1).reduce((s,x) => s+x.amount, 0);
-  const unpaid  = total - paid;
+  // Personal expense = total outflow − proxy payments. When 代墊 is switched
+  // off the proxy bucket is simply empty, so every figure below still adds up.
+  const normal  = items.filter(x => x.itype !== 'advance');
+  const advance = advOn() ? items.filter(x => x.itype === 'advance') : [];
 
-  // Proxy accounting — all advances excluded from personal total
-  const advTotal  = advance.reduce((s,x) => s+x.amount, 0); // full proxy outflow
-  const advUnrec  = advance.filter(x => x.recovered!==1)    // outstanding receivable
-                           .reduce((s,x) => s+x.amount, 0);
+  const total    = normal.reduce((s,x)=>s+x.amount,0);
+  const paid     = normal.filter(x=>x.paid===1).reduce((s,x)=>s+x.amount,0);
+  const unpaid   = total-paid;
+  const advTotal = advance.reduce((s,x)=>s+x.amount,0);
+  const advUnrecItems = advance.filter(x=>x.recovered!==1);
+  const advUnrec = advUnrecItems.reduce((s,x)=>s+x.amount,0);
 
-  // h-tot = personal expense ONLY (proxy payments never included)
-  document.getElementById('h-tot').textContent = fmt(total);
-  document.getElementById('h-paid-d').textContent   = fmt(paid);
-  document.getElementById('h-unpaid-d').textContent = fmt(unpaid);
-  document.getElementById('h-adv-d').textContent    = fmt(advUnrec); // receivable
+  // ── Hero: month label, one big number, ONE supporting line ──────────
+  document.getElementById('h-period').textContent=`${monthLbl(y,m)} · 個人支出`;
+  document.getElementById('h-tot').textContent=fmt(total);
+  let sub=`已繳 <b class="g">${fmt(paid)}</b><span class="sep">·</span>未繳 <b class="r">${fmt(unpaid)}</b>`;
+  if(advOn()&&advUnrec>0) sub+=`<span class="sep">·</span>待收 <b class="o">${fmt(advUnrec)}</b>`;
+  document.getElementById('h-subline').innerHTML=sub;
+  _setDeductNote(advTotal,total);
 
-  // Deduction note — visible only when proxy items exist this month
-  _setDeductNote(advTotal, total);
-  // remaining budget hero
+  // ── Budget row ──────────────────────────────────────────────────────
   const bTotal=budStore.total||0;
-  const remain=bTotal>0?bTotal-total:null;
   const remEl=document.getElementById('h-remain');
   const remSub=document.getElementById('h-remain-sub');
   if(bTotal>0){
+    const remain=bTotal-total;
     remEl.textContent=fmt(Math.max(remain,0));
     remEl.className='hero-remain-val'+(remain<0?' r':'');
     remSub.textContent=`預算 ${fmt(bTotal)}`;
   }else{
-    remEl.textContent='未設定';remEl.className='hero-remain-val';remSub.textContent='點設定頁面設定預算';
+    remEl.textContent='未設定';remEl.className='hero-remain-val';
+    remSub.textContent='可於設定頁設定預算';
   }
-
-  // Budget bar
   const pct=bTotal>0?Math.min(Math.round(total/bTotal*100),100):0;
   const fill=document.getElementById('h-bud-fill');
   const pctLbl=document.getElementById('h-bud-pct');
@@ -1989,14 +2056,17 @@ async function rHome(){
 
   const rems=await buildRems();renderRems(rems,3);
 
+  // ── Copy-last-month banner ──────────────────────────────────────────
   const prevM=m===1?12:m-1,prevY=m===1?y-1:y;
   const prevItems=await getByYM(ymStr(prevY,prevM));
   document.getElementById('copy-wrap').innerHTML=(!items.length&&prevItems.length)
-    ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到本月？</p><span>複製</span></div>`:'';
+    ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到${m} 月？</p><span>複製</span></div>`:'';
 
   const el=document.getElementById('home-list');
+  const filterRow=document.getElementById('home-filter-row');
+
   if(!items.length){
-    // UX6: actionable empty state — both primary CTA and copy shortcut
+    if(filterRow)filterRow.style.display='none';
     el.innerHTML=`<div class="empty-state">
       <svg viewBox="0 0 100 100" fill="none">
         <rect x="15" y="25" width="70" height="55" rx="9" fill="var(--surface2)"/>
@@ -2006,30 +2076,54 @@ async function rHome(){
         <circle cx="78" cy="78" r="16" fill="var(--green)"/>
         <path d="M78 72v12M72 78h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
       </svg>
-      <h3>本月尚無費用項目</h3>
+      <h3>${monthLbl(y,m)}尚無費用項目</h3>
       <p>點下方 + 新增第一筆費用<br>開始追蹤每月支出</p>
       <button class="empty-cta" onclick="openForm()">新增費用項目</button>
       ${prevItems.length?`<button class="empty-cta-sec" onclick="copyPrev()">複製上月 ${prevItems.length} 筆</button>`:''}
     </div>`;
     return;
   }
+  if(filterRow)filterRow.style.display='';
+
   el.innerHTML='';
-  const frag = document.createDocumentFragment();
-  if(advance.filter(x=>x.recovered!==1).length){
-    const unrec=advance.filter(x=>x.recovered!==1);
-    const b=document.createElement('div');b.className='adv-banner';
-    b.innerHTML=`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg><p>本月有 <strong>${unrec.length} 筆代墊款</strong>（共 ${fmt(unrec.reduce((s,x)=>s+x.amount,0))}）尚未收回</p>`;
-    frag.appendChild(b);
-  }
-  const cats={};
-  normal.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(x=>(cats[x.cat]=cats[x.cat]||[]).push(x));
-  Object.keys(cats).forEach(cat=>{
-    const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent=cat;frag.appendChild(lbl);
-    cats[cat].forEach(x=>frag.appendChild(makeCard(x)));
-  });
-  if(advance.length){
-    const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent='代墊款';frag.appendChild(lbl);
-    advance.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(x=>frag.appendChild(makeCard(x)));
+  const frag=document.createDocumentFragment();
+  const byDate=(a,b)=>(a.date||'9999').localeCompare(b.date||'9999');
+
+  if(homeView==='todo'){
+    // Only what still needs action: unpaid bills + 代墊 not yet recovered
+    const todo=[...normal.filter(x=>x.paid!==1), ...advUnrecItems].sort(byDate);
+    if(!todo.length){
+      const done=document.createElement('div');
+      done.className='empty-msg';
+      done.innerHTML=`<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+        <strong style="font-size:14px;color:var(--text2);margin-bottom:5px">${monthLbl(y,m)}都處理完了 ✓</strong>
+        <span style="font-size:12px">共 ${items.length} 筆已全部完成</span>
+        <button class="empty-cta-sec" onclick="setHomeView('all')">查看全部項目</button>`;
+      frag.appendChild(done);
+    }else{
+      todo.forEach(x=>frag.appendChild(makeCard(x)));
+      const foot=document.createElement('div');foot.className='list-footer';
+      foot.textContent=`待處理 ${todo.length} 筆　合計 ${fmt(todo.reduce((s,x)=>s+x.amount,0))}`;
+      frag.appendChild(foot);
+    }
+  }else{
+    if(advOn()&&advUnrecItems.length){
+      const b=document.createElement('div');b.className='adv-banner';
+      b.innerHTML=`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg><p>有 <strong>${advUnrecItems.length} 筆代墊款</strong>（共 ${fmt(advUnrec)}）尚未收回</p>`;
+      frag.appendChild(b);
+    }
+    const cats={};
+    normal.slice().sort(byDate).forEach(x=>(cats[x.cat]=cats[x.cat]||[]).push(x));
+    Object.keys(cats).forEach(cat=>{
+      const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent=cat;
+      frag.appendChild(lbl);
+      cats[cat].forEach(x=>frag.appendChild(makeCard(x)));
+    });
+    if(advance.length){
+      const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent='代墊款';
+      frag.appendChild(lbl);
+      advance.slice().sort(byDate).forEach(x=>frag.appendChild(makeCard(x)));
+    }
   }
   el.appendChild(frag);
 }
@@ -2109,48 +2203,7 @@ function makeCard(x){
 // Called after a checkbox toggle on the home list.
 // Reads amounts directly from the existing card DOM —
 // no DB query, no DOM rebuild, just arithmetic + textContent.
-function _patchHomeMetrics(){
-  const list = document.getElementById('home-list');
-  if(!list) return;
 
-  // Accounting: personal total never includes proxy/advance amounts
-  let total=0, paid=0, advTotal=0, advUnrec=0;
-  list.querySelectorAll('.icard').forEach(card=>{
-    const isAdv = card.dataset.isadv === '1';
-    const raw   = parseInt(card.dataset.amt) || 0;
-    const isDone= card.querySelector('.iname')?.classList.contains('done');
-    if(isAdv){
-      advTotal += raw;                    // track ALL proxy outflow
-      if(!isDone) advUnrec += raw;        // outstanding receivable
-    } else {
-      total += raw;                       // personal expense only
-      if(isDone) paid += raw;
-    }
-  });
-
-  document.getElementById('h-tot').textContent      = fmt(total);
-  document.getElementById('h-paid-d').textContent   = fmt(paid);
-  document.getElementById('h-unpaid-d').textContent = fmt(total - paid);
-  document.getElementById('h-adv-d').textContent    = fmt(advUnrec);
-  _setDeductNote(advTotal, total);
-  // Budget bar
-  const bTotal = budStore.total || 0;
-  const pct = bTotal > 0 ? Math.min(Math.round(total/bTotal*100), 100) : 0;
-  const fill = document.getElementById('h-bud-fill');
-  const pctLbl = document.getElementById('h-bud-pct');
-  if(bTotal > 0){
-    fill.style.width = pct + '%';
-    fill.className = 'bud-bar-fill' + (pct>=100?' over':pct>=80?' warn':'');
-    pctLbl.textContent = pct + '%';
-    // remaining hero
-    const remain = bTotal - total;
-    const remEl = document.getElementById('h-remain');
-    if(remEl){
-      remEl.textContent = fmt(Math.max(remain, 0));
-      remEl.className = 'hero-remain-val' + (remain < 0 ? ' r' : ''); // keep colour in sync
-    }
-  }
-}
 let _searchTimer=null, isComposing=false;
 function debouncedSearch(){
   if(isComposing) return; // 避免中文選字過程中頻繁觸發刷新
@@ -2166,6 +2219,43 @@ function setF(f){
     btn.classList.toggle('on',isActive);
     btn.setAttribute('aria-pressed',isActive);  // UX4: A11y
   });
+  rList();
+}
+
+// ── 明細 time range: presets first, selectors only on 自訂 ──
+// 本月 follows the shared month state, so 首頁 and 明細 can't disagree.
+let listRange='month';   // 'month' | '3m' | 'custom'
+
+function resolveListRange(){
+  if(listRange==='custom'){
+    const f=ymStr(+document.getElementById('rf-y').value,+document.getElementById('rf-m').value);
+    const t=ymStr(+document.getElementById('rt-y').value,+document.getElementById('rt-m').value);
+    return f<=t?{from:f,to:t}:{from:t,to:f};
+  }
+  const{y,m}=curYM();
+  if(listRange==='3m'){
+    let fy=y,fm=m-2; while(fm<1){fm+=12;fy--;}
+    return {from:ymStr(fy,fm),to:ymStr(y,m)};
+  }
+  return {from:ymStr(y,m),to:ymStr(y,m)};
+}
+
+function setListRange(mode){
+  listRange=mode;
+  ['lr-month','lr-3m','lr-custom'].forEach((id,i)=>{
+    const on=['month','3m','custom'][i]===mode,b=document.getElementById(id);
+    if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);}
+  });
+  const panel=document.getElementById('list-custom-range');
+  if(panel)panel.style.display=mode==='custom'?'':'none';
+  if(mode==='custom'){
+    // Seed the selectors from whatever range was showing, so 自訂 starts where
+    // the user left off instead of jumping somewhere unrelated.
+    const{y,m}=curYM();
+    let fy=y,fm=m-2; while(fm<1){fm+=12;fy--;}
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+    set('rf-y',fy);set('rf-m',fm);set('rt-y',y);set('rt-m',m);
+  }
   rList();
 }
 
@@ -2186,19 +2276,18 @@ function fmtDateHdr(ds){
 
 async function rList(){
   dirty.list=false;
-  const{from,to}=getRangeYM();
+  const{from,to}=resolveListRange();
   const q=document.getElementById('search').value.trim().toLowerCase();
 
-  // Fetch items within selected range
   let items = await getByRange(from, to);
+  if(!advOn()) items=items.filter(x=>x.itype!=='advance');   // feature switched off
 
-  if(listFilter==='paid')items=items.filter(x=>x.paid===1&&x.itype!=='advance');
-  else if(listFilter==='unpaid')items=items.filter(x=>x.paid!==1&&x.itype!=='advance');
+  if(listFilter==='paid')        items=items.filter(x=>x.paid===1&&x.itype!=='advance');
+  else if(listFilter==='unpaid') items=items.filter(x=>x.paid!==1&&x.itype!=='advance');
   else if(listFilter==='advance')items=items.filter(x=>x.itype==='advance');
 
   if(q)items=items.filter(x=>(x.name||'').toLowerCase().includes(q)||(x.note||'').toLowerCase().includes(q)||(x.payee||'').toLowerCase().includes(q));
 
-  // Sort descending by date (nulls last)
   items.sort((a,b)=>{
     if(!a.date&&!b.date)return 0;
     if(!a.date)return 1;
@@ -2206,20 +2295,20 @@ async function rList(){
     return b.date.localeCompare(a.date);
   });
 
-  document.getElementById('range-info').textContent=`${from===to?from:from+' ~ '+to}，共 ${items.length} 筆`;
+  document.getElementById('range-info').textContent=
+    `${from===to?from.replace('-','/'):from.replace('-','/')+' ~ '+to.replace('-','/')}　共 ${items.length} 筆`;
   const el=document.getElementById('list-items');
 
   if(!items.length){
-    let emptyIcon='<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>';
     let emptyTitle='無符合條件的項目', emptySub='', emptyCTA='';
     if(q){
       emptyTitle=`找不到「${esc(q)}」`;emptySub='試試其他關鍵字，或清空搜尋';
       emptyCTA=`<button class="empty-cta-sec" onclick="document.getElementById('search').value='';rList()">清空搜尋</button>`;
-    } else if(listFilter==='unpaid'){emptyTitle='沒有未繳項目';emptySub='本期所有費用均已繳納 ✓';
-    } else if(listFilter==='paid'){emptyTitle='沒有已繳項目';emptySub='本期尚無已繳費用';
-    } else if(listFilter==='advance'){emptyTitle='沒有代墊項目';emptySub='本期無代墊款紀錄';
-    } else {emptyTitle='本期無費用記錄';emptySub='換一個時間範圍試試';}
-    el.innerHTML=`<div class="empty-msg"><svg viewBox="0 0 24 24">${emptyIcon}</svg>
+    } else if(listFilter==='unpaid'){emptyTitle='沒有未繳項目';emptySub='這段期間的費用都已繳納 ✓';
+    } else if(listFilter==='paid'){emptyTitle='沒有已繳項目';emptySub='這段期間尚無已繳費用';
+    } else if(listFilter==='advance'){emptyTitle='沒有代墊項目';emptySub='這段期間無代墊款紀錄';
+    } else {emptyTitle='這段期間無費用記錄';emptySub='換一個時間範圍試試';}
+    el.innerHTML=`<div class="empty-msg"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
       <strong style="font-size:14px;color:var(--text2);margin-bottom:5px">${emptyTitle}</strong>
       ${emptySub?`<span style="font-size:12px">${emptySub}</span>`:''}${emptyCTA}</div>`;
     return;
@@ -2227,33 +2316,25 @@ async function rList(){
 
   el.innerHTML='';
   const frag=document.createDocumentFragment();
-
-  // ── Group items by date key ───────────────────────────────
-  const groups=new Map();  // preserves insertion order (sorted)
+  const groups=new Map();
   items.forEach(x=>{
     const key=x.date||'__no_date__';
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(x);
   });
-
-  // ── Render each date group ────────────────────────────────
   groups.forEach((groupItems,dateKey)=>{
-    // Group header
     const hdr=document.createElement('div');
     hdr.className='date-grp-hdr';
     const label=dateKey==='__no_date__'?'未設定日期':fmtDateHdr(dateKey);
-    // Subtotal (exclude advances from amount)
     const subtotal=groupItems.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
-    const subtotalStr=subtotal>0?fmt(subtotal):'';
-    hdr.innerHTML=`<span>${label}</span>${subtotalStr?`<span class="date-grp-subtotal">${subtotalStr}</span>`:''}`;
+    hdr.innerHTML=`<span>${label}</span>${subtotal>0?`<span class="date-grp-subtotal">${fmt(subtotal)}</span>`:''}`;
     frag.appendChild(hdr);
     groupItems.forEach(x=>frag.appendChild(makeCard(x)));
   });
 
-  // Footer
   const totalAmt=items.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
   const foot=document.createElement('div');foot.className='list-footer';
-  foot.textContent=`共 ${items.length} 筆　合計 ${fmt(totalAmt)}`;
+  foot.textContent=`共 ${items.length} 筆　個人支出 ${fmt(totalAmt)}`;
   frag.appendChild(foot);
   el.appendChild(frag);
 }
@@ -2380,7 +2461,7 @@ function renderDonutChart(sorted, total){
   legEl.innerHTML = '';
 
   if(!total || !sorted.length){
-    wrap.innerHTML = '<div class="donut-empty">本月無支出資料</div>';
+    wrap.innerHTML = '<div class="donut-empty">此月份無支出資料</div>';
     return;
   }
 
@@ -2438,7 +2519,7 @@ function renderDonutChart(sorted, total){
   lbl.setAttribute('x',CX); lbl.setAttribute('y',CY-11);
   lbl.setAttribute('text-anchor','middle');
   lbl.setAttribute('class','donut-lbl');
-  lbl.textContent='總支出';
+  lbl.textContent='個人支出';
 
   const amtT = document.createElementNS(ns,'text');
   amtT.setAttribute('x',CX); amtT.setAttribute('y',CY+10);
@@ -2509,15 +2590,52 @@ function setChartMode(mode){
   document.getElementById('cmode-single').classList.toggle('on', mode==='single');
   document.getElementById('cmode-range').classList.toggle('on', mode==='range');
   document.getElementById('chart-single-bar').style.display = mode==='single' ? '' : 'none';
-  document.getElementById('chart-range-bar').style.display  = mode==='range'  ? '' : 'none';
+  document.getElementById('chart-preset-row').style.display = mode==='range'  ? '' : 'none';
+  document.getElementById('chart-range-bar').style.display  =
+    (mode==='range' && trendPreset==='custom') ? '' : 'none';
   document.getElementById('chart-single-view').style.display = mode==='single' ? '' : 'none';
   document.getElementById('chart-range-view').style.display  = mode==='range'  ? '' : 'none';
   rChart();
 }
 
+// ── 支出趨勢 presets (absorbed the former 趨勢 tab) ─────────
+// 'cmp' swaps the monthly bars for the multi-year comparison, so both live
+// under one entry point instead of two tabs asking the same question.
+let trendPreset='6m';   // '6m' | '12m' | 'year' | 'cmp' | 'custom'
+
+function setTrendPreset(p){
+  trendPreset=p;
+  [['tp-6m','6m'],['tp-12m','12m'],['tp-year','year'],['tp-cmp','cmp'],['tp-custom','custom']]
+    .forEach(([id,v])=>{
+      const b=document.getElementById(id); if(!b)return;
+      b.classList.toggle('on',v===p); b.setAttribute('aria-pressed',v===p);
+    });
+  document.getElementById('chart-range-bar').style.display = p==='custom' ? '' : 'none';
+  rChart();
+}
+
+// Resolve the preset into a concrete YM window
+function resolveTrendRange(){
+  const{y,m}=curYM();
+  if(trendPreset==='custom'){
+    const f=ymStr(+document.getElementById('cr-fy').value,+document.getElementById('cr-fm').value);
+    const t=ymStr(+document.getElementById('cr-ty').value,+document.getElementById('cr-tm').value);
+    return f<=t?{from:f,to:t}:{from:t,to:f};
+  }
+  if(trendPreset==='year'){
+    // Don't pad the chart with empty future months of the current year
+    const endM=(y===cy())?Math.min(m,cm()):12;
+    return {from:ymStr(y,1),to:ymStr(y,endM)};
+  }
+  const n=trendPreset==='12m'?12:6;
+  let fy=y,fm=m-(n-1); while(fm<1){fm+=12;fy--;}
+  return {from:ymStr(fy,fm),to:ymStr(y,m)};
+}
+
 async function rChart(){
   dirty.chart=false;
-  if(chartMode==='range') return rChartRange();
+  if(chartMode==='range')
+    return trendPreset==='cmp' ? renderYearCompare() : rChartRange();
 
   // ── Single-month mode (original logic) ──────────────────
   const y=+document.getElementById('cy2').value,m=+document.getElementById('cm2').value;
@@ -2549,6 +2667,7 @@ async function rChart(){
   // totalSpent = personal expenses ONLY — never inflated by proxy payments
   const totalSpent=normal.reduce((s,x)=>s+x.amount,0);
   const totalBudget=budStore.total||0;
+  document.getElementById('bud-total-lbl').textContent=`${y}/${pad(m)} 總預算`;
   document.getElementById('bud-spent-txt').textContent=fmt(totalSpent);
   if(totalBudget>0){
     document.getElementById('bud-limit-txt').textContent=` / 上限 ${fmt(totalBudget)}`;
@@ -2584,29 +2703,24 @@ async function rChart(){
     });
     bFrag.appendChild(d);
   });
-  if(!any){bEl.innerHTML='<div style="font-size:13px;color:var(--text3)">本月無支出，或尚未設定預算</div>';}
+  if(!any){bEl.innerHTML='<div style="font-size:13px;color:var(--text3)">該月無支出，或尚未設定預算</div>';}
   else{bEl.appendChild(bFrag);}
 }
 
 // ── Feature 2: Range chart renderer ─────────────────────
 async function rChartRange(){
-  // Read from/to selectors
-  const fy=+document.getElementById('cr-fy').value, fm=+document.getElementById('cr-fm').value;
-  const ty=+document.getElementById('cr-ty').value, tm=+document.getElementById('cr-tm').value;
-  const fromKey=ymStr(fy,fm), toKey=ymStr(ty,tm);
+  // Monthly-bars view: show the bar canvas, hide the year-comparison block
+  document.getElementById('cmp-wrap').style.display='none';
+  document.getElementById('trend-stats').style.display='none';
+  document.getElementById('range-cat-card').style.display='';
+  document.getElementById('range-chart').style.display='';
+  if(areaChart){areaChart.destroy();areaChart=null;}
 
-  // Guard: from must be ≤ to
-  if(fromKey>toKey){
-    document.getElementById('range-summary').innerHTML=
-      '<div style="font-size:13px;color:var(--red);padding:8px 2px">起始月份不能晚於結束月份</div>';
-    if(rangeChart){rangeChart.destroy();rangeChart=null;}
-    document.getElementById('range-cat-rows').innerHTML=''; // Bug 3: clear stale category rows
-    return;
-  }
+  const{from:fromKey,to:toKey}=resolveTrendRange();
 
   // Build ordered list of YM keys in range
   const ymKeys=[];
-  let cy2=fy,cm3=fm;
+  let cy2=+fromKey.slice(0,4), cm3=+fromKey.slice(5,7);
   while(ymStr(cy2,cm3)<=toKey){
     ymKeys.push(ymStr(cy2,cm3));
     cm3++;if(cm3>12){cm3=1;cy2++;}
@@ -2616,7 +2730,7 @@ async function rChartRange(){
   // Fetch all items in range — separate personal from proxy up front
   const items   = await getByRange(fromKey, toKey);
   const normal  = items.filter(x => x.itype !== 'advance');  // personal only
-  const advItems= items.filter(x => x.itype === 'advance');  // proxy / reimbursable
+  const advItems= advOn()?items.filter(x => x.itype === 'advance'):[]; // proxy / reimbursable
 
   // Personal monthly totals (budget & chart use this — never includes proxy)
   const monthTotals    = ymKeys.map(k => normal.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
@@ -2642,8 +2756,8 @@ async function rChartRange(){
        </div>`
     : '';
   document.getElementById('range-summary').innerHTML=
-    `<div class="range-sum-tile"><div class="range-sum-lbl">個人實際支出</div><div class="range-sum-val r">${fmt(grandTotal)}</div></div>`+
-    `<div class="range-sum-tile"><div class="range-sum-lbl">月均支出</div><div class="range-sum-val">${fmt(Math.round(avgMth))}</div></div>`+
+    `<div class="range-sum-tile"><div class="range-sum-lbl">個人支出</div><div class="range-sum-val r">${fmt(grandTotal)}</div></div>`+
+    `<div class="range-sum-tile"><div class="range-sum-lbl">月均（÷${ymKeys.length}）</div><div class="range-sum-val">${fmt(Math.round(avgMth))}</div></div>`+
     deductTile+
     (grandAdvTotal===0?`<div class="range-sum-tile"><div class="range-sum-lbl">最高月份</div><div class="range-sum-val r">${maxMthKey}</div></div>`:'');
 
@@ -2660,7 +2774,7 @@ async function rChartRange(){
 
   // Update chart title
   document.getElementById('range-chart-title').textContent=
-    `${fy}/${pad(fm)} → ${ty}/${pad(tm)}　支出走勢（${ymKeys.length} 個月）`;
+    `${fromKey.replace('-','/')} → ${toKey.replace('-','/')}　支出走勢（${ymKeys.length} 個月）`;
 
   // Render bar chart with dynamic X-axis
   if(rangeChart){rangeChart.destroy();rangeChart=null;}
@@ -2832,15 +2946,21 @@ function saveBudgets(){
   });
   saveBudStore();
   document.getElementById('bov').classList.remove('on');
-  rHome(); rChart(); dirty.trend=true;
-  rSettings();
+  dirtyAll(); renderActive(); rSettings();
   toast('預算已儲存');
 }
 
 // ── TREND ────────────────────────────────────────────────
-async function rTrend(){
-  dirty.trend=false;
-  const nowY=cy(),all=await getAll();
+// Year-over-year comparison — the former 趨勢 tab, now the 'cmp' preset.
+async function renderYearCompare(){
+  document.getElementById('cmp-wrap').style.display='';
+  document.getElementById('trend-stats').style.display='';
+  document.getElementById('range-cat-card').style.display='none';
+  document.getElementById('range-chart').style.display='none';
+  if(rangeChart){rangeChart.destroy();rangeChart=null;}
+  document.getElementById('range-chart-title').textContent='年度支出比較';
+
+  const nowY=cy(), all=await getAll();
   const dataYears=[...new Set(all.map(x=>x.ym?parseInt(x.ym.slice(0,4)):0).filter(y=>y>=2026&&y<=2046))];
   if(!dataYears.includes(nowY))dataYears.push(nowY);
   dataYears.sort((a,b)=>a-b);
@@ -2848,8 +2968,17 @@ async function rTrend(){
   selYears=selYears.filter(y=>y>=2026&&y<=2046);
   if(!selYears.length){selYears=[nowY];saveSelYrs();}
 
+  // Months elapsed in a year — keeps 月均 meaning the same thing everywhere
+  const monthsIn=yr=>yr<nowY?12:(yr>nowY?0:cm());
+
+  document.getElementById('range-summary').innerHTML=selYears.map(yr=>{
+    const t=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance')
+               .reduce((s,x)=>s+x.amount,0);
+    return `<div class="range-sum-tile"><div class="range-sum-lbl">${yr} 年支出</div><div class="range-sum-val r">${fmt(t)}</div></div>`;
+  }).join('');
+
   const chipsEl=document.getElementById('yr-chips');chipsEl.innerHTML='';
-  const cFrag = document.createDocumentFragment();
+  const cFrag=document.createDocumentFragment();
   dataYears.forEach(yr=>{
     const on=selYears.includes(yr),pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
     const chip=document.createElement('button');chip.className='yr-chip'+(on?' on':'');
@@ -2861,51 +2990,50 @@ async function rTrend(){
 
   const labels=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const datasets=selYears.map(yr=>{
-    const palIdx=dataYears.indexOf(yr)%YR_PAL.length,pal=YR_PAL[palIdx];
-    const data=Array.from({length:12},(_,i)=>{const k=ymStr(yr,i+1);return all.filter(x=>x.ym===k&&x.itype!=='advance').reduce((s,x)=>s+x.amount,0);});
+    const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
+    const data=Array.from({length:12},(_,i)=>{const k=ymStr(yr,i+1);
+      return all.filter(x=>x.ym===k&&x.itype!=='advance').reduce((s,x)=>s+x.amount,0);});
     return{label:yr+'年',data,borderColor:pal.line,backgroundColor:pal.fill,borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:true,tension:.38};
   });
   if(areaChart){areaChart.destroy();areaChart=null;}
   areaChart=new Chart(document.getElementById('area-chart'),{type:'line',data:{labels,datasets},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}：${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)'}},y:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)',callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'},beginAtZero:true}}}});
 
   const legEl=document.getElementById('chart-legend');legEl.innerHTML='';
-  selYears.forEach(yr=>{const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];const li=document.createElement('div');li.className='chart-leg-item';li.innerHTML=`<div class="chart-leg-dot" style="background:${pal.line}"></div>${yr}年`;legEl.appendChild(li);});
+  selYears.forEach(yr=>{const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
+    const li=document.createElement('div');li.className='chart-leg-item';
+    li.innerHTML=`<div class="chart-leg-dot" style="background:${pal.line}"></div>${yr}年`;legEl.appendChild(li);});
 
   const statsEl=document.getElementById('trend-stats');statsEl.innerHTML='';
   selYears.forEach(yr=>{
     const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
-    const yItems=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance');
-    const yTotal=yItems.reduce((s,x)=>s+x.amount,0);
-    const active=Array.from({length:12},(_,i)=>ymStr(yr,i+1)).filter(k=>yItems.some(x=>x.ym===k));
-    const avg=active.length?yTotal/active.length:0;
-    statsEl.innerHTML+=`<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均</div><div class="stat-val">${fmt(avg)}</div></div>`;
+    const yTotal=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance')
+                    .reduce((s,x)=>s+x.amount,0);
+    const n=monthsIn(yr)||1;
+    statsEl.innerHTML+=`<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均（÷${n}）</div><div class="stat-val">${fmt(yTotal/n)}</div></div>`;
   });
-  // Also keep settings screen in sync if it was previously visited
-  rSettings();
 }
 function toggleYear(yr,dataYears){
   if(selYears.includes(yr)){if(selYears.length<=1){toast('至少選擇一個年份');return;}selYears=selYears.filter(y=>y!==yr);}
   else{if(selYears.length>=5){toast('最多同時比較 5 個年份');return;}selYears.push(yr);selYears.sort((a,b)=>a-b);}
-  saveSelYrs();rTrend();
+  saveSelYrs();renderYearCompare();
 }
 
 // ── Navigation ───────────────────────────────────────────
-const SCREENS=['home','list','chart','trend','settings'];
+const SCREENS=['home','list','chart','settings'];
 function showS(name){
-  SCREENS.forEach(s=>{
-    document.getElementById('s-'+s).classList.toggle('on',s===name);
-    const tab=document.getElementById('tab-'+s);
-    tab.classList.toggle('on',s===name);
-    tab.setAttribute('aria-selected',s===name); // OPT3: ARIA tablist
+  activeScreen=name;
+  SCREENS.forEach(sc=>{
+    document.getElementById('s-'+sc).classList.toggle('on',sc===name);
+    const tab=document.getElementById('tab-'+sc);
+    tab.classList.toggle('on',sc===name);
+    tab.setAttribute('aria-selected',sc===name);
   });
-  // FAB only on home screen
   document.getElementById('fab').classList.toggle('on',name==='home');
   window.scrollTo(0,0);
-  if(name==='chart'&&dirty.chart)rChart();
-  else if(name==='trend'&&dirty.trend)rTrend();
-  else if(name==='list'&&dirty.list)rList();
-  else if(name==='home'&&dirty.home)rHome();
-  else if(name==='settings')rSettings();
+  if(name==='chart'&&dirty.chart)      rChart();
+  else if(name==='list'&&dirty.list)   rList();
+  else if(name==='home'&&dirty.home)   rHome();
+  else if(name==='settings')           rSettings();
 }
 
 // ── Settings render ──────────────────────────────────────
@@ -2950,6 +3078,9 @@ async function openForm(id){
     document.getElementById('rd-off').checked=rd===0;
     document.getElementById('rd-3').checked=rd===3;
     document.getElementById('rd-7').checked=rd===7;
+    const xym=(x.ym&&/^\d{4}-\d{2}$/.test(x.ym))?x.ym:ymStr(SEL.y,SEL.m);
+    document.getElementById('f-ym-y').value=+xym.slice(0,4);
+    document.getElementById('f-ym-m').value=+xym.slice(5,7);
     if(isAdv){document.getElementById('r-unrec').checked=x.recovered!==1;document.getElementById('r-rec').checked=x.recovered===1;}
     else{document.getElementById('r-unpaid').checked=x.paid!==1;document.getElementById('r-paid').checked=x.paid===1;}
 
@@ -2971,6 +3102,8 @@ async function openForm(id){
     document.getElementById('f-name').value='';
     setAmt('f-amt-r','f-amt-d',0);
     document.getElementById('f-date').value=today();
+    document.getElementById('f-ym-y').value=SEL.y;
+    document.getElementById('f-ym-m').value=SEL.m;
     document.getElementById('f-note').value='';document.getElementById('f-payee').value='';
     document.getElementById('rd-3').checked=true;
     document.getElementById('r-unpaid').checked=true;document.getElementById('r-paid').checked=false;
@@ -2987,6 +3120,7 @@ async function openForm(id){
     advFields.classList.add('open');advBtn.classList.add('open');
     advBtn.setAttribute('aria-expanded','true');
   }
+  updateYmNote();
   // Fix 1: proxy toggle stays accessible in edit mode — onTypeChange() already handles show/hide
   document.getElementById('fsform').classList.add('on');
   _savedScroll=window.scrollY;
@@ -3015,14 +3149,19 @@ async function saveItem(){
   const name    = document.getElementById('f-name').value.trim();
   const billAmt = getAmt('f-amt-r');            // user-entered total (e.g. full credit card bill)
   if(!name){ alert('請填寫項目名稱'); return; }
-  if(!billAmt||billAmt<=0){ alert('請填寫正確金額（需大於 0）'); return; }
+  // $0 是合法金額（例如免年費、贈品、額度未使用的訂閱），只擋負數
+  if(billAmt<0){ alert('金額不可為負數'); return; }
 
   const isAdv = document.getElementById('rt-advance').checked;
   const{y,m}  = curYM();
-  const ym     = ymStr(y,m);
+  const date0 = document.getElementById('f-date').value;
+  // 歸屬月份 is now an explicit field: a June bill due 7/2 stays in June.
+  // Editing a record can never silently move it to another month.
+  const ym     = ymStr(+document.getElementById('f-ym-y').value,
+                       +document.getElementById('f-ym-m').value);
   const remDays= parseInt(document.querySelector('input[name="remind"]:checked')?.value||'0');
   const cat    = document.getElementById('f-cat').value;
-  const date   = document.getElementById('f-date').value;
+  const date   = date0;
   const rawNote= document.getElementById('f-note').value.trim();
 
   // ── Proxy split: collect rows (only for normal-type entries) ─────────
@@ -3127,7 +3266,8 @@ async function saveItem(){
 
   const verb  = wasEditing ? '已更新' : '已新增';
   const suffix= proxyCreated>0 ? `，${proxyCreated} 筆代墊另立記錄` : '';
-  toast(`${verb}：${name}${suffix}`);
+  const elsewhere = ym!==ymStr(y,m) ? `（歸入 ${ym.replace('-','/')}）` : '';
+  toast(`${verb}：${name}${elsewhere}${suffix}`);
 }
 async function confirmDel(){
   if(!editId||!confirm('確定刪除此項目？'))return;
@@ -3143,6 +3283,8 @@ async function copyPrev(){
   const{y,m}=curYM(),prevM=m===1?12:m-1,prevY=m===1?y-1:y;
   const prev=await getByYM(ymStr(prevY,prevM));if(!prev.length)return;
   for(const x of prev){
+    // Dates are cleared on purpose (they're next month's bills, not last
+    // month's), so ym has to be set explicitly — there's no date to derive it.
     const copied={...x,id:undefined,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)};
     delete copied.parentId; // Fix: stale parentId would point to prev-month parent; drop the link
     await putItem(copied);
@@ -3211,16 +3353,34 @@ function saveRemindSettings(){
 async function exportJSON(){const all=await getAll();const blob=new Blob([JSON.stringify({v:8,exported:new Date().toISOString(),items:all},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`expenses-${today()}.json`;a.click();toast('JSON 備份已下載');}
 async function exportCSV(){
   const all=await getAll();
+  // The importer splits rows on \n and treats a comma as a field break unless
+  // the field is quoted, so every free-text cell gets flattened and quoted —
+  // otherwise a note containing a line break silently splits one record in two.
+  const flat=v=>String(v==null?'':v).replace(/\r\n|[\r\n]/g,'　');
+  const cell=v=>`"${flat(v).replace(/"/g,'""')}"`;
   const hdr='年月,類別,類型,項目名稱,金額,日期,備註,繳納狀態,代墊對象,收回狀態';
-  const rows=all.map(x=>[x.ym,x.cat,x.itype==='advance'?'代墊':'一般',`"${(x.name||'').replace(/"/g,'""')}"`,x.amount,x.date||'',`"${(x.note||'').replace(/"/g,'""')}"`,x.paid===1?'已繳':'未繳',x.payee||'',x.itype==='advance'?(x.recovered===1?'已收回':'未收回'):'—'].join(','));
-  const blob=new Blob(['\uFEFF'+hdr+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`expenses-${today()}.csv`;a.click();toast('CSV 已下載');
+  const rows=all.map(x=>[
+    x.ym,
+    cell(x.cat),
+    x.itype==='advance'?'代墊':'一般',
+    cell(x.name),
+    x.amount,
+    x.date||'',
+    cell(x.note),
+    x.paid===1?'已繳':'未繳',
+    cell(x.payee),
+    x.itype==='advance'?(x.recovered===1?'已收回':'未收回'):'—'
+  ].join(','));
+  const blob=new Blob(['\uFEFF'+hdr+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`expenses-${today()}.csv`;a.click();toast('CSV 已下載');
 }
 async function importFile(e){
   const file=e.target.files[0];if(!file)return;
   try{
     const text=await file.text();let items;
     if(file.name.endsWith('.json')){const d=JSON.parse(text);items=d.items||d;if(!Array.isArray(items))throw new Error('格式錯誤');}
-    else{const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());items=lines.map(l=>{const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};}).filter(x=>x.name&&x.amount>0);}
+    else{const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());items=lines.map(l=>{const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};}).filter(x=>x.name&&x.amount>=0);}
     if(!confirm(`匯入 ${items.length} 筆？（不刪除現有資料）`))return;
     for(const item of items){
       const c={...item};
@@ -3228,7 +3388,14 @@ async function importFile(e){
       delete c.parentId; // parentId refs use old IDs that don't exist after reimport — strip to prevent broken cascade
       await putItem(c);
     }
-    dirtyAll();rHome();toast(`已匯入 ${items.length} 筆`);
+    // The 代墊 switch was resolved at boot, possibly against an empty DB —
+    // re-check so imported 代墊 records aren't invisible.
+    if(!advOn() && items.some(x=>x.itype==='advance')){
+      featAdv=true;
+      localStorage.setItem('ep_feat_adv','true');
+      applyAdvVisibility();
+    }
+    dirtyAll();renderActive();toast(`已匯入 ${items.length} 筆`);
   }catch(err){alert('匯入失敗：'+err.message);}
   e.target.value='';
 }
@@ -3245,9 +3412,10 @@ if('serviceWorker' in navigator){
 })();
 
 // ── Init ─────────────────────────────────────────────────
-openDB().then(()=>{
+openDB().then(async ()=>{
   buildSelects();
   refreshCatSel();
+  await initAdvanceFeature();   // decides visibility before the first paint
   rSettings();  // populate settings previews on first load
   
   // 優化：處理中文輸入法 (IME) 的搜尋防抖事件
@@ -3288,7 +3456,7 @@ openDB().then(()=>{
         await delItem(id);
         dirtyAll();
         card.remove(); // OPT2: remove only this card, no full rebuild
-        _patchHomeMetrics(); // sync hero totals after swipe-delete
+        if(activeScreen==='home') rHome(); // hero + list back in sync
         toastUndo(`已刪除「${x.name}」`, async()=>{
           delete backup.id;
           const restored = await putItem(backup);
@@ -3343,8 +3511,9 @@ openDB().then(()=>{
         ? (checked?'已收回，點擊取消':'未收回，點擊標記收回')
         : (checked?'已繳，點擊取消':'未繳，點擊標記繳納'));
 
-      // Update home hero numbers in real-time (regardless of which list triggered this)
-      _patchHomeMetrics();
+      // Home shows only 待處理 by default, so a full re-render is both simpler
+      // and correct — the item just ticked off drops out of the list.
+      if(activeScreen==='home') rHome();
 
       toast(isAdv ? (checked?'已標記收回 ✓':'已取消收回')
                   : (checked?'已標記繳納 ✓':'已取消繳納'));
