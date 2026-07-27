@@ -246,7 +246,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 
 /* ── Hero budget row — inline inside hero-main-card ─────────── */
 .hero-remain-row{
-  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  display:flex;align-items:center;gap:16px;
 }
 .hero-remain-left{flex:1;min-width:0}
 .hero-remain-lbl{
@@ -260,17 +260,44 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 }
 .hero-remain-val.r{color:var(--red)}
 .hero-remain-sub{font-size:10.5px;color:var(--text3);margin-top:2px}
-.hero-remain-right{
-  display:flex;flex-direction:column;align-items:flex-end;gap:5px;
-  flex-shrink:0;min-width:100px;
+/* ── Budget ring — replaces the old 4px inline track ───────── */
+.bud-ring-wrap{position:relative;width:92px;height:92px;flex-shrink:0}
+.bud-ring{width:92px;height:92px;display:block}
+.bud-ring-bg{fill:none;stroke:var(--surface4);stroke-width:9}
+.bud-ring-fg{
+  fill:none;stroke:var(--green);stroke-width:9;stroke-linecap:round;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+  transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1),stroke .3s ease;
 }
-.hero-bud-inline-track{
-  width:100%;height:4px;
-  background:var(--surface4);border-radius:99px;overflow:hidden;
+.bud-ring-fg.warn{stroke:var(--amber)}
+.bud-ring-fg.over{stroke:var(--red)}
+.bud-ring-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;line-height:1;
 }
-.hero-bud-pct{
-  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text2);
+.bud-ring-pct{
+  font-family:'Sora',sans-serif;font-size:21px;font-weight:700;
+  letter-spacing:-.03em;color:var(--text);
 }
+.bud-ring-pct.na{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:0}
+.bud-ring-cap{font-size:9.5px;color:var(--text3);margin-top:3px;letter-spacing:.06em}
+
+/* ── Daily-allowance / payday countdown boxes ───────────────── */
+.hero-stat-row{
+  display:flex;margin-top:13px;padding-top:12px;
+  border-top:1px solid var(--border);
+}
+.hero-stat{flex:1;text-align:center;position:relative}
+.hero-stat+.hero-stat::before{
+  content:'';position:absolute;left:0;top:2px;bottom:2px;width:1px;background:var(--border);
+}
+.hero-stat-num{
+  font-family:'DM Mono',monospace;font-size:17px;font-weight:600;
+  letter-spacing:-.02em;color:var(--text);
+}
+.hero-stat-num.r{color:var(--red)}
+.hero-stat-num.g{color:var(--green)}
+.hero-stat-lbl{font-size:10.5px;color:var(--text3);margin-top:4px;letter-spacing:.03em}
 /* bud-bar-fill shared (used by inline track + chart screen) */
 .bud-bar-fill{height:100%;background:var(--green);border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
 .bud-bar-fill.warn{background:var(--amber)}.bud-bar-fill.over{background:var(--red)}
@@ -1155,16 +1182,33 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 
       <!-- Budget remain row (unique data, promoted here) -->
       <div class="hero-remain-row">
+        <div class="bud-ring-wrap">
+          <svg class="bud-ring" viewBox="0 0 100 100" role="img" aria-labelledby="h-ring-t">
+            <title id="h-ring-t">預算使用進度</title>
+            <circle class="bud-ring-bg" cx="50" cy="50" r="42"/>
+            <circle class="bud-ring-fg" id="h-ring" cx="50" cy="50" r="42"/>
+          </svg>
+          <div class="bud-ring-center">
+            <div class="bud-ring-pct" id="h-bud-pct">—</div>
+            <div class="bud-ring-cap" id="h-bud-cap">已用</div>
+          </div>
+        </div>
         <div class="hero-remain-left">
           <div class="hero-remain-lbl">預算剩餘</div>
           <div class="hero-remain-val" id="h-remain">未設定</div>
           <div class="hero-remain-sub" id="h-remain-sub"></div>
         </div>
-        <div class="hero-remain-right">
-          <div class="hero-bud-inline-track">
-            <div class="bud-bar-fill" id="h-bud-fill" style="width:0%"></div>
-          </div>
-          <div class="hero-bud-pct" id="h-bud-pct">—</div>
+      </div>
+
+      <!-- Only meaningful while the current month is on screen -->
+      <div class="hero-stat-row" id="h-stat-row" style="display:none" onclick="openBudModal()">
+        <div class="hero-stat">
+          <div class="hero-stat-num" id="h-daily">—</div>
+          <div class="hero-stat-lbl" id="h-daily-lbl">每日可花</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num" id="h-payday">—</div>
+          <div class="hero-stat-lbl" id="h-payday-lbl">距離月底</div>
         </div>
       </div>
 
@@ -1519,6 +1563,11 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
       <p class="field-note">設為 0 表示不設定總預算上限</p>
     </div>
+    <div class="field">
+      <label>發薪日</label>
+      <select id="bt-payday" onchange="updatePaydayNote()" aria-label="發薪日"></select>
+      <p class="field-note" id="bt-payday-note"></p>
+    </div>
     <div class="fdivider"></div>
     <p id="bud-cat-caption" style="font-size:12px;color:var(--text3);margin-bottom:10px">各分類預算（元）</p>
     <div id="b-fields"></div>
@@ -1630,6 +1679,9 @@ let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
 let selYears=JSON.parse(localStorage.getItem('ep_sel_yrs')||'null');
 let remCfg=JSON.parse(localStorage.getItem('ep_rem_cfg')||'null')||{...DEF_REM};
 let remDismissed=localStorage.getItem('ep_rem_dis')||'';
+// 發薪日：1–31，0 = 未設定。存 day-of-month 而非日期，才能逐月自動推算。
+let payday=parseInt(localStorage.getItem('ep_payday')||'0')||0;
+function savePayday(){localStorage.setItem('ep_payday',String(payday));}
 if(!userCats){userCats=[...DEFAULT_CATS];saveCats();}
 
 function getCats(){return userCats;}
@@ -2088,6 +2140,48 @@ function applyAdvVisibility(){
   if(!advOn()&&listFilter==='advance')listFilter='all';
 }
 
+// ── Budget pacing: daily allowance + payday countdown ────────────
+// 兩個參考實作常見的陷阱都在這裡處理掉：
+//   1. 月底當天 remainDays 會是 0 → 除以 0 得 Infinity。天數一律至少為 1。
+//   2. 只算「到月底」在有發薪日時是錯的：錢要撐到下次入帳，不是撐到月底。
+const daysInMonth=(y,m)=>new Date(y,m,0).getDate();          // m = 1-12
+
+// 下一個發薪日（含今天）。31 號遇到小月自動夾到當月最後一天。
+function nextPayday(pd){
+  if(!pd) return null;
+  const t=new Date(); t.setHours(0,0,0,0);
+  const mk=(y,mIdx)=>new Date(y,mIdx,Math.min(pd,new Date(y,mIdx+1,0).getDate()));
+  let d=mk(t.getFullYear(),t.getMonth());
+  if(d<t) d=mk(t.getFullYear(),t.getMonth()+1);
+  return d;
+}
+function daysUntilPayday(){
+  const d=nextPayday(payday);
+  if(!d) return null;
+  const t=new Date(); t.setHours(0,0,0,0);
+  return Math.round((d-t)/86400000);
+}
+// 剩餘天數含今天 —— 今天本來就還能花錢
+function daysLeftInMonth(){
+  const t=new Date();
+  return daysInMonth(t.getFullYear(),t.getMonth()+1)-t.getDate()+1;
+}
+
+// 回傳 {daily, coverDays, mode}；mode 決定標籤要寫「到發薪日」還是「到月底」
+function budgetPacing(remain){
+  const dp=daysUntilPayday();
+  const useP=dp!==null;
+  // 發薪當天視為新週期起點，用整個週期長度而非 0 天
+  const cover=Math.max(1, useP ? (dp===0?cycleLength():dp) : daysLeftInMonth());
+  return {daily:Math.max(0,Math.floor(Math.max(remain,0)/cover)), coverDays:cover, mode:useP?'payday':'month'};
+}
+// 這次發薪到下次發薪的天數
+function cycleLength(){
+  const t=new Date(); t.setHours(0,0,0,0);
+  const mk=(y,mIdx)=>new Date(y,mIdx,Math.min(payday,new Date(y,mIdx+1,0).getDate()));
+  return Math.max(1,Math.round((mk(t.getFullYear(),t.getMonth()+1)-mk(t.getFullYear(),t.getMonth()))/86400000));
+}
+
 // ── Proxy deduction note ────────────────────────────────
 // Renders as a small badge; the arithmetic stays folded until tapped.
 //   advTotal : sum of ALL advance items this period (the full exclusion amount)
@@ -2152,27 +2246,77 @@ async function rHome(){
   document.getElementById('h-subline').innerHTML=sub;
   _setDeductNote(advTotal,total);
 
-  // ── Budget row ──────────────────────────────────────────────────────
+  // ── Budget ring + pacing ────────────────────────────────────────────
   const bTotal=budStore.total||0;
   const remEl=document.getElementById('h-remain');
   const remSub=document.getElementById('h-remain-sub');
+  const ring=document.getElementById('h-ring');
+  const pctEl=document.getElementById('h-bud-pct');
+  const capEl=document.getElementById('h-bud-cap');
+  const statRow=document.getElementById('h-stat-row');
+  const isNow = (y===cy() && m===cm());   // pacing only means something now
+
+  const R=42, CIRC=2*Math.PI*R;
+  ring.style.strokeDasharray=CIRC;
+
   if(bTotal>0){
     const remain=bTotal-total;
+    const rawPct=Math.round(total/bTotal*100);      // may exceed 100
+    const pct=Math.min(rawPct,100);                 // ring never overfills
     remEl.textContent=fmt(Math.max(remain,0));
     remEl.className='hero-remain-val'+(remain<0?' r':'');
-    remSub.textContent=`預算 ${fmt(bTotal)}`;
+    remSub.textContent=remain<0
+      ? `超支 ${fmt(-remain)} · 預算 ${fmt(bTotal)}`
+      : `預算 ${fmt(bTotal)}`;
+    pctEl.textContent=rawPct+'%';
+    pctEl.className='bud-ring-pct';
+    capEl.textContent='已用';
+    ring.className.baseVal='bud-ring-fg'+(rawPct>=100?' over':rawPct>=80?' warn':'');
+    // Paint from empty so the sweep animates on every render
+    ring.style.strokeDashoffset=CIRC;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ring.style.strokeDashoffset=CIRC-(pct/100)*CIRC;
+    }));
   }else{
     remEl.textContent='未設定';remEl.className='hero-remain-val';
     remSub.textContent='可於設定頁設定預算';
+    pctEl.textContent='未設定';pctEl.className='bud-ring-pct na';
+    capEl.textContent='';
+    ring.className.baseVal='bud-ring-fg';
+    ring.style.strokeDashoffset=CIRC;
   }
-  const pct=bTotal>0?Math.min(Math.round(total/bTotal*100),100):0;
-  const fill=document.getElementById('h-bud-fill');
-  const pctLbl=document.getElementById('h-bud-pct');
-  if(bTotal>0){
-    fill.style.width=pct+'%';
-    fill.className='bud-bar-fill'+(pct>=100?' over':pct>=80?' warn':'');
-    pctLbl.textContent=pct+'%';
-  }else{fill.style.width='0%';fill.className='bud-bar-fill';pctLbl.textContent='未設定';}
+
+  // 每日可花 / 距離發薪日 —— 只在檢視當月時顯示
+  if(isNow && bTotal>0){
+    statRow.style.display='';
+    const pace=budgetPacing(bTotal-total);
+    const over=(bTotal-total)<0;
+    const dailyEl=document.getElementById('h-daily');
+    dailyEl.textContent=over?'超支':fmt(pace.daily);
+    dailyEl.className='hero-stat-num'+(over?' r':'');
+    document.getElementById('h-daily-lbl').textContent=
+      over?'已無可用額度':`每日可花（÷${pace.coverDays} 天）`;
+
+    const pdEl=document.getElementById('h-payday');
+    const pdLbl=document.getElementById('h-payday-lbl');
+    const dp=daysUntilPayday();
+    if(dp===null){
+      pdEl.textContent=daysLeftInMonth()+' 天';
+      pdEl.className='hero-stat-num';
+      pdLbl.textContent='距離月底 · 點此設發薪日';
+    }else if(dp===0){
+      pdEl.textContent='今天';
+      pdEl.className='hero-stat-num g';
+      pdLbl.textContent='發薪日';
+    }else{
+      pdEl.textContent=dp+' 天';
+      pdEl.className='hero-stat-num';
+      const nd=nextPayday(payday);
+      pdLbl.textContent=`距離發薪日（${nd.getMonth()+1}/${nd.getDate()}）`;
+    }
+  }else{
+    statRow.style.display='none';
+  }
 
   await refreshRems();
   maybeAutoShowRems();
@@ -2989,6 +3133,8 @@ async function openBudModal(){
   const rangeItems=await getByRange(ymKeys[0],ymKeys[5]);
   const trendByCat=_trendByCat(rangeItems,ymKeys);
 
+  buildPaydaySelect(); updatePaydayNote();
+
   const cap=document.getElementById('bud-cat-caption');
   if(cap) cap.textContent=`各分類預算（元）· 顯示 ${y}/${pad(m)} 使用進度與近 6 個月趨勢`;
 
@@ -3024,6 +3170,23 @@ async function openBudModal(){
 // Live-updates one category's bar, usage text and badge while its limit is
 // being typed. Patches only the nodes that change — the shared block's markup
 // is otherwise identical to the read-only render on the 圖表 page.
+// 發薪日下拉：未設定 + 1–31
+function buildPaydaySelect(){
+  const sel=document.getElementById('bt-payday'); if(!sel)return;
+  sel.innerHTML='<option value="0">未設定（以月底計算）</option>'+
+    Array.from({length:31},(_,i)=>`<option value="${i+1}">每月 ${i+1} 號</option>`).join('');
+  sel.value=String(payday||0);
+}
+function updatePaydayNote(){
+  const note=document.getElementById('bt-payday-note'); if(!note)return;
+  const pd=+document.getElementById('bt-payday').value||0;
+  if(!pd){ note.textContent='未設定時，「每日可花」以距離月底的天數計算'; return; }
+  const t=new Date(), last=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
+  note.textContent = pd>28
+    ? `小月會自動順延至該月最後一天（本月為 ${Math.min(pd,last)} 號）`
+    : '「每日可花」將改以距離下次發薪日的天數計算';
+}
+
 function updateBudProgress(idx){
   const input=document.getElementById(`bd-r-${idx}`);
   if(!input)return;
@@ -3060,6 +3223,8 @@ function updateBudProgress(idx){
 
 function saveBudgets(){
   budStore.total=getAmt('bt-r');
+  payday=+document.getElementById('bt-payday').value||0;
+  savePayday();
   getCats().forEach((_,idx)=>{
     const el=document.getElementById(`bd-r-${idx}`);if(!el)return;
     const v=parseInt(el.value)||0;
@@ -3169,7 +3334,12 @@ function rSettings(){
   if(rp) rp.textContent=remCfg.enabled?`已啟用 · 提前 ${remCfg.dueSoonDays} 天提醒`:'已停用';
   // Budget preview
   const bp=document.getElementById('bud-preview-settings');
-  if(bp) bp.textContent=budStore.total>0?`每月上限 ${fmt(budStore.total)}`:'尚未設定';
+  if(bp){
+    const parts=[];
+    if(budStore.total>0)parts.push(`每月上限 ${fmt(budStore.total)}`);
+    if(payday)parts.push(`發薪日 ${payday} 號`);
+    bp.textContent=parts.length?parts.join(' · '):'尚未設定';
+  }
 }
 
 // ── Full-screen form ─────────────────────────────────────
