@@ -1642,17 +1642,15 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="field"><label>備註（選填）</label><textarea id="f-note" placeholder="例：含年費、自動扣款…"></textarea></div>
       <div class="fdivider"></div>
       <div class="field" id="f-status-wrap">
-        <label>繳納狀態</label>
-        <div class="radio-row">
-          <label class="radio-opt"><input type="radio" name="paid" id="r-unpaid" value="0"> 尚未繳納</label>
-          <label class="radio-opt"><input type="radio" name="paid" id="r-paid" value="1"> 已繳納</label>
-        </div>
-      </div>
-      <div class="field" id="f-recovered-wrap" style="display:none">
-        <label>收回狀態</label>
-        <div class="radio-row">
-          <label class="radio-opt"><input type="radio" name="recovered" id="r-unrec" value="0"> 尚未收回</label>
-          <label class="radio-opt"><input type="radio" name="recovered" id="r-rec" value="1"> 已收回</label>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-lbl" id="f-status-lbl">已繳納</div>
+            <div class="toggle-sub" id="f-status-sub">開啟表示這筆費用已經付款</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="f-status" onchange="setFStatus(this.checked)" aria-label="繳納狀態">
+            <div class="toggle-track"></div><div class="toggle-thumb"></div>
+          </label>
         </div>
       </div>
     </div>
@@ -2150,12 +2148,29 @@ function updateCloseNote(){
   }
 }
 
+// 繳納／收回狀態：單一切換開關，與快速編輯同款。
+// 一般費用寫入 paid、代墊款寫入 recovered，同一時間只有一種意義，
+// 所以不需要兩個控制項，只要換標籤即可。
+let fStatus=0;
+function setFStatus(on){
+  fStatus=on?1:0;
+  const chk=document.getElementById('f-status');
+  if(chk) chk.checked=!!fStatus;
+}
+function syncStatusLabel(){
+  const isAdv=document.getElementById('rt-advance')?.checked;
+  const lbl=document.getElementById('f-status-lbl');
+  const sub=document.getElementById('f-status-sub');
+  if(lbl) lbl.textContent = isAdv?'已收回':'已繳納';
+  if(sub) sub.textContent = isAdv?'開啟表示已向對方收回這筆代墊款'
+                                 :'開啟表示這筆費用已經付款';
+}
+
 function onTypeChange(){
   const a=document.getElementById('rt-advance').checked;
   document.getElementById('adv-hint').style.display=a?'block':'none';
   document.getElementById('f-payee-wrap').style.display=a?'block':'none';
-  document.getElementById('f-status-wrap').style.display=a?'none':'block';
-  document.getElementById('f-recovered-wrap').style.display=a?'block':'none';
+  syncStatusLabel();   // 同一個開關，只換標籤
   // Proxy split-entry: opt-in toggle only for normal (new items)
   const tRow = document.getElementById('proxy-toggle-row');
   if(a){
@@ -3701,11 +3716,10 @@ async function openQuickEdit(id){
   setAmt('qe-amt-r','qe-amt-d',x.amount);
   document.getElementById('qe-date').value=x.date||'';
 
-  const chk=document.getElementById('qe-status');
-  chk.checked = isAdv ? x.recovered===1 : x.paid===1;
+  document.getElementById('qe-status').checked = isAdv ? x.recovered===1 : x.paid===1;
   document.getElementById('qe-status-lbl').textContent = isAdv?'已收回':'已繳納';
   document.getElementById('qe-status-sub').textContent =
-    isAdv?'代墊款是否已向對方收回':'這筆費用是否已經付款';
+    isAdv?'開啟表示已向對方收回這筆代墊款':'開啟表示這筆費用已經付款';
 
   // 唯讀脈絡：這些在快速編輯裡不能改，但要看得到才知道自己在編哪一筆
   const meta=[`類別 ${x.cat}`, `歸屬 ${(x.ym||'').replace('-','/')}`];
@@ -3730,8 +3744,8 @@ async function saveQuickEdit(){
 
   x.amount=amt;
   x.date=document.getElementById('qe-date').value;
-  const on=document.getElementById('qe-status').checked;
-  if(x.itype==='advance') x.recovered=on?1:0; else x.paid=on?1:0;
+  const on=document.getElementById('qe-status').checked?1:0;
+  if(x.itype==='advance') x.recovered=on; else x.paid=on;
   // 改日期不會搬動歸屬月份 —— ym 是獨立欄位，要改請走完整表單
   await putItem(x);
 
@@ -3955,8 +3969,7 @@ async function openForm(id){
     const xym=(x.ym&&/^\d{4}-\d{2}$/.test(x.ym))?x.ym:ymStr(SEL.y,SEL.m);
     document.getElementById('f-ym-y').value=+xym.slice(0,4);
     document.getElementById('f-ym-m').value=+xym.slice(5,7);
-    if(isAdv){document.getElementById('r-unrec').checked=x.recovered!==1;document.getElementById('r-rec').checked=x.recovered===1;}
-    else{document.getElementById('r-unpaid').checked=x.paid!==1;document.getElementById('r-paid').checked=x.paid===1;}
+    setFStatus(isAdv ? x.recovered===1 : x.paid===1);
 
     // Fix 1: repopulate existing proxy children so edits don't create duplicates/orphans
     if(!isAdv){
@@ -3981,8 +3994,7 @@ async function openForm(id){
     document.getElementById('f-ym-m').value=SEL.m;
     document.getElementById('f-note').value='';document.getElementById('f-payee').value='';
     document.getElementById('rd-3').checked=true;
-    document.getElementById('r-unpaid').checked=true;document.getElementById('r-paid').checked=false;
-    document.getElementById('r-unrec').checked=true;document.getElementById('r-rec').checked=false;
+    setFStatus(false);
   }
   // UX7: always start with advanced fields collapsed for new entries
   const advFields=document.getElementById('adv-fields');
@@ -3995,7 +4007,7 @@ async function openForm(id){
     advFields.classList.add('open');advBtn.classList.add('open');
     advBtn.setAttribute('aria-expanded','true');
   }
-  updateYmNote(); onCatChange();
+  updateYmNote(); onCatChange(); syncStatusLabel();
   // Fix 1: proxy toggle stays accessible in edit mode — onTypeChange() already handles show/hide
   document.getElementById('fsform').classList.add('on');
   _savedScroll=window.scrollY;
@@ -4100,7 +4112,7 @@ async function saveItem(){
       item.itype     = 'advance';
       item.amount    = billAmt;    // advance always stores full amount
       item.payee     = document.getElementById('f-payee').value.trim();
-      item.recovered = document.getElementById('r-rec').checked?1:0;
+      item.recovered = fStatus;
       item.paid      = 1;
       delete item.note; item.note = rawNote;
       // Fix: preserve parentId when editing a proxy-child advance item
@@ -4110,7 +4122,7 @@ async function saveItem(){
         if(existing?.parentId) item.parentId = existing.parentId;
       }
     } else {
-      item.paid = document.getElementById('r-paid').checked?1:0;
+      item.paid = fStatus;
     }
     if(editId) item.id=editId;
     await putItem(item);
