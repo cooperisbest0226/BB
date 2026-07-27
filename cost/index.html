@@ -184,14 +184,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 }
 .top-bar select:focus{outline:2px solid var(--green);outline-offset:1px}
 .top-bar select.flex1{flex:1}
-.icon-btn{
-  width:36px;height:36px;border:none;background:var(--bg);
-  color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;flex-shrink:0;box-shadow:var(--shadow-sm);
-  transition:all var(--t-fast);
-}
-.icon-btn:active{background:var(--surface2)}
-.icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 .month-nav-btn{
   width:36px;height:36px;
   border:1px solid var(--border2);border-radius:50%;
@@ -241,8 +233,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   margin-bottom:10px;
   animation:countUp .5s .1s ease both;
 }
-.hero-big-num.good{color:var(--green)}
-.hero-big-num span.currency{font-size:24px;font-weight:600;margin-right:2px;opacity:.8}
 
 /* ── Hero budget row — inline inside hero-main-card ─────────── */
 .hero-remain-row{
@@ -298,9 +288,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .hero-stat-num.r{color:var(--red)}
 .hero-stat-num.g{color:var(--green)}
 .hero-stat-lbl{font-size:10.5px;color:var(--text3);margin-top:4px;letter-spacing:.03em}
-/* bud-bar-fill shared (used by inline track + chart screen) */
-.bud-bar-fill{height:100%;background:var(--green);border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
-.bud-bar-fill.warn{background:var(--amber)}.bud-bar-fill.over{background:var(--red)}
 
 /* ── Cards ───────────────────────────────────────────────── */
 .card{
@@ -317,20 +304,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .card-title a{font-size:12px;color:var(--green);font-weight:600;cursor:pointer;transition:color var(--t-fast)}
 .card-title a:hover{color:var(--green-dk)}
 
-/* ── Summary strip (list / chart screens) ────────────────── */
-.summary-strip{
-  display:flex;gap:8px;padding:8px 16px;
-  background:var(--surface);flex-shrink:0;overflow-x:auto;scrollbar-width:none;
-}
-.summary-strip::-webkit-scrollbar{display:none}
-.sum-card{
-  background:var(--bg);border-radius:var(--radius);
-  padding:9px 12px;flex:1;min-width:72px;flex-shrink:0;
-  box-shadow:var(--shadow-sm);
-}
-.sum-lbl{font-size:10px;color:var(--text3);margin-bottom:3px;letter-spacing:.04em;text-transform:uppercase;font-weight:500}
-.sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;letter-spacing:-.02em;white-space:nowrap}
-.sum-val.g{color:var(--green)}.sum-val.r{color:var(--red)}.sum-val.o{color:var(--orange)}
 
 /* ── Badges ──────────────────────────────────────────────── */
 .badge{
@@ -481,15 +454,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .filter-row.scroll::-webkit-scrollbar{display:none}
 .filter-row.scroll .filter-btn{flex:0 0 auto;padding:0 14px}
 
-/* ── Proxy split-entry section (inside fsform) ───────────── */
-.proxy-section-hdr{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:8px;
-}
-.proxy-section-lbl{
-  font-size:11.5px;font-weight:600;color:var(--text3);
-  text-transform:uppercase;letter-spacing:.06em;
-}
 .proxy-toggle-btn{
   display:inline-flex;align-items:center;gap:6px;
   padding:5px 13px;border-radius:99px;
@@ -646,10 +610,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .proxy-calc-result span:last-child{
   font-family:'DM Mono',monospace;font-size:14px;font-weight:700;
 }
-.proxy-empty-hint{
-  font-size:12px;color:var(--text3);text-align:center;
-  padding:10px 0;
-}
 
 /* ── Feature 1: Date-group headers in list view ──────────── */
 .date-grp-hdr{
@@ -736,17 +696,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .iamt{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;letter-spacing:-.01em}
 .iamt.g{color:var(--green)}.iamt.r{color:var(--red)}.iamt.o{color:var(--orange)}
 
-/* ── Reminder widgets ─────────────────────────────────────── */
-.rem-box{margin-bottom:12px}
-.rem-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.rem-hdr-lbl{font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px}
-.rem-hdr-lbl svg{width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2;stroke-linecap:round}
-.rem-dismiss{
-  font-size:11px;color:var(--text3);cursor:pointer;padding:2px 10px;
-  border:1px solid var(--border2);border-radius:99px;background:var(--bg);
-  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
-}
-.rem-dismiss:active{background:var(--surface2)}
 .rem-row{
   display:flex;align-items:center;gap:10px;
   background:var(--bg);border-radius:var(--radius-lg);
@@ -807,10 +756,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .stat-lbl{font-size:10px;color:var(--text3);margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
 .stat-val{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-.02em}
 .stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}.stat-val.o{color:var(--orange)}
-.pie-wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
-.pie-legend{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
-.leg-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);min-width:0}
-.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .bud-cat-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;align-items:center}
 .bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden}
 .bud-cat-fill{height:100%;border-radius:4px;transition:width .4s}
@@ -999,12 +944,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .bud-nolimit-row span:first-child{color:var(--text);flex:1;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bud-nolimit-amt{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);font-weight:600}
-.bud-nolimit-set{
-  background:transparent;border:1px solid var(--border2);border-radius:99px;
-  color:var(--green);font-size:11px;font-family:inherit;
-  padding:3px 11px;cursor:pointer;flex-shrink:0;
-}
-.bud-nolimit-set:active{background:var(--green-lt)}
 
 /* ── Trend screen ────────────────────────────────────────── */
 .yr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
@@ -1060,8 +999,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .btn:active{background:var(--surface4);transform:scale(.98)}
 .btn.primary{background:var(--green);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 4px 16px rgba(46,158,114,.30)}
 .btn.primary:active{background:var(--green-dk);transform:scale(.98)}
-.btn.danger{background:var(--red-lt);color:var(--red);border-color:rgba(217,75,75,.2)}
-.btn.danger:active{background:rgba(217,75,75,.18)}
 
 /* ── Form fields ──────────────────────────────────────────── */
 .field{margin-bottom:15px}
@@ -1190,7 +1127,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .settings-row-sub{font-size:12px;color:var(--text3);margin-top:2px}
 .settings-row-right{display:flex;align-items:center;gap:6px;color:var(--text3)}
 .settings-row-right svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.settings-row-val{font-size:13px;color:var(--text2)}
 .app-info-card{
   background:var(--bg);border-radius:var(--radius-lg);padding:24px 16px;
   text-align:center;margin-top:24px;box-shadow:var(--shadow-sm);
@@ -1210,15 +1146,6 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .app-info-row span:first-child{color:var(--text3)}
 .app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
 
-/* ── Add button ───────────────────────────────────────────── */
-.add-btn{
-  width:100%;height:46px;border:1.5px dashed var(--border2);border-radius:var(--radius-lg);
-  background:transparent;color:var(--text3);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  margin-bottom:12px;transition:all var(--t-base);font-weight:500;
-}
-.add-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-lt)}
-.add-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;flex-shrink:0}
 
 /* ── Toast ────────────────────────────────────────────────── */
 .toast{
@@ -1444,15 +1371,15 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <div class="settings-group-title">資料管理</div>
     <div class="settings-group">
       <div class="settings-row" onclick="exportJSON()">
-        <div><div class="settings-row-lbl">匯出 JSON 備份</div><div class="settings-row-sub">完整備份，可還原所有資料</div></div>
+        <div><div class="settings-row-lbl">匯出 JSON 備份</div><div class="settings-row-sub">完整備份：所有項目＋類別、預算、發薪日、提醒設定</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
       </div>
       <div class="settings-row" onclick="exportCSV()">
-        <div><div class="settings-row-lbl">匯出 CSV</div><div class="settings-row-sub">可用 Excel / Numbers 開啟分析</div></div>
+        <div><div class="settings-row-lbl">匯出 CSV</div><div class="settings-row-sub">僅項目資料，不含設定；可用 Excel / Numbers 開啟</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
       </div>
       <div class="settings-row" onclick="document.getElementById('imp').click()">
-        <div><div class="settings-row-lbl">匯入備份</div><div class="settings-row-sub">從 JSON 或 CSV 還原資料</div></div>
+        <div><div class="settings-row-lbl">匯入備份</div><div class="settings-row-sub">從 JSON 還原全部，或從 CSV 匯入項目</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 14 12 9 17 14"/><line x1="12" y1="9" x2="12" y2="21"/></svg></div>
       </div>
       <input type="file" id="imp" accept=".json,.csv" style="display:none" onchange="importFile(event)">
@@ -1490,8 +1417,8 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v2</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/05/22</span></div>
+        <div class="app-info-row"><span>版本</span><span>v3</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/07/27</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -1763,7 +1690,7 @@ const YR_PAL=[
 const DEF_REM={enabled:true,showOverdue:true,showDueSoon:true,dueSoonDays:3,showAdvanceUnrec:true};
 
 // ── State ────────────────────────────────────────────────
-let DB, editId=null, pieChart=null, areaChart=null, listFilter='all', _savedScroll=0, focusStack=[];
+let DB, editId=null, areaChart=null, listFilter='all', _savedScroll=0, focusStack=[];
 let dirty={home:true,list:true,chart:true};
 let budStore=JSON.parse(localStorage.getItem('ep_bud_v2')||'{"byIdx":{},"total":0}');
 let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
@@ -2956,7 +2883,7 @@ function renderCatRows(ctx){
 
   const frag=document.createDocumentFragment();
   view.forEach(r=>{
-    const pctOfTotal=(r.val/total*100).toFixed(1);
+    const pctOfTotal=total>0?(r.val/total*100).toFixed(1):'0.0';  // 整月皆 $0 時避免 NaN
     const bpct=r.limit>0?Math.min(Math.round(r.val/r.limit*100),100):0;
     const rawB=r.limit>0?Math.round(r.val/r.limit*100):0;
     const over=r.limit>0&&r.val>r.limit;
@@ -3000,7 +2927,7 @@ function renderCatRows(ctx){
            ${_budSparkSVG((trendByCat[r.cat]||new Array(6).fill(0)).some(v=>v>0)?trendByCat[r.cat]:[0],r.limit)}
            <div class="bud-spark-cap">
              <span>近 6 個月　${capRange}${r.limit>0?'　┄ 預算':''}</span>
-             <span>${items.length?'本月 '+items.length+' 筆':''}</span>
+             <span>${items.length?'共 '+items.length+' 筆':''}</span>
            </div>
          </div>
          ${items.slice(0,TOP).map(x=>
@@ -3835,8 +3762,11 @@ async function copyPrev(){
   for(const x of prev){
     // Dates are cleared on purpose (they're next month's bills, not last
     // month's), so ym has to be set explicitly — there's no date to derive it.
-    const copied={...x,id:undefined,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)};
-    delete copied.parentId; // Fix: stale parentId would point to prev-month parent; drop the link
+    const copied={...x,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)};
+    // 必須「刪掉」而不是設成 undefined：keyPath 屬性存在但值為 undefined，
+    // 在嚴格實作下會被當成無效鍵而丟 DataError，而不是交給自動編號產生。
+    delete copied.id;
+    delete copied.parentId; // 舊 parentId 指向上月的父項，複製後必須斷開
     await putItem(copied);
   }
   dirtyAll();rHome();toast(`已複製 ${prev.length} 筆項目`);
@@ -3857,7 +3787,7 @@ function renderCatTags(){
     el.appendChild(tag);
   });
 }
-function addCat(){const inp=document.getElementById('new-cat'),name=inp.value.trim();if(!name)return;if(userCats.includes(name)){toast('類別已存在');return;}if(userCats.length>=12){toast('最多 12 個類別');return;}userCats.push(name);saveCats();renderCatTags();inp.value='';toast(`已新增「${name}」`);}
+function addCat(){const inp=document.getElementById('new-cat'),name=inp.value.trim();if(!name)return;if(userCats.includes(name)){toast('類別已存在');return;}if(userCats.length>=12){toast('最多 12 個類別');return;}userCats.push(name);saveCats();renderCatTags();dirtyAll();inp.value='';toast(`已新增「${name}」`);}
 function delCat(cat,e){
   if(e)e.stopPropagation();
   if(userCats.length<=1){toast('至少保留一個類別');return;}
@@ -3877,7 +3807,7 @@ function delCat(cat,e){
     budStore.byIdx=nb;
     saveBudStore();
   }
-  saveCats();renderCatTags();
+  saveCats();renderCatTags();dirtyAll();
 }
 
 // ── Reminder settings ────────────────────────────────────
@@ -3900,7 +3830,93 @@ function saveRemindSettings(){
 }
 
 // ── Export / Import ──────────────────────────────────────
-async function exportJSON(){const all=await getAll();const blob=new Blob([JSON.stringify({v:8,exported:new Date().toISOString(),items:all},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`expenses-${today()}.json`;a.click();toast('JSON 備份已下載');}
+// ── 完整備份 (v9) ────────────────────────────────────────────────
+// v8 只存 items，類別／預算／發薪日／提醒設定全部遺失。v9 連同所有偏好一起帶走。
+// 預算改用「類別名稱」當鍵而非索引：索引一旦因為新增或刪除類別而位移，
+// 還原時每筆預算都會掛到錯的類別上。
+const BACKUP_VER=9;
+
+function collectSettings(){
+  const byCat={};
+  getCats().forEach((c,idx)=>{ const v=budStore.byIdx[idx]||0; if(v>0) byCat[c]=v; });
+  return {
+    categories:     [...getCats()],
+    budgetTotal:    budStore.total||0,
+    budgetByCat:    byCat,
+    payday:         payday||0,
+    reminders:      {...remCfg},
+    advanceFeature: advOn(),
+    selectedYears:  selYears?[...selYears]:null
+    // ep_rem_dis（今日不再顯示）刻意不備份 —— 那是當天的暫時狀態
+  };
+}
+
+async function exportJSON(){
+  const all=await getAll();
+  const payload={
+    app:'費用管理', v:BACKUP_VER,
+    exported:new Date().toISOString(),
+    settings:collectSettings(),
+    items:all
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`expenses-${today()}.json`;a.click();
+  toast(`已備份 ${all.length} 筆項目與所有設定`);
+}
+
+// 還原偏好設定。預算優先用名稱對應，舊檔 (v8 以前) 的索引格式仍相容。
+function applySettings(st){
+  if(!st||typeof st!=='object') return [];
+  const done=[];
+
+  if(Array.isArray(st.categories)&&st.categories.length){
+    userCats=st.categories.filter(c=>typeof c==='string'&&c.trim()).slice(0,12);
+    saveCats(); refreshCatSel();
+    done.push(`類別 ${userCats.length} 項`);
+  }
+
+  if(st.budgetByCat&&typeof st.budgetByCat==='object'){
+    const byIdx={};
+    getCats().forEach((c,idx)=>{
+      const v=parseInt(st.budgetByCat[c])||0;
+      if(v>0) byIdx[idx]=v;                       // 名稱 → 目前索引
+    });
+    budStore.byIdx=byIdx;
+  }else if(st.budgetByIdx&&typeof st.budgetByIdx==='object'){
+    budStore.byIdx={...st.budgetByIdx};           // 舊格式相容
+  }
+  if(st.budgetTotal!=null) budStore.total=parseInt(st.budgetTotal)||0;
+  if(st.budgetByCat||st.budgetByIdx||st.budgetTotal!=null){
+    saveBudStore();
+    done.push(`預算（總額＋${Object.keys(budStore.byIdx).length} 個分類）`);
+  }
+
+  if(st.payday!=null){
+    const pd=parseInt(st.payday)||0;
+    payday=(pd>=1&&pd<=31)?pd:0; savePayday();
+    done.push(payday?`發薪日 ${payday} 號`:'發薪日（未設定）');
+  }
+
+  if(st.reminders&&typeof st.reminders==='object'){
+    remCfg={...DEF_REM,...st.reminders};
+    const d=parseInt(remCfg.dueSoonDays);
+    remCfg.dueSoonDays=[1,3,7,14].includes(d)?d:DEF_REM.dueSoonDays;
+    saveRemCfg(); done.push('提醒設定');
+  }
+
+  if(typeof st.advanceFeature==='boolean'){
+    featAdv=st.advanceFeature;
+    localStorage.setItem('ep_feat_adv',JSON.stringify(featAdv));
+    done.push(featAdv?'代墊功能（開）':'代墊功能（關）');
+  }
+
+  if(Array.isArray(st.selectedYears)&&st.selectedYears.length){
+    selYears=st.selectedYears.filter(y=>y>=2026&&y<=2046);
+    if(selYears.length) saveSelYrs();
+  }
+  return done;
+}
 async function exportCSV(){
   const all=await getAll();
   // The importer splits rows on \n and treats a comma as a field break unless
@@ -3928,24 +3944,64 @@ async function exportCSV(){
 async function importFile(e){
   const file=e.target.files[0];if(!file)return;
   try{
-    const text=await file.text();let items;
-    if(file.name.endsWith('.json')){const d=JSON.parse(text);items=d.items||d;if(!Array.isArray(items))throw new Error('格式錯誤');}
-    else{const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());items=lines.map(l=>{const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};}).filter(x=>x.name&&x.amount>=0);}
-    if(!confirm(`匯入 ${items.length} 筆？（不刪除現有資料）`))return;
+    const text=await file.text();
+    let items=[], settings=null, isJSON=file.name.toLowerCase().endsWith('.json');
+
+    if(isJSON){
+      const d=JSON.parse(text);
+      if(Array.isArray(d)){ items=d; }                    // 最舊：裸陣列
+      else {
+        items    = Array.isArray(d.items)?d.items:[];
+        settings = d.settings||null;                       // v9 才有
+      }
+      if(!Array.isArray(items)) throw new Error('格式錯誤：找不到項目資料');
+    }else{
+      // CSV 只承載項目，不含任何設定
+      const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());
+      items=lines.map(l=>{
+        const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];
+        const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');
+        return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),
+               amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',
+               paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};
+      }).filter(x=>x.name&&x.amount>=0);
+    }
+
+    // 先講清楚這次匯入會做什麼，再動手
+    const parts=[`項目 ${items.length} 筆`];
+    if(settings) parts.push('以及類別／預算／發薪日／提醒等設定（將覆蓋目前設定）');
+    else if(isJSON) parts.push('（此備份為舊格式，不含設定）');
+    else parts.push('（CSV 不含設定）');
+    if(!confirm(`即將匯入${parts.join('，')}。要繼續嗎？`)) { e.target.value=''; return; }
+
+    // 已有資料時，讓使用者決定要取代還是合併——還原備份通常想要前者
+    const existing=await getAll();
+    let replaced=false;
+    if(existing.length&&items.length){
+      replaced=confirm(`目前已有 ${existing.length} 筆項目。\n\n按「確定」清空後還原（適合回復備份）\n按「取消」保留並合併（適合合併另一台裝置）`);
+      if(replaced){ for(const r of existing) await delItem(r.id); }
+    }
+
+    // 設定先還原，預算才能按名稱對應到還原後的類別
+    const applied=settings?applySettings(settings):[];
+
     for(const item of items){
       const c={...item};
       delete c.id;
-      delete c.parentId; // parentId refs use old IDs that don't exist after reimport — strip to prevent broken cascade
+      delete c.parentId;   // 舊 id 在重匯後不存在，留著會讓連動刪除失效
       await putItem(c);
     }
-    // The 代墊 switch was resolved at boot, possibly against an empty DB —
-    // re-check so imported 代墊 records aren't invisible.
+
+    // 匯入的代墊資料若在功能關閉狀態下會整批看不見
     if(!advOn() && items.some(x=>x.itype==='advance')){
-      featAdv=true;
-      localStorage.setItem('ep_feat_adv','true');
-      applyAdvVisibility();
+      featAdv=true; localStorage.setItem('ep_feat_adv','true');
+      applied.push('代墊功能（因含代墊資料而開啟）');
     }
-    dirtyAll();renderActive();toast(`已匯入 ${items.length} 筆`);
+    applyAdvVisibility();
+    refreshCatSel();
+    dirtyAll(); renderActive(); rSettings();
+
+    toast(`${replaced?'已還原':'已匯入'} ${items.length} 筆${applied.length?'　+ '+applied.length+' 項設定':''}`);
   }catch(err){alert('匯入失敗：'+err.message);}
   e.target.value='';
 }
@@ -3953,11 +4009,11 @@ async function importFile(e){
 // ── SW & Manifest (Optimized Caching) ────────────────────
 if('serviceWorker' in navigator){
   // 優化：在 Service Worker 安裝時預先快取 Chart.js CDN，保證斷網可用性
-  const sw=`const C='ep-v8.1';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.add('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js').catch(()=>{})))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const f=fetch(e.request).then(res=>{if(res.ok)c.put(e.request,res.clone());return res;}).catch(()=>r);return r||f;})));});`;
+  const sw=`const C='ep-v3-20260727';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.add('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js').catch(()=>{})))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const f=fetch(e.request).then(res=>{if(res.ok)c.put(e.request,res.clone());return res;}).catch(()=>r);return r||f;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
 }
 (function(){
-  const m={name:'費用管理',short_name:'費用管理',start_url:location.href,display:'standalone',theme_color:'#1D9E75',background_color:'#f7f6f2',icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231D9E75'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle' fill='white'%3E%24%3C/text%3E%3C/svg%3E",sizes:'512x512',type:'image/svg+xml'}]};
+  const m={name:'費用管理',short_name:'費用管理',start_url:location.href,display:'standalone',theme_color:'#EDE8DF',background_color:'#EDE8DF',icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232E9E72'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle' fill='white'%3E%24%3C/text%3E%3C/svg%3E",sizes:'512x512',type:'image/svg+xml'}]};
   const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/json'}));document.head.appendChild(l);
 })();
 
