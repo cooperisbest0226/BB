@@ -803,30 +803,32 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .adv-banner p{font-size:13px;color:var(--orange);flex:1;line-height:1.3;font-weight:500}
 
 /* ── Chart screen ────────────────────────────────────────── */
-.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .stat-tile{background:var(--bg);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-sm)}
 .stat-lbl{font-size:10px;color:var(--text3);margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
 .stat-val{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-.02em}
 .stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}.stat-val.o{color:var(--orange)}
-.bud-total-card{
-  background:linear-gradient(135deg,rgba(74,127,191,.08),rgba(74,127,191,.04));
-  border-radius:var(--radius-lg);padding:14px;margin-bottom:12px;
-  box-shadow:var(--shadow-sm);
-}
-.bud-total-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:9px}
-.bud-total-lbl{font-size:11px;color:var(--blue);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
-.bud-total-nums{font-size:12px;color:var(--blue);text-align:right}
-.bud-total-nums strong{font-family:'DM Mono',monospace;font-size:19px;font-weight:600;display:block;letter-spacing:-.03em}
-.bud-total-track{background:rgba(74,127,191,.15);border-radius:4px;height:6px;overflow:hidden}
-.bud-total-fill{height:100%;background:var(--blue);border-radius:4px;transition:width .4s}
-.bud-total-fill.warn{background:var(--amber)}.bud-total-fill.over{background:var(--red)}
 .pie-wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
 .pie-legend{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
 .leg-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);min-width:0}
 .leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .bud-cat-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;align-items:center}
-.bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden;margin-bottom:10px}
+.bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden}
 .bud-cat-fill{height:100%;border-radius:4px;transition:width .4s}
+
+/* ── Pace marker: where you *should* be by now (elapsed ÷ month) ── */
+.bud-track-wrap{position:relative;margin-bottom:10px}
+.bud-pace{
+  position:absolute;top:-3px;height:11px;width:2px;
+  background:var(--text2);opacity:.5;border-radius:1px;
+  transform:translateX(-1px);pointer-events:none;
+}
+.bud-pace-cap{
+  font-size:10px;color:var(--text3);margin-top:5px;
+  display:flex;align-items:center;gap:5px;
+}
+.bud-pace-cap i{width:2px;height:9px;background:var(--text2);opacity:.5;border-radius:1px;display:inline-block;flex-shrink:0}
+.bud-pace-cap.over{color:var(--red)}
+.bud-pace-cap.over i{background:var(--red);opacity:.7}
 
 /* ── Shared per-category budget status block ─────────────
    Rendered identically by the 圖表 分類預算 card and the 設定預算 sheet. */
@@ -889,26 +891,120 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   padding:52px 0;width:100%;
 }
 .donut-legend{width:100%;margin-top:4px}
-.donut-leg-row{
+
+/* ── Donut: proxy-exclusion footnote (replaces the two stat tiles) ── */
+.donut-deduct{
+  width:100%;text-align:center;font-size:11px;color:var(--text3);
+  margin:2px 0 6px;letter-spacing:.02em;
+}
+
+/* ── Merged category row: composition + budget in one list ───
+   Line 1 answers "how much / what share", line 2 answers "how am I doing
+   against budget". The word 預算 sits immediately before its own percentage
+   so the two different denominators can't be read as the same number. */
+.cat-sort{display:inline-flex;gap:5px}
+.cat-sort .filter-btn{height:26px;padding:0 11px;font-size:11.5px;flex:0 0 auto;box-shadow:none}
+.cat-item{border-radius:var(--radius);transition:background var(--t-fast);margin-bottom:2px}
+.cat-item.attention{background:var(--red-lt)}
+.cat-item.warnlv{background:var(--amber-lt)}
+.cat-row{
   display:flex;align-items:center;gap:9px;
-  padding:9px 10px;border-radius:var(--radius);cursor:pointer;
-  transition:background var(--t-fast),opacity .15s ease,transform var(--t-fast);
+  padding:9px 10px;cursor:pointer;
 }
-.donut-leg-row:hover,.donut-leg-row.active{background:var(--surface2);transform:translateX(3px)}
-.donut-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.donut-leg-name{
-  flex:1;font-size:13.5px;color:var(--text);font-weight:500;
-  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+.cat-item:not(.attention):not(.warnlv) .cat-row:hover{background:var(--surface2);border-radius:var(--radius)}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat-name{
+  flex:1;min-width:0;font-size:13.5px;color:var(--text);font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.donut-leg-pct{
-  font-size:12px;color:var(--text3);font-weight:600;
-  font-family:'DM Mono',monospace;min-width:40px;text-align:right;
+.cat-amt{
+  font-family:'DM Mono',monospace;font-size:13px;font-weight:600;
+  color:var(--text);flex-shrink:0;letter-spacing:-.02em;
 }
-.donut-leg-amt{
-  font-family:'DM Mono',monospace;font-size:13px;
-  color:var(--text2);font-weight:600;
-  min-width:64px;text-align:right;letter-spacing:-.02em;
+.cat-share{
+  font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text3);
+  flex:0 0 44px;text-align:right;
 }
+.cat-chev{font-size:9px;color:var(--text3);flex-shrink:0;transition:transform .2s;display:inline-block}
+.cat-item.open .cat-chev{transform:rotate(180deg)}
+/* Line 2 — budget, with its denominator named */
+.cat-bud{
+  display:flex;align-items:center;gap:9px;
+  padding:0 10px 9px 29px;margin-top:-2px;
+}
+.cat-bud .bud-track-wrap{flex:1;margin-bottom:0}
+.cat-bud-pct{
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);
+  flex-shrink:0;white-space:nowrap;
+}
+.cat-bud-pct.over{color:var(--red);font-weight:600}
+.cat-bud-pct.warn{color:var(--amber);font-weight:600}
+.cat-nobud{
+  padding:0 10px 9px 29px;margin-top:-2px;
+  font-size:10.5px;color:var(--text3);
+}
+.cat-detail{padding:2px 10px 10px 29px}
+.cat-detail-set{
+  height:30px;padding:0 14px;margin-top:8px;
+  background:transparent;border:1px solid var(--border2);border-radius:99px;
+  color:var(--green);font-size:11.5px;font-family:inherit;cursor:pointer;
+}
+.cat-card-foot{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--border);margin-top:10px;padding-top:11px;
+}
+.cat-card-foot a{font-size:12px;color:var(--green);font-weight:600;cursor:pointer}
+
+/* ── Expandable per-category detail panel ───────────────────── */
+.donut-detail{
+  background:var(--surface3);border-radius:var(--radius);
+  padding:8px 11px;margin:1px 0 7px;
+}
+.donut-detail-row{
+  display:flex;align-items:baseline;gap:8px;
+  padding:5px 0;font-size:12.5px;
+  border-bottom:1px solid var(--border);
+}
+.donut-detail-row:last-of-type{border-bottom:none}
+.donut-detail-n{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.donut-detail-d{font-size:11px;color:var(--text3);flex-shrink:0;font-family:'DM Mono',monospace}
+.donut-detail-a{
+  font-family:'DM Mono',monospace;font-size:12.5px;font-weight:600;
+  color:var(--text2);flex-shrink:0;min-width:60px;text-align:right;
+}
+.donut-detail-more{font-size:11px;color:var(--text3);padding:6px 0 2px;text-align:center}
+.donut-detail-link{
+  width:100%;margin-top:6px;height:30px;
+  background:transparent;border:1px solid var(--border2);border-radius:99px;
+  color:var(--text2);font-size:11.5px;font-family:inherit;cursor:pointer;
+  transition:all var(--t-fast);
+}
+.donut-detail-link:active{background:var(--surface2)}
+
+/* ── Collapsible sub-sections (未使用預算 等) ───────────────── */
+.bud-sec-hdr{
+  display:flex;align-items:center;gap:7px;
+  font-size:11px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.07em;
+  padding:12px 2px 4px;cursor:pointer;
+}
+.bud-sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+.bud-sec-hdr i{font-style:normal;font-size:9px;transition:transform .2s;display:inline-block}
+.bud-sec-hdr.open i{transform:rotate(180deg)}
+.bud-nolimit-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 2px;font-size:13px;border-bottom:1px solid var(--border);
+}
+.bud-nolimit-row:last-child{border-bottom:none}
+.bud-nolimit-row span:first-child{color:var(--text);flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bud-nolimit-amt{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);font-weight:600}
+.bud-nolimit-set{
+  background:transparent;border:1px solid var(--border2);border-radius:99px;
+  color:var(--green);font-size:11px;font-family:inherit;
+  padding:3px 11px;cursor:pointer;flex-shrink:0;
+}
+.bud-nolimit-set:active{background:var(--green-lt)}
 
 /* ── Trend screen ────────────────────────────────────────── */
 .yr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
@@ -1296,29 +1392,24 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 
     <!-- ── SINGLE MODE ── -->
     <div id="chart-single-view">
-      <div class="bud-total-card">
-        <div class="bud-total-row">
-          <div class="bud-total-lbl" id="bud-total-lbl">總預算</div>
-          <div class="bud-total-nums"><strong id="bud-spent-txt">—</strong><span id="bud-limit-txt">（未設定）</span></div>
-        </div>
-        <div class="bud-total-track"><div class="bud-total-fill" id="bud-total-bar" style="width:0%"></div></div>
-      </div>
       <div class="card">
-        <div class="card-title">分類支出佔比</div>
+        <div class="card-title">
+          分類支出
+          <span class="cat-sort" role="group" aria-label="排序方式">
+            <button class="filter-btn on" id="csort-amt" onclick="setCatSort('amt')" aria-pressed="true">依金額</button>
+            <button class="filter-btn" id="csort-bud" onclick="setCatSort('bud')" aria-pressed="false">依預算</button>
+          </span>
+        </div>
         <div class="donut-outer">
           <div class="donut-wrap" id="donut-wrap"></div>
+          <div class="donut-deduct" id="donut-deduct" style="display:none"></div>
           <div class="donut-legend" id="donut-legend"></div>
         </div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-tile"><div class="stat-lbl">項目數</div><div class="stat-val" id="cc">—</div></div>
-        <div class="stat-tile"><div class="stat-lbl">已繳比例</div><div class="stat-val g" id="cp">—</div></div>
-        <div class="stat-tile" id="tile-adv-cnt"><div class="stat-lbl">代墊筆數</div><div class="stat-val o" id="ca">—</div></div>
-        <div class="stat-tile" id="tile-adv-amt"><div class="stat-lbl">代墊排除額</div><div class="stat-val o" id="cam" title="該月全部代墊款金額，已從個人支出中排除">—</div></div>
-      </div>
-      <div class="card">
-        <div class="card-title">分類預算 <a onclick="openBudModal()">設定</a></div>
-        <div id="bud-cat-rows"></div>
+        <div id="cat-extra"></div>
+        <div class="cat-card-foot">
+          <a onclick="openBudModal()">設定分類預算</a>
+          <a onclick="toggleAllCatDetails()" id="donut-expand-all">全部展開</a>
+        </div>
       </div>
     </div>
 
@@ -2127,7 +2218,7 @@ function setAdvanceFeature(on){
 }
 function applyAdvVisibility(){
   const show=advOn()?'':'none';
-  [['f-type-wrap',show],['fv',show],['tile-adv-cnt',show],['tile-adv-amt',show]]
+  [['f-type-wrap',show],['fv',show]]
     .forEach(([id,v])=>{const el=document.getElementById(id); if(el)el.style.display=v;});
   if(!advOn()){   // clear the hero badge immediately, whatever screen we're on
     const b=document.getElementById('h-deduct-btn'), n=document.getElementById('h-deduct-note');
@@ -2551,7 +2642,11 @@ async function rList(){
   else if(listFilter==='unpaid') items=items.filter(x=>x.paid!==1&&x.itype!=='advance');
   else if(listFilter==='advance')items=items.filter(x=>x.itype==='advance');
 
-  if(q)items=items.filter(x=>(x.name||'').toLowerCase().includes(q)||(x.note||'').toLowerCase().includes(q)||(x.payee||'').toLowerCase().includes(q));
+  // 類別也納入搜尋，圖表的「在明細中檢視全部」才能靠類別名帶過來
+  if(q)items=items.filter(x=>(x.name||'').toLowerCase().includes(q)
+    ||(x.note||'').toLowerCase().includes(q)
+    ||(x.payee||'').toLowerCase().includes(q)
+    ||(x.cat||'').toLowerCase().includes(q));
 
   items.sort((a,b)=>{
     if(!a.date&&!b.date)return 0;
@@ -2629,25 +2724,33 @@ function _trendByCat(items,ymKeys){
 // Builds the trend line for one category.
 // preserveAspectRatio="none" + vector-effect lets the path stretch to the
 // container width while the stroke stays a constant 2px, like a stock sparkline.
-function _budSparkSVG(vals){
+function _budSparkSVG(vals,limit){
   const W=300,H=30,PAD=4,PX=3;   // PX insets the ends so round caps aren't clipped
-  const max=Math.max(...vals);
-  if(max<=0) return '<div class="bud-spark-empty">近 6 個月無此類別支出</div>';
+  const peak=Math.max(...vals);
+  if(peak<=0) return '<div class="bud-spark-empty">近 6 個月無此類別支出</div>';
 
-  const n=vals.length;
-  const span=W-PX*2;
-  const pts=vals.map((v,i)=>{
-    const x=n>1 ? PX+i*(span/(n-1)) : W/2;
-    const y=H-PAD-(v/max)*(H-PAD*2);
-    return [x,y];
-  });
+  // Scale to include the limit, otherwise a limit above the peak would sit
+  // off the top of the box and the comparison would be meaningless.
+  const max=limit>0?Math.max(peak,limit):peak;
+  const yOf=v=>H-PAD-(v/max)*(H-PAD*2);
+
+  const n=vals.length, span=W-PX*2;
+  const pts=vals.map((v,i)=>[n>1?PX+i*(span/(n-1)):W/2, yOf(v)]);
   const line=pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
   const area=`${PX},${H} ${line} ${W-PX},${H}`;
   const last=pts[n-1];
 
+  // Dashed budget line — tells you at a glance how often you've broken it
+  const limitLine = limit>0
+    ? `<line x1="0" y1="${yOf(limit).toFixed(1)}" x2="${W}" y2="${yOf(limit).toFixed(1)}"
+         stroke="var(--red)" stroke-width="1" stroke-dasharray="3 3" opacity=".55"
+         vector-effect="non-scaling-stroke"/>`
+    : '';
+
   return `<svg class="bud-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
     role="img" aria-label="近 6 個月支出趨勢">
     <polygon points="${area}" fill="var(--blue-lt)"/>
+    ${limitLine}
     <polyline points="${line}" fill="none" stroke="var(--blue)" stroke-width="2"
       stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
     <line x1="${last[0].toFixed(1)}" y1="0" x2="${last[0].toFixed(1)}" y2="${H}"
@@ -2658,6 +2761,15 @@ function _budSparkSVG(vals){
       stroke="var(--blue)" stroke-width="6" stroke-linecap="round"
       vector-effect="non-scaling-stroke"/>
   </svg>`;
+}
+
+// 本月已過了幾成 —— 進度條上那根刻度線的位置。
+// 刻意用「當月」而非發薪週期：分子（本月支出）與分母（本月預算）都是月結，
+// 混入發薪週期會變成拿月支出比週期時間，基準不一致。
+function monthElapsedPct(y,m){
+  const t=new Date();
+  if(y!==t.getFullYear()||m!==t.getMonth()+1) return null;   // 只有當月才有意義
+  return Math.min(100, Math.round(t.getDate()/daysInMonth(y,m)*100));
 }
 
 // Status badge text/colour for a category's current usage
@@ -2686,6 +2798,17 @@ function budCatBlockHTML(o){
   const peak=trend.length?Math.max(...trend):0;
   const id=k=>o.idx!==undefined&&o.idx!==null?` id="bud-${k}-${o.idx}"`:'';
 
+  // Pace marker: filled past the marker = spending faster than the month elapses
+  const pace=(limit>0&&o.pacePct!=null)?o.pacePct:null;
+  const ahead=pace!=null&&pct>pace;
+  const paceMark=pace!=null
+    ? `<div class="bud-pace" style="left:${pace}%"></div>`
+    : '';
+  const paceCap=pace!=null
+    ? `<div class="bud-pace-cap${ahead?' over':''}"><i></i>${
+        ahead?`超前進度（本月已過 ${pace}%）`:`本月已過 ${pace}%，用量在進度內`}</div>`
+    : '';
+
   return `<div class="bud-cat-head">
       ${o.asLabel?`<label>${esc(o.cat)}</label>`:`<span class="bud-cat-name">${esc(o.cat)}</span>`}
       <span class="badge ${bdg.cls}"${id('badge')} style="${bdg.txt?'':'display:none'}">${bdg.txt}</span>
@@ -2698,18 +2821,24 @@ function budCatBlockHTML(o){
           <strong>${fmt(spent)}</strong>${limit>0?` / ${fmt(limit)}<span class="pct">(${pct}%)</span>`:'<span class="pct">未設上限</span>'}
         </span>
       </div>
-      <div class="bud-cat-track"${id('track')} style="${limit>0?'':'display:none'}">
-        <div class="bud-cat-fill"${id('fill')} style="width:${pct}%;background:${barColor}"></div>
+      <div class="bud-track-wrap">
+        <div class="bud-cat-track"${id('track')} style="${limit>0?'':'display:none'}">
+          <div class="bud-cat-fill"${id('fill')} style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        ${limit>0?paceMark:''}
       </div>
+      ${limit>0?paceCap:''}
       <div class="bud-spark-wrap">
-        ${_budSparkSVG(trend.length?trend:[0])}
+        ${_budSparkSVG(trend.length?trend:[0],limit)}
         <div class="bud-spark-cap">
-          <span>近 6 個月　${o.capRange||''}</span>
+          <span>近 6 個月　${o.capRange||''}${limit>0?'　┄ 預算':''}</span>
           <span>${peak>0?'最高 '+fmt(peak):''}</span>
         </div>
       </div>
     </div>`;
 }
+
+
 
 // ── CHART ────────────────────────────────────────────────
 let chartMode = 'single'; // 'single' | 'range'
@@ -2720,29 +2849,25 @@ let rangeChart = null;
 // total:  sum of all personal expenses this month
 function renderDonutChart(sorted, total){
   const wrap = document.getElementById('donut-wrap');
-  const legEl = document.getElementById('donut-legend');
   wrap._active = null;
   wrap.innerHTML = '';
-  legEl.innerHTML = '';
 
   if(!total || !sorted.length){
     wrap.innerHTML = '<div class="donut-empty">此月份無支出資料</div>';
-    return;
+    return [];
   }
 
   const R=54, CX=100, CY=100, SW=24;
-  const CIRC = 2*Math.PI*R;          // ≈ 339.29
-  const GAP  = sorted.length>1 ? 2.5 : 0; // px gap between segments
+  const CIRC = 2*Math.PI*R;
+  const GAP  = sorted.length>1 ? 2.5 : 0;
   const ns   = 'http://www.w3.org/2000/svg';
 
-  // ── SVG canvas ──────────────────────────────────────────
   const svg = document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 200 200');
   svg.setAttribute('class','donut-svg');
   svg.setAttribute('role','img');
   svg.setAttribute('aria-label','分類支出圓餅圖');
 
-  // Background track ring
   const bg = document.createElementNS(ns,'circle');
   bg.setAttribute('cx',CX); bg.setAttribute('cy',CY); bg.setAttribute('r',R);
   bg.setAttribute('fill','none');
@@ -2750,103 +2875,250 @@ function renderDonutChart(sorted, total){
   bg.setAttribute('stroke-width',SW);
   svg.appendChild(bg);
 
-  // Segment group — rotate -90° so 0° starts at 12 o'clock
   const g = document.createElementNS(ns,'g');
   g.setAttribute('transform',`rotate(-90 ${CX} ${CY})`);
 
-  const segs = [];     // [{el, segLen}]
-  let acc = 0;         // accumulated arc length so far
-
+  const segs=[]; let acc=0;
   sorted.forEach((item,i)=>{
-    const portion = (item.val/total)*CIRC;
-    const segLen  = Math.max(0, portion-GAP);
-
-    const c = document.createElementNS(ns,'circle');
+    const portion=(item.val/total)*CIRC;
+    const segLen=Math.max(0,portion-GAP);
+    const c=document.createElementNS(ns,'circle');
     c.setAttribute('cx',CX); c.setAttribute('cy',CY); c.setAttribute('r',R);
     c.setAttribute('fill','none');
     c.setAttribute('stroke',item.color);
     c.setAttribute('stroke-width',SW);
-    // Start invisible (dasharray=0) — animation sets final value after paint
     c.setAttribute('stroke-dasharray',`0 ${CIRC}`);
-    // dashoffset: negative shifts the pattern forward by `acc` units
     c.setAttribute('stroke-dashoffset',String(-acc));
     c.setAttribute('class','donut-seg');
-    c.dataset.i = i;
-
-    segs.push({el:c, segLen});
-    acc += portion;
-    g.appendChild(c);
+    c.dataset.i=i;
+    segs.push({el:c,segLen}); acc+=portion; g.appendChild(c);
   });
   svg.appendChild(g);
 
-  // Center text (not inside rotated group — stays upright)
-  const lbl = document.createElementNS(ns,'text');
+  const lbl=document.createElementNS(ns,'text');
   lbl.setAttribute('x',CX); lbl.setAttribute('y',CY-11);
   lbl.setAttribute('text-anchor','middle');
   lbl.setAttribute('class','donut-lbl');
   lbl.textContent='個人支出';
 
-  const amtT = document.createElementNS(ns,'text');
+  const amtT=document.createElementNS(ns,'text');
   amtT.setAttribute('x',CX); amtT.setAttribute('y',CY+10);
   amtT.setAttribute('text-anchor','middle');
   amtT.setAttribute('class','donut-amt');
   amtT.textContent=fmt(total);
 
-  svg.appendChild(lbl);
-  svg.appendChild(amtT);
+  svg.appendChild(lbl); svg.appendChild(amtT);
   wrap.appendChild(svg);
 
-  // ── Animate segments in (double rAF ensures initial 0 is painted first) ──
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    segs.forEach(({el,segLen})=>{
-      el.setAttribute('stroke-dasharray',`${segLen} ${CIRC}`);
-    });
+    segs.forEach(({el,segLen})=>el.setAttribute('stroke-dasharray',`${segLen} ${CIRC}`));
   }));
 
-  // ── Legend rows ──────────────────────────────────────────
-  const frag = document.createDocumentFragment();
-  sorted.forEach((item,i)=>{
-    const pct = (item.val/total*100).toFixed(1);
-    const li  = document.createElement('div');
-    li.className = 'donut-leg-row';
-    li.dataset.i = i;
-    li.innerHTML =
-      `<span class="donut-leg-dot" style="background:${item.color}"></span>`+
-      `<span class="donut-leg-name">${esc(item.cat)}</span>`+
-      `<span class="donut-leg-pct">${pct}%</span>`+
-      `<span class="donut-leg-amt">${fmt(item.val)}</span>`;
-    frag.appendChild(li);
+  return segs.map(s=>s.el);
+}
+
+// ── Merged category list ─────────────────────────────────────────
+// One list answers both questions the page used to split across two cards:
+// 佔比（this row vs total spending）and 預算（this row vs its own limit）.
+let catSort='amt';   // 'amt' matches the ring's drawing order | 'bud' = urgency
+
+function setCatSort(mode){
+  catSort=mode;
+  [['csort-amt','amt'],['csort-bud','bud']].forEach(([id,v])=>{
+    const b=document.getElementById(id); if(!b)return;
+    b.classList.toggle('on',v===mode); b.setAttribute('aria-pressed',v===mode);
+  });
+  rChart();
+}
+
+function renderCatRows(ctx){
+  const {sorted,total,itemsByCat,trendByCat,capRange,y,m,segEls}=ctx;
+  const legEl=document.getElementById('donut-legend');
+  const extraEl=document.getElementById('cat-extra');
+  legEl.innerHTML=''; extraEl.innerHTML='';
+  if(!sorted.length){ syncExpandAllLabel(); return; }
+
+  const pacePct=monthElapsedPct(y,m);
+  const cats=getCats();
+
+  // data-i stays tied to the amount-sorted index so it keeps matching the
+  // ring segments even when the list itself is re-sorted by urgency.
+  const rows=sorted.map((item,i)=>{
+    const idx=cats.indexOf(item.cat);
+    const limit=idx>=0?(budStore.byIdx[idx]||0):0;
+    const rank=_budRank(item.val,limit);
+    return {...item,i,idx,limit,...rank};
+  });
+
+  const view=catSort==='bud'
+    ? rows.slice().sort((a,b)=>a.tier!==b.tier?a.tier-b.tier:b.pct-a.pct)
+    : rows;
+
+  const frag=document.createDocumentFragment();
+  view.forEach(r=>{
+    const pctOfTotal=(r.val/total*100).toFixed(1);
+    const bpct=r.limit>0?Math.min(Math.round(r.val/r.limit*100),100):0;
+    const rawB=r.limit>0?Math.round(r.val/r.limit*100):0;
+    const over=r.limit>0&&r.val>r.limit;
+    const warn=!over&&r.limit>0&&rawB>=80;
+    const barColor=over?'var(--red)':warn?'var(--amber)':'var(--green)';
+
+    const el=document.createElement('div');
+    el.className='cat-item'+(over?' attention':warn?' warnlv':'');
+    el.dataset.i=r.i; el.dataset.cat=r.cat;
+
+    const budLine = r.limit>0
+      ? `<div class="cat-bud">
+           <div class="bud-track-wrap">
+             <div class="bud-cat-track"><div class="bud-cat-fill" style="width:${bpct}%;background:${barColor}"></div></div>
+             ${pacePct!=null?`<div class="bud-pace" style="left:${pacePct}%"></div>`:''}
+           </div>
+           <span class="cat-bud-pct${over?' over':warn?' warn':''}">預算 ${rawB}%</span>
+         </div>`
+      : `<div class="cat-nobud">未設預算</div>`;
+
+    const items=(itemsByCat[r.cat]||[]).slice().sort((a,b)=>b.amount-a.amount);
+    const TOP=5;
+    const paceCap = (r.limit>0&&pacePct!=null)
+      ? `<div class="bud-pace-cap${bpct>pacePct?' over':''}"><i></i>${
+          bpct>pacePct?`超前進度（本月已過 ${pacePct}%）`:`本月已過 ${pacePct}%，用量在進度內`}</div>`
+      : '';
+
+    el.innerHTML=
+      `<div class="cat-row">
+         <span class="cat-dot" style="background:${r.color}"></span>
+         <span class="cat-name">${esc(r.cat)}</span>
+         <span class="cat-amt">${fmt(r.val)}</span>
+         <span class="cat-share">${pctOfTotal}%</span>
+         <span class="cat-chev">▾</span>
+       </div>
+       ${budLine}
+       <div class="cat-detail" id="donut-detail-${r.i}" style="display:none">
+         ${r.limit>0?`<div class="bud-prog-row"><span class="bud-prog-lbl">預算上限</span><span class="bud-prog-val"><strong>${fmt(r.limit)}</strong></span></div>`:''}
+         ${paceCap}
+         <div class="bud-spark-wrap">
+           ${_budSparkSVG((trendByCat[r.cat]||new Array(6).fill(0)).some(v=>v>0)?trendByCat[r.cat]:[0],r.limit)}
+           <div class="bud-spark-cap">
+             <span>近 6 個月　${capRange}${r.limit>0?'　┄ 預算':''}</span>
+             <span>${items.length?'本月 '+items.length+' 筆':''}</span>
+           </div>
+         </div>
+         ${items.slice(0,TOP).map(x=>
+           `<div class="donut-detail-row">
+              <span class="donut-detail-n">${esc(x.name)}</span>
+              <span class="donut-detail-d">${x.date?x.date.slice(5):'—'}</span>
+              <span class="donut-detail-a">${fmt(x.amount)}</span>
+            </div>`).join('')}
+         ${items.length>TOP?`<div class="donut-detail-more">還有 ${items.length-TOP} 筆…</div>`:''}
+         <button type="button" class="donut-detail-link" onclick="event.stopPropagation();openCatInList('${esc(r.cat)}')">在明細中檢視全部</button>
+         ${r.limit<=0?`<button type="button" class="cat-detail-set" onclick="event.stopPropagation();openBudModal()">為「${esc(r.cat)}」設定預算</button>`:''}
+       </div>`;
+    el.querySelector('.cat-row').onclick=()=>toggleCatDetail(r.i);
+    frag.appendChild(el);
   });
   legEl.appendChild(frag);
 
-  // ── Hover / click sync between ring segments and legend rows ──
-  const allSegs = segs.map(s=>s.el);
-  const allLegs = Array.from(legEl.querySelectorAll('.donut-leg-row'));
-
-  function activate(idx){
-    wrap._active = idx;
-    allSegs.forEach((s,i)=>s.style.opacity = i===idx?'1':'0.25');
-    allLegs.forEach((l,i)=>{
-      l.style.opacity = i===idx?'1':'0.45';
-      l.classList.toggle('active',i===idx);
-    });
+  // 有預算但本月沒花 —— 不在圓餅圖裡，但仍該讓你知道額度還在
+  const unused=cats.map((c,idx)=>({cat:c,idx,limit:budStore.byIdx[idx]||0}))
+                   .filter(o=>o.limit>0 && !(o.cat in itemsByCat));
+  if(unused.length){
+    const hdr=document.createElement('div');
+    hdr.className='bud-sec-hdr';
+    hdr.innerHTML=`<span>本月無支出（${unused.length}）</span><i>▾</i>`;
+    const box=document.createElement('div');
+    box.style.display='none';
+    box.innerHTML=unused.map(o=>
+      `<div class="bud-nolimit-row"><span>${esc(o.cat)}</span>
+         <span class="bud-nolimit-amt">預算 ${fmt(o.limit)}</span>
+         <span class="badge g">未使用</span></div>`).join('');
+    hdr.onclick=()=>{
+      const open=box.style.display==='none';
+      box.style.display=open?'':'none';
+      hdr.classList.toggle('open',open);
+    };
+    extraEl.appendChild(hdr); extraEl.appendChild(box);
   }
-  function deactivate(){
-    wrap._active = null;
-    allSegs.forEach(s=>s.style.opacity='');
-    allLegs.forEach(l=>{l.style.opacity='';l.classList.remove('active');});
-  }
 
-  allSegs.forEach((seg,i)=>{
-    seg.addEventListener('pointerenter',()=>{ if(wrap._active===null) activate(i); });
-    seg.addEventListener('pointerleave',()=>{ if(wrap._active===null) deactivate(); });
-    seg.addEventListener('click',()=>wrap._active===i?deactivate():activate(i));
+  wireDonutRows(segEls);
+  syncExpandAllLabel();
+}
+
+// Ring ↔ row: hover highlights, click opens the same detail panel
+function wireDonutRows(segEls){
+  const wrap=document.getElementById('donut-wrap');
+  const items=Array.from(document.querySelectorAll('.cat-item'));
+  const byI=i=>items.find(el=>+el.dataset.i===i);
+
+  function highlight(i){
+    segEls.forEach((s,k)=>s.style.opacity = k===i?'1':'0.25');
+    items.forEach(el=>el.style.opacity = +el.dataset.i===i?'1':'0.45');
+  }
+  function unhighlight(){
+    segEls.forEach(s=>s.style.opacity='');
+    items.forEach(el=>el.style.opacity='');
+  }
+  wrap._hi=highlight; wrap._unhi=unhighlight;
+
+  segEls.forEach((seg,i)=>{
+    seg.addEventListener('pointerenter',()=>{ if(wrap._active===null) highlight(i); });
+    seg.addEventListener('pointerleave',()=>{ if(wrap._active===null) unhighlight(); });
+    seg.addEventListener('click',()=>toggleCatDetail(i));
   });
-  allLegs.forEach((leg,i)=>{
-    leg.addEventListener('pointerenter',()=>{ if(wrap._active===null) activate(i); });
-    leg.addEventListener('pointerleave',()=>{ if(wrap._active===null) deactivate(); });
-    leg.addEventListener('click',()=>wrap._active===i?deactivate():activate(i));
+  items.forEach(el=>{
+    const i=+el.dataset.i;
+    el.addEventListener('pointerenter',()=>{ if(wrap._active===null) highlight(i); });
+    el.addEventListener('pointerleave',()=>{ if(wrap._active===null) unhighlight(); });
   });
+}
+
+function toggleCatDetail(i){
+  const wrap=document.getElementById('donut-wrap');
+  const det=document.getElementById('donut-detail-'+i);
+  const item=document.querySelector(`.cat-item[data-i="${i}"]`);
+  if(!det||!item) return;
+  const open=det.style.display==='none';
+  det.style.display=open?'':'none';
+  item.classList.toggle('open',open);
+  if(wrap){
+    wrap._active=open?i:null;
+    if(open&&wrap._hi)wrap._hi(i); else if(wrap._unhi)wrap._unhi();
+  }
+  syncExpandAllLabel();
+}
+
+function toggleAllCatDetails(){
+  const dets=document.querySelectorAll('.cat-detail');
+  if(!dets.length) return;
+  const anyClosed=[...dets].some(d=>d.style.display==='none');
+  dets.forEach(d=>{
+    d.style.display=anyClosed?'':'none';
+    const item=d.closest('.cat-item');
+    if(item)item.classList.toggle('open',anyClosed);
+  });
+  const wrap=document.getElementById('donut-wrap');
+  if(wrap){wrap._active=null; if(wrap._unhi)wrap._unhi();}
+  syncExpandAllLabel();
+}
+
+function syncExpandAllLabel(){
+  const btn=document.getElementById('donut-expand-all');
+  const dets=document.querySelectorAll('.cat-detail');
+  if(!btn) return;
+  btn.style.display=dets.length?'':'none';
+  btn.textContent=[...dets].some(d=>d.style.display==='none')?'全部展開':'全部收合';
+}
+
+function openCatInList(cat){
+  showS('list');
+  setListRange('month');
+  listFilter='all';
+  ['fa','fu','fp','fv'].forEach((id,i)=>{
+    const b=document.getElementById(id); if(!b)return;
+    const on=i===0; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+  const inp=document.getElementById('search');
+  if(inp) inp.value=cat;
+  rList();
 }
 
 // Feature 2: mode switcher
@@ -2911,66 +3183,52 @@ async function rChart(){
   const rangeItems = await getByRange(ymKeys[0], ymKeys[5]);
   const trendByCat = _trendByCat(rangeItems, ymKeys);
   const items = rangeItems.filter(x=>x.ym===key);
-  const normal=items.filter(x=>x.itype!=='advance'),advance=items.filter(x=>x.itype==='advance');
+  const normal=items.filter(x=>x.itype!=='advance');
+  // 代墊功能關閉時視為沒有代墊，扣除說明才不會殘留
+  const advance=advOn()?items.filter(x=>x.itype==='advance'):[];
 
   const catMap={};normal.forEach(x=>catMap[x.cat]=(catMap[x.cat]||0)+x.amount);
   const cats=Object.keys(catMap),vals=cats.map(c=>catMap[c]);
   const total=vals.reduce((s,v)=>s+v,0);
-  const paidCnt=normal.filter(x=>x.paid===1).length;
-  const advUnrec=advance.filter(x=>x.recovered!==1);
+  // Advances are excluded from every personal figure on this page
+  const advTotal = advance.reduce((s,x)=>s+x.amount, 0);
 
-  // Personal-only accounting: advances excluded from all personal metrics
-  const advTotal   = advance.reduce((s,x)=>s+x.amount, 0);  // full proxy outflow
-  const advUnrecAmt= advUnrec.reduce((s,x)=>s+x.amount, 0); // outstanding receivable
-
-  document.getElementById('cc').textContent  = normal.length;
-  document.getElementById('cp').textContent  = normal.length?Math.round(paidCnt/normal.length*100)+'%':'—';
-  document.getElementById('ca').textContent  = advance.length;
-  // cam = full proxy exclusion amount (not just unreimbursed) so it matches the formula
-  document.getElementById('cam').textContent = fmt(advTotal);
-
-  // totalSpent = personal expenses ONLY — never inflated by proxy payments
-  const totalSpent=normal.reduce((s,x)=>s+x.amount,0);
-  const totalBudget=budStore.total||0;
-  document.getElementById('bud-total-lbl').textContent=`${y}/${pad(m)} 總預算`;
-  document.getElementById('bud-spent-txt').textContent=fmt(totalSpent);
-  if(totalBudget>0){
-    document.getElementById('bud-limit-txt').textContent=` / 上限 ${fmt(totalBudget)}`;
-    const pct=Math.min(Math.round(totalSpent/totalBudget*100),100);
-    const bar=document.getElementById('bud-total-bar');
-    bar.style.width=pct+'%';
-    bar.className='bud-total-fill'+(pct>=100?' over':pct>=80?' warn':'');
-  }else{
-    document.getElementById('bud-limit-txt').textContent='（未設定）';
-    document.getElementById('bud-total-bar').style.width='0%';
+  // 代墊排除額改成甜甜圈下方一行小字，取代原本兩塊統計磚
+  const dEl=document.getElementById('donut-deduct');
+  if(dEl){
+    if(advTotal>0){dEl.style.display='';dEl.textContent=`已排除代墊 ${fmt(advTotal)}（未計入個人支出）`;}
+    else{dEl.style.display='none';dEl.textContent='';}
   }
 
-  // Build sorted data for donut (colors keyed to getCats() index for stability across months)
+  // Donut data — colors keyed to getCats() index so a category keeps its
+  // colour from month to month even as the ranking changes.
   const allCats = getCats();
   const sorted = cats.map(c=>{
     const ci = allCats.indexOf(c);
     return {cat:c, val:catMap[c], color:DONUT_COLORS[(ci>=0?ci:cats.indexOf(c))%DONUT_COLORS.length]};
   }).sort((a,b)=>b.val-a.val);
-  renderDonutChart(sorted, total);
 
-  const bEl=document.getElementById('bud-cat-rows');bEl.innerHTML='';let any=false;
-  const bFrag=document.createDocumentFragment();
-  getCats().forEach((cat,idx)=>{
-    const spent=catMap[cat]||0,limit=budStore.byIdx[idx]||0;
-    if(!spent&&!limit)return;any=true;
-    const d=document.createElement('div');
-    d.className='bud-cat-block';
-    // Read-only render: no idx, so no ids — the 設定預算 sheet owns those.
-    d.innerHTML=budCatBlockHTML({
-      cat, spent, limit,
-      trend: trendByCat[cat]||new Array(6).fill(0),
-      capRange
-    });
-    bFrag.appendChild(d);
-  });
-  if(!any){bEl.innerHTML='<div style="font-size:13px;color:var(--text3)">該月無支出，或尚未設定預算</div>';}
-  else{bEl.appendChild(bFrag);}
+  // Items behind each slice, for the expandable legend detail
+  const itemsByCat={};
+  normal.forEach(x=>(itemsByCat[x.cat]=itemsByCat[x.cat]||[]).push(x));
+
+  const segEls=renderDonutChart(sorted, total);
+  renderCatRows({sorted,total,itemsByCat,trendByCat,capRange,y,m,segEls});
+
 }
+
+// 緊急度分級：超支 → 接近上限 → 其餘依使用率遞減（供「依預算」排序用）
+function _budRank(spent,limit){
+  if(limit<=0) return {tier:3,pct:0};
+  const pct=spent/limit*100;
+  if(pct>100) return {tier:0,pct};
+  if(pct>=80) return {tier:1,pct};
+  return {tier:2,pct};
+}
+
+
+
+
 
 // ── Feature 2: Range chart renderer ─────────────────────
 async function rChartRange(){
@@ -3160,7 +3418,8 @@ async function openBudModal(){
 
     const div=document.createElement('div');
     div.className='field bud-cat-block';
-    div.innerHTML=budCatBlockHTML({cat, spent, limit, trend, capRange, mid, idx, asLabel:true});
+    div.innerHTML=budCatBlockHTML({cat, spent, limit, trend, capRange, mid, idx, asLabel:true,
+                                   pacePct:monthElapsedPct(y,m)});
     frag.appendChild(div);
   });
   el.appendChild(frag);
