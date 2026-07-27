@@ -980,6 +980,13 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 }
 .dialog::-webkit-scrollbar{display:none}
 
+/* ── 快速編輯 ───────────────────────────────────────────── */
+.qe-meta{
+  font-size:11.5px;color:var(--text3);
+  background:var(--surface3);border-radius:var(--radius);
+  padding:8px 12px;margin-bottom:14px;line-height:1.6;
+}
+
 /* ── 行事曆 ─────────────────────────────────────────────── */
 .cal-open-btn{
   flex:0 0 40px;height:34px;
@@ -1115,21 +1122,33 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .amt-input{position:absolute;inset:0;opacity:0;border:none;background:transparent;font-size:16px;width:100%;height:100%;cursor:text}
 
 /* ── Full-screen form ─────────────────────────────────────── */
+/* 表單改為底部彈出：與其他四個彈窗一致，且不再整頁蓋掉背景 */
 .fsform{
-  position:fixed;inset:0;
-  background:var(--surface);z-index:var(--z-fullscreen);
-  display:flex;flex-direction:column;
-  transform:translateX(100%);
-  transition:transform .32s cubic-bezier(.4,0,.2,1);
-  overflow:hidden;max-width:480px;left:50%;margin-left:-240px;
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.35);
+  z-index:calc(var(--z-overlay) + 1);   /* 由快速編輯開啟，必須疊在它之上 */
+  align-items:flex-end;justify-content:center;overflow:hidden;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
-@media(max-width:480px){.fsform{left:0;margin-left:0}}
-.fsform.on{transform:translateX(0)}
+.fsform.on{display:flex}
+.fs-sheet{
+  background:var(--surface);
+  border-radius:24px 24px 0 0;
+  width:100%;max-width:480px;
+  max-height:92vh;max-height:92dvh;   /* dvh 會隨鍵盤縮放，vh 不會 */
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 -8px 40px rgba(90,70,40,.18);
+  animation:sheetUp .3s cubic-bezier(.4,0,.2,1);
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.fs-handle{
+  width:36px;height:4px;background:var(--border2);border-radius:2px;
+  margin:8px auto 2px;flex-shrink:0;pointer-events:none;
+}
 .fs-nav{
   display:flex;align-items:center;gap:8px;
   background:var(--bg);
   padding:11px 16px;flex-shrink:0;
-  padding-top:calc(11px + var(--safe-t));
   box-shadow:var(--shadow-sm);
 }
 .fs-back{
@@ -1520,7 +1539,10 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 </button>
 
 <!-- ═══════════════ FULL-SCREEN FORM ════════════════ -->
-<div id="fsform" class="fsform" role="dialog" aria-modal="true" aria-labelledby="fs-title">
+<div id="fsform" class="fsform" role="dialog" aria-modal="true" aria-labelledby="fs-title"
+     onclick="if(event.target===this)closeForm()">
+ <div class="fs-sheet" onclick="event.stopPropagation()">
+  <div class="fs-handle"></div>
   <div class="fs-nav">
     <button class="fs-back" onclick="closeForm()">
       <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -1635,6 +1657,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
     </div>
   </div>
+ </div>
 </div>
 
 <!-- ═══════════════ MODALS ════════════════ -->
@@ -1720,6 +1743,43 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <div class="sheet-btns">
       <button class="btn primary" onclick="closeRemModal()">知道了</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="qeov" role="dialog" aria-modal="true" aria-labelledby="qe-title"
+     onclick="if(event.target===this)closeQuickEdit()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr-row">
+      <h3 id="qe-title">—</h3>
+      <button class="fs-save" onclick="saveQuickEdit()">儲存</button>
+      <button class="fs-back" onclick="closeQuickEdit()" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="qe-meta" id="qe-meta"></div>
+    <div class="field">
+      <label>金額（元）</label>
+      <div class="amt-wrap" onclick="document.getElementById('qe-amt-r').focus()">
+        <span class="amt-unit">$</span>
+        <span class="amt-disp ph" id="qe-amt-d">0</span>
+        <input class="amt-input" id="qe-amt-r" type="number" inputmode="numeric" min="0" step="1"
+               oninput="syncAmt('qe-amt-r','qe-amt-d')" onfocus="this.select()">
+      </div>
+    </div>
+    <div class="field">
+      <label>繳費 / 到期日</label>
+      <input id="qe-date" type="date">
+    </div>
+    <div class="toggle-row" style="border-top:1px solid var(--border)">
+      <div><div class="toggle-lbl" id="qe-status-lbl">已繳納</div>
+           <div class="toggle-sub" id="qe-status-sub">切換後按儲存生效</div></div>
+      <label class="toggle">
+        <input type="checkbox" id="qe-status" aria-label="繳納狀態">
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="quickToFull()">編輯全部欄位…</button>
   </div>
 </div>
 
@@ -2234,7 +2294,7 @@ function closeRemModal(){
 // (z-index 60) isn't covered by the overlay (z-index 70).
 function remOpenItem(id){
   closeRemModal();
-  openForm(id);
+  openQuickEdit(id);   // 從提醒點進來多半是要標記已繳，不必開完整表單
 }
 
 function setRemDismissToday(on){
@@ -3627,6 +3687,65 @@ function toggleYear(yr,dataYears){
   saveSelYrs();renderYearCompare();
 }
 
+// ── 快速編輯 ──────────────────────────────────────────────────
+// 多數編輯只會動到金額或日期（你的帳單金額每月都不同），沒必要為此攤開
+// 十二個欄位。這裡只放最常改的三項，其餘走「編輯全部欄位」。
+let quickId=null;
+
+async function openQuickEdit(id){
+  const x=await getById(id); if(!x) return;
+  quickId=id;
+  const isAdv=x.itype==='advance';
+
+  document.getElementById('qe-title').textContent=x.name;
+  setAmt('qe-amt-r','qe-amt-d',x.amount);
+  document.getElementById('qe-date').value=x.date||'';
+
+  const chk=document.getElementById('qe-status');
+  chk.checked = isAdv ? x.recovered===1 : x.paid===1;
+  document.getElementById('qe-status-lbl').textContent = isAdv?'已收回':'已繳納';
+  document.getElementById('qe-status-sub').textContent =
+    isAdv?'代墊款是否已向對方收回':'這筆費用是否已經付款';
+
+  // 唯讀脈絡：這些在快速編輯裡不能改，但要看得到才知道自己在編哪一筆
+  const meta=[`類別 ${x.cat}`, `歸屬 ${(x.ym||'').replace('-','/')}`];
+  if(isAdv&&x.payee) meta.push(`代墊對象 ${x.payee}`);
+  if(x.closeDate) meta.push(`結帳日 ${fmtMD(x.closeDate,x.ym)}`);
+  if(x.note) meta.push(`備註 ${x.note}`);
+  document.getElementById('qe-meta').textContent=meta.join('　·　');
+
+  document.getElementById('qeov').classList.add('on');
+}
+
+function closeQuickEdit(){
+  document.getElementById('qeov').classList.remove('on');
+  quickId=null;
+}
+
+async function saveQuickEdit(){
+  if(!quickId) return;
+  const x=await getById(quickId); if(!x){closeQuickEdit();return;}
+  const amt=getAmt('qe-amt-r');
+  if(amt<0){ alert('金額不可為負數'); return; }
+
+  x.amount=amt;
+  x.date=document.getElementById('qe-date').value;
+  const on=document.getElementById('qe-status').checked;
+  if(x.itype==='advance') x.recovered=on?1:0; else x.paid=on?1:0;
+  // 改日期不會搬動歸屬月份 —— ym 是獨立欄位，要改請走完整表單
+  await putItem(x);
+
+  closeQuickEdit();
+  dirtyAll(); renderActive();
+  toast(`已更新：${x.name}`);
+}
+
+function quickToFull(){
+  const id=quickId;
+  closeQuickEdit();
+  openForm(id);
+}
+
 // ── 行事曆檢視 ────────────────────────────────────────────────
 // 唯一以「繳費日」為軸的畫面。首頁與明細都照歸屬月份 (ym) 分組，但信用卡
 // 帳單的繳費日常常落在下個月，所以「這個月要付什麼」在別的地方拼不出來。
@@ -3764,7 +3883,7 @@ function renderCalUndated(key){
 
 function calOpenItem(id){
   closeCalModal();
-  openForm(id);
+  openQuickEdit(id);
 }
 
 // ── Navigation ───────────────────────────────────────────
@@ -4361,8 +4480,8 @@ openDB().then(async ()=>{
         return;
       }
 
-      // [edit] tap on info area
-      if(e.target.closest('[data-action="edit"]')){ openForm(id); return; }
+      // [edit] 點項目 → 快速編輯；完整表單改由其中的「編輯全部欄位」進入
+      if(e.target.closest('[data-action="edit"]')){ openQuickEdit(id); return; }
 
       // [row tap] cancel if swipe is open
       const row = card.querySelector('.irow');
@@ -4449,7 +4568,7 @@ openDB().then(async ()=>{
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
   // The full-screen form is handled separately in openForm/closeForm.
-  ['bov','cov','rsov','remov','calov'].forEach(id=>{
+  ['bov','cov','rsov','remov','calov','qeov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
@@ -4478,7 +4597,8 @@ openDB().then(async ()=>{
     // Sheet overlays: close whichever is open (MutationObserver handles focus restore)
     const openSheet = document.querySelector('.overlay.on');
     if(openSheet){
-      openSheet.classList.remove('on');
+      if(openSheet.id==='qeov') closeQuickEdit();   // 一併清掉編輯中的 id
+      else openSheet.classList.remove('on');
     }
   });
 
