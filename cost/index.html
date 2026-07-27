@@ -970,6 +970,74 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .overlay.on{display:flex}
+/* 置中變體 —— 網格需要垂直空間，底部滑出會被鍵盤與安全區擠壓 */
+.overlay.center{align-items:center;padding:16px}
+.dialog{
+  background:var(--bg);border-radius:22px;
+  padding:16px 16px calc(16px + var(--safe-b));
+  width:100%;max-width:440px;max-height:86vh;overflow-y:auto;
+  box-shadow:var(--shadow-lg);overscroll-behavior:contain;
+}
+.dialog::-webkit-scrollbar{display:none}
+
+/* ── 行事曆 ─────────────────────────────────────────────── */
+.cal-open-btn{
+  flex:0 0 40px;height:34px;
+  border:1px solid var(--border2);border-radius:99px;
+  background:var(--bg);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+}
+.cal-open-btn:active{background:var(--surface2);transform:scale(.95)}
+.cal-open-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round}
+.cal-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.cal-hdr-mid{flex:1;min-width:0;text-align:center}
+.cal-title{font-size:16px;font-weight:700;letter-spacing:-.02em}
+.cal-sub{font-size:10.5px;color:var(--text3);margin-top:2px;letter-spacing:.04em}
+.cal-legend{
+  display:flex;justify-content:center;gap:14px;
+  font-size:10.5px;color:var(--text3);margin-bottom:10px;
+}
+.cal-legend span{display:flex;align-items:center;gap:4px}
+.cal-legend i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-wd{text-align:center;font-size:10px;color:var(--text3);padding:2px 0 5px;font-weight:600}
+.cal-day{
+  aspect-ratio:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;
+  border-radius:10px;font-size:13px;color:var(--text2);
+  position:relative;transition:background var(--t-fast);
+}
+.cal-day.pad{color:transparent;pointer-events:none}
+.cal-day.today{font-weight:700;color:var(--green)}
+.cal-day.has{background:var(--surface3);cursor:pointer;color:var(--text);font-weight:500}
+.cal-day.has:active{background:var(--surface4)}
+.cal-day.sel{outline:2px solid var(--green);outline-offset:-2px;background:var(--green-lt)}
+.cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.cal-dot.r{background:var(--red)}.cal-dot.g{background:var(--green)}.cal-dot.o{background:var(--orange)}
+.cal-detail{margin-top:12px}
+.cal-detail-hdr{
+  display:flex;align-items:baseline;justify-content:space-between;
+  font-size:12px;font-weight:600;color:var(--text2);
+  padding:9px 2px 6px;border-top:1px solid var(--border);
+}
+.cal-detail-sum{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)}
+.cal-hint{
+  font-size:11.5px;color:var(--text3);text-align:center;
+  padding:14px 0 6px;border-top:1px solid var(--border);margin-top:10px;
+}
+.cal-row{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:var(--radius);
+  background:var(--surface3);margin-bottom:5px;cursor:pointer;
+}
+.cal-row:active{opacity:.75}
+.cal-row-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cal-row-body{flex:1;min-width:0}
+.cal-row-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-row-meta{font-size:10.5px;color:var(--text3);margin-top:2px}
+.cal-row-amt{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;flex-shrink:0}
+.cal-row-amt.r{color:var(--red)}.cal-row-amt.g{color:var(--green)}.cal-row-amt.o{color:var(--orange)}
 .sheet{
   background:var(--bg);
   border-radius:24px 24px 0 0;
@@ -1241,6 +1309,9 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   <div class="filter-row" id="home-filter-row" role="group" aria-label="首頁顯示範圍">
     <button class="filter-btn on" id="hf-todo" onclick="setHomeView('todo')" aria-pressed="true">待處理</button>
     <button class="filter-btn" id="hf-all" onclick="setHomeView('all')" aria-pressed="false">全部</button>
+    <button class="cal-open-btn" onclick="openCalModal()" aria-label="行事曆檢視" title="行事曆檢視">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    </button>
   </div>
 
   <div class="scroll-body" id="home-scroll">
@@ -1467,7 +1538,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
     </div>
     <div class="adv-hint-box" id="adv-hint" style="display:none"><p>代墊款：先代替他人支付，待對方償還。不計入個人支出，以橘色獨立追蹤。</p></div>
-    <div class="field"><label>類別</label><select id="f-cat" aria-label="費用類別"></select></div>
+    <div class="field"><label>類別</label><select id="f-cat" onchange="onCatChange()" aria-label="費用類別"></select></div>
     <div class="field"><label>項目名稱</label><input id="f-name" type="text" placeholder="例：中國信託信用卡費" autocomplete="off"></div>
     <div class="field" id="f-payee-wrap" style="display:none">
       <label>代墊對象</label><input id="f-payee" type="text" placeholder="例：小明" autocomplete="off">
@@ -1518,6 +1589,11 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
       </div>
     </div>
 
+    <div class="field" id="f-close-wrap" style="display:none">
+      <label>結帳日</label>
+      <input id="f-close" type="date" onchange="updateCloseNote()">
+      <p class="field-note" id="f-close-note">帳單結帳日，用來對照這筆帳單涵蓋的消費期間</p>
+    </div>
     <div class="field"><label>繳費 / 到期日</label><input id="f-date" type="date" onchange="updateYmNote()"></div>
     <div class="field">
       <label>歸屬月份（計入哪個月的支出）</label>
@@ -1644,6 +1720,31 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
     <div class="sheet-btns">
       <button class="btn primary" onclick="closeRemModal()">知道了</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay center" id="calov" role="dialog" aria-modal="true" aria-labelledby="cal-title"
+     onclick="if(event.target===this)closeCalModal()">
+  <div class="dialog" onclick="event.stopPropagation()">
+    <div class="cal-hdr">
+      <button class="month-nav-btn" onclick="calShift(-1)" aria-label="上個月">&#8249;</button>
+      <div class="cal-hdr-mid">
+        <div class="cal-title" id="cal-title">—</div>
+        <div class="cal-sub">依繳費日</div>
+      </div>
+      <button class="month-nav-btn" onclick="calShift(1)" aria-label="下個月">&#8250;</button>
+      <button class="fs-back" onclick="closeCalModal()" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="cal-legend">
+      <span><i style="background:var(--red)"></i>未繳</span>
+      <span><i style="background:var(--green)"></i>已繳</span>
+      <span id="cal-leg-adv"><i style="background:var(--orange)"></i>代墊待收</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-detail" id="cal-detail"></div>
+    <div id="cal-undated"></div>
   </div>
 </div>
 
@@ -1963,6 +2064,32 @@ function updateYmNote(){
     : '預設為目前檢視的月份，可自行調整';
 }
 
+// 結帳日只對信用卡有意義，所以預設只在該類別出現；
+// 但既有資料若已填過就一直顯示，避免改類別後資料被藏起來又悄悄留著。
+function onCatChange(){
+  const wrap=document.getElementById('f-close-wrap');
+  if(!wrap) return;
+  const isCard=document.getElementById('f-cat').value==='信用卡';
+  const hasVal=!!document.getElementById('f-close').value;
+  const isAdv=document.getElementById('rt-advance').checked;
+  wrap.style.display=(!isAdv&&(isCard||hasVal))?'':'none';
+  updateCloseNote();
+}
+
+function updateCloseNote(){
+  const note=document.getElementById('f-close-note'); if(!note)return;
+  const cd=document.getElementById('f-close').value;
+  const dd=document.getElementById('f-date').value;
+  if(cd&&dd&&dd>cd){
+    const gap=Math.round((new Date(dd+'T00:00:00')-new Date(cd+'T00:00:00'))/86400000);
+    note.textContent=`結帳後 ${gap} 天到期`;
+  }else if(cd&&dd&&dd<cd){
+    note.textContent='繳費日早於結帳日，請確認是否填反';
+  }else{
+    note.textContent='帳單結帳日，用來對照這筆帳單涵蓋的消費期間';
+  }
+}
+
 function onTypeChange(){
   const a=document.getElementById('rt-advance').checked;
   document.getElementById('adv-hint').style.display=a?'block':'none';
@@ -1979,6 +2106,7 @@ function onTypeChange(){
     // user taps it) — but only when 代墊款 is switched on at all.
     if(tRow) tRow.style.display = advOn() ? '' : 'none';
   }
+  onCatChange();
 }
 
 // ── Range YM ─────────────────────────────────────────────
@@ -2462,6 +2590,7 @@ function makeCard(x){
 
   const subs=[];
   if(isAdv&&x.payee)subs.push('代墊：'+x.payee);
+  if(x.closeDate)subs.push('結帳 '+x.closeDate.slice(5).replace('-','/'));
   if(x.date)subs.push(x.date);
   if(x.note)subs.push(x.note);
   if(subs.length){
@@ -3490,6 +3619,146 @@ function toggleYear(yr,dataYears){
   saveSelYrs();renderYearCompare();
 }
 
+// ── 行事曆檢視 ────────────────────────────────────────────────
+// 唯一以「繳費日」為軸的畫面。首頁與明細都照歸屬月份 (ym) 分組，但信用卡
+// 帳單的繳費日常常落在下個月，所以「這個月要付什麼」在別的地方拼不出來。
+let _calSel=null;      // 目前選取的日期字串
+let _calCache=[];      // 該月依繳費日落在此月的項目
+
+function calShift(d){
+  let y=SEL.y,m=SEL.m+d;
+  if(m>12){m=1;y++;} if(m<1){m=12;y--;}
+  setMonth(y,m,false);          // 與首頁共用月份狀態，兩邊不會各走各的
+  _calSel=null;
+  renderCalendar();
+}
+
+async function openCalModal(){
+  await renderCalendar();
+  document.getElementById('calov').classList.add('on');
+}
+function closeCalModal(){
+  document.getElementById('calov').classList.remove('on');
+}
+
+async function renderCalendar(){
+  const {y,m}=curYM();
+  const key=ymStr(y,m);
+  document.getElementById('cal-title').textContent=monthLbl(y,m);
+
+  // 依「日期」取件，而不是 ym —— 兩者刻意不同步，所以只能全掃後過濾。
+  // 資料量是幾十到幾百筆，成本可以忽略（buildRems 也是同樣做法）。
+  const all=await getAll();
+  const inMonth=all.filter(x=>x.date&&x.date.startsWith(key)
+                              &&(advOn()||x.itype!=='advance'));
+  _calCache=inMonth;
+
+  const byDay={};
+  inMonth.forEach(x=>{ (byDay[+x.date.slice(8,10)]=byDay[+x.date.slice(8,10)]||[]).push(x); });
+
+  const legAdv=document.getElementById('cal-leg-adv');
+  if(legAdv) legAdv.style.display=advOn()?'':'none';
+
+  // 網格
+  const first=new Date(y,m-1,1).getDay();       // 0=日
+  const days=daysInMonth(y,m);
+  const td=today();
+  const g=document.getElementById('cal-grid');
+  let html=['日','一','二','三','四','五','六'].map(w=>`<div class="cal-wd">${w}</div>`).join('');
+  for(let i=0;i<first;i++) html+='<div class="cal-day pad"></div>';
+  for(let d=1;d<=days;d++){
+    const ds=`${key}-${pad(d)}`;
+    const list=byDay[d]||[];
+    let dot='';
+    if(list.length){
+      // 紅（有未繳）優先於橘（代墊未收回）優先於綠（全部完成）
+      const unpaid=list.some(x=>x.itype!=='advance'&&x.paid!==1);
+      const unrec =list.some(x=>x.itype==='advance'&&x.recovered!==1);
+      dot=`<div class="cal-dot ${unpaid?'r':unrec?'o':'g'}"></div>`;
+    }
+    html+=`<div class="cal-day${list.length?' has':''}${ds===td?' today':''}${ds===_calSel?' sel':''}"
+      ${list.length?`onclick="selectCalDay('${ds}')"`:''}
+      ${list.length?`role="button" tabindex="0" aria-label="${d} 日，${list.length} 筆"`:''}>
+      <span>${d}</span>${dot}</div>`;
+  }
+  g.innerHTML=html;
+
+  renderCalDetail();
+  renderCalUndated(key);
+}
+
+function selectCalDay(ds){
+  _calSel = (_calSel===ds) ? null : ds;      // 再點一次收合
+  document.querySelectorAll('.cal-day').forEach(el=>el.classList.remove('sel'));
+  if(_calSel){
+    const idx=+_calSel.slice(8,10);
+    const cells=[...document.querySelectorAll('.cal-day:not(.pad)')];
+    if(cells[idx-1]) cells[idx-1].classList.add('sel');
+  }
+  renderCalDetail();
+}
+
+function _calRowHTML(x){
+  const isAdv=x.itype==='advance';
+  const done=isAdv?x.recovered===1:x.paid===1;
+  const c=isAdv?(done?'g':'o'):(done?'g':'r');
+  const meta=[];
+  if(isAdv) meta.push(x.payee?'代墊：'+x.payee:'代墊');
+  meta.push('歸屬 '+(x.ym||'').replace('-','/'));
+  if(x.closeDate) meta.push('結帳 '+x.closeDate.slice(5).replace('-','/'));
+  meta.push(isAdv?(done?'已收回':'未收回'):(done?'已繳':'未繳'));
+  return `<div class="cal-row" onclick="calOpenItem(${x.id})">
+      <span class="cal-row-dot" style="background:var(--${c==='r'?'red':c==='o'?'orange':'green'})"></span>
+      <div class="cal-row-body">
+        <div class="cal-row-name">${esc(x.name)}</div>
+        <div class="cal-row-meta">${esc(meta.join(' · '))}</div>
+      </div>
+      <span class="cal-row-amt ${c}">${fmt(x.amount)}</span>
+    </div>`;
+}
+
+function renderCalDetail(){
+  const el=document.getElementById('cal-detail');
+  if(!_calSel){
+    const n=_calCache.length;
+    const sum=_calCache.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+    el.innerHTML=n
+      ? `<div class="cal-detail-hdr"><span>本月付款 ${n} 筆</span><span class="cal-detail-sum">${fmt(sum)}</span></div>
+         <div class="cal-hint" style="border-top:none;margin-top:0;padding-top:4px">點選有標記的日期查看明細</div>`
+      : `<div class="cal-hint">這個月沒有排定的付款</div>`;
+    return;
+  }
+  const list=_calCache.filter(x=>x.date===_calSel).sort((a,b)=>b.amount-a.amount);
+  const d=new Date(_calSel+'T00:00:00');
+  const wd=['日','一','二','三','四','五','六'][d.getDay()];
+  const sum=list.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+  el.innerHTML=
+    `<div class="cal-detail-hdr">
+       <span>${d.getMonth()+1}月${d.getDate()}日 週${wd}　${list.length} 筆</span>
+       <span class="cal-detail-sum">${fmt(sum)}</span>
+     </div>`+list.map(_calRowHTML).join('');
+}
+
+// 沒填日期的項目在網格上沒有位置，收在下方，避免整批從這個畫面消失
+function renderCalUndated(key){
+  const el=document.getElementById('cal-undated');
+  const undated=[];   // 歸屬於本月但沒有繳費日
+  return getByYM(key).then(items=>{
+    items.filter(x=>!x.date&&(advOn()||x.itype!=='advance')).forEach(x=>undated.push(x));
+    if(!undated.length){el.innerHTML='';return;}
+    el.innerHTML=
+      `<div class="cal-detail-hdr" style="margin-top:4px">
+         <span>未排定日期 ${undated.length} 筆</span>
+         <span class="cal-detail-sum">${fmt(undated.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0))}</span>
+       </div>`+undated.sort((a,b)=>b.amount-a.amount).map(_calRowHTML).join('');
+  });
+}
+
+function calOpenItem(id){
+  closeCalModal();
+  openForm(id);
+}
+
 // ── Navigation ───────────────────────────────────────────
 const SCREENS=['home','list','chart','settings'];
 function showS(name){
@@ -3549,6 +3818,7 @@ async function openForm(id){
     document.getElementById('f-name').value=x.name;
     setAmt('f-amt-r','f-amt-d',x.amount);
     document.getElementById('f-date').value=x.date||'';
+    document.getElementById('f-close').value=x.closeDate||'';
     document.getElementById('f-note').value=x.note||'';
     document.getElementById('f-payee').value=x.payee||'';
     const rd=x.remindDays||0;
@@ -3579,6 +3849,7 @@ async function openForm(id){
     document.getElementById('f-name').value='';
     setAmt('f-amt-r','f-amt-d',0);
     document.getElementById('f-date').value=today();
+    document.getElementById('f-close').value='';
     document.getElementById('f-ym-y').value=SEL.y;
     document.getElementById('f-ym-m').value=SEL.m;
     document.getElementById('f-note').value='';document.getElementById('f-payee').value='';
@@ -3597,7 +3868,7 @@ async function openForm(id){
     advFields.classList.add('open');advBtn.classList.add('open');
     advBtn.setAttribute('aria-expanded','true');
   }
-  updateYmNote();
+  updateYmNote(); onCatChange();
   // Fix 1: proxy toggle stays accessible in edit mode — onTypeChange() already handles show/hide
   document.getElementById('fsform').classList.add('on');
   _savedScroll=window.scrollY;
@@ -3695,6 +3966,8 @@ async function saveItem(){
       date, note: finalNote,
       remindDays: remDays, ym
     };
+    const cd=document.getElementById('f-close').value;
+    if(cd) item.closeDate=cd;   // 只有填了才寫入，避免整批多一個空欄位
     if(isAdv){
       // Advance entry (no proxy splitting for these)
       item.itype     = 'advance';
@@ -3924,7 +4197,7 @@ async function exportCSV(){
   // otherwise a note containing a line break silently splits one record in two.
   const flat=v=>String(v==null?'':v).replace(/\r\n|[\r\n]/g,'　');
   const cell=v=>`"${flat(v).replace(/"/g,'""')}"`;
-  const hdr='年月,類別,類型,項目名稱,金額,日期,備註,繳納狀態,代墊對象,收回狀態';
+  const hdr='年月,類別,類型,項目名稱,金額,日期,備註,繳納狀態,代墊對象,收回狀態,結帳日';
   const rows=all.map(x=>[
     x.ym,
     cell(x.cat),
@@ -3935,7 +4208,8 @@ async function exportCSV(){
     cell(x.note),
     x.paid===1?'已繳':'未繳',
     cell(x.payee),
-    x.itype==='advance'?(x.recovered===1?'已收回':'未收回'):'—'
+    x.itype==='advance'?(x.recovered===1?'已收回':'未收回'):'—',
+    x.closeDate||''
   ].join(','));
   const blob=new Blob(['\uFEFF'+hdr+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -3961,9 +4235,11 @@ async function importFile(e){
       items=lines.map(l=>{
         const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];
         const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');
-        return{ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),
+        const rec={ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),
                amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',
                paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};
+        if(q(10)) rec.closeDate=q(10);   // 舊的 10 欄備份讀到空字串，照樣相容
+        return rec;
       }).filter(x=>x.name&&x.amount>=0);
     }
 
@@ -4165,7 +4441,7 @@ openDB().then(async ()=>{
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
   // The full-screen form is handled separately in openForm/closeForm.
-  ['bov','cov','rsov','remov'].forEach(id=>{
+  ['bov','cov','rsov','remov','calov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
