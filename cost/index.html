@@ -2590,8 +2590,8 @@ function makeCard(x){
 
   const subs=[];
   if(isAdv&&x.payee)subs.push('代墊：'+x.payee);
-  if(x.closeDate)subs.push('結帳 '+x.closeDate.slice(5).replace('-','/'));
-  if(x.date)subs.push(x.date);
+  if(x.date)subs.push('繳費 '+fmtMD(x.date,x.ym));
+  if(x.closeDate)subs.push('結帳 '+fmtMD(x.closeDate,x.ym));
   if(x.note)subs.push(x.note);
   if(subs.length){
     const st=document.createElement('div');st.className='isub';
@@ -2669,6 +2669,14 @@ function setListRange(mode){
     set('rf-y',fy);set('rf-m',fm);set('rt-y',y);set('rt-m',m);
   }
   rList();
+}
+
+// MM/DD 短格式。只有當日期年份與該筆的歸屬年份不同時才補上年份 ——
+// 十二月的帳單隔年一月繳，純 MMDD 會顯示成 01/05，看起來像是更早而不是明年。
+function fmtMD(ds, refYm){
+  if(!ds) return '';
+  const refY = refYm ? +refYm.slice(0,4) : SEL.y;
+  return (+ds.slice(0,4)===refY) ? ds.slice(5).replace('-','/') : ds.replace(/-/g,'/');
 }
 
 // ── Feature 1: Date-group header formatter ───────────────
@@ -3705,7 +3713,7 @@ function _calRowHTML(x){
   const meta=[];
   if(isAdv) meta.push(x.payee?'代墊：'+x.payee:'代墊');
   meta.push('歸屬 '+(x.ym||'').replace('-','/'));
-  if(x.closeDate) meta.push('結帳 '+x.closeDate.slice(5).replace('-','/'));
+  if(x.closeDate) meta.push('結帳 '+fmtMD(x.closeDate,x.ym));
   meta.push(isAdv?(done?'已收回':'未收回'):(done?'已繳':'未繳'));
   return `<div class="cal-row" onclick="calOpenItem(${x.id})">
       <span class="cal-row-dot" style="background:var(--${c==='r'?'red':c==='o'?'orange':'green'})"></span>
