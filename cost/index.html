@@ -1390,6 +1390,90 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
 
 
+/* ── 訂閱 chip（hero 卡下方）─────────────────────────────── */
+.sub-chip{
+  width:100%;
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg);border:none;
+  border-radius:var(--radius-lg);
+  padding:12px 14px;margin-bottom:10px;
+  box-shadow:var(--shadow-sm);
+  cursor:pointer;text-align:left;
+  transition:background var(--t-fast),transform var(--t-fast);
+  animation:fadeUp .45s ease both;
+}
+.sub-chip:active{background:var(--surface3);transform:scale(.99)}
+.sub-chip-ico{
+  width:32px;height:32px;flex-shrink:0;border-radius:10px;
+  background:var(--blue-lt);
+  display:flex;align-items:center;justify-content:center;
+}
+.sub-chip-ico svg{width:16px;height:16px;stroke:var(--blue);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.sub-chip-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sub-chip-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.sub-chip-sub{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-chip-amt{
+  font-family:'DM Mono',monospace;font-size:14px;font-weight:600;
+  color:var(--text2);flex-shrink:0;
+}
+.sub-chip-arrow{width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+
+/* ── 訂閱清單 ─────────────────────────────────────────────── */
+.sub-summary{
+  background:var(--surface3);border-radius:var(--radius);
+  padding:13px 15px;margin-bottom:6px;
+}
+.sub-sum-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.sub-sum-row:last-child{margin-bottom:0}
+.sub-sum-lbl{font-size:12px;color:var(--text2)}
+.sub-sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--text)}
+.sub-sum-val.sm{font-size:13px;font-weight:500;color:var(--text2)}
+.sub-note-box{
+  background:var(--blue-lt);border:1px solid rgba(74,127,191,.18);
+  border-radius:var(--radius);padding:9px 12px;margin-bottom:14px;
+}
+.sub-note-box p{font-size:11.5px;color:var(--blue);line-height:1.55}
+.sub-card-hdr{
+  font-size:11.5px;font-weight:700;color:var(--text2);
+  padding:13px 2px 7px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+}
+.sub-card-hdr span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-card-hdr span:last-child{font-family:'DM Mono',monospace;color:var(--text3);font-weight:500;flex-shrink:0}
+.sub-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface3);border-radius:var(--radius);
+  padding:11px 13px;margin-bottom:6px;cursor:pointer;
+  transition:background var(--t-fast);
+}
+.sub-row:active{background:var(--surface4)}
+.sub-row.dim{opacity:.5}
+.sub-row-body{flex:1;min-width:0}
+.sub-row-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-row-meta{font-size:11px;color:var(--text3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-row-right{text-align:right;flex-shrink:0}
+.sub-row-amt{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--text)}
+.sub-row-cyc{font-size:10px;color:var(--text3);margin-top:2px}
+.sub-badge{
+  display:inline-block;font-size:9.5px;font-weight:700;
+  padding:1px 6px;border-radius:99px;margin-left:6px;vertical-align:1px;
+}
+.sub-badge.pause{background:var(--amber-lt);color:var(--amber)}
+.sub-badge.off{background:var(--surface4);color:var(--text3)}
+.sub-badge.due{background:var(--orange-lt);color:var(--orange)}
+.sub-sec-hdr{
+  font-size:11.5px;font-weight:600;color:var(--text3);
+  padding:14px 2px 7px;border-top:1px solid var(--border);margin-top:10px;
+}
+.sub-add-btn{
+  width:100%;height:46px;margin-top:12px;
+  border:1.5px dashed var(--border2);border-radius:var(--radius);
+  background:transparent;color:var(--text2);cursor:pointer;
+  font-size:14px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.sub-add-btn:active{background:var(--surface3)}
+.sub-add-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+
 /* ── Offline banner ───────────────────────────────────────── */
 .offline-bar{
   position:fixed;left:0;right:0;top:0;
@@ -1492,6 +1576,20 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       </div>
 
     </div>
+
+    <!-- 訂閱攤提：純參考資訊，金額已含在信用卡帳單中，不計入上方支出 -->
+    <button class="sub-chip" id="sub-chip" type="button" onclick="openSubModal()"
+            aria-label="訂閱管理">
+      <span class="sub-chip-ico">
+        <svg viewBox="0 0 24 24"><path d="M3 9h18M7 3v4M17 3v4"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 14h4"/></svg>
+      </span>
+      <span class="sub-chip-body">
+        <span class="sub-chip-lbl">訂閱攤提</span>
+        <span class="sub-chip-sub" id="sub-chip-sub">尚未建立訂閱</span>
+      </span>
+      <span class="sub-chip-amt" id="sub-chip-amt"></span>
+      <svg class="sub-chip-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
   </div>
 
   <div class="filter-row" id="home-filter-row" role="group" aria-label="首頁顯示範圍">
@@ -1660,6 +1758,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="settings-row" onclick="openSubModal()">
+        <div><div class="settings-row-lbl">訂閱管理</div><div class="settings-row-sub" id="sub-preview-settings">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
       <div class="settings-row" onclick="openRemModal()">
         <div><div class="settings-row-lbl">檢視待處理提醒</div><div class="settings-row-sub" id="rem-view-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
@@ -1695,7 +1797,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.0.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.1.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -1994,6 +2096,98 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   </div>
 </div>
 
+<!-- ═══════════════ 訂閱管理 ════════════════ -->
+<div class="overlay" id="subov" role="dialog" aria-modal="true" aria-labelledby="sub-title"
+     onclick="if(event.target===this)closeSubModal()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+
+    <!-- ── 清單檢視 ── -->
+    <div id="sub-view-list">
+      <div class="sheet-hdr-row">
+        <h3 id="sub-title">訂閱管理</h3>
+        <button class="fs-back" onclick="closeSubModal()" aria-label="關閉">
+          <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="sub-note-box">
+        <p>訂閱僅記錄期間與每月攤提，<strong>不計入支出總額</strong>。實際金額已含在對應的信用卡帳單裡。</p>
+      </div>
+      <div class="sub-summary" id="sub-summary"></div>
+      <div id="sub-rows"></div>
+      <button class="sub-add-btn" onclick="openSubEdit(null)">
+        <svg viewBox="0 0 16 16"><path d="M8 2v12M2 8h12"/></svg>
+        新增訂閱
+      </button>
+    </div>
+
+    <!-- ── 編輯檢視 ── -->
+    <div id="sub-view-edit" style="display:none">
+      <div class="sheet-hdr-row">
+        <button class="fs-back" onclick="closeSubEdit()" aria-label="返回清單">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <h3 id="sub-edit-title">新增訂閱</h3>
+        <button class="fs-del" id="sub-del-btn" style="display:none" onclick="deleteSub()">刪除</button>
+        <button class="fs-save" onclick="saveSub()">儲存</button>
+      </div>
+
+      <div class="field"><label>訂閱名稱</label>
+        <input id="sb-name" type="text" placeholder="例：YouTube Premium" autocomplete="off"></div>
+
+      <div class="field"><label>類別</label>
+        <select id="sb-cat" aria-label="訂閱類別"></select></div>
+
+      <div class="field">
+        <label>扣款金額（元）</label>
+        <div class="amt-wrap" onclick="document.getElementById('sb-amt-r').focus()">
+          <span class="amt-unit">$</span>
+          <span class="amt-disp ph" id="sb-amt-d" aria-hidden="true">0</span>
+          <input class="amt-input" id="sb-amt-r" type="number" inputmode="numeric" min="0" step="1"
+                 oninput="syncAmt('sb-amt-r','sb-amt-d');updateSubCalc()" onfocus="this.select()">
+        </div>
+        <p class="field-note" id="sb-amt-note">每期實際扣款金額，不是攤提後的金額</p>
+      </div>
+
+      <div class="field">
+        <label>扣款週期</label>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="sbcyc" id="sb-cyc-m" value="monthly" onchange="updateSubCalc()"> 每月</label>
+          <label class="radio-opt"><input type="radio" name="sbcyc" id="sb-cyc-y" value="yearly" onchange="updateSubCalc()"> 每年</label>
+        </div>
+        <p class="field-note" id="sb-calc-note"></p>
+      </div>
+
+      <div class="field">
+        <label>記在哪張卡</label>
+        <input id="sb-card" type="text" list="sb-card-list" placeholder="例：中國信託 LINE Pay 卡" autocomplete="off">
+        <datalist id="sb-card-list"></datalist>
+        <p class="field-note">用來對照這筆訂閱包含在哪張信用卡帳單中</p>
+      </div>
+
+      <div class="field"><label>起訂日 / 首次扣款日</label>
+        <input id="sb-start" type="date" onchange="updateSubCalc()"></div>
+
+      <div class="field"><label>結束日（選填）</label>
+        <input id="sb-end" type="date">
+        <p class="field-note">優惠到期或已知的結束日期，留空表示持續訂閱</p>
+      </div>
+
+      <div class="field"><label>狀態</label>
+        <select id="sb-status">
+          <option value="active">訂閱中</option>
+          <option value="paused">已暫停</option>
+          <option value="cancelled">已取消</option>
+        </select>
+        <p class="field-note">暫停與取消不列入每月攤提合計，但保留記錄</p>
+      </div>
+
+      <div class="field"><label>備註（選填）</label>
+        <textarea id="sb-note" placeholder="例：家庭方案、與家人共用"></textarea></div>
+    </div>
+  </div>
+</div>
+
 <div class="offline-bar" id="offline-bar" role="status" aria-live="polite">
   <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.7 16.7A9 9 0 0 0 12 20M5 12.5a11 11 0 0 1 4-2.4M2 8.8a16 16 0 0 1 5-3M22 8.8a16 16 0 0 0-9.5-3.7"/></svg>
   離線模式 · 資料仍存在本機
@@ -2092,6 +2286,273 @@ function doUndo(){
 
 
 // UX7: toggle advanced fields in add/edit form
+// ══════════════════════════════════════════════════════════
+//  訂閱（參考層）
+//  ──────────────────────────────────────────────────────────
+//  訂閱「不」產生 items、「不」計入任何支出總額。
+//  實際金額已經含在對應的信用卡帳單裡，這裡只回答兩件事：
+//    1. 這筆訂閱的期間（起訂日 → 下次扣款日）
+//    2. 每月攤提多少，記在哪張卡
+// ══════════════════════════════════════════════════════════
+const SUB_CYCLES={
+  monthly:{lbl:'每月', months:1},
+  yearly: {lbl:'每年', months:12}
+};
+const SUB_STATUS={
+  active:   {lbl:'訂閱中', cls:'on'},
+  paused:   {lbl:'已暫停', cls:'pause'},
+  cancelled:{lbl:'已取消', cls:'off'}
+};
+
+// 每月攤提：年繳除以 12。這是純顯示用的推估值，不寫回任何記錄。
+const subMonthly = x => (x.cycle==='yearly' ? (x.amount||0)/12 : (x.amount||0));
+const subYearly  = x => (x.cycle==='yearly' ? (x.amount||0)    : (x.amount||0)*12);
+
+// 加月份並處理月底：1/31 加一個月要落在 2/28，不能溢位到 3/3
+function addMonthsDS(ds, n){
+  const [y,m,d]=ds.split('-').map(Number);
+  const t=new Date(y, m-1+n, 1);
+  const last=new Date(t.getFullYear(), t.getMonth()+1, 0).getDate();
+  t.setDate(Math.min(d, last));
+  return `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+}
+
+// 從起訂日往後推，找出第一個還沒到的扣款日
+function subNextBill(x){
+  if(!x.startDate) return '';
+  const step=(SUB_CYCLES[x.cycle]||SUB_CYCLES.monthly).months;
+  let d=x.startDate, guard=0;
+  while(diffDays(d) < 0 && guard++ < 600) d=addMonthsDS(d, step);
+  return d;
+}
+
+// 已訂閱多久，回傳「1 年 3 個月」這種字串
+function subElapsedLabel(x){
+  if(!x.startDate) return '';
+  const a=new Date(x.startDate+'T00:00:00'), b=new Date(today()+'T00:00:00');
+  if(a>b) return '尚未開始';
+  let mo=(b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth());
+  if(b.getDate() < a.getDate()) mo--;
+  if(mo < 1) return '未滿 1 個月';
+  const y=Math.floor(mo/12), m=mo%12;
+  return [y?`${y} 年`:'', m?`${m} 個月`:''].filter(Boolean).join(' ') || `${mo} 個月`;
+}
+
+// 訂閱是否已因結束日而失效
+const subExpired = x => !!(x.endDate && diffDays(x.endDate) < 0);
+const subIsLive  = x => x.status==='active' && !subExpired(x);
+
+let _editSubId = null;
+
+// ── Hero 卡下方的攤提 chip ────────────────────────────────
+async function renderSubChip(){
+  if(!DB) return;
+  const amtEl=document.getElementById('sub-chip-amt');
+  const subEl=document.getElementById('sub-chip-sub');
+  if(!amtEl||!subEl) return;
+  let all=[];
+  try{ all=await getAllSubs(); }catch{ return; }
+  const live=all.filter(subIsLive);
+  if(!live.length){
+    amtEl.textContent='';
+    subEl.textContent = all.length ? `${all.length} 項已暫停／取消，點此檢視` : '尚未建立訂閱，點此新增';
+    return;
+  }
+  const mo=live.reduce((t,x)=>t+subMonthly(x),0);
+  const yr=live.reduce((t,x)=>t+subYearly(x),0);
+  amtEl.textContent=fmt(mo);
+  subEl.textContent=`${live.length} 項 · 年約 ${fmt(yr)} · 已含在信用卡帳單`;
+}
+
+// ── 清單 ──────────────────────────────────────────────────
+async function openSubModal(){
+  closeSubEdit(true);
+  await renderSubList();
+  document.getElementById('subov').classList.add('on');
+}
+function closeSubModal(){
+  document.getElementById('subov').classList.remove('on');
+  closeSubEdit(true);
+}
+
+// 同年只顯示月/日，跨年才帶年份，避免「下次 03/15」看不出是哪一年
+const subDate = ds => !ds ? '' :
+  (+ds.slice(0,4)===cy() ? ds.slice(5).replace('-','/') : ds.replace(/-/g,'/'));
+
+function _subRowHTML(x){
+  const live=subIsLive(x);
+  const next=subNextBill(x);
+  const d=next?diffDays(next):null;
+  const cyc=(SUB_CYCLES[x.cycle]||SUB_CYCLES.monthly).lbl;
+  const st=SUB_STATUS[x.status]||SUB_STATUS.active;
+
+  let badge='';
+  if(x.status!=='active') badge=`<span class="sub-badge ${st.cls}">${st.lbl}</span>`;
+  else if(subExpired(x))  badge=`<span class="sub-badge off">已到期</span>`;
+  else if(d!==null&&d<=7) badge=`<span class="sub-badge due">${d<=0?'今日扣款':d+' 天後扣款'}</span>`;
+
+  const meta=[];
+  if(x.startDate) meta.push(`${subDate(x.startDate)} 起訂 · ${subElapsedLabel(x)}`);
+  if(live&&next)  meta.push(`下次 ${subDate(next)}`);
+  if(x.endDate)   meta.push(`至 ${subDate(x.endDate)}`);
+
+  return `<div class="sub-row${live?'':' dim'}" onclick="openSubEdit(${x.id})">
+    <div class="sub-row-body">
+      <div class="sub-row-name">${esc(x.name)}${badge}</div>
+      <div class="sub-row-meta">${esc(meta.join(' · ')||'—')}</div>
+    </div>
+    <div class="sub-row-right">
+      <div class="sub-row-amt">${fmt(subMonthly(x))}<span style="font-size:10px;font-weight:400;color:var(--text3)"> /月</span></div>
+      <div class="sub-row-cyc">${cyc}扣 ${fmt(x.amount)}</div>
+    </div>
+  </div>`;
+}
+
+async function renderSubList(){
+  const all=await getAllSubs();
+  const live=all.filter(subIsLive);
+  const rest=all.filter(x=>!subIsLive(x));
+
+  const mo=live.reduce((t,x)=>t+subMonthly(x),0);
+  const yr=live.reduce((t,x)=>t+subYearly(x),0);
+  document.getElementById('sub-summary').innerHTML=`
+    <div class="sub-sum-row">
+      <span class="sub-sum-lbl">每月攤提合計</span>
+      <span class="sub-sum-val">${fmt(mo)}</span>
+    </div>
+    <div class="sub-sum-row">
+      <span class="sub-sum-lbl">年度合計</span>
+      <span class="sub-sum-val sm">${fmt(yr)}</span>
+    </div>
+    <div class="sub-sum-row">
+      <span class="sub-sum-lbl">訂閱中項目</span>
+      <span class="sub-sum-val sm">${live.length} 項${rest.length?`（另有 ${rest.length} 項未啟用）`:''}</span>
+    </div>`;
+
+  // 依信用卡分組，才看得出每張卡各扛了多少固定支出
+  const groups={};
+  live.forEach(x=>{ const k=x.card&&x.card.trim()?x.card.trim():'未指定卡片'; (groups[k]=groups[k]||[]).push(x); });
+
+  let html='';
+  Object.keys(groups).sort().forEach(card=>{
+    const rows=groups[card].sort((a,b)=>subMonthly(b)-subMonthly(a));
+    const sum=rows.reduce((t,x)=>t+subMonthly(x),0);
+    html+=`<div class="sub-card-hdr"><span>${esc(card)}</span><span>${fmt(sum)} /月</span></div>`;
+    html+=rows.map(_subRowHTML).join('');
+  });
+  if(!live.length) html+=`<div class="empty-msg" style="padding:26px 12px">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M7 3v4M17 3v4"/></svg>
+      尚未建立訂閱</div>`;
+  if(rest.length){
+    html+=`<div class="sub-sec-hdr">未啟用（${rest.length}）</div>`;
+    html+=rest.sort((a,b)=>subMonthly(b)-subMonthly(a)).map(_subRowHTML).join('');
+  }
+  document.getElementById('sub-rows').innerHTML=html;
+}
+
+// ── 編輯 ──────────────────────────────────────────────────
+async function _buildCardList(){
+  const dl=document.getElementById('sb-card-list');
+  const names=new Set();
+  (await getAllSubs()).forEach(x=>{ if(x.card&&x.card.trim()) names.add(x.card.trim()); });
+  // 也把既有的信用卡類別項目名稱列進來，直接對照到現有帳單
+  (await getAll()).forEach(x=>{ if(x.cat==='信用卡'&&x.name) names.add(x.name); });
+  dl.innerHTML=[...names].sort().map(n=>`<option value="${esc(n)}"></option>`).join('');
+}
+
+function updateSubCalc(){
+  const amt=getAmt('sb-amt-r');
+  const yearly=document.getElementById('sb-cyc-y').checked;
+  const note=document.getElementById('sb-calc-note');
+  if(!amt){ note.textContent=''; return; }
+  const mo=yearly?amt/12:amt;
+  const yr=yearly?amt:amt*12;
+  const start=document.getElementById('sb-start').value;
+  let nx='';
+  if(start){
+    const d=subNextBill({startDate:start, cycle:yearly?'yearly':'monthly'});
+    const dd=diffDays(d);
+    nx=` · 下次扣款 ${d.replace(/-/g,'/')}（${dd<=0?'今日':dd+' 天後'}）`;
+  }
+  note.textContent=`每月攤提 ${fmt(mo)} · 年度 ${fmt(yr)}${nx}`;
+}
+
+async function openSubEdit(id){
+  _editSubId=id;
+  const cat=document.getElementById('sb-cat');
+  cat.innerHTML=getCats().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  await _buildCardList();
+
+  const x = id ? await getSubById(id) : null;
+  document.getElementById('sub-edit-title').textContent = x ? '編輯訂閱' : '新增訂閱';
+  document.getElementById('sub-del-btn').style.display = x ? '' : 'none';
+
+  document.getElementById('sb-name').value   = x?.name || '';
+  cat.value = (x?.cat && getCats().includes(x.cat)) ? x.cat : (getCats().includes('訂閱')?'訂閱':getCats()[0]);
+  setAmt('sb-amt-r','sb-amt-d', x?.amount || 0);
+  document.getElementById(x?.cycle==='yearly' ? 'sb-cyc-y' : 'sb-cyc-m').checked = true;
+  document.getElementById('sb-card').value   = x?.card || '';
+  document.getElementById('sb-start').value  = x?.startDate || today();
+  document.getElementById('sb-end').value    = x?.endDate || '';
+  document.getElementById('sb-status').value = x?.status || 'active';
+  document.getElementById('sb-note').value   = x?.note || '';
+  updateSubCalc();
+
+  document.getElementById('sub-view-list').style.display='none';
+  document.getElementById('sub-view-edit').style.display='';
+  document.querySelector('#subov .sheet').scrollTop=0;
+}
+
+function closeSubEdit(silent){
+  _editSubId=null;
+  const e=document.getElementById('sub-view-edit'), l=document.getElementById('sub-view-list');
+  if(!e||!l) return;
+  e.style.display='none'; l.style.display='';
+  if(!silent) document.querySelector('#subov .sheet').scrollTop=0;
+}
+
+async function saveSub(){
+  const name=document.getElementById('sb-name').value.trim();
+  if(!name){ alert('請填寫訂閱名稱'); return; }
+  const amount=getAmt('sb-amt-r');
+  if(amount<0){ alert('金額不可為負數'); return; }
+  const start=document.getElementById('sb-start').value;
+  if(!start){ alert('請選擇起訂日'); return; }
+  const end=document.getElementById('sb-end').value;
+  if(end && end < start){ alert('結束日不可早於起訂日'); return; }
+
+  const rec={
+    name,
+    cat:       document.getElementById('sb-cat').value,
+    amount,
+    cycle:     document.getElementById('sb-cyc-y').checked ? 'yearly' : 'monthly',
+    card:      document.getElementById('sb-card').value.trim(),
+    startDate: start,
+    endDate:   end,
+    status:    document.getElementById('sb-status').value,
+    note:      document.getElementById('sb-note').value.trim()
+  };
+  if(_editSubId) rec.id=_editSubId;
+  const wasEditing=!!_editSubId;
+  await putSub(rec);
+
+  closeSubEdit(true);
+  await renderSubList();
+  await renderSubChip();
+  toast(`${wasEditing?'已更新':'已新增'}訂閱：${name}`);
+}
+
+async function deleteSub(){
+  if(!_editSubId) return;
+  const x=await getSubById(_editSubId);
+  if(!confirm(`確定刪除訂閱「${x?.name||''}」？\n此操作不影響任何費用記錄。`)) return;
+  await delSub(_editSubId);
+  closeSubEdit(true);
+  await renderSubList();
+  await renderSubChip();
+  toast('已刪除訂閱');
+}
+
 // ── 視窗釘選 & 捲動鎖定 ──────────────────────────────────
 // 手機鍵盤彈出時，版面視窗(layout viewport)不變，但可視視窗
 // (visual viewport)會縮小並上移；position:fixed 仍貼著版面視窗，
@@ -2165,7 +2626,7 @@ function toggleAdvFields(){
 // ── IndexedDB (Optimized Layers) ─────────────────────────
 function openDB(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open('expense_v8',2); // v2: added parentId index
+    const r=indexedDB.open('expense_v8',3); // v3: added subs store（訂閱參考資料，不進 items）
     r.onupgradeneeded=e=>{
       const db=e.target.result;
       let itemStore;
@@ -2178,6 +2639,12 @@ function openDB(){
       // v2: parentId index for proxy-split cascade delete / edit re-population
       if(!itemStore.indexNames.contains('parentId')){
         itemStore.createIndex('parentId','parentId');
+      }
+      // v3: 訂閱是「參考層」，獨立於 items。
+      // 實際金額已含在信用卡帳單裡，這裡只記期間與攤提，絕不寫進 items。
+      if(!db.objectStoreNames.contains('subs')){
+        const subStore=db.createObjectStore('subs',{keyPath:'id',autoIncrement:true});
+        subStore.createIndex('status','status');
       }
     };
     r.onsuccess=e=>{DB=e.target.result;res();};
@@ -2201,6 +2668,13 @@ const putItem=item=>new Promise(res=>{
   r.onsuccess=e=>{if(!item.id)item.id=e.target.result;res(item);};
 });
 const delItem=id=>new Promise(res=>{store('readwrite').delete(id).onsuccess=res;});
+
+// ── 訂閱 store（獨立於 items，不參與任何金額統計）─────────
+const subStore=m=>DB.transaction('subs',m).objectStore('subs');
+const getAllSubs=()=>new Promise(res=>{subStore('readonly').getAll().onsuccess=e=>res(e.target.result||[]);});
+const getSubById=id=>new Promise(res=>{subStore('readonly').get(id).onsuccess=e=>res(e.target.result||null);});
+const putSub=x=>new Promise(res=>{const rq=subStore('readwrite').put(x);rq.onsuccess=e=>res(e.target.result);});
+const delSub=id=>new Promise(res=>{subStore('readwrite').delete(id).onsuccess=res;});
 
 // ── Selects ──────────────────────────────────────────────
 function buildSelects(){
@@ -2698,6 +3172,7 @@ function setHomeView(v){
 // ── HOME ─────────────────────────────────────────────────
 async function rHome(){
   dirty.home=false;
+  renderSubChip();
   const{y,m}=curYM(), key=ymStr(y,m);
   const items = await getByYM(key);
 
@@ -4198,6 +4673,16 @@ function rSettings(){
     if(payday)parts.push(`發薪日 ${payday} 號`);
     bp.textContent=parts.length?parts.join(' · '):'尚未設定';
   }
+  // 訂閱摘要
+  const sp=document.getElementById('sub-preview-settings');
+  if(sp && DB){
+    getAllSubs().then(all=>{
+      const live=all.filter(subIsLive);
+      sp.textContent = live.length
+        ? `${live.length} 項訂閱中 · 每月攤提 ${fmt(live.reduce((t,x)=>t+subMonthly(x),0))}`
+        : '尚未建立訂閱';
+    }).catch(()=>{ sp.textContent='—'; });
+  }
   // PWA 狀態
   const ms=document.getElementById('pwa-mode-sub');
   if(ms) ms.textContent = isStandalone() ? '已安裝 · 主畫面模式執行中' : '目前在瀏覽器分頁中執行';
@@ -4515,7 +5000,7 @@ function saveRemindSettings(){
 // v8 只存 items，類別／預算／發薪日／提醒設定全部遺失。v9 連同所有偏好一起帶走。
 // 預算改用「類別名稱」當鍵而非索引：索引一旦因為新增或刪除類別而位移，
 // 還原時每筆預算都會掛到錯的類別上。
-const BACKUP_VER=9;
+const BACKUP_VER=10;   // v10: 新增 subs（訂閱參考資料）
 
 function collectSettings(){
   const byCat={};
@@ -4534,16 +5019,18 @@ function collectSettings(){
 
 async function exportJSON(){
   const all=await getAll();
+  const subs=await getAllSubs();
   const payload={
     app:'費用管理', v:BACKUP_VER,
     exported:new Date().toISOString(),
     settings:collectSettings(),
-    items:all
+    items:all,
+    subs                      // v10：訂閱參考資料，與 items 完全獨立
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=`expenses-${today()}.json`;a.click();
-  toast(`已備份 ${all.length} 筆項目與所有設定`);
+  toast(`已備份 ${all.length} 筆項目${subs.length?`、${subs.length} 筆訂閱`:''}與所有設定`);
 }
 
 // 還原偏好設定。預算優先用名稱對應，舊檔 (v8 以前) 的索引格式仍相容。
@@ -4627,7 +5114,7 @@ async function importFile(e){
   const file=e.target.files[0];if(!file)return;
   try{
     const text=await file.text();
-    let items=[], settings=null, isJSON=file.name.toLowerCase().endsWith('.json');
+    let items=[], settings=null, subs=[], isJSON=file.name.toLowerCase().endsWith('.json');
 
     if(isJSON){
       const d=JSON.parse(text);
@@ -4635,6 +5122,7 @@ async function importFile(e){
       else {
         items    = Array.isArray(d.items)?d.items:[];
         settings = d.settings||null;                       // v9 才有
+        subs     = Array.isArray(d.subs)?d.subs:[];        // v10 才有
       }
       if(!Array.isArray(items)) throw new Error('格式錯誤：找不到項目資料');
     }else{
@@ -4653,6 +5141,7 @@ async function importFile(e){
 
     // 先講清楚這次匯入會做什麼，再動手
     const parts=[`項目 ${items.length} 筆`];
+    if(subs.length) parts.push(`訂閱 ${subs.length} 筆`);
     if(settings) parts.push('以及類別／預算／發薪日／提醒等設定（將覆蓋目前設定）');
     else if(isJSON) parts.push('（此備份為舊格式，不含設定）');
     else parts.push('（CSV 不含設定）');
@@ -4663,7 +5152,11 @@ async function importFile(e){
     let replaced=false;
     if(existing.length&&items.length){
       replaced=confirm(`目前已有 ${existing.length} 筆項目。\n\n按「確定」清空後還原（適合回復備份）\n按「取消」保留並合併（適合合併另一台裝置）`);
-      if(replaced){ for(const r of existing) await delItem(r.id); }
+      if(replaced){
+        for(const r of existing) await delItem(r.id);
+        // 訂閱與項目屬於同一份備份，還原時要一起換掉，否則會殘留舊訂閱
+        for(const r of await getAllSubs()) await delSub(r.id);
+      }
     }
 
     // 設定先還原，預算才能按名稱對應到還原後的類別
@@ -4674,6 +5167,15 @@ async function importFile(e){
       delete c.id;
       delete c.parentId;   // 舊 id 在重匯後不存在，留著會讓連動刪除失效
       await putItem(c);
+    }
+
+    // 訂閱是獨立 store，不參與任何金額統計，直接還原即可
+    for(const sub of subs){
+      const c={...sub};
+      delete c.id;
+      if(!c.status) c.status='active';
+      if(!c.cycle)  c.cycle='monthly';
+      await putSub(c);
     }
 
     // 匯入的代墊資料若在功能關閉狀態下會整批看不見
@@ -4962,7 +5464,7 @@ openDB().then(async ()=>{
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
   // The full-screen form is handled separately in openForm/closeForm.
-  ['bov','cov','rsov','remov','calov','qeov'].forEach(id=>{
+  ['bov','cov','rsov','remov','calov','qeov','subov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
@@ -4994,6 +5496,11 @@ openDB().then(async ()=>{
     const openSheet = document.querySelector('.overlay.on');
     if(openSheet){
       if(openSheet.id==='qeov') closeQuickEdit();   // 一併清掉編輯中的 id
+      else if(openSheet.id==='subov'){
+        // 訂閱編輯檢視先退回清單，再按一次才關閉整個彈窗
+        if(document.getElementById('sub-view-edit').style.display!=='none') closeSubEdit();
+        else closeSubModal();
+      }
       else openSheet.classList.remove('on');
     }
   });
