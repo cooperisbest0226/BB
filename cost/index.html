@@ -82,6 +82,26 @@ input,select,textarea,button{font-family:inherit;font-size:16px}
   --t-slow:320ms cubic-bezier(.4,0,.2,1);
 }
 
+/* ── Accessibility floor ─────────────────────────────────────
+   按鈕先前完全沒有焦點環（outline:auto 0px），鍵盤使用者看不到位置。
+   用 :focus-visible 只在鍵盤操作時顯示，滑鼠與觸控點擊不受影響。 */
+:focus-visible{
+  outline:2px solid var(--green);
+  outline-offset:2px;
+  border-radius:6px;
+}
+.tab:focus-visible{outline-offset:-3px}
+
+/* 尊重系統的「減少動態效果」設定 */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
 /* ── Animations ──────────────────────────────────────────── */
 @keyframes fadeUp{
   from{opacity:0;transform:translateY(10px)}
@@ -173,7 +193,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 }
 .top-bar-title{font-size:20px;font-weight:700;flex:1;letter-spacing:-.02em;color:var(--text)}
 .top-bar select{
-  height:36px;border:1px solid var(--border2);border-radius:99px;
+  height:44px;border:1px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text);
   padding:0 26px 0 12px;font-size:14px;font-weight:500;
   -webkit-appearance:none;
@@ -185,7 +205,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .top-bar select:focus{outline:2px solid var(--green);outline-offset:1px}
 .top-bar select.flex1{flex:1}
 .month-nav-btn{
-  width:36px;height:36px;
+  width:44px;height:44px;
   border:1px solid var(--border2);border-radius:50%;
   background:var(--bg);color:var(--text2);cursor:pointer;font-size:18px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -349,7 +369,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .range-bar{padding:8px 16px 6px;background:var(--surface);flex-shrink:0}
 .range-row{display:flex;align-items:center;gap:7px}
 .range-row select{
-  flex:1;height:34px;border:1px solid var(--border2);border-radius:99px;
+  flex:1;height:44px;border:1px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text);padding:0 22px 0 10px;
   -webkit-appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 4L8 1' stroke='%239E9A94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -375,7 +395,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   background:var(--surface);flex-shrink:0;
 }
 .filter-btn{
-  flex:1;height:34px;border:1px solid var(--border2);border-radius:99px;
+  flex:1;height:44px;border:1px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;
   box-shadow:var(--shadow-sm);transition:all var(--t-fast);
 }
@@ -439,11 +459,16 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 /* ── Proxy-deduction badge — tap to unfold the formula ───── */
 .hero-deduct-badge{
   display:inline-flex;align-items:center;gap:4px;
+  position:relative;
   background:var(--orange-lt);color:var(--orange-dk);
   border:0.5px solid rgba(212,120,48,.25);
   border-radius:99px;padding:3px 10px;
   font-size:11px;font-weight:600;white-space:nowrap;
   font-family:inherit;cursor:pointer;
+}
+.hero-deduct-badge::before{   /* 隱形命中區，視覺尺寸不變 */
+  content:'';position:absolute;left:0;right:0;top:50%;
+  height:44px;transform:translateY(-50%);
 }
 .hero-deduct-badge::after{content:'▾';font-size:9px;display:inline-block;transition:transform .2s}
 .hero-deduct-badge.open::after{transform:rotate(180deg)}
@@ -634,7 +659,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   background:var(--surface);flex-shrink:0;
 }
 .chart-mode-btn{
-  flex:1;height:34px;border:1.5px solid var(--border2);border-radius:99px;
+  flex:1;height:44px;border:1.5px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text2);font-size:13px;font-weight:500;
   cursor:pointer;box-shadow:var(--shadow-sm);transition:all var(--t-fast);
 }
@@ -650,7 +675,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   flex-shrink:0;
 }
 .chart-range-row select{
-  flex:1;height:34px;border:1px solid var(--border2);border-radius:99px;
+  flex:1;height:44px;border:1px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text);padding:0 22px 0 11px;
   font-size:13px;font-weight:500;
   -webkit-appearance:none;
@@ -686,6 +711,14 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 }
 .irow:active{background:var(--surface3)}
 .ichk{width:20px;height:20px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+/* 命中區 36×44，視覺仍是 20×20 —— 負外距把撐開的部分收回去 */
+.ichk-hit{
+  display:flex;align-items:center;justify-content:center;
+  padding:12px 8px;margin:-12px -8px;
+  flex-shrink:0;cursor:pointer;
+}
+/* 編輯區同樣補到 44px 高 */
+.iinfo{min-height:44px;display:flex;flex-direction:column;justify-content:center}
 .iinfo{flex:1;min-width:0;cursor:pointer;border:none;background:transparent;padding:0;text-align:left;font:inherit;color:inherit;display:block}
 .iinfo:active{opacity:.7}
 .iname{font-size:14px;font-weight:500;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -737,6 +770,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   cursor:pointer;font-family:inherit;text-align:left;
   box-shadow:var(--shadow-sm);transition:all var(--t-fast);
 }
+.rem-entry{min-height:44px}
 .rem-entry:active{opacity:.8}
 .rem-entry svg{width:14px;height:14px;stroke:var(--red);fill:none;stroke-width:1.9;stroke-linecap:round;flex-shrink:0}
 .rem-entry p{font-size:13px;color:var(--red-dk);flex:1;line-height:1.3;font-weight:500;margin:0}
@@ -948,7 +982,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 /* ── Trend screen ────────────────────────────────────────── */
 .yr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
 .yr-chip{
-  height:32px;padding:0 14px;
+  height:36px;padding:0 15px;
   border:1.5px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text2);cursor:pointer;
   display:flex;align-items:center;gap:5px;font-size:13px;font-weight:500;
@@ -989,7 +1023,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 
 /* ── 行事曆 ─────────────────────────────────────────────── */
 .cal-open-btn{
-  flex:0 0 40px;height:34px;
+  flex:0 0 44px;height:44px;
   border:1px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text2);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
@@ -1159,17 +1193,17 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   box-shadow:var(--shadow-sm);
 }
 .fs-back{
-  width:36px;height:36px;border:none;background:var(--surface3);
+  width:44px;height:44px;border:none;background:var(--surface3);
   color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;
   border-radius:50%;flex-shrink:0;box-shadow:var(--shadow-sm);transition:all var(--t-fast);
 }
 .fs-back:active{background:var(--surface4)}
 .fs-back svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .fs-title{font-size:17px;font-weight:700;flex:1;letter-spacing:-.02em}
-.fs-del{height:36px;padding:0 14px;background:var(--red-lt);color:var(--red);border:1.5px solid rgba(217,75,75,.2);border-radius:99px;cursor:pointer;font-size:13px;font-weight:600;transition:all var(--t-fast)}
+.fs-del{height:44px;padding:0 14px;background:var(--red-lt);color:var(--red);border:1.5px solid rgba(217,75,75,.2);border-radius:99px;cursor:pointer;font-size:13px;font-weight:600;transition:all var(--t-fast)}
 .fs-del:active{background:rgba(217,75,75,.18)}
 .fs-save{
-  height:36px;padding:0 20px;
+  height:44px;padding:0 20px;
   background:var(--green);color:#fff;border:none;border-radius:99px;
   cursor:pointer;font-weight:700;font-size:14px;
   box-shadow:0 2px 10px rgba(46,158,114,.30);transition:all var(--t-base);
@@ -1311,7 +1345,7 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
           </div>
         </div>
         <div class="hero-remain-left">
-          <div class="hero-remain-lbl">預算剩餘</div>
+          <div class="hero-remain-lbl" id="h-remain-lbl">預算剩餘</div>
           <div class="hero-remain-val" id="h-remain">未設定</div>
           <div class="hero-remain-sub" id="h-remain-sub"></div>
         </div>
@@ -2491,11 +2525,14 @@ async function rHome(){
     const remain=bTotal-total;
     const rawPct=Math.round(total/bTotal*100);      // may exceed 100
     const pct=Math.min(rawPct,100);                 // ring never overfills
-    remEl.textContent=fmt(Math.max(remain,0));
-    remEl.className='hero-remain-val'+(remain<0?' r':'');
-    remSub.textContent=remain<0
-      ? `超支 ${fmt(-remain)} · 預算 ${fmt(bTotal)}`
-      : `預算 ${fmt(bTotal)}`;
+    // 超支時把超支金額放到醒目位置。原本是「剩餘 $0」＋小字「超支 $92,688」，
+    // 最大的字沒有資訊量，真正該看的數字反而被降級成註腳。
+    const over=remain<0;
+    const remLbl=document.getElementById('h-remain-lbl');
+    if(remLbl) remLbl.textContent = over?'預算超支':'預算剩餘';
+    remEl.textContent=fmt(Math.abs(remain));
+    remEl.className='hero-remain-val'+(over?' r':'');
+    remSub.textContent=`預算 ${fmt(bTotal)}`;
     pctEl.textContent=rawPct+'%';
     pctEl.className='bud-ring-pct';
     capEl.textContent='已用';
@@ -2506,6 +2543,8 @@ async function rHome(){
       ring.style.strokeDashoffset=CIRC-(pct/100)*CIRC;
     }));
   }else{
+    const remLbl2=document.getElementById('h-remain-lbl');
+    if(remLbl2) remLbl2.textContent='預算剩餘';
     remEl.textContent='未設定';remEl.className='hero-remain-val';
     remSub.textContent='可於設定頁設定預算';
     pctEl.textContent='未設定';pctEl.className='bud-ring-pct na';
@@ -2646,6 +2685,8 @@ function makeCard(x){
   row.dataset.action='row';
 
   // Checkbox — data-action="toggle" triggers granular DOM update (OPT2)
+  const chkHit=document.createElement('label');
+  chkHit.className='ichk-hit';
   const chk=document.createElement('input');
   chk.type='checkbox';chk.className='ichk';
   chk.checked=isDone;
@@ -2688,7 +2729,8 @@ function makeCard(x){
   const badge=document.createElement('span');badge.className=`badge ${ac}`;badge.textContent=bt;
 
   right.append(amt,badge);
-  row.append(chk,info,right);
+  chkHit.appendChild(chk);
+  row.append(chkHit,info,right);
   card.append(bg,row);
   return card;
 }
