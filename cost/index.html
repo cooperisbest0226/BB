@@ -1147,7 +1147,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .field textarea{height:74px;padding:12px 14px;resize:none}
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field input:focus,.field select:focus,.field textarea:focus{
-  outline:2.5px solid var(--green);outline-offset:1px;background:var(--bg);
+  /* 用 background-color 而非 background 簡寫：簡寫會一併清掉 background-image，
+     導致 select 的下拉箭頭與 date 的日曆圖示在聚焦時消失 */
+  outline:2.5px solid var(--green);outline-offset:1px;background-color:var(--bg);
 }
 .field select{
   -webkit-appearance:none;
@@ -1160,6 +1162,58 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .radio-opt input[type=radio]{width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
 .fdivider{height:1px;background:var(--border);margin:16px 0}
 .field-note{font-size:11px;color:var(--text3);margin-top:5px}
+
+/* ── Date inputs ──────────────────────────────────────────────
+   iOS Safari 的 input[type=date] 內部另有一個 -webkit-date-and-time-value
+   盒子，預設靠右對齊並帶有自己的 margin，會把日期文字頂出圓角外框
+   （視覺上就是「破圖超出去」）。以下把內部盒壓回左側、清掉 margin，
+   並關掉原生外觀，讓它完全遵守 .field input 的框線與內距。 */
+input[type="date"],
+input[type="month"]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+  line-height:44px;            /* iOS 不吃 height 置中，用 line-height 對齊 */
+  text-align:left;
+  background-clip:padding-box; /* 內容不畫到圓角外框上 */
+  overflow:hidden;
+  /* 自訂日曆圖示：iOS 關掉原生外觀後，空白的結帳日欄位會完全沒有提示 */
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%239E9A94' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 13px center;
+  padding-right:38px;
+}
+/* iOS Safari：日期值的內部盒 */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="month"]::-webkit-date-and-time-value{
+  text-align:left;
+  margin:0;
+  padding:0;
+  line-height:44px;
+  min-height:1.2em;
+}
+/* Chrome / Edge：欄位群組不要另外加內距，也不允許橫向溢出 */
+input[type="date"]::-webkit-datetime-edit,
+input[type="month"]::-webkit-datetime-edit{
+  padding:0;
+  overflow:hidden;
+  line-height:44px;
+}
+input[type="date"]::-webkit-datetime-edit-fields-wrapper{padding:0}
+input[type="date"]::-webkit-calendar-picker-indicator{
+  margin:0;
+  flex-shrink:0;
+  opacity:0;              /* 用上面的自訂圖示，避免桌機出現兩個日曆符號 */
+  width:22px;
+  cursor:pointer;
+}
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button{display:none;-webkit-appearance:none}
+/* Firefox */
+input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .adv-hint-box{
   background:var(--orange-lt);border:1px solid rgba(212,120,48,.2);
   border-radius:var(--radius);padding:10px 13px;margin-bottom:15px;
