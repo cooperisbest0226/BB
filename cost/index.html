@@ -7,7 +7,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="費用管理">
 <meta name="theme-color" content="#EDE8DF">
+<meta name="description" content="離線可用的個人費用記帳工具：月支出、代墊款拆分、預算追蹤與到期提醒。">
+<meta name="color-scheme" content="light">
+<meta name="mobile-web-app-capable" content="yes">
 <title>費用管理</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -121,7 +127,13 @@ html,body{
   -webkit-font-smoothing:antialiased;
   -webkit-overflow-scrolling:auto;
 }
-body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
+body.locked{
+  overflow:hidden;position:fixed;
+  width:100%;height:100%;top:0;left:0;right:0;
+  overscroll-behavior:none;
+}
+/* 彈窗開啟時，整份文件不再被瀏覽器橫向拖曳 */
+html{overflow-x:hidden;overscroll-behavior-x:none}
 
 #app{
   max-width:480px;margin:0 auto;
@@ -999,8 +1011,11 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 /* ── Overlays / modals ────────────────────────────────────── */
 .overlay{
   display:none;position:fixed;inset:0;
+  top:var(--vv-top,0px);
+  height:var(--vv-h,100dvh);
   background:rgba(0,0,0,.35);z-index:var(--z-overlay);
   align-items:flex-end;justify-content:center;overflow:hidden;
+  touch-action:none;overscroll-behavior:none;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .overlay.on{display:flex}
@@ -1009,7 +1024,9 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .dialog{
   background:var(--bg);border-radius:22px;
   padding:16px 16px calc(16px + var(--safe-b));
-  width:100%;max-width:440px;max-height:86vh;overflow-y:auto;
+  width:100%;max-width:440px;
+  max-height:86vh;max-height:min(86dvh, calc(var(--vv-h,86dvh) - 32px));
+  overflow-y:auto;overflow-x:hidden;touch-action:pan-y;
   box-shadow:var(--shadow-lg);overscroll-behavior:contain;
 }
 .dialog::-webkit-scrollbar{display:none}
@@ -1090,7 +1107,9 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   background:var(--bg);
   border-radius:24px 24px 0 0;
   padding:18px 18px calc(20px + var(--safe-b));
-  width:100%;max-width:480px;max-height:90vh;overflow-y:auto;
+  width:100%;max-width:480px;
+  max-height:90vh;max-height:min(90dvh, var(--vv-h,90dvh));
+  overflow-y:auto;overflow-x:hidden;
   touch-action:pan-y;overscroll-behavior:contain;
   box-shadow:0 -8px 40px rgba(90,70,40,.15);
 }
@@ -1166,9 +1185,16 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 /* 表單改為底部彈出：與其他四個彈窗一致，且不再整頁蓋掉背景 */
 .fsform{
   display:none;position:fixed;inset:0;
+  /* 釘在「可視視窗」而非版面視窗：鍵盤彈出時不會整片被推出畫面。
+     --vv-top / --vv-h 由 JS 依 visualViewport 即時寫入。 */
+  top:var(--vv-top,0px);
+  height:var(--vv-h,100dvh);
   background:rgba(0,0,0,.35);
   z-index:calc(var(--z-overlay) + 1);   /* 由快速編輯開啟，必須疊在它之上 */
-  align-items:flex-end;justify-content:center;overflow:hidden;
+  align-items:flex-end;justify-content:center;
+  overflow:hidden;
+  touch-action:none;                    /* 背景遮罩完全不吃拖曳手勢 */
+  overscroll-behavior:none;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .fsform.on{display:flex}
@@ -1177,7 +1203,10 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   border-radius:24px 24px 0 0;
   width:100%;max-width:480px;
   max-height:92vh;max-height:92dvh;   /* dvh 會隨鍵盤縮放，vh 不會 */
-  display:flex;flex-direction:column;overflow:hidden;
+  max-height:min(92dvh, var(--vv-h,92dvh));
+  display:flex;flex-direction:column;
+  overflow:hidden;                     /* 內容一律裁切在框內 */
+  overflow:clip;
   box-shadow:0 -8px 40px rgba(90,70,40,.18);
   animation:sheetUp .3s cubic-bezier(.4,0,.2,1);
 }
@@ -1210,11 +1239,43 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 }
 .fs-save:active{background:var(--green-dk);transform:scale(.96)}
 .fs-body{
-  flex:1;overflow-y:auto;padding:20px 18px calc(26px + var(--safe-b));
-  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  flex:1;min-height:0;min-width:0;
+  overflow-y:auto;
+  overflow-x:hidden;              /* 關鍵：不再產生橫向捲動軸 */
+  touch-action:pan-y;             /* 關鍵：手指只吃上下，左右手勢直接無效 */
+  padding:20px 18px calc(26px + var(--safe-b));
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;    /* 捲到底不把底下的頁面帶著跑 */
   background:var(--surface);
 }
 .fs-body::-webkit-scrollbar{display:none}
+
+/* ── 表單內容防溢出護欄 ──────────────────────────────────────
+   任何一個子元素只要比框寬 1px，overflow-y:auto 就會連帶開放橫向
+   捲動，畫面就「滑得出去」。以下把寬度硬性收在框內。 */
+.fs-body>*,
+.fs-body .field>*{max-width:100%}
+.fs-body input,
+.fs-body select,
+.fs-body textarea{max-width:100%;min-width:0}
+.fs-body .amt-wrap,
+.fs-body .radio-row,
+.fs-body .range-row,
+.fs-body .proxy-row,
+.fs-body .toggle-row{max-width:100%;min-width:0}
+.fs-body .field-note,
+.fs-body .proxy-section-note,
+.fs-body .adv-hint-box p{overflow-wrap:anywhere}
+/* 標題列：長標題以省略號收尾，不把整條 nav 撐寬 */
+.fs-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-nav{min-width:0;max-width:100%}
+/* 金額顯示：位數再多也不撐破輸入框 */
+.amt-disp{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 拆分代墊列在 320px 窄機也不擠爆 */
+@media (max-width:359px){
+  .proxy-amt-cell{flex:0 0 92px;width:92px}
+  .proxy-row{gap:6px}
+}
 
 /* ── Category tags ────────────────────────────────────────── */
 .cat-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}
@@ -1274,6 +1335,19 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
 .app-info-row span:first-child{color:var(--text3)}
 .app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
 
+
+/* ── Offline banner ───────────────────────────────────────── */
+.offline-bar{
+  position:fixed;left:0;right:0;top:0;
+  z-index:var(--z-toast);
+  display:none;align-items:center;justify-content:center;gap:6px;
+  padding:calc(6px + var(--safe-t)) 12px 6px;
+  background:var(--amber);color:#fff;
+  font-size:12px;font-weight:600;letter-spacing:.02em;
+  box-shadow:var(--shadow-sm);
+}
+.offline-bar.on{display:flex}
+.offline-bar svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 
 /* ── Toast ────────────────────────────────────────────────── */
 .toast{
@@ -1541,15 +1615,34 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
     </div>
+    <div class="settings-group-title">應用程式</div>
+    <div class="settings-group">
+      <div class="settings-row" id="install-row" style="display:none" onclick="promptInstall()">
+        <div><div class="settings-row-lbl">加入主畫面</div><div class="settings-row-sub">安裝後可全螢幕開啟、離線使用</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="promptInstall()">
+        <div><div class="settings-row-lbl">安裝說明</div><div class="settings-row-sub" id="pwa-mode-sub">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="checkUpdate()">
+        <div><div class="settings-row-lbl">檢查更新</div><div class="settings-row-sub" id="pwa-sw-sub">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 11-2.1-9.4L23 10"/></svg></div>
+      </div>
+      <div class="settings-row" onclick="showStorage()">
+        <div><div class="settings-row-lbl">儲存空間</div><div class="settings-row-sub" id="pwa-quota-sub">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M21 5v14c0 1.7-4 3-9 3s-9-1.3-9-3V5"/></svg></div>
+      </div>
+    </div>
     <div class="app-info-card">
       <div class="app-info-icon">
         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       </div>
       <div class="app-info-name">費用管理</div>
-      <div class="app-info-version">個人記帳 PWA</div>
+      <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v3</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/07/27</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.0.0</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -1847,6 +1940,10 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   </div>
 </div>
 
+<div class="offline-bar" id="offline-bar" role="status" aria-live="polite">
+  <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.7 16.7A9 9 0 0 0 12 20M5 12.5a11 11 0 0 1 4-2.4M2 8.8a16 16 0 0 1 5-3M22 8.8a16 16 0 0 0-9.5-3.7"/></svg>
+  離線模式 · 資料仍存在本機
+</div>
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
@@ -1941,6 +2038,68 @@ function doUndo(){
 
 
 // UX7: toggle advanced fields in add/edit form
+// ── 視窗釘選 & 捲動鎖定 ──────────────────────────────────
+// 手機鍵盤彈出時，版面視窗(layout viewport)不變，但可視視窗
+// (visual viewport)會縮小並上移；position:fixed 仍貼著版面視窗，
+// 於是整張表單看起來就「滑出畫面」。把實際可視高度寫進 CSS 變數，
+// 讓所有彈窗改用它當作定位基準。
+(function pinToVisualViewport(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  const root = document.documentElement;
+  let raf = 0;
+  const apply = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      root.style.setProperty('--vv-h',   vv.height + 'px');
+      root.style.setProperty('--vv-top', (vv.offsetTop || 0) + 'px');
+    });
+  };
+  vv.addEventListener('resize', apply);
+  vv.addEventListener('scroll', apply);
+  window.addEventListener('orientationchange', () => setTimeout(apply, 250));
+  apply();
+})();
+
+// 巢狀彈窗（快速編輯 → 完整表單）會連開兩層，用計數器避免提早解鎖
+let _scrollLocks = 0, _unlockRaf = 0;
+function lockScroll(){
+  cancelAnimationFrame(_unlockRaf);            // 撤銷還沒執行的解鎖
+  if(_scrollLocks++ > 0) return;
+  if(document.body.classList.contains('locked')) return;  // 已鎖住，維持原本的捲動位置
+  _savedScroll = window.scrollY;
+  document.body.style.top = `-${_savedScroll}px`;
+  document.body.classList.add('locked');
+}
+function unlockScroll(){
+  if(_scrollLocks === 0) return;
+  if(--_scrollLocks > 0) return;
+  // 延後一幀再真正解鎖：快速編輯 → 完整表單這種「先關再開」的流程
+  // 中間會短暫歸零，若立刻解鎖會讓頁面跳一下再鎖回去。
+  cancelAnimationFrame(_unlockRaf);
+  _unlockRaf = requestAnimationFrame(() => {
+    if(_scrollLocks > 0) return;              // 期間又有彈窗開啟 → 取消解鎖
+    document.body.classList.remove('locked');
+    document.body.style.top = '';
+    window.scrollTo(0, _savedScroll || 0);
+  });
+}
+
+// 聚焦欄位時，只在「自己的捲動容器」內把它捲進視線，
+// 不使用 scrollIntoView（它會連帶捲動祖先，把整張卡片推歪）。
+document.addEventListener('focusin', e => {
+  const box = e.target.closest && e.target.closest('.fs-body, .sheet, .dialog');
+  if(!box) return;
+  setTimeout(() => {
+    const br = box.getBoundingClientRect();
+    const er = e.target.getBoundingClientRect();
+    const pad = 24;
+    if(er.bottom > br.bottom - pad)      box.scrollTop += er.bottom - br.bottom + pad;
+    else if(er.top < br.top + pad)       box.scrollTop -= br.top + pad - er.top;
+    box.scrollLeft = 0;                  // 保險：任何時候都不留橫向位移
+  }, 320);
+});
+
 function toggleAdvFields(){
   const fields=document.getElementById('adv-fields');
   const btn=document.getElementById('adv-toggle');
@@ -3985,6 +4144,17 @@ function rSettings(){
     if(payday)parts.push(`發薪日 ${payday} 號`);
     bp.textContent=parts.length?parts.join(' · '):'尚未設定';
   }
+  // PWA 狀態
+  const ms=document.getElementById('pwa-mode-sub');
+  if(ms) ms.textContent = isStandalone() ? '已安裝 · 主畫面模式執行中' : '目前在瀏覽器分頁中執行';
+  const ss=document.getElementById('pwa-sw-sub');
+  if(ss) ss.textContent = swReg ? '離線快取已啟用' : (PWA_CAPABLE ? '離線快取尚未就緒' : '需以 https 網址開啟才能離線');
+  const qs=document.getElementById('pwa-quota-sub');
+  if(qs && navigator.storage && navigator.storage.estimate){
+    navigator.storage.estimate().then(({usage=0,quota=0})=>{
+      qs.textContent=`已用 ${(usage/1048576).toFixed(1)} MB / 配額 ${(quota/1048576).toFixed(0)} MB`;
+    }).catch(()=>{qs.textContent='—';});
+  }
 }
 
 // ── Full-screen form ─────────────────────────────────────
@@ -4059,9 +4229,7 @@ async function openForm(id){
   updateYmNote(); onCatChange(); syncStatusLabel();
   // Fix 1: proxy toggle stays accessible in edit mode — onTypeChange() already handles show/hide
   document.getElementById('fsform').classList.add('on');
-  _savedScroll=window.scrollY;
-  document.body.style.top=`-${_savedScroll}px`;
-  document.body.classList.add('locked');
+  lockScroll();
   
   // 優化：取消手機版自動 focus 導致鍵盤彈出畫面閃動，保留電腦版 (大於 480px) focus
   if (window.innerWidth > 480) {
@@ -4073,9 +4241,7 @@ function closeForm(skipFocusRestore=false){
   _resetProxy();                                     // clear all proxy state
   document.getElementById('fsform').classList.remove('on');
   editId=null;
-  document.body.classList.remove('locked');
-  document.body.style.top='';
-  window.scrollTo(0,_savedScroll||0);
+  unlockScroll();
   // Fix 4: pop focus stack; restore focus unless caller says skip (e.g. after form submit)
   const prev = focusStack.pop();
   if(!skipFocusRestore && prev && typeof prev.focus === 'function') prev.focus();
@@ -4470,16 +4636,127 @@ async function importFile(e){
   e.target.value='';
 }
 
-// ── SW & Manifest (Optimized Caching) ────────────────────
-if('serviceWorker' in navigator){
-  // 優化：在 Service Worker 安裝時預先快取 Chart.js CDN，保證斷網可用性
-  const sw=`const C='ep-v3-20260727';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.add('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js').catch(()=>{})))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const f=fetch(e.request).then(res=>{if(res.ok)c.put(e.request,res.clone());return res;}).catch(()=>r);return r||f;})));});`;
-  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+// ── PWA：Service Worker / 安裝 / 更新 / 離線 ───────────────
+// 注意：原本用 URL.createObjectURL(Blob) 產生 sw.js 與 manifest。
+// blob: 不是合法的 Service Worker script URL，瀏覽器一律拒絕註冊，
+// 舊的 .catch(()=>{}) 把錯誤吞掉，所以離線其實從來沒生效過。
+// 改為註冊同目錄的實體 ./sw.js（需以 http(s) 提供，file:// 無法運作）。
+let swReg = null;
+const PWA_CAPABLE =
+  (location.protocol === 'https:') ||
+  ['localhost', '127.0.0.1'].includes(location.hostname);
+
+if ('serviceWorker' in navigator && PWA_CAPABLE) {
+  window.addEventListener('load', async () => {
+    try {
+      swReg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+
+      // 有新版本下載完成 → 提示使用者，不強制中斷手上的輸入
+      swReg.addEventListener('updatefound', () => {
+        const nw = swReg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            toastUpdate();
+          }
+        });
+      });
+
+      // 回到前景時順手查一次更新
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && swReg) swReg.update().catch(() => {});
+      });
+    } catch (err) {
+      console.warn('Service Worker 註冊失敗：', err);
+    }
+  });
+
+  let _reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_reloading) return;
+    _reloading = true;
+    location.reload();
+  });
 }
-(function(){
-  const m={name:'費用管理',short_name:'費用管理',start_url:location.href,display:'standalone',theme_color:'#EDE8DF',background_color:'#EDE8DF',icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232E9E72'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle' fill='white'%3E%24%3C/text%3E%3C/svg%3E",sizes:'512x512',type:'image/svg+xml'}]};
-  const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/json'}));document.head.appendChild(l);
-})();
+
+function toastUpdate() {
+  const t = document.getElementById('toast');
+  t.innerHTML = `有新版本 <button onclick="applyUpdate()" style="margin-left:10px;background:rgba(255,255,255,.22);border:none;color:#fff;padding:2px 10px;border-radius:99px;cursor:pointer;font-size:13px">立即更新</button>`;
+  t.classList.add('on');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('on'), 8000);
+}
+function applyUpdate() {
+  if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  else location.reload();
+}
+async function checkUpdate() {
+  if (!swReg) { toast('此環境不支援離線快取'); return; }
+  toast('檢查更新中…');
+  try { await swReg.update(); setTimeout(() => toast('已是最新版本'), 1200); }
+  catch { toast('檢查失敗，請確認網路'); }
+}
+
+// ── 安裝到主畫面 ─────────────────────────────────────────
+let _installEvt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installEvt = e;
+  const row = document.getElementById('install-row');
+  if (row) row.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  _installEvt = null;
+  const row = document.getElementById('install-row');
+  if (row) row.style.display = 'none';
+  toast('已加入主畫面');
+});
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.navigator.standalone === true;
+
+async function promptInstall() {
+  if (_installEvt) {
+    _installEvt.prompt();
+    await _installEvt.userChoice;
+    _installEvt = null;
+    return;
+  }
+  if (isStandalone()) { toast('已在主畫面模式執行'); return; }
+  // iOS Safari 沒有 beforeinstallprompt，只能給步驟
+  alert('加入主畫面：\n\niPhone / iPad（Safari）\n1. 點下方「分享」\n2. 選「加入主畫面」\n\nAndroid（Chrome）\n1. 點右上角「⋮」\n2. 選「安裝應用程式」');
+}
+
+// ── 儲存空間 / 永久保存 ──────────────────────────────────
+// IndexedDB 預設是「盡力保存」：裝置空間吃緊時瀏覽器可以直接清掉。
+// 記帳資料只存在本機，必須申請 persistent storage 才不會被回收。
+async function requestPersistence() {
+  if (!navigator.storage || !navigator.storage.persist) return false;
+  try {
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch { return false; }
+}
+async function showStorage() {
+  if (!navigator.storage || !navigator.storage.estimate) { toast('此瀏覽器不支援查詢'); return; }
+  const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+  const persisted = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+  const mb = n => (n / 1048576).toFixed(1) + ' MB';
+  const items = await getAll();
+  alert(
+    `已使用：${mb(usage)}\n可用配額：${mb(quota)}\n記錄筆數：${items.length} 筆\n` +
+    `永久保存：${persisted ? '已啟用（資料不會被瀏覽器自動清除）' : '未啟用（空間不足時可能被清除，建議定期匯出備份）'}`
+  );
+}
+
+// ── 離線狀態列 ───────────────────────────────────────────
+function renderNetState() {
+  const bar = document.getElementById('offline-bar');
+  if (!bar) return;
+  bar.classList.toggle('on', !navigator.onLine);
+}
+window.addEventListener('online',  () => { renderNetState(); toast('已恢復連線'); });
+window.addEventListener('offline', () => { renderNetState(); });
 
 // ── Init ─────────────────────────────────────────────────
 openDB().then(async ()=>{
@@ -4487,6 +4764,8 @@ openDB().then(async ()=>{
   refreshCatSel();
   await initAdvanceFeature();   // decides visibility before the first paint
   rSettings();  // populate settings previews on first load
+  renderNetState();
+  requestPersistence().then(ok => { if(ok) console.info('儲存空間已設為永久保存'); });
   
   // 優化：處理中文輸入法 (IME) 的搜尋防抖事件
   const sInput = document.getElementById('search');
@@ -4636,8 +4915,10 @@ openDB().then(async ()=>{
       if(el.classList.contains('on') && !el._focusSaved){
         el._focusSaved = true;
         focusStack.push(document.activeElement); // push when overlay opens
+        lockScroll();                            // 背景頁面同步鎖住，不再跟著滑
       } else if(!el.classList.contains('on') && el._focusSaved){
         el._focusSaved = false;
+        unlockScroll();
         const prev = focusStack.pop();            // pop when overlay closes
         if(prev && typeof prev.focus === 'function') prev.focus();
       }
@@ -4664,6 +4945,12 @@ openDB().then(async ()=>{
   });
 
   rHome();
+
+  // ── App shortcuts（manifest shortcuts / 長按圖示的快捷選單）──
+  const action = new URLSearchParams(location.search).get('action');
+  if(action === 'add')       setTimeout(() => openForm(null), 120);
+  else if(action === 'list') showS('list');
+  if(action) history.replaceState(null, '', location.pathname);
 });
 
 </script>
