@@ -1016,9 +1016,16 @@ body.locked{overflow:hidden;position:fixed;width:100%;top:0;left:0}
   position:relative;transition:background var(--t-fast);
 }
 .cal-day.pad{color:transparent;pointer-events:none}
-.cal-day.today{font-weight:700;color:var(--green)}
 .cal-day.has{background:var(--surface3);cursor:pointer;color:var(--text);font-weight:500}
 .cal-day.has:active{background:var(--surface4)}
+/* 今日：實心圓底（比照 iOS 行事曆）。改成標在數字上而非整格，
+   才不會在「今天剛好要繳費」時被 .has 的底色與字色蓋掉。 */
+.cal-day.today>span{
+  background:var(--green);color:#fff;font-weight:700;
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  line-height:1;
+}
 .cal-day.sel{outline:2px solid var(--green);outline-offset:-2px;background:var(--green-lt)}
 .cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .cal-dot.r{background:var(--red)}.cal-dot.g{background:var(--green)}.cal-dot.o{background:var(--orange)}
