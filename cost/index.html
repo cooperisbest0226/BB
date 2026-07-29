@@ -145,18 +145,32 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 
 /* ── Tab bar ─────────────────────────────────────────────── */
 .tabs{
-  display:flex;align-items:center;
+  display:flex;align-items:center;position:relative;
   background:var(--bg);
   border-top:0.5px solid var(--border);
   padding-bottom:var(--safe-b);
   flex-shrink:0;z-index:var(--z-tabs);
   box-shadow:0 -1px 0 var(--border);
 }
+/* 滑軌指示器：切換時滑過去，是「滑軌跳動」感的主要來源 */
+.tab-ind{
+  position:absolute;top:5px;left:0;height:38px;
+  border-radius:99px;background:var(--green-lt);
+  pointer-events:none;z-index:0;
+  transition:transform .32s cubic-bezier(.4,0,.2,1), width .32s cubic-bezier(.4,0,.2,1);
+}
+.tab-lbl{transition:opacity .2s,max-height .25s}
+/* 捲動時收合：只藏文字標籤，圖示保留。
+   整條藏掉會讓使用者失去導覽，不划算。 */
+.tabs.mini .tab{padding:8px 0 6px}
+.tabs.mini .tab-lbl{opacity:0;max-height:0;overflow:hidden}
+.tabs.mini .tab-ind{top:4px;height:30px}
+.tabs.mini .tab-dot{top:2px}
 .tab{
   flex:1;display:flex;flex-direction:column;align-items:center;
   padding:9px 0 6px;border:none;background:transparent;
   color:var(--text3);font-size:10px;font-weight:500;cursor:pointer;
-  gap:3px;position:relative;transition:color var(--t-fast);
+  gap:3px;position:relative;z-index:1;transition:color var(--t-fast),padding .25s;
   letter-spacing:.01em;
 }
 .tab.on{ color:var(--green); }
@@ -470,14 +484,36 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .search-input::placeholder{color:var(--text3)}
 .search-input:focus{outline:2px solid var(--green);outline-offset:1px}
 .filter-row{
-  display:flex;gap:7px;padding:8px 16px;
+  display:flex;gap:7px;padding:6px 16px;
   background:var(--surface);flex-shrink:0;
 }
 .filter-btn{
-  flex:1;height:44px;border:1px solid var(--border2);border-radius:99px;
+  flex:1;height:42px;border:1px solid var(--border2);border-radius:99px;
   background:var(--bg);color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;
   box-shadow:var(--shadow-sm);transition:all var(--t-fast);
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  overflow:visible;                    /* 角標會突出到 icon 外，不能裁掉 */
 }
+.fb-ico{position:relative;width:18px;height:18px;flex-shrink:0;display:block}
+.fb-ico svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.fb-lbl{white-space:nowrap}
+/* 角標只掛在「待處理」——角標的慣例含義是「有事待辦」，
+   掛在「全部」上會稀釋掉待處理的警示力道。 */
+.fb-badge{
+  position:absolute;top:-7px;right:-10px;
+  min-width:17px;height:17px;padding:0 4px;
+  border-radius:99px;background:var(--orange);color:#fff;
+  border:2px solid var(--surface);      /* 用列的背景色描邊，讓角標從 icon 上浮起來 */
+  font-size:10px;font-weight:700;line-height:13px;text-align:center;
+  font-family:'DM Mono',monospace;
+  display:none;
+}
+.fb-badge.on{display:block}
+/* 選中時底色是綠的，橘色角標對比會太差，改成白底橘字 */
+.filter-btn.on .fb-badge{background:#fff;color:var(--orange);border-color:var(--green)}
+/* 「全部」用淡色純數字，不搶警示 */
+.fb-n{margin-left:5px;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--text3)}
+.filter-btn.on .fb-n{color:rgba(255,255,255,.75)}
 .filter-btn:active{background:var(--surface2);transform:scale(.97)}
 .filter-btn.on{background:var(--green);border-color:transparent;color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(46,158,114,.25)}
 .list-footer{text-align:right;font-size:12px;color:var(--text3);padding:7px 2px 0;font-family:'DM Mono',monospace;letter-spacing:.01em}
@@ -1457,16 +1493,6 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
 
 
-/* 篩選鈕上的即時計數 */
-.filter-count{
-  display:inline-block;margin-left:6px;
-  font-family:'DM Mono',monospace;font-size:12px;font-weight:600;
-  color:var(--text3);
-}
-.filter-btn.on .filter-count{color:rgba(255,255,255,.72)}
-.filter-count.todo.has{color:var(--orange)}
-.filter-btn.on .filter-count.todo.has{color:rgba(255,255,255,.85)}
-
 /* ── 訂閱單行細條（hero 卡下方，高度壓到約 34px）────────── */
 .sub-chip{
   width:100%;
@@ -1708,10 +1734,17 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
   <div class="filter-row" id="home-filter-row" role="group" aria-label="首頁顯示範圍">
     <button class="filter-btn on" id="hf-todo" onclick="setHomeView('todo')" aria-pressed="true">
-      待處理<span class="filter-count todo" id="hf-todo-n"></span>
+      <span class="fb-ico">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <span class="fb-badge" id="hf-todo-n"></span>
+      </span>
+      <span class="fb-lbl">待處理</span>
     </button>
     <button class="filter-btn" id="hf-all" onclick="setHomeView('all')" aria-pressed="false">
-      全部<span class="filter-count" id="hf-all-n"></span>
+      <span class="fb-ico">
+        <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      </span>
+      <span class="fb-lbl">全部<span class="fb-n" id="hf-all-n"></span></span>
     </button>
     <button class="cal-open-btn" onclick="openCalModal()" aria-label="行事曆檢視" title="行事曆檢視">
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
@@ -1915,7 +1948,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.4.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.5.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -1925,18 +1958,19 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
 <!-- ═══════════════ TAB BAR ════════════════ -->
 <div class="tabs" role="tablist" aria-label="主要導覽">
+  <span class="tab-ind" id="tab-ind" aria-hidden="true"></span>
   <button class="tab on" id="tab-home" role="tab" aria-selected="true" aria-controls="s-home" onclick="showS('home')">
     <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/></svg>
-    本月<span class="tab-dot" id="remind-badge" aria-label="未處理提醒數">0</span>
+    <span class="tab-lbl">本月</span><span class="tab-dot" id="remind-badge" aria-label="未處理提醒數">0</span>
   </button>
   <button class="tab" id="tab-list" role="tab" aria-selected="false" aria-controls="s-list" onclick="showS('list')">
-    <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>明細
+    <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="tab-lbl">明細</span>
   </button>
   <button class="tab" id="tab-chart" role="tab" aria-selected="false" aria-controls="s-chart" onclick="showS('chart')">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5.5 3"/></svg>圖表
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5.5 3"/></svg><span class="tab-lbl">圖表</span>
   </button>
   <button class="tab" id="tab-settings" role="tab" aria-selected="false" aria-controls="s-settings" onclick="showS('settings')">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>設定
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="tab-lbl">設定</span>
   </button>
 </div>
 </div>
@@ -3038,6 +3072,73 @@ async function deleteSub(){
   document.addEventListener('touchcancel', ()=>{ st=null; }, {passive:true});
 })();
 
+// ── 分頁列橫向拖曳切換 ────────────────────────────────────
+// 這個手勢不跟任何既有手勢衝突：清單列的橫向手勢是滑動刪除、
+// hero 的是切換月份，分頁列上目前沒有其他手勢。
+// 內容區「不」加橫向切換分頁，否則三個橫向手勢會互相打架。
+(function tabDrag(){
+  const bar=document.querySelector('.tabs');
+  if(!bar) return;
+  const THRESHOLD=18;
+  let st=null, suppressClick=false;
+
+  const tabAt=(x,y)=>{
+    const el=document.elementFromPoint(x,y);
+    return el && el.closest ? el.closest('.tab') : null;
+  };
+
+  bar.addEventListener('touchstart', e=>{
+    if(e.touches.length!==1){ st=null; return; }
+    st={x:e.touches[0].clientX, moved:false, cand:null};
+  }, {passive:true});
+
+  bar.addEventListener('touchmove', e=>{
+    if(!st) return;
+    const t=e.touches[0];
+    if(Math.abs(t.clientX-st.x) > THRESHOLD) st.moved=true;
+    if(!st.moved) return;
+    const tab=tabAt(t.clientX, t.clientY);
+    if(tab && tab!==st.cand){
+      st.cand=tab;
+      moveTabInd(tab);          // 指示器即時跟著手指，但還沒真的換頁
+    }
+  }, {passive:true});
+
+  bar.addEventListener('touchend', ()=>{
+    if(st && st.moved){
+      suppressClick=true;                       // 拖曳結束後的 click 不要再觸發一次
+      setTimeout(()=>{ suppressClick=false; }, 400);
+      if(st.cand && !st.cand.classList.contains('on')){
+        showS(st.cand.id.replace('tab-',''));
+      }else{
+        moveTabInd();                           // 拖回原處
+      }
+    }
+    st=null;
+  }, {passive:true});
+
+  bar.addEventListener('touchcancel', ()=>{ if(st&&st.moved) moveTabInd(); st=null; }, {passive:true});
+  bar.addEventListener('click', e=>{
+    if(suppressClick){ e.stopPropagation(); e.preventDefault(); }
+  }, true);
+})();
+
+// ── 捲動時收合分頁列的文字標籤 ────────────────────────────
+// 完全隱藏整條會讓使用者失去導覽，只收文字、保留圖示。
+(function collapseTabs(){
+  const bar=document.querySelector('.tabs');
+  if(!bar) return;
+  document.querySelectorAll('.scroll-body').forEach(box=>{
+    let last=0;
+    box.addEventListener('scroll', ()=>{
+      const y=box.scrollTop;
+      if(y > last+6 && y > 48)      bar.classList.add('mini');
+      else if(y < last-6 || y < 24) bar.classList.remove('mini');
+      last=y;
+    }, {passive:true});
+  });
+})();
+
 // 巢狀彈窗（快速編輯 → 完整表單）會連開兩層，用計數器避免提早解鎖
 let _scrollLocks = 0, _unlockRaf = 0;
 function lockScroll(){
@@ -3738,8 +3839,12 @@ async function rHome(){
   const allN  = normal.length + (advOn()?advance.length:0);
   const tn=document.getElementById('hf-todo-n');
   const an=document.getElementById('hf-all-n');
-  if(tn){ tn.textContent = todoN>0 ? todoN : ''; tn.classList.toggle('has', todoN>0); }
+  if(tn){ tn.textContent = todoN>99?'99+':todoN; tn.classList.toggle('on', todoN>0); }
   if(an){ an.textContent = allN>0 ? allN : ''; }
+  // 圖示沒有文字，螢幕閱讀器要靠 aria-label 才唸得出筆數
+  const tb=document.getElementById('hf-todo'), ab=document.getElementById('hf-all');
+  if(tb) tb.setAttribute('aria-label', `待處理 ${todoN} 筆`);
+  if(ab) ab.setAttribute('aria-label', `全部 ${allN} 筆`);
 
   // ── Hero: month label, one big number, ONE supporting line ──────────
   document.getElementById('h-period').textContent='個人支出';  // 月份已在 eyebrow 的選擇器上
@@ -5200,6 +5305,19 @@ function calOpenItem(id){
 
 // ── Navigation ───────────────────────────────────────────
 const SCREENS=['home','list','chart','settings'];
+// ── 分頁滑軌指示器 ────────────────────────────────────────
+function moveTabInd(target, animate=true){
+  const ind=document.getElementById('tab-ind');
+  const el=target || document.querySelector('.tab.on');
+  if(!ind||!el) return;
+  if(!animate) ind.style.transition='none';
+  ind.style.width=(el.offsetWidth-14)+'px';
+  ind.style.transform=`translateX(${el.offsetLeft+7}px)`;
+  if(!animate) requestAnimationFrame(()=>{ ind.style.transition=''; });
+}
+window.addEventListener('resize', ()=>moveTabInd(null,false));
+window.addEventListener('orientationchange', ()=>setTimeout(()=>moveTabInd(null,false),250));
+
 function showS(name){
   activeScreen=name;
   SCREENS.forEach(sc=>{
@@ -5208,6 +5326,7 @@ function showS(name){
     tab.classList.toggle('on',sc===name);
     tab.setAttribute('aria-selected',sc===name);
   });
+  moveTabInd();
   document.getElementById('fab').classList.toggle('on',name==='home');
   window.scrollTo(0,0);
   if(name==='chart'&&dirty.chart)      rChart();
@@ -6074,6 +6193,7 @@ openDB().then(async ()=>{
   });
 
   rHome();
+  requestAnimationFrame(()=>moveTabInd(null,false));
 
   // ── App shortcuts（manifest shortcuts / 長按圖示的快捷選單）──
   const action = new URLSearchParams(location.search).get('action');
