@@ -1984,7 +1984,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.6.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.6.1</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -3126,6 +3126,25 @@ async function copyDiag(){
         if(h!==lh){ diag('vv-resize', `${lh} → ${h}`); lh=h; }
       });
     }
+
+    // 任何 CSS 動畫重播都記一筆——這是「數字跳動」最後沒被排除的可能
+    document.addEventListener('animationstart', e=>{
+      const el=e.target;
+      const who=(el.id||el.className||el.tagName||'').toString().slice(0,28);
+      diag('ANIM', `${e.animationName} @${who}`);
+    }, true);
+
+    // 內層捲動容器與分頁列的高度變動（#app 不變不代表它們不變）
+    if(window.ResizeObserver){
+      [['home-scroll','#home-scroll'],['tabs','.tabs'],['hero','.hero-main-card']].forEach(([tag,sel])=>{
+        const el=document.querySelector(sel); if(!el) return;
+        let last=0;
+        new ResizeObserver(es=>{
+          const h=Math.round(es[0].contentRect.height);
+          if(h!==last){ if(last) diag('resize', `${tag} ${last} → ${h}`); last=h; }
+        }).observe(el);
+      });
+    }
     renderDiag();
   });
 })();
@@ -3262,8 +3281,8 @@ async function copyDiag(){
     let anchor=0, mini=false;
     box.addEventListener('scroll', ()=>{
       const y=box.scrollTop;
-      if(!mini && y > anchor+HYST && y > ENTER){ mini=true; bar.classList.add('mini'); anchor=y; }
-      else if(mini && (y < anchor-HYST || y < ENTER/2)){ mini=false; bar.classList.remove('mini'); anchor=y; }
+      if(!mini && y > anchor+HYST && y > ENTER){ mini=true; bar.classList.add('mini'); anchor=y; diag('tabs-mini','收合'); }
+      else if(mini && (y < anchor-HYST || y < ENTER/2)){ mini=false; bar.classList.remove('mini'); anchor=y; diag('tabs-mini','展開'); }
       else if((!mini && y < anchor) || (mini && y > anchor)) anchor=y;   // 只往同方向累積
     }, {passive:true});
   });
@@ -3275,18 +3294,26 @@ async function copyDiag(){
 // 這裡在捲到頂端還繼續往下拉時直接吃掉手勢。
 (function pullGuard(){
   document.querySelectorAll('.scroll-body').forEach(box=>{
-    let yPrev=0;
+    // 門檻式守衛：短距離下拉仍讓瀏覽器做原生橡皮筋（手感自然），
+    // 只有累積超過 SLACK 才攔下——那才是會觸發下拉重整的幅度。
+    const SLACK=64;
+    let yPrev=0, pulled=0, logged=false;
     box.addEventListener('touchstart', e=>{
       if(e.touches.length!==1) return;
-      yPrev=e.touches[0].clientY;
+      yPrev=e.touches[0].clientY; pulled=0; logged=false;
     }, {passive:true});
     box.addEventListener('touchmove', e=>{
       if(e.touches.length!==1) return;
       const y=e.touches[0].clientY, dy=y-yPrev;
       yPrev=y;
-      // 每一幀都重新判斷，不用 touchstart 的latch——
+      // 每一幀重新判斷，不用 touchstart 的 latch——
       // 否則從清單中段一路拉到頂端再繼續拉時守衛會失效
-      if(box.scrollTop <= 0 && dy > 0 && e.cancelable){ e.preventDefault(); diag('pull-blocked'); }
+      if(box.scrollTop > 0){ pulled=0; return; }
+      if(dy > 0) pulled += dy; else pulled = Math.max(0, pulled+dy);
+      if(pulled > SLACK && e.cancelable){
+        e.preventDefault();
+        if(!logged){ diag('pull-blocked', `累積 ${Math.round(pulled)}px`); logged=true; }
+      }
     }, {passive:false});
   });
 })();
