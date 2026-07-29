@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="費用管理">
@@ -1071,7 +1071,8 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   display:flex;justify-content:space-between;align-items:center;
   border-top:1px solid var(--border);margin-top:10px;padding-top:11px;
 }
-.cat-card-foot a{font-size:12px;color:var(--green);font-weight:600;cursor:pointer}
+.cat-card-foot a,.foot-link{font-size:12px;color:var(--green);font-weight:600;cursor:pointer;
+  background:none;border:none;padding:4px 2px;font-family:inherit}
 
 /* ── Expandable per-category detail panel ───────────────────── */
 .donut-detail{
@@ -1909,8 +1910,8 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         </div>
         <div id="cat-extra"></div>
         <div class="cat-card-foot">
-          <a onclick="openBudModal()">設定分類預算</a>
-          <a onclick="toggleAllCatDetails()" id="donut-expand-all">全部展開</a>
+          <button type="button" class="foot-link" onclick="openBudModal()">設定分類預算</button>
+          <button type="button" class="foot-link" onclick="toggleAllCatDetails()" id="donut-expand-all">全部展開</button>
         </div>
       </div>
     </div>
@@ -1921,6 +1922,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="card">
         <div class="card-title" id="range-chart-title">支出走勢</div>
         <canvas id="range-chart" style="width:100%"></canvas>
+        <div id="chart-notice"></div>
         <div id="cmp-wrap" style="display:none">
           <div class="yr-chips" id="yr-chips"></div>
           <canvas id="area-chart" style="width:100%"></canvas>
@@ -1945,15 +1947,15 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   <div class="scroll-body">
     <div class="settings-group-title">資料管理</div>
     <div class="settings-group">
-      <div class="settings-row" onclick="exportJSON()">
+      <div class="settings-row" role="button" tabindex="0" onclick="exportJSON()">
         <div><div class="settings-row-lbl">匯出 JSON 備份</div><div class="settings-row-sub">完整備份：所有項目＋類別、預算、發薪日、提醒設定</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
       </div>
-      <div class="settings-row" onclick="exportCSV()">
+      <div class="settings-row" role="button" tabindex="0" onclick="exportCSV()">
         <div><div class="settings-row-lbl">匯出 CSV</div><div class="settings-row-sub">僅項目資料，不含設定；可用 Excel / Numbers 開啟</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
       </div>
-      <div class="settings-row" onclick="document.getElementById('imp').click()">
+      <div class="settings-row" role="button" tabindex="0" onclick="document.getElementById('imp').click()">
         <div><div class="settings-row-lbl">匯入備份</div><div class="settings-row-sub">從 JSON 還原全部，或從 CSV 匯入項目</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 14 12 9 17 14"/><line x1="12" y1="9" x2="12" y2="21"/></svg></div>
       </div>
@@ -1961,11 +1963,11 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     </div>
     <div class="settings-group-title">偏好設定</div>
     <div class="settings-group">
-      <div class="settings-row" onclick="openCatModal()">
+      <div class="settings-row" role="button" tabindex="0" onclick="openCatModal()">
         <div><div class="settings-row-lbl">費用類別管理</div><div class="settings-row-sub" id="cat-preview-settings">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
-      <div class="settings-row" onclick="openBudModal()">
+      <div class="settings-row" role="button" tabindex="0" onclick="openBudModal()">
         <div><div class="settings-row-lbl">預算設定</div><div class="settings-row-sub" id="bud-preview-settings">點此設定每月預算上限</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
@@ -1976,38 +1978,38 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
-      <div class="settings-row" onclick="openSubModal()">
+      <div class="settings-row" role="button" tabindex="0" onclick="openSubModal()">
         <div><div class="settings-row-lbl">訂閱管理</div><div class="settings-row-sub" id="sub-preview-settings">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
-      <div class="settings-row" onclick="openRemModal()">
+      <div class="settings-row" role="button" tabindex="0" onclick="openRemModal()">
         <div><div class="settings-row-lbl">檢視待處理提醒</div><div class="settings-row-sub" id="rem-view-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
-      <div class="settings-row" onclick="openRemindModal()">
+      <div class="settings-row" role="button" tabindex="0" onclick="openRemindModal()">
         <div><div class="settings-row-lbl">到期提醒設定</div><div class="settings-row-sub" id="remind-preview-settings">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
     </div>
     <div class="settings-group-title">應用程式</div>
     <div class="settings-group">
-      <div class="settings-row" id="install-row" style="display:none" onclick="promptInstall()">
+      <div class="settings-row" role="button" tabindex="0" id="install-row" style="display:none" onclick="promptInstall()">
         <div><div class="settings-row-lbl">加入主畫面</div><div class="settings-row-sub">安裝後可全螢幕開啟、離線使用</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
       </div>
-      <div class="settings-row" onclick="promptInstall()">
+      <div class="settings-row" role="button" tabindex="0" onclick="promptInstall()">
         <div><div class="settings-row-lbl">安裝說明</div><div class="settings-row-sub" id="pwa-mode-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
-      <div class="settings-row" onclick="checkUpdate()">
+      <div class="settings-row" role="button" tabindex="0" onclick="checkUpdate()">
         <div><div class="settings-row-lbl">檢查更新</div><div class="settings-row-sub" id="pwa-sw-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 11-2.1-9.4L23 10"/></svg></div>
       </div>
-      <div class="settings-row" onclick="toggleDiag()">
+      <div class="settings-row" role="button" tabindex="0" onclick="toggleDiag()">
         <div><div class="settings-row-lbl">診斷模式</div><div class="settings-row-sub" id="diag-sub">關閉</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.9 2.9M16.2 16.2l2.9 2.9M2 12h4M18 12h4M4.9 19.1l2.9-2.9M16.2 7.8l2.9-2.9"/></svg></div>
       </div>
-      <div class="settings-row" onclick="showStorage()">
+      <div class="settings-row" role="button" tabindex="0" onclick="showStorage()">
         <div><div class="settings-row-lbl">儲存空間</div><div class="settings-row-sub" id="pwa-quota-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M21 5v14c0 1.7-4 3-9 3s-9-1.3-9-3V5"/></svg></div>
       </div>
@@ -2019,7 +2021,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.8.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.9.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/29</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -2172,11 +2174,11 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 </div>
 
 <!-- ═══════════════ MODALS ════════════════ -->
-<div class="overlay" id="bov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
+<div class="overlay" id="bov" role="dialog" aria-modal="true" aria-labelledby="bov-title" onclick="if(event.target===this)this.classList.remove('on')">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
     <div class="sheet-hdr-row">
-      <h3>設定預算</h3>
+      <h3 id="bov-title">設定預算</h3>
       <button class="fs-save" onclick="saveBudgets()">儲存</button>
       <button class="fs-back" onclick="document.getElementById('bov').classList.remove('on')" aria-label="關閉">
         <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -2202,25 +2204,25 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   </div>
 </div>
 
-<div class="overlay" id="cov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
+<div class="overlay" id="cov" role="dialog" aria-modal="true" aria-labelledby="cov-title" onclick="if(event.target===this)closeCatModal()">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
-    <h3>管理費用類別</h3>
+    <h3 id="cov-title">管理費用類別</h3>
     <div class="cat-grid" id="cat-tags"></div>
     <div class="cat-add-row">
       <input id="new-cat" type="text" placeholder="新增類別名稱" maxlength="10">
       <button onclick="addCat()">新增</button>
     </div>
     <div class="sheet-btns" style="margin-top:14px">
-      <button class="btn primary" onclick="document.getElementById('cov').classList.remove('on');refreshCatSel();dirtyAll();renderActive();rSettings()">完成</button>
+      <button class="btn primary" onclick="closeCatModal()">完成</button>
     </div>
   </div>
 </div>
 
-<div class="overlay" id="rsov" role="dialog" aria-modal="true" onclick="if(event.target===this)this.classList.remove('on')">
+<div class="overlay" id="rsov" role="dialog" aria-modal="true" aria-labelledby="rsov-title" onclick="if(event.target===this)this.classList.remove('on')">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
-    <h3>提醒設定</h3>
+    <h3 id="rsov-title">提醒設定</h3>
     <div class="remind-info-box"><p>開啟或切回 App 時自動掃描到期費用：首頁顯示提醒卡片；若有逾期或即將到期，會跳出提醒視窗（每天最多一次）。不需要系統通知權限。</p></div>
     <div id="remind-settings-rows"></div>
     <div class="sheet-btns" style="margin-top:14px">
@@ -2496,8 +2498,8 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.7 16.7A9 9 0 0 0 12 20M5 12.5a11 11 0 0 1 4-2.4M2 8.8a16 16 0 0 1 5-3M22 8.8a16 16 0 0 0-9.5-3.7"/></svg>
   離線模式 · 資料仍存在本機
 </div>
-<div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 'use strict';
 
@@ -3508,34 +3510,79 @@ function openDB(){
         subStore.createIndex('status','status');
       }
     };
-    r.onsuccess=e=>{DB=e.target.result;res();};
+    r.onsuccess=e=>{
+      DB=e.target.result;
+      // 另一個分頁觸發升級時，舊連線會擋住它；主動關閉並提示重載，
+      // 否則兩邊都停在半升級狀態。
+      DB.onversionchange=()=>{ DB.close(); DB=null; alert('資料庫已在其他分頁更新，請重新載入此頁。'); };
+      res();
+    };
     r.onerror=()=>rej(r.error);
+    // 舊分頁佔著資料庫時 open 會無限期停在 blocked，畫面停在空白
+    r.onblocked=()=>rej(new Error('資料庫被其他分頁佔用，請關閉其他開啟中的「費用管理」分頁後重試'));
   });
 }
 const store=m=>DB.transaction('items',m).objectStore('items');
-const getAll=()=>new Promise(res=>{store('readonly').getAll().onsuccess=e=>res(e.target.result||[]);});
 
-// 新增：利用 Index 進行 O(1) 範圍查詢，避免每次都撈出全部資料過濾
-const getByYM=(ym)=>new Promise(res=>{store('readonly').index('ym').getAll(IDBKeyRange.only(ym)).onsuccess=e=>res(e.target.result||[]);});
-const getByRange=(from,to)=>new Promise(res=>{store('readonly').index('ym').getAll(IDBKeyRange.bound(from,to)).onsuccess=e=>res(e.target.result||[]);});
-// Fix 1: getById — primary-key lookup, O(log n), used by event delegation
+// BUGFIX: 原本每個 helper 只綁 onsuccess。IndexedDB 失敗（配額用盡、資料損壞、
+// 交易被中止）時 promise 永遠不會 settle，於是 `await putItem(...)` 就卡在那裡：
+// 表單不會關、toast 不會跳、使用者以為存好了其實沒有。
+// 這個包裝把 request 與 transaction 的錯誤都接起來，一律 reject。
+function idbReq(req){
+  return new Promise((res,rej)=>{
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror  =()=>rej(req.error||new Error('IndexedDB request failed'));
+    if(req.transaction){
+      req.transaction.onabort=()=>rej(req.transaction.error||new Error('IndexedDB transaction aborted'));
+    }
+  });
+}
+// 寫入失敗時要讓使用者知道，而不是靜靜地掉一筆帳
+function idbWrite(req){
+  return idbReq(req).catch(err=>{
+    console.error('IndexedDB 寫入失敗：',err);
+    toast(err&&err.name==='QuotaExceededError' ? '儲存空間不足，請先匯出備份並清理' : '儲存失敗，資料未寫入');
+    throw err;
+  });
+}
+
+// ── getAll 快取 ────────────────────────────────────────────
+// buildRems / renderCalendar / minDataYm / renderYearCompare 都要全表，
+// 而 rHome 每次勾選核取方塊都會重跑一次 buildRems。原本是每次都全表掃描，
+// 現在共用同一份快取，任何寫入後由 invalidateAll() 作廢。
+let _allCache=null;
+const invalidateAll=()=>{_allCache=null;};
+const getAll=()=>{
+  if(_allCache) return _allCache;
+  _allCache=idbReq(store('readonly').getAll())
+    .then(r=>r||[])
+    .catch(err=>{ _allCache=null; console.error(err); return []; });
+  return _allCache;
+};
+
+// 利用 Index 進行範圍查詢，避免每次都撈出全部資料過濾
+const getByYM=(ym)=>idbReq(store('readonly').index('ym').getAll(IDBKeyRange.only(ym))).then(r=>r||[]).catch(()=>[]);
+const getByRange=(from,to)=>idbReq(store('readonly').index('ym').getAll(IDBKeyRange.bound(from,to))).then(r=>r||[]).catch(()=>[]);
+// getById — primary-key lookup, O(log n), used by event delegation
 // for delete and checkbox toggle (avoids full table scan with getAll().find())
-const getById=id=>new Promise(res=>{store('readonly').get(id).onsuccess=e=>res(e.target.result||null);});
+const getById=id=>idbReq(store('readonly').get(id)).then(r=>r||null).catch(()=>null);
 // Fetch all advance items that are children of a given parent bill id
-const getByParentId=parentId=>new Promise(res=>{store('readonly').index('parentId').getAll(IDBKeyRange.only(parentId)).onsuccess=e=>res(e.target.result||[]);});
+const getByParentId=parentId=>idbReq(store('readonly').index('parentId').getAll(IDBKeyRange.only(parentId))).then(r=>r||[]).catch(()=>[]);
 
-const putItem=item=>new Promise(res=>{
-  const r=store('readwrite').put(item);
-  r.onsuccess=e=>{if(!item.id)item.id=e.target.result;res(item);};
-});
-const delItem=id=>new Promise(res=>{store('readwrite').delete(id).onsuccess=res;});
+const putItem=async item=>{
+  const key=await idbWrite(store('readwrite').put(item));
+  if(!item.id) item.id=key;
+  invalidateAll();
+  return item;
+};
+const delItem=async id=>{ await idbWrite(store('readwrite').delete(id)); invalidateAll(); };
 
 // ── 訂閱 store（獨立於 items，不參與任何金額統計）─────────
 const subStore=m=>DB.transaction('subs',m).objectStore('subs');
-const getAllSubs=()=>new Promise(res=>{subStore('readonly').getAll().onsuccess=e=>res(e.target.result||[]);});
-const getSubById=id=>new Promise(res=>{subStore('readonly').get(id).onsuccess=e=>res(e.target.result||null);});
-const putSub=x=>new Promise(res=>{const rq=subStore('readwrite').put(x);rq.onsuccess=e=>res(e.target.result);});
-const delSub=id=>new Promise(res=>{subStore('readwrite').delete(id).onsuccess=res;});
+const getAllSubs=()=>idbReq(subStore('readonly').getAll()).then(r=>r||[]).catch(()=>[]);
+const getSubById=id=>idbReq(subStore('readonly').get(id)).then(r=>r||null).catch(()=>null);
+const putSub=x=>idbWrite(subStore('readwrite').put(x));
+const delSub=id=>idbWrite(subStore('readwrite').delete(id));
 
 // ── Selects ──────────────────────────────────────────────
 function buildSelects(){
@@ -3546,8 +3593,10 @@ function buildSelects(){
   const mO=ms.map(mn=>`<option value="${mn}">${mn}月</option>`).join('');
   const yOS=yrs.map(yr=>`<option value="${yr}">${yr}</option>`).join('');
 
-  ['hy','cy2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=yO;});
-  ['hm','cm2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=mO;});
+  // 'hy' / 'hm' 是舊版首頁年月下拉的殘留 id，那兩個元素在合併進 hero 卡時
+  // 就已經刪掉了，這裡不必再嘗試填充。
+  ['cy2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=yO;});
+  ['cm2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=mO;});
   ['rf-y','rt-y','cr-fy','cr-ty','f-ym-y'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML=yOS;el.value=nowY;}});
   ['rf-m','rt-m','cr-fm','cr-tm','f-ym-m'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML=mO;el.value=nowM;}});
 
@@ -3646,20 +3695,24 @@ function mpShiftYear(d){
 function mpPick(mn){ setMonth(_mpYear,mn); closeMonthPicker(); }
 function mpGoToday(){ setMonth(cy(),cm()); closeMonthPicker(); }
 function onChartMonth(){setMonth(+document.getElementById('cy2').value,+document.getElementById('cm2').value);}
-function shiftM(d){
-  let y=SEL.y,m=SEL.m+d;
-  if(m>12){m=1;y++;} if(m<1){m=12;y--;}
-  setMonth(y,m);
-}
+// 箭頭與左右滑動是同一個動作的兩個入口，原本卻走不同規則：滑動被
+// shiftMonthClamped 夾在「有資料的最早月 ~ 當月+12」之間，箭頭卻能一路點進
+// 2046 年的空月份。統一走夾住的那條。
+function shiftM(d){ shiftMonthClamped(d); }
 // Re-render whichever screen is on screen right now
+// Returns the render promise: 下拉重整的 `await renderActive()` 原本永遠立刻
+// 通過（這個函式回傳 undefined），轉圈只是跑滿最短時間就收掉，跟資料到底
+// 重查完了沒有一點關係。
 function renderActive(){
-  if(activeScreen==='home')          rHome();
-  else if(activeScreen==='list')     rList();
-  else if(activeScreen==='chart')    rChart();
-  else if(activeScreen==='settings') rSettings();
+  if(activeScreen==='home')          return rHome();
+  if(activeScreen==='list')          return rList();
+  if(activeScreen==='chart')         return rChart();
+  if(activeScreen==='settings')      return rSettings();
+  return Promise.resolve();
 }
 const dirtyAll=()=>{
   _minYmCache=null;                                   // 資料變動 → 可切換範圍下界要重算
+  invalidateAll();                                    // 全表快取一併作廢
   Object.keys(dirty).forEach(k=>dirty[k]=true);
 };
 
@@ -3758,11 +3811,8 @@ function updateProxyCalc(){
   const rows    =getProxyRows();
   const proxySum=rows.reduce((s,r)=>s+r.amount,0);
   const personal=billAmt-proxySum;
-  const hasRows =document.querySelectorAll('#proxy-rows .proxy-row').length>0;
-
-  // Show formula only when there are rows with real amounts AND bill amount is filled
-  const hasFilledRows = getProxyRows().length > 0;  // use filtered list (amount>0 AND payee)
-  if(hasFilledRows && billAmt > 0){
+  // rows 已經是過濾過的清單（payee + amount>0），不必再查一次 DOM
+  if(rows.length > 0 && billAmt > 0){
     calcEl.style.display='';
     document.getElementById('pc-total').textContent    = fmt(billAmt);
     document.getElementById('pc-proxy').textContent    = '−'+fmt(proxySum);
@@ -3854,9 +3904,14 @@ function onTypeChange(){
 async function buildRems(){
   if(!remCfg.enabled)return[];
   // 提醒功能涉及跨月份逾期，仍需 getAll()
-  const all=await getAll(),td=today(),thr=addDays(td,remCfg.dueSoonDays);
+  const all=await getAll(),td=today();
+  // BUGFIX: 表單上的「提前 3 天 / 提前 7 天」寫進了 remindDays，但這裡從來
+  // 只看全域的 remCfg.dueSoonDays，所以那個選項按了等於沒按。
+  // 每筆自己的天數優先，沒設定（0）才退回全域預設。
+  const winOf=x=>(x.remindDays>0 ? x.remindDays : remCfg.dueSoonDays);
   const rems=[];
   all.forEach(x=>{
+    const thr=addDays(td,winOf(x));
     if(remCfg.showOverdue&&x.itype!=='advance'&&x.paid!==1&&x.date&&x.date<td)
       rems.push({item:x,type:'overdue',diff:diffDays(x.date)});
     else if(remCfg.showDueSoon&&x.itype!=='advance'&&x.paid!==1&&x.date&&x.date>=td&&x.date<=thr)
@@ -4125,9 +4180,14 @@ async function rHome(){
   dirty.home=false;
   renderSubChip();
   const{y,m}=curYM(), key=ymStr(y,m);
+  // BUGFIX: _lastHomeYm 原本在這裡就被覆寫，等到下面要判斷「是不是換了月份」
+  // 時永遠等於 key，於是換月時從 0 起跳的滾動動畫一次都沒播過。
+  // 先把舊值留下來，這一輪 render 用它判斷，最後才更新。
+  const prevHomeYm=_lastHomeYm;
+  const monthChanged = !!prevHomeYm && prevHomeYm!==key;
   // 換月時給 hero 一個短暫淡入，讓滑動手勢有回饋。
   // 整頁橫向滑出需要雙緩衝兩份清單，複雜度不划算，先只做這個。
-  if(_lastHomeYm && _lastHomeYm!==key){
+  if(monthChanged){
     const hc=document.querySelector('.hero-main-card');
     if(hc){ hc.classList.remove('mfade'); void hc.offsetWidth; hc.classList.add('mfade'); }
   }
@@ -4162,7 +4222,7 @@ async function rHome(){
   // ── Hero: month label, one big number, ONE supporting line ──────────
   document.getElementById('h-period').textContent='個人支出';  // 月份已在 eyebrow 的選擇器上
   animNum(document.getElementById('h-tot'), total, fmt,
-          {from: _lastHomeYm!==key ? 0 : undefined, dur:750});
+          {from: (monthChanged || !prevHomeYm) ? 0 : undefined, dur:750});
   let sub=`已繳 <b class="g">${fmt(paid)}</b><span class="sep">·</span>未繳 <b class="r">${fmt(unpaid)}</b>`;
   if(advOn()&&advUnrec>0) sub+=`<span class="sep">·</span>待收 <b class="o">${fmt(advUnrec)}</b>`;
   document.getElementById('h-subline').innerHTML=sub;
@@ -4203,7 +4263,7 @@ async function rHome(){
     pctEl.textContent=rawPct+'%';
     pctEl.className='bud-ring-pct';
     capEl.textContent='已用';
-    ring.className.baseVal='bud-ring-fg'+(rawPct>=100?' over':rawPct>=80?' warn':'');
+    ring.setAttribute('class','bud-ring-fg'+(rawPct>=100?' over':rawPct>=80?' warn':''));
     // Paint from empty so the sweep animates on every render
     ring.style.strokeDashoffset=CIRC;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -4216,7 +4276,7 @@ async function rHome(){
     remSub.textContent='可於設定頁設定預算';
     pctEl.textContent='未設定';pctEl.className='bud-ring-pct na';
     capEl.textContent='';
-    ring.className.baseVal='bud-ring-fg';
+    ring.setAttribute('class','bud-ring-fg');
     ring.style.strokeDashoffset=CIRC;
   }
 
@@ -4238,7 +4298,8 @@ async function rHome(){
     if(dp===null){
       pdEl.textContent=daysLeftInMonth()+' 天';
       pdEl.className='hero-stat-num';
-      pdLbl.textContent='距離月底 · 點此設發薪日';
+      // 這一列已改為純顯示（預算入口統一在設定頁），標籤不能再說「點此」
+      pdLbl.textContent='距離月底 · 未設發薪日';
     }else if(dp===0){
       pdEl.textContent='今天';
       pdEl.className='hero-stat-num g';
@@ -4257,10 +4318,12 @@ async function rHome(){
   maybeAutoShowRems();
 
   // ── Copy-last-month banner ──────────────────────────────────────────
+  // 這個查詢只在本月完全沒有項目時才有意義（橫幅與空狀態都只在那時出現），
+  // 原本每次重繪都無條件跑一次 —— 包含每一次勾選核取方塊。
   const prevM=m===1?12:m-1,prevY=m===1?y-1:y;
-  const prevItems=await getByYM(ymStr(prevY,prevM));
+  const prevItems=items.length ? [] : await getByYM(ymStr(prevY,prevM));
   document.getElementById('copy-wrap').innerHTML=(!items.length&&prevItems.length)
-    ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到${m} 月？</p><span>複製</span></div>`:'';
+    ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到 ${m} 月？</p><span>複製</span></div>`:'';
 
   const el=document.getElementById('home-list');
   const filterRow=document.getElementById('home-filter-row');
@@ -4701,6 +4764,19 @@ function budCatBlockHTML(o){
 let chartMode = 'single'; // 'single' | 'range'
 let rangeChart = null;
 
+// Chart.js 從 CDN 來，離線首次載入時它可能根本不存在。原本直接 `new Chart(...)`
+// 會丟 ReferenceError，把整個「支出趨勢」畫面停在半成品狀態，而且沒有任何訊息。
+// 單月組成用的是自繪 SVG 甜甜圈，不受影響 —— 所以這裡只需要讓趨勢圖說清楚
+// 發生什麼事、怎麼補救。
+const chartLibReady = () => typeof Chart !== 'undefined';
+function chartUnavailableHTML(){
+  return `<div class="empty-msg" style="padding:26px 12px">
+      <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.7 16.7A9 9 0 0 0 12 20M5 12.5a11 11 0 0 1 4-2.4M2 8.8a16 16 0 0 1 5-3M22 8.8a16 16 0 0 0-9.5-3.7"/></svg>
+      <strong style="font-size:14px;color:var(--text2);margin-bottom:5px">趨勢圖尚未載入</strong>
+      <span style="font-size:12px">繪圖元件需要連線才能取得。連上網路後重新開啟這個分頁即可，<br>期間「單月組成」與所有金額都照常運作。</span>
+    </div>`;
+}
+
 // ── Pure-SVG Donut Chart (zero dependency) ────────────────
 // sorted: [{cat, val, color}] sorted descending by val
 // total:  sum of all personal expenses this month
@@ -4867,10 +4943,26 @@ function renderCatRows(ctx){
               <span class="donut-detail-a">${fmt(x.amount)}</span>
             </div>`).join('')}
          ${items.length>TOP?`<div class="donut-detail-more">還有 ${items.length-TOP} 筆…</div>`:''}
-         <button type="button" class="donut-detail-link" onclick="event.stopPropagation();openCatInList('${esc(r.cat)}')">在明細中檢視全部</button>
-         ${r.limit<=0?`<button type="button" class="cat-detail-set" onclick="event.stopPropagation();openBudModal()">為「${esc(r.cat)}」設定預算</button>`:''}
+         <button type="button" class="donut-detail-link">在明細中檢視全部</button>
+         ${r.limit<=0?`<button type="button" class="cat-detail-set">為「${esc(r.cat)}」設定預算</button>`:''}
        </div>`;
-    el.querySelector('.cat-row').onclick=()=>toggleCatDetail(r.i);
+    // BUGFIX: 這兩顆按鈕原本把類別名字直接插進 onclick 字串裡。esc() 是給 HTML
+    // 內文用的，屬性值被解析回來時 &#39; 會變回單引號 —— 只要類別叫「Mom's」
+    // 這顆按鈕就整個壞掉（更糟的情況是任意程式碼被執行）。
+    // 名字改由 dataset 帶，事件直接掛在節點上，完全不經過字串拼接。
+    const detailLink=el.querySelector('.donut-detail-link');
+    if(detailLink) detailLink.onclick=e=>{ e.stopPropagation(); openCatInList(r.cat); };
+    const setBud=el.querySelector('.cat-detail-set');
+    if(setBud) setBud.onclick=e=>{ e.stopPropagation(); openBudModal(); };
+    const catRow=el.querySelector('.cat-row');
+    catRow.onclick=()=>toggleCatDetail(r.i);
+    // 分類列是可展開的：給它按鈕語意與鍵盤焦點，否則鍵盤與螢幕閱讀器
+    // 完全打不開下面那塊明細。
+    catRow.setAttribute('role','button');
+    catRow.setAttribute('tabindex','0');
+    catRow.setAttribute('aria-expanded','false');
+    catRow.setAttribute('aria-controls','donut-detail-'+r.i);
+    catRow.setAttribute('aria-label',`${r.cat} ${fmt(r.val)}，展開明細`);
     frag.appendChild(el);
   });
   legEl.appendChild(frag);
@@ -4936,6 +5028,8 @@ function toggleCatDetail(i){
   const open=det.style.display==='none';
   det.style.display=open?'':'none';
   item.classList.toggle('open',open);
+  const row=item.querySelector('.cat-row');
+  if(row) row.setAttribute('aria-expanded',open?'true':'false');
   if(wrap){
     wrap._active=open?i:null;
     if(open&&wrap._hi)wrap._hi(i); else if(wrap._unhi)wrap._unhi();
@@ -4950,7 +5044,11 @@ function toggleAllCatDetails(){
   dets.forEach(d=>{
     d.style.display=anyClosed?'':'none';
     const item=d.closest('.cat-item');
-    if(item)item.classList.toggle('open',anyClosed);
+    if(item){
+      item.classList.toggle('open',anyClosed);
+      const row=item.querySelector('.cat-row');
+      if(row) row.setAttribute('aria-expanded',anyClosed?'true':'false');
+    }
   });
   const wrap=document.getElementById('donut-wrap');
   if(wrap){wrap._active=null; if(wrap._unhi)wrap._unhi();}
@@ -5126,7 +5224,9 @@ async function rChartRange(){
   const activeMths   = monthTotals.filter(v=>v>0).length;
   const avgMth       = ymKeys.length>0?grandTotal/ymKeys.length:0; // Bug 2: divide by full range, not just active months
   const maxMth       = Math.max(...monthTotals,0);
-  const maxMthKey    = ymKeys[monthTotals.indexOf(maxMth)]||'—';
+  // 整段範圍都是 0 時，indexOf(0) 會指到第一個月，於是「最高月份」理直氣壯
+  // 地標出一個根本沒有支出的月份。沒有支出就沒有最高月份。
+  const maxMthKey    = maxMth>0 ? (ymKeys[monthTotals.indexOf(maxMth)]||'—') : '—';
 
   // Build summary — deduction tile only shown when proxy items exist in range
   const deductTile = grandAdvTotal>0
@@ -5159,9 +5259,14 @@ async function rChartRange(){
   // Render bar chart with dynamic X-axis
   if(rangeChart){rangeChart.destroy();rangeChart=null;}
   const cv=document.getElementById('range-chart');
+  const noticeEl=document.getElementById('chart-notice');
+  noticeEl.innerHTML='';
   if(!normal.length){
     cv.style.display='none';
     cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+  }else if(!chartLibReady()){
+    cv.style.display='none';
+    noticeEl.innerHTML=chartUnavailableHTML();
   }else{
     cv.style.display='';
     rangeChart=new Chart(cv,{
@@ -5398,6 +5503,13 @@ async function renderYearCompare(){
     return{label:yr+'年',data,borderColor:pal.line,backgroundColor:pal.fill,borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:true,tension:.38};
   });
   if(areaChart){areaChart.destroy();areaChart=null;}
+  if(!chartLibReady()){
+    document.getElementById('area-chart').style.display='none';
+    document.getElementById('chart-legend').innerHTML=chartUnavailableHTML();
+    document.getElementById('trend-stats').style.display='none';
+    return;
+  }
+  document.getElementById('area-chart').style.display='';
   areaChart=new Chart(document.getElementById('area-chart'),{type:'line',data:{labels,datasets},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}：${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)'}},y:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)',callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'},beginAtZero:true}}}});
 
   const legEl=document.getElementById('chart-legend');legEl.innerHTML='';
@@ -5405,14 +5517,16 @@ async function renderYearCompare(){
     const li=document.createElement('div');li.className='chart-leg-item';
     li.innerHTML=`<div class="chart-leg-dot" style="background:${pal.line}"></div>${yr}年`;legEl.appendChild(li);});
 
-  const statsEl=document.getElementById('trend-stats');statsEl.innerHTML='';
-  selYears.forEach(yr=>{
+  // 累加 innerHTML 會讓瀏覽器每一圈都重新解析並重建已經放進去的節點。
+  // 先組字串，最後指派一次。
+  const statsEl=document.getElementById('trend-stats');
+  statsEl.innerHTML=selYears.map(yr=>{
     const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
     const yTotal=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance')
                     .reduce((s,x)=>s+x.amount,0);
     const n=monthsIn(yr)||1;
-    statsEl.innerHTML+=`<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均（÷${n}）</div><div class="stat-val">${fmt(yTotal/n)}</div></div>`;
-  });
+    return `<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均（÷${n}）</div><div class="stat-val">${fmt(yTotal/n)}</div></div>`;
+  }).join('');
 }
 function toggleYear(yr,dataYears){
   if(selYears.includes(yr)){if(selYears.length<=1){toast('至少選擇一個年份');return;}selYears=selYears.filter(y=>y!==yr);}
@@ -5708,7 +5822,10 @@ async function openForm(id){
 
   if(id){
     // Fix: use O(log n) primary-key lookup instead of full table scan
-    const x = await getById(id); if(!x) return;
+    const x = await getById(id);
+    // 找不到記錄就直接 return 會把剛才 push 進 focusStack 的元素留在堆疊上，
+    // 之後每一個彈窗關閉時都會把焦點還給錯的元素。
+    if(!x){ focusStack.pop(); toast('找不到這筆記錄，可能已被刪除'); return; }
     const isAdv=x.itype==='advance';
     document.getElementById('rt-advance').checked=isAdv;
     document.getElementById('rt-normal').checked=!isAdv;
@@ -5928,7 +6045,10 @@ async function copyPrev(){
   for(const x of prev){
     // Dates are cleared on purpose (they're next month's bills, not last
     // month's), so ym has to be set explicitly — there's no date to derive it.
+    // date 被刻意清空（那是上個月的繳費日）；closeDate 同理，它是上一期帳單的
+//     結帳日，照抄過來會讓新的一筆顯示錯誤的消費期間。
     const copied={...x,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)};
+    delete copied.closeDate;
     // 必須「刪掉」而不是設成 undefined：keyPath 屬性存在但值為 undefined，
     // 在嚴格實作下會被當成無效鍵而丟 DataError，而不是交給自動編號產生。
     delete copied.id;
@@ -5940,6 +6060,12 @@ async function copyPrev(){
 
 // ── Categories ───────────────────────────────────────────
 function openCatModal(){renderCatTags();document.getElementById('new-cat').value='';document.getElementById('cov').classList.add('on');}
+// 「完成」與點背景關閉走同一條路。原本只有「完成」會 refreshCatSel()／重繪，
+// 點背景關掉的話新增或刪掉的類別不會出現在表單下拉與設定頁摘要裡。
+function closeCatModal(){
+  document.getElementById('cov').classList.remove('on');
+  refreshCatSel(); dirtyAll(); renderActive(); rSettings();
+}
 function renderCatTags(){
   const el=document.getElementById('cat-tags');el.innerHTML='';
   getCats().forEach(cat=>{
@@ -6029,8 +6155,10 @@ async function exportJSON(){
     subs                      // v10：訂閱參考資料，與 items 完全獨立
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
   a.download=`expenses-${today()}.json`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast(`已備份 ${all.length} 筆項目${subs.length?`、${subs.length} 筆訂閱`:''}與所有設定`);
 }
 
@@ -6114,9 +6242,64 @@ async function exportCSV(){
     x.closeDate||''
   ].join(','));
   const blob=new Blob(['\uFEFF'+hdr+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`expenses-${today()}.csv`;a.click();toast('CSV 已下載');
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`expenses-${today()}.csv`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);   // 不釋放的話 blob 會一直佔著記憶體
+  toast('CSV 已下載');
 }
+// 逐字掃描的 CSV 解析：舊版用正規表示式配 lookbehind，(1) Safari 16.4 以前
+// 直接丟語法錯誤讓整個匯入失效，(2) 欄位裡有跳脫引號（""）時會把一列拆錯。
+function parseCSVLine(line){
+  const out=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(inQ){
+      if(ch==='"'){
+        if(line[i+1]==='"'){ cur+='"'; i++; }   // "" 是一個跳脫後的引號
+        else inQ=false;
+      } else cur+=ch;
+    } else if(ch==='"'){ inQ=true; }
+    else if(ch===','){ out.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+// 匯入的資料可能來自手改過的檔案或別的版本。不檢查就直接寫進去的話，
+// amount 是字串、ym 格式不對這種資料會讓之後每一次加總都算錯，
+// 而且錯誤要等到畫面上出現 NaN 才會被發現。
+function normalizeImportedItem(raw){
+  if(!raw||typeof raw!=='object') return null;
+  const name=String(raw.name??'').trim();
+  if(!name) return null;
+  const amount=Number(raw.amount);
+  if(!Number.isFinite(amount)||amount<0) return null;
+  const isAdv=raw.itype==='advance';
+  const dateOk=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
+  let ym=typeof raw.ym==='string'&&/^\d{4}-\d{2}$/.test(raw.ym) ? raw.ym : '';
+  if(!ym) ym = dateOk(raw.date) ? raw.date.slice(0,7) : ymStr(SEL.y,SEL.m);
+  const rec={
+    itype: isAdv?'advance':'normal',
+    cat:   (typeof raw.cat==='string'&&raw.cat.trim())?raw.cat.trim():'其他',
+    name:  name.slice(0,120),
+    amount:Math.round(amount),
+    date:  dateOk(raw.date)?raw.date:'',
+    note:  typeof raw.note==='string'?raw.note.slice(0,500):'',
+    ym,
+    remindDays: [0,3,7].includes(Number(raw.remindDays))?Number(raw.remindDays):0,
+    paid: raw.paid===1||raw.paid==='1'?1:0
+  };
+  if(isAdv){
+    rec.payee     = typeof raw.payee==='string'?raw.payee.trim().slice(0,60):'';
+    rec.recovered = raw.recovered===1||raw.recovered==='1'?1:0;
+    rec.paid      = 1;
+  }
+  if(dateOk(raw.closeDate)) rec.closeDate=raw.closeDate;
+  return rec;
+}
+
 async function importFile(e){
   const file=e.target.files[0];if(!file)return;
   try{
@@ -6134,16 +6317,16 @@ async function importFile(e){
       if(!Array.isArray(items)) throw new Error('格式錯誤：找不到項目資料');
     }else{
       // CSV 只承載項目，不含任何設定
-      const lines=text.replace(/^\uFEFF/,'').split('\n').slice(1).filter(l=>l.trim());
+      const lines=text.replace(/^\uFEFF/,'').split(/\r\n|[\r\n]/).slice(1).filter(l=>l.trim());
       items=lines.map(l=>{
-        const c=l.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||[];
-        const q=i=>(c[i]||'').replace(/^"|"$/g,'').replace(/""/g,'"');
+        const c=parseCSVLine(l);
+        const q=i=>(c[i]||'');
         const rec={ym:q(0),cat:q(1)||'其他',itype:q(2)==='代墊'?'advance':'normal',name:q(3),
                amount:parseFloat(q(4))||0,date:q(5)||'',note:q(6)||'',
                paid:q(7)==='已繳'?1:0,payee:q(8)||'',recovered:q(9)==='已收回'?1:0};
         if(q(10)) rec.closeDate=q(10);   // 舊的 10 欄備份讀到空字串，照樣相容
         return rec;
-      }).filter(x=>x.name&&x.amount>=0);
+      });
     }
 
     // 先講清楚這次匯入會做什麼，再動手
@@ -6169,12 +6352,13 @@ async function importFile(e){
     // 設定先還原，預算才能按名稱對應到還原後的類別
     const applied=settings?applySettings(settings):[];
 
+    let skipped=0;
     for(const item of items){
-      const c={...item};
-      delete c.id;
-      delete c.parentId;   // 舊 id 在重匯後不存在，留著會讓連動刪除失效
+      const c=normalizeImportedItem(item);   // id / parentId 一律不留：舊 id 在重匯後不存在
+      if(!c){ skipped++; continue; }
       await putItem(c);
     }
+    if(skipped) console.warn(`匯入時略過 ${skipped} 筆格式不符的資料`);
 
     // 訂閱是獨立 store，不參與任何金額統計，直接還原即可
     for(const sub of subs){
@@ -6194,7 +6378,7 @@ async function importFile(e){
     refreshCatSel();
     dirtyAll(); renderActive(); rSettings();
 
-    toast(`${replaced?'已還原':'已匯入'} ${items.length} 筆${applied.length?'　+ '+applied.length+' 項設定':''}`);
+    toast(`${replaced?'已還原':'已匯入'} ${items.length-skipped} 筆${skipped?`（略過 ${skipped} 筆格式不符）`:''}${applied.length?'　+ '+applied.length+' 項設定':''}`);
   }catch(err){alert('匯入失敗：'+err.message);}
   e.target.value='';
 }
@@ -6480,6 +6664,56 @@ openDB().then(async ()=>{
 
   attachListDelegation('home-list');
   attachListDelegation('list-items');
+
+  // ── 鍵盤操作：div + onclick 的可點列 ────────────────────────────────
+  // 設定列、行事曆日期格、訂閱列、提醒列等都是 div，滑鼠可以點，鍵盤完全
+  // 到不了。統一補上 role/tabindex，再用一個委派處理器讓 Enter 與空白鍵
+  // 等同點擊 —— 每一列各自綁 keydown 會退回這份程式碼原本避免的做法。
+  const CLICKABLE='.settings-row[role="button"],.cal-day.has,.sub-row,.cal-row,.rem-row,.copy-banner,.bud-sec-hdr,.cat-row[role="button"]';
+  function makeRowsFocusable(root){
+    (root||document).querySelectorAll('.sub-row,.cal-row,.rem-row,.copy-banner,.bud-sec-hdr').forEach(el=>{
+      if(el.hasAttribute('tabindex')) return;
+      el.setAttribute('role','button');
+      el.setAttribute('tabindex','0');
+    });
+  }
+  // 這些列都是動態產生的，用 MutationObserver 在插入後補上屬性
+  new MutationObserver(muts=>{
+    muts.forEach(mu=>mu.addedNodes.forEach(n=>{ if(n.nodeType===1) makeRowsFocusable(n.parentNode||n); }));
+  }).observe(document.body,{childList:true,subtree:true});
+  makeRowsFocusable(document);
+
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Enter' && e.key!==' ' && e.key!=='Spacebar') return;
+    const el=e.target.closest && e.target.closest(CLICKABLE);
+    if(!el) return;
+    if(e.target.closest('input,select,textarea,button,a')) return;  // 真正的控制項自己處理
+    e.preventDefault();
+    el.click();
+  });
+
+  // ── 對話框焦點鎖定 ────────────────────────────────────────────────
+  // 彈窗原本只有存／還原焦點，沒有攔截 Tab：按幾下就跑到背後那一頁的
+  // 按鈕上，畫面看不到焦點在哪，對讀屏使用者等於整個彈窗漏底。
+  const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Tab') return;
+    const fs=document.getElementById('fsform');
+    const box=(fs&&fs.classList.contains('on'))?fs.querySelector('.fs-sheet')
+             :(document.querySelector('.overlay.on .sheet')||document.querySelector('.overlay.on .dialog'));
+    if(!box) return;
+    const items=[...box.querySelectorAll(FOCUSABLE)].filter(el=>el.offsetParent!==null);
+    if(!items.length) return;
+    const first=items[0], last=items[items.length-1];
+    if(e.shiftKey && (document.activeElement===first||!box.contains(document.activeElement))){
+      e.preventDefault(); last.focus();
+    }else if(!e.shiftKey && document.activeElement===last){
+      e.preventDefault(); first.focus();
+    }
+  });
+
+  // 純裝飾的 SVG 不該被讀屏逐一唸出來；有 role 的（圓餅圖、趨勢線）保留
+  document.querySelectorAll('svg:not([role])').forEach(el=>el.setAttribute('aria-hidden','true'));
 
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
