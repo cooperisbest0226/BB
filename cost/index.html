@@ -260,16 +260,60 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   transition:background var(--t-fast);
 }
 .hero-mnav:active{background:var(--surface3)}
-.hero-ymsel{
-  height:26px;padding:0 16px 0 6px;
+.hero-ymbtn{
+  height:26px;padding:0 7px 0 8px;
+  display:flex;align-items:center;gap:3px;
   border:none;border-radius:8px;background:transparent;
-  font-family:inherit;font-size:13px;font-weight:700;color:var(--text);
-  cursor:pointer;-webkit-appearance:none;appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='%239E9A94' stroke-width='3' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 4px center;
-  min-width:0;max-width:46%;
+  font-family:inherit;font-size:13.5px;font-weight:700;color:var(--text);
+  cursor:pointer;min-width:0;
 }
-.hero-ymsel:active{background-color:var(--surface3)}
+.hero-ymbtn:active{background:var(--surface3)}
+/* 滑到可切換範圍邊界時的回彈提示 */
+.hero-ymbtn.bump{animation:ymBump .28s ease}
+@keyframes ymBump{
+  0%,100%{transform:translateX(0)}
+  30%{transform:translateX(-4px)}
+  65%{transform:translateX(3px)}
+}
+/* 換月時的淡入 */
+.hero-main-card.mfade{animation:mFade .26s ease both}
+@keyframes mFade{from{opacity:.35}to{opacity:1}}
+.hero-ymbtn svg{width:10px;height:10px;stroke:var(--text3);fill:none;stroke-width:3;stroke-linecap:round;flex-shrink:0}
+
+/* 月份選擇面板 */
+.mp-dialog{max-width:320px}
+.mp-hdr{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 14px}
+.mp-nav{
+  width:36px;height:36px;border:none;border-radius:11px;
+  background:var(--surface3);color:var(--text2);font-size:19px;line-height:1;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.mp-nav:active{background:var(--surface4)}
+.mp-year{font-size:17px;font-weight:700;font-family:'DM Mono',monospace}
+.mp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.mp-m{
+  position:relative;height:46px;border:1.5px solid transparent;border-radius:12px;
+  background:var(--surface3);color:var(--text);cursor:pointer;
+  font-size:13px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--t-fast);
+}
+.mp-m:active{transform:scale(.96)}
+.mp-m.sel{background:var(--green);color:#fff}
+.mp-m.now{border-color:var(--green)}
+.mp-m.sel.now{border-color:transparent}
+.mp-m .mp-dot{
+  position:absolute;bottom:7px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--text3);
+}
+.mp-m.sel .mp-dot{background:rgba(255,255,255,.85)}
+.mp-foot{display:flex;gap:8px;margin-top:14px}
+.mp-today,.mp-close{
+  flex:1;height:44px;border-radius:12px;border:none;cursor:pointer;
+  font-size:14px;font-weight:600;
+}
+.mp-today{background:var(--green);color:#fff}
+.mp-close{background:var(--surface3);color:var(--text2)}
 .hero-eyebrow-tag{
   margin-left:auto;flex-shrink:0;
   font-size:10px;font-weight:600;color:var(--text3);
@@ -1413,18 +1457,6 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
 
 
-/* 未設定預算時取代 92px 圓環列的細提示 */
-.bud-empty{
-  width:100%;display:flex;align-items:center;gap:7px;
-  background:transparent;border:none;padding:2px 0;
-  color:var(--text3);font-size:12px;font-weight:500;
-  cursor:pointer;text-align:left;
-}
-.bud-empty:active{opacity:.6}
-.bud-empty svg{width:14px;height:14px;flex-shrink:0;stroke:var(--text3);fill:none;stroke-width:1.8;stroke-linecap:round}
-.bud-empty span{flex:1;min-width:0}
-.bud-empty-arrow{width:12px;height:12px;stroke-width:2.4}
-
 /* 篩選鈕上的即時計數 */
 .filter-count{
   display:inline-block;margin-left:6px;
@@ -1607,8 +1639,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <!-- Eyebrow — 月份選擇器本身就標示了正在檢視哪個月，不用再寫「本月」 -->
       <div class="hero-eyebrow">
         <button class="hero-mnav" onclick="shiftM(-1)" aria-label="上個月">&#8249;</button>
-        <select id="hy" class="hero-ymsel" onchange="onHomeMonth()" aria-label="年份"></select>
-        <select id="hm" class="hero-ymsel" onchange="onHomeMonth()" aria-label="月份"></select>
+        <button class="hero-ymbtn" id="h-ymbtn" onclick="openMonthPicker()" aria-label="選擇月份">
+          <span id="h-ymlbl">—</span>
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
         <button class="hero-mnav" onclick="shiftM(1)" aria-label="下個月">&#8250;</button>
         <span class="hero-eyebrow-tag" id="h-period">個人支出</span>
       </div>
@@ -1626,7 +1660,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="hero-deduct-note" id="h-deduct-note" style="display:none" aria-live="polite"></div>
 
       <!-- Divider -->
-      <div style="height:1px;background:var(--border);margin:12px 0 11px"></div>
+      <div id="h-hero-div" style="height:1px;background:var(--border);margin:12px 0 11px"></div>
 
       <!-- Budget remain row (unique data, promoted here) -->
       <div class="hero-remain-row" id="h-remain-row">
@@ -1648,16 +1682,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         </div>
       </div>
 
-      <!-- 未設定預算時，上面那 92px 的圓環只顯示「未設定」三個字，
-           零資訊量。改用這條 24px 的提示取代。 -->
-      <button class="bud-empty" id="h-bud-empty" type="button" style="display:none" onclick="openBudModal()">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
-        <span>尚未設定預算</span>
-        <svg class="bud-empty-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-
       <!-- Only meaningful while the current month is on screen -->
-      <div class="hero-stat-row" id="h-stat-row" style="display:none" onclick="openBudModal()">
+      <!-- 純顯示，不再是預算入口；調整一律到設定頁 -->
+      <div class="hero-stat-row" id="h-stat-row" style="display:none">
         <div class="hero-stat">
           <div class="hero-stat-num" id="h-daily">—</div>
           <div class="hero-stat-lbl" id="h-daily-lbl">每日可花</div>
@@ -1888,7 +1915,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.3.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.4.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -2184,6 +2211,23 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <div class="cal-grid" id="cal-grid"></div>
     <div class="cal-detail" id="cal-detail"></div>
     <div id="cal-undated"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ 月份選擇 ════════════════ -->
+<div class="overlay center" id="mpov" role="dialog" aria-modal="true" aria-label="選擇月份"
+     onclick="if(event.target===this)closeMonthPicker()">
+  <div class="dialog mp-dialog" onclick="event.stopPropagation()">
+    <div class="mp-hdr">
+      <button class="mp-nav" onclick="mpShiftYear(-1)" aria-label="上一年">&#8249;</button>
+      <div class="mp-year" id="mp-year">—</div>
+      <button class="mp-nav" onclick="mpShiftYear(1)" aria-label="下一年">&#8250;</button>
+    </div>
+    <div class="mp-grid" id="mp-grid"></div>
+    <div class="mp-foot">
+      <button class="mp-today" onclick="mpGoToday()">回到本月</button>
+      <button class="mp-close" onclick="closeMonthPicker()">關閉</button>
+    </div>
   </div>
 </div>
 
@@ -2952,6 +2996,48 @@ async function deleteSub(){
   apply();
 })();
 
+// ── 左右滑動切換月份 ──────────────────────────────────────
+// 手勢只綁 hero 區域：清單列上的橫向手勢已經被滑動刪除佔用了，
+// 兩者綁在一起會打架。分工也符合直覺——hero 顯示的就是「這個月」。
+(function monthSwipe(){
+  const EDGE=20;      // 讓開 iOS 從邊緣往內滑的返回手勢
+  const LOCK=12;      // 位移超過這個值才判定方向（沿用清單的角度鎖定作法）
+  const TRIGGER=55;   // 觸發換月的橫向距離
+  let st=null;
+
+  const inHero = t =>
+    !!(t.closest && (t.closest('.home-hero') || t.closest('#home-filter-row')));
+
+  document.addEventListener('touchstart', e=>{
+    st=null;
+    if(activeScreen!=='home' || e.touches.length!==1) return;
+    if(document.querySelector('.overlay.on') || document.body.classList.contains('locked')) return;
+    const t=e.touches[0];
+    if(t.clientX < EDGE || t.clientX > window.innerWidth-EDGE) return;
+    if(!inHero(e.target)) return;                       // 清單區不接手
+    if(e.target.closest('button,select,input,a,textarea')) return;
+    st={x:t.clientX, y:t.clientY, dir:0, dx:0};
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e=>{
+    if(!st) return;
+    const t=e.touches[0], dx=t.clientX-st.x, dy=t.clientY-st.y;
+    if(st.dir===0){
+      if(Math.abs(dx)<LOCK && Math.abs(dy)<LOCK) return;
+      st.dir = Math.abs(dx)>Math.abs(dy) ? 1 : 2;       // 1=橫向 2=縱向
+      if(st.dir===2){ st=null; return; }                // 縱向就放手，別擋捲動
+    }
+    st.dx=dx;
+  }, {passive:true});
+
+  document.addEventListener('touchend', ()=>{
+    if(st && st.dir===1 && Math.abs(st.dx)>TRIGGER) shiftMonthClamped(st.dx<0 ? 1 : -1);
+    st=null;
+  }, {passive:true});
+
+  document.addEventListener('touchcancel', ()=>{ st=null; }, {passive:true});
+})();
+
 // 巢狀彈窗（快速編輯 → 完整表單）會連開兩層，用計數器避免提早解鎖
 let _scrollLocks = 0, _unlockRaf = 0;
 function lockScroll(){
@@ -3078,17 +3164,88 @@ const curYM=()=>({y:SEL.y,m:SEL.m});
 const monthLbl=(y,m)=>`${y} 年 ${m} 月`;
 let activeScreen='home';
 
-function setMonth(y,m,rerender=true){
+let _renderTimer=0;
+// debounce=true 給滑動手勢用：標籤立即更新（純文字、零成本），
+// 但 IndexedDB 查詢與整份清單重繪延後，避免連續快滑把 render 排成一列。
+function setMonth(y,m,rerender=true,debounce=false){
   if(y<2026){y=2026;m=1;}
   if(y>2046){y=2046;m=12;}
   SEL={y,m};
   // Mirror onto every month selector so they can never disagree
   const set=(id,v)=>{const el=document.getElementById(id); if(el)el.value=v;};
-  set('hy',y); set('hm',m); set('cy2',y); set('cm2',m);
+  set('cy2',y); set('cm2',m);
+  const lbl=document.getElementById('h-ymlbl');
+  if(lbl) lbl.textContent=`${y}年${m}月`;
   dirtyAll();
-  if(rerender) renderActive();
+  if(!rerender) return;
+  clearTimeout(_renderTimer);
+  if(debounce) _renderTimer=setTimeout(renderActive,150);
+  else renderActive();
 }
-function onHomeMonth(){setMonth(+document.getElementById('hy').value,+document.getElementById('hm').value);}
+
+// ── 可切換範圍 ────────────────────────────────────────────
+// 沒有下界的話會一路滑進空月份。下界取「有資料的最早月」，
+// 上界取當月 +12，讓使用者還能先排未來的帳單。
+let _minYmCache=null;
+async function minDataYm(){
+  if(_minYmCache) return _minYmCache;
+  try{
+    const all=await getAll();
+    _minYmCache = all.length
+      ? all.reduce((a,x)=>(x.ym&&x.ym<a?x.ym:a), all[0].ym||ymStr(cy(),cm()))
+      : ymStr(cy(),cm());
+  }catch{ _minYmCache=ymStr(cy(),cm()); }
+  return _minYmCache;
+}
+function maxYm(){
+  const d=new Date(cy(), cm()-1+12, 1);
+  return ymStr(d.getFullYear(), d.getMonth()+1);
+}
+async function shiftMonthClamped(dir){
+  let y=SEL.y, m=SEL.m+dir;
+  if(m>12){m=1;y++;} if(m<1){m=12;y--;}
+  const target=ymStr(y,m);
+  const lo=await minDataYm(), hi=maxYm();
+  if(target<lo || target>hi){
+    const btn=document.getElementById('h-ymbtn');
+    if(btn){ btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
+    return false;
+  }
+  setMonth(y,m,true,true);
+  return true;
+}
+
+// ── 月份選擇面板 ──────────────────────────────────────────
+let _mpYear=null;
+async function openMonthPicker(){
+  _mpYear=SEL.y;
+  await renderMonthPicker();
+  document.getElementById('mpov').classList.add('on');
+}
+function closeMonthPicker(){ document.getElementById('mpov').classList.remove('on'); }
+async function renderMonthPicker(){
+  document.getElementById('mp-year').textContent=_mpYear;
+  // 標出哪幾個月有資料，比一整片空方格有用
+  const withData=new Set();
+  try{
+    const rows=await getByRange(ymStr(_mpYear,1), ymStr(_mpYear,12));
+    rows.forEach(x=>{ if(x.ym) withData.add(+x.ym.slice(5,7)); });
+  }catch{}
+  document.getElementById('mp-grid').innerHTML=
+    Array.from({length:12},(_,i)=>i+1).map(mn=>{
+      const sel=(_mpYear===SEL.y && mn===SEL.m);
+      const now=(_mpYear===cy() && mn===cm());
+      const dot=withData.has(mn)?'<span class="mp-dot"></span>':'';
+      return `<button class="mp-m${sel?' sel':''}${now?' now':''}" onclick="mpPick(${mn})">${mn}月${dot}</button>`;
+    }).join('');
+}
+function mpShiftYear(d){
+  const y=_mpYear+d;
+  if(y<2026||y>2046) return;
+  _mpYear=y; renderMonthPicker();
+}
+function mpPick(mn){ setMonth(_mpYear,mn); closeMonthPicker(); }
+function mpGoToday(){ setMonth(cy(),cm()); closeMonthPicker(); }
 function onChartMonth(){setMonth(+document.getElementById('cy2').value,+document.getElementById('cm2').value);}
 function shiftM(d){
   let y=SEL.y,m=SEL.m+d;
@@ -3102,7 +3259,10 @@ function renderActive(){
   else if(activeScreen==='chart')    rChart();
   else if(activeScreen==='settings') rSettings();
 }
-const dirtyAll=()=>Object.keys(dirty).forEach(k=>dirty[k]=true);
+const dirtyAll=()=>{
+  _minYmCache=null;                                   // 資料變動 → 可切換範圍下界要重算
+  Object.keys(dirty).forEach(k=>dirty[k]=true);
+};
 
 function refreshCatSel(){
   const cats=getCats(),sel=document.getElementById('f-cat'),cur=sel.value;
@@ -3546,10 +3706,18 @@ function setHomeView(v){
 }
 
 // ── HOME ─────────────────────────────────────────────────
+let _lastHomeYm=null;
 async function rHome(){
   dirty.home=false;
   renderSubChip();
   const{y,m}=curYM(), key=ymStr(y,m);
+  // 換月時給 hero 一個短暫淡入，讓滑動手勢有回饋。
+  // 整頁橫向滑出需要雙緩衝兩份清單，複雜度不划算，先只做這個。
+  if(_lastHomeYm && _lastHomeYm!==key){
+    const hc=document.querySelector('.hero-main-card');
+    if(hc){ hc.classList.remove('mfade'); void hc.offsetWidth; hc.classList.add('mfade'); }
+  }
+  _lastHomeYm=key;
   const items = await getByYM(key);
 
   // Personal expense = total outflow − proxy payments. When 代墊 is switched
@@ -3594,11 +3762,12 @@ async function rHome(){
   const R=42, CIRC=2*Math.PI*R;
   ring.style.strokeDasharray=CIRC;
 
-  // 未設定預算時整列摺疊：92px 的圓環只為了顯示「未設定」三個字並不划算
+  // 未設定預算時整塊隱藏（含分隔線）：不可點又只說「未設定」，
+  // 92px 換不到任何資訊。發現性交給設定頁的「預算設定」列。
   const remainRow=document.getElementById('h-remain-row');
-  const budEmpty=document.getElementById('h-bud-empty');
+  const heroDiv=document.getElementById('h-hero-div');
   if(remainRow) remainRow.style.display = bTotal>0 ? '' : 'none';
-  if(budEmpty)  budEmpty.style.display  = bTotal>0 ? 'none' : '';
+  if(heroDiv)   heroDiv.style.display   = bTotal>0 ? '' : 'none';
 
   if(bTotal>0){
     const remain=bTotal-total;
@@ -5863,7 +6032,7 @@ openDB().then(async ()=>{
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
   // The full-screen form is handled separately in openForm/closeForm.
-  ['bov','cov','rsov','remov','calov','qeov','subov'].forEach(id=>{
+  ['bov','cov','rsov','remov','calov','qeov','subov','mpov'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
