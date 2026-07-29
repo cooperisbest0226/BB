@@ -143,7 +143,10 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 
 #app{
   max-width:480px;margin:0 auto;
-  height:100vh;height:100dvh;
+  /* 不可用 100dvh：Safari 分頁模式下捲動會收合網址列，dvh 跟著改變，
+     整個容器重新排版，看起來就是「一拉就跳」。html/body 已是
+     height:100%;overflow:hidden，所以 100% 是穩定值。 */
+  height:100vh;height:100%;
   display:flex;flex-direction:column;
   overflow:hidden;position:relative;
   background:var(--surface);
@@ -1627,6 +1630,28 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   border-top:1px solid var(--border);margin-top:7px;padding-top:7px;
 }
 
+/* ── 診斷面板 ─────────────────────────────────────────────── */
+.diag-panel{
+  position:fixed;left:8px;right:8px;bottom:calc(70px + var(--safe-b));
+  max-width:464px;margin:0 auto;
+  z-index:calc(var(--z-toast) + 1);
+  background:rgba(28,26,24,.94);color:#E8E4DC;
+  border-radius:12px;padding:8px 10px;
+  flex-direction:column;gap:6px;
+  box-shadow:var(--shadow-lg);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.diag-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.04em}
+.diag-hdr button{
+  background:rgba(255,255,255,.14);border:none;color:#E8E4DC;
+  font-size:10px;padding:3px 8px;border-radius:99px;margin-left:5px;cursor:pointer;
+}
+.diag-body{
+  font-family:'DM Mono',monospace;font-size:10px;line-height:1.5;
+  white-space:pre-wrap;word-break:break-all;
+  max-height:34vh;overflow-y:auto;margin:0;
+}
+
 /* ── Offline banner ───────────────────────────────────────── */
 .offline-bar{
   position:fixed;left:0;right:0;top:0;
@@ -1943,6 +1968,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         <div><div class="settings-row-lbl">檢查更新</div><div class="settings-row-sub" id="pwa-sw-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 11-2.1-9.4L23 10"/></svg></div>
       </div>
+      <div class="settings-row" onclick="toggleDiag()">
+        <div><div class="settings-row-lbl">診斷模式</div><div class="settings-row-sub" id="diag-sub">關閉</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.9 2.9M16.2 16.2l2.9 2.9M2 12h4M18 12h4M4.9 19.1l2.9-2.9M16.2 7.8l2.9-2.9"/></svg></div>
+      </div>
       <div class="settings-row" onclick="showStorage()">
         <div><div class="settings-row-lbl">儲存空間</div><div class="settings-row-sub" id="pwa-quota-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M21 5v14c0 1.7-4 3-9 3s-9-1.3-9-3V5"/></svg></div>
@@ -1955,7 +1984,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.5.1</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.6.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -2414,6 +2443,18 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="sub-calc" id="sub-calc" style="display:none"></div>
     </div>
   </div>
+</div>
+
+<div class="diag-panel" id="diag-panel" style="display:none">
+  <div class="diag-hdr">
+    <span>診斷日誌</span>
+    <div>
+      <button onclick="copyDiag()">複製</button>
+      <button onclick="clearDiag()">清除</button>
+      <button onclick="toggleDiag()">關閉</button>
+    </div>
+  </div>
+  <pre class="diag-body" id="diag-body"></pre>
 </div>
 
 <div class="offline-bar" id="offline-bar" role="status" aria-live="polite">
@@ -3014,6 +3055,81 @@ async function deleteSub(){
   toast('已刪除訂閱');
 }
 
+// ══════════════════════════════════════════════════════════
+//  診斷模式（設定頁可開關）
+//  重載會清空記憶體，所以日誌寫在 sessionStorage —— 只要看到
+//  第二筆 load，就證明畫面是被重新載入了，而不是動畫重播。
+// ══════════════════════════════════════════════════════════
+const DIAG_ON = () => localStorage.getItem('ep_diag')==='1';
+let _diagLog=[];
+try{ _diagLog=JSON.parse(sessionStorage.getItem('ep_diag_log')||'[]')||[]; }catch{}
+function diag(tag, info){
+  if(!DIAG_ON()) return;
+  const t=new Date();
+  const stamp=`${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}.${String(t.getMilliseconds()).padStart(3,'0')}`;
+  _diagLog.push(`${stamp} ${tag}${info?' '+info:''}`);
+  if(_diagLog.length>120) _diagLog=_diagLog.slice(-120);
+  try{ sessionStorage.setItem('ep_diag_log', JSON.stringify(_diagLog)); }catch{}
+  renderDiag();
+}
+function renderDiag(){
+  const box=document.getElementById('diag-panel');
+  if(!box) return;
+  box.style.display = DIAG_ON() ? 'flex' : 'none';
+  const body=document.getElementById('diag-body');
+  if(body && DIAG_ON()){
+    body.textContent=_diagLog.slice(-40).join('\n');
+    body.scrollTop=body.scrollHeight;
+  }
+}
+function toggleDiag(){
+  const on = !DIAG_ON();
+  localStorage.setItem('ep_diag', on?'1':'0');
+  if(on) diag('diag-on');
+  renderDiag(); rSettings();
+}
+function clearDiag(){
+  _diagLog=[]; sessionStorage.removeItem('ep_diag_log'); renderDiag();
+}
+async function copyDiag(){
+  const txt=_diagLog.join('\n');
+  try{ await navigator.clipboard.writeText(txt); toast('已複製診斷日誌'); }
+  catch{ prompt('複製以下內容：', txt); }
+}
+
+(function diagInit(){
+  // 載入次數：重載會 +1，這是判斷「是不是重載」最直接的證據
+  let n=+(sessionStorage.getItem('ep_diag_loads')||0)+1;
+  sessionStorage.setItem('ep_diag_loads', n);
+  diag('LOAD', `第 ${n} 次載入`);
+
+  document.addEventListener('visibilitychange', ()=>diag('visibility', document.hidden?'hidden':'visible'));
+  window.addEventListener('pagehide',  ()=>diag('pagehide'));
+  window.addEventListener('pageshow',  e=>diag('pageshow', e.persisted?'(bfcache)':''));
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>diag('SW-controllerchange','→ 會觸發 reload'));
+  }
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const app=document.getElementById('app');
+    if(app && window.ResizeObserver){
+      let last=0;
+      new ResizeObserver(es=>{
+        const h=Math.round(es[0].contentRect.height);
+        if(h!==last){ diag('app-resize', `高度 ${last} → ${h}`); last=h; }
+      }).observe(app);
+    }
+    const vv=window.visualViewport;
+    if(vv){
+      let lh=Math.round(vv.height);
+      vv.addEventListener('resize', ()=>{
+        const h=Math.round(vv.height);
+        if(h!==lh){ diag('vv-resize', `${lh} → ${h}`); lh=h; }
+      });
+    }
+    renderDiag();
+  });
+})();
+
 // ── 視窗釘選 & 捲動鎖定 ──────────────────────────────────
 // 手機鍵盤彈出時，版面視窗(layout viewport)不變，但可視視窗
 // (visual viewport)會縮小並上移；position:fixed 仍貼著版面視窗，
@@ -3024,11 +3140,15 @@ async function deleteSub(){
   if(!vv) return;
   const root = document.documentElement;
   let raf = 0;
+  let lastH=-1, lastT=-1;
   const apply = () => {
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      root.style.setProperty('--vv-h',   vv.height + 'px');
-      root.style.setProperty('--vv-top', (vv.offsetTop || 0) + 'px');
+      const h=Math.round(vv.height), t=Math.round(vv.offsetTop||0);
+      if(h===lastH && t===lastT) return;   // 橡皮筋捲動會連續觸發，值沒變就別動樣式
+      lastH=h; lastT=t;
+      root.style.setProperty('--vv-h',   h+'px');
+      root.style.setProperty('--vv-top', t+'px');
     });
   };
   vv.addEventListener('resize', apply);
@@ -3155,18 +3275,18 @@ async function deleteSub(){
 // 這裡在捲到頂端還繼續往下拉時直接吃掉手勢。
 (function pullGuard(){
   document.querySelectorAll('.scroll-body').forEach(box=>{
-    let y0=0, atTop=false;
+    let yPrev=0;
     box.addEventListener('touchstart', e=>{
       if(e.touches.length!==1) return;
-      y0=e.touches[0].clientY;
-      atTop = box.scrollTop <= 0;
+      yPrev=e.touches[0].clientY;
     }, {passive:true});
     box.addEventListener('touchmove', e=>{
       if(e.touches.length!==1) return;
-      if(box.scrollTop > 0){ atTop=false; return; }
-      if(!atTop) return;
-      // 已經在頂端又往下拉 → 攔下，不讓瀏覽器接手
-      if(e.touches[0].clientY - y0 > 0 && e.cancelable) e.preventDefault();
+      const y=e.touches[0].clientY, dy=y-yPrev;
+      yPrev=y;
+      // 每一幀都重新判斷，不用 touchstart 的latch——
+      // 否則從清單中段一路拉到頂端再繼續拉時守衛會失效
+      if(box.scrollTop <= 0 && dy > 0 && e.cancelable){ e.preventDefault(); diag('pull-blocked'); }
     }, {passive:false});
   });
 })();
@@ -3640,6 +3760,9 @@ async function refreshRems(){
 function maybeAutoShowRems(){
   if(_remAutoShown || !remCfg.enabled) return;
   if(!_remCache.length || remDismissedToday()) return;
+  // 只有真的逾期才打斷使用者；「即將到期」「代墊未收」交給清單上方那張提醒卡，
+  // 資訊不會漏掉，但不會一開 App 就被彈窗擋住。
+  if(!_remCache.some(r=>r.type==='overdue')) return;
   _remAutoShown=true;
   openRemModal();
 }
@@ -3841,6 +3964,7 @@ function setHomeView(v){
 // ── HOME ─────────────────────────────────────────────────
 let _lastHomeYm=null;
 async function rHome(){
+  diag('rHome');
   dirty.home=false;
   renderSubChip();
   const{y,m}=curYM(), key=ymStr(y,m);
@@ -5395,6 +5519,8 @@ function rSettings(){
         : '尚未建立訂閱';
     }).catch(()=>{ sp.textContent='—'; });
   }
+  const ds=document.getElementById('diag-sub');
+  if(ds) ds.textContent = DIAG_ON() ? '已開啟 · 畫面下方顯示事件日誌' : '關閉（回報畫面異常時再開啟）';
   // PWA 狀態
   const ms=document.getElementById('pwa-mode-sub');
   if(ms) ms.textContent = isStandalone() ? '已安裝 · 主畫面模式執行中' : '目前在瀏覽器分頁中執行';
