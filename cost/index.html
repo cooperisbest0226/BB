@@ -113,6 +113,12 @@ input,select,textarea,button{font-family:inherit;font-size:16px}
   from{opacity:0;transform:translateY(10px)}
   to  {opacity:1;transform:translateY(0)}
 }
+/* 入場動畫只在首次載入播一次：由 JS 掛上 .intro，animationend 後移除。
+   若寫在靜態規則上，每次 .screen 從 display:none 切回來都會整段重播。 */
+.intro .hero-main-card{animation:fadeUp .4s ease both}
+.intro .hero-big-num{animation:countUp .5s .1s ease both}
+.intro .sub-chip{animation:fadeUp .45s ease both}
+
 @keyframes countUp{
   from{opacity:0;transform:translateY(4px) scale(.96)}
   to  {opacity:1;transform:translateY(0) scale(1)}
@@ -205,7 +211,8 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .screen.on{display:flex}
 .scroll-body{
   flex:1;overflow-y:auto;overflow-x:hidden;
-  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+  /* contain 只保證不把捲動傳給父層；none 才連瀏覽器的下拉重整一起關掉 */
+  overscroll-behavior-y:none;-webkit-overflow-scrolling:touch;
   padding:14px 16px calc(24px + var(--safe-b));min-height:0;
 }
 .scroll-body::-webkit-scrollbar{display:none}
@@ -254,7 +261,6 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   margin-bottom:10px;
   box-shadow:var(--shadow-md);
   position:relative;overflow:hidden;
-  animation:fadeUp .4s ease both;
 }
 /* Subtle warm gradient overlay */
 .hero-main-card::before{
@@ -291,7 +297,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 /* 換月時的淡入 */
 .hero-main-card.mfade{animation:mFade .26s ease both}
-@keyframes mFade{from{opacity:.35}to{opacity:1}}
+@keyframes mFade{from{opacity:.7}to{opacity:1}}
 .hero-ymbtn svg{width:10px;height:10px;stroke:var(--text3);fill:none;stroke-width:3;stroke-linecap:round;flex-shrink:0}
 
 /* 月份選擇面板 */
@@ -344,7 +350,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   letter-spacing:-.04em;line-height:1;
   color:var(--red);
   margin-bottom:10px;
-  animation:countUp .5s .1s ease both;
+  /* Sora 是比例字，$9,999 → $10,000 時字寬會變，數字會輕微抖動 */
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:'tnum' 1;
 }
 
 /* ── Hero budget row — inline inside hero-main-card ─────────── */
@@ -1503,7 +1511,6 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   box-shadow:var(--shadow-sm);
   cursor:pointer;text-align:left;
   transition:background var(--t-fast),transform var(--t-fast);
-  animation:fadeUp .45s ease both;
 }
 .sub-chip:active{background:var(--surface3);transform:scale(.99)}
 .sub-chip-ico{width:14px;height:14px;flex-shrink:0;stroke:var(--blue);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -1948,7 +1955,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.5.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.5.1</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -3125,17 +3132,42 @@ async function deleteSub(){
 
 // ── 捲動時收合分頁列的文字標籤 ────────────────────────────
 // 完全隱藏整條會讓使用者失去導覽，只收文字、保留圖示。
+// 收合會讓捲動區高度變動約 15px，門檻太窄會在臨界點來回抖動，
+// 所以遲滯區間拉到 28px。
 (function collapseTabs(){
   const bar=document.querySelector('.tabs');
   if(!bar) return;
+  const HYST=28, ENTER=64;
   document.querySelectorAll('.scroll-body').forEach(box=>{
-    let last=0;
+    let anchor=0, mini=false;
     box.addEventListener('scroll', ()=>{
       const y=box.scrollTop;
-      if(y > last+6 && y > 48)      bar.classList.add('mini');
-      else if(y < last-6 || y < 24) bar.classList.remove('mini');
-      last=y;
+      if(!mini && y > anchor+HYST && y > ENTER){ mini=true; bar.classList.add('mini'); anchor=y; }
+      else if(mini && (y < anchor-HYST || y < ENTER/2)){ mini=false; bar.classList.remove('mini'); anchor=y; }
+      else if((!mini && y < anchor) || (mini && y > anchor)) anchor=y;   // 只往同方向累積
     }, {passive:true});
+  });
+})();
+
+// ── 下拉重整守衛 ──────────────────────────────────────────
+// overscroll-behavior 在 iOS PWA 上不見得擋得住下拉重整；
+// 重載會讓提醒視窗自動彈出、入場動畫重播，看起來就像畫面亂跳。
+// 這裡在捲到頂端還繼續往下拉時直接吃掉手勢。
+(function pullGuard(){
+  document.querySelectorAll('.scroll-body').forEach(box=>{
+    let y0=0, atTop=false;
+    box.addEventListener('touchstart', e=>{
+      if(e.touches.length!==1) return;
+      y0=e.touches[0].clientY;
+      atTop = box.scrollTop <= 0;
+    }, {passive:true});
+    box.addEventListener('touchmove', e=>{
+      if(e.touches.length!==1) return;
+      if(box.scrollTop > 0){ atTop=false; return; }
+      if(!atTop) return;
+      // 已經在頂端又往下拉 → 攔下，不讓瀏覽器接手
+      if(e.touches[0].clientY - y0 > 0 && e.cancelable) e.preventDefault();
+    }, {passive:false});
   });
 })();
 
@@ -6194,6 +6226,11 @@ openDB().then(async ()=>{
 
   rHome();
   requestAnimationFrame(()=>moveTabInd(null,false));
+
+  // 入場動畫只播這一次，播完就把 class 拿掉，之後切分頁不會重播
+  const app=document.getElementById('app') || document.body;
+  app.classList.add('intro');
+  setTimeout(()=>app.classList.remove('intro'), 900);
 
   // ── App shortcuts（manifest shortcuts / 長按圖示的快捷選單）──
   const action = new URLSearchParams(location.search).get('action');
