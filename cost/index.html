@@ -221,6 +221,11 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   padding:14px 16px calc(24px + var(--safe-b));min-height:0;
 }
 .scroll-body::-webkit-scrollbar{display:none}
+/* FAB 是 fixed，貼著可視視窗底部；捲動區的底邊卻在分頁列上方，兩者相差
+   約 57px，分頁列文字收合時擴大到約 73px —— 捲到底時底部加總正好被蓋住。
+   safe-area 已由 .tabs 的 padding-bottom 吃掉，這裡不能再加，否則重複計算。
+   只掛 #home-scroll：FAB 只在首頁顯示，明細頁不必平白多留 88px。 */
+#home-scroll{padding-bottom:88px}
 
 /* ── Top bar ─────────────────────────────────────────────── */
 .top-bar{
@@ -267,12 +272,17 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   box-shadow:var(--shadow-md);
   position:relative;overflow:hidden;
 }
-/* Subtle warm gradient overlay */
+/* Subtle warm gradient overlay
+   原本沒有 z-index：::before 是定位元素，依繪製順序永遠疊在非定位的卡片
+   內容之上，於是這層 60% 白從左上往右下漸淡地蓋在支出數字上 —— 左上被
+   洗白、右下接近原色，看起來就是「漸層紅字」。壓到 0、內容抬到 1 之後，
+   漸層就只作用在卡片底色上。 */
 .hero-main-card::before{
-  content:'';position:absolute;inset:0;
+  content:'';position:absolute;inset:0;z-index:0;
   background:linear-gradient(135deg,rgba(255,255,255,.6) 0%,transparent 60%);
   pointer-events:none;
 }
+.hero-main-card>*{position:relative;z-index:1}
 .hero-eyebrow{
   display:flex;align-items:center;gap:4px;
   margin:-2px 0 8px;
@@ -353,7 +363,8 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   font-family:'Sora',sans-serif;
   font-size:40px;font-weight:700;
   letter-spacing:-.04em;line-height:1;
-  color:var(--red);
+  /* #D94B4B 在米色底上對比約 4:1，對這麼大的主數字偏淡；--red-dk 是 5.4:1 */
+  color:var(--red-dk);
   margin-bottom:10px;
   /* Sora 是比例字，$9,999 → $10,000 時字寬會變，數字會輕微抖動 */
   font-variant-numeric:tabular-nums;
@@ -2008,8 +2019,8 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.7.0</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.8.0</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/07/29</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -2210,7 +2221,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
     <h3>提醒設定</h3>
-    <div class="remind-info-box"><p>開啟 App 時自動掃描到期費用，於首頁顯示提醒卡片。不需要系統通知權限。</p></div>
+    <div class="remind-info-box"><p>開啟或切回 App 時自動掃描到期費用：首頁顯示提醒卡片；若有逾期或即將到期，會跳出提醒視窗（每天最多一次）。不需要系統通知權限。</p></div>
     <div id="remind-settings-rows"></div>
     <div class="sheet-btns" style="margin-top:14px">
       <button class="btn primary" onclick="saveRemindSettings()">儲存</button>
@@ -3862,7 +3873,9 @@ async function buildRems(){
 // one-line entry point, and Settings has a menu item, so the list stays
 // reachable after it's been dismissed for the day.
 let _remCache=[];        // last built list, shared by badge / entry / modal
-let _remAutoShown=false; // session flag: auto-open at most once per launch
+// 原本是布林值，一個 session 只彈一次。PWA 從主畫面開啟後常常整天不被
+// 銷毀，跨過午夜也不會重新武裝。改存日期字串：每天最多彈一次。
+let _remAutoShownOn='';
 
 const remDismissedToday=()=>remDismissed===today();
 
@@ -3891,14 +3904,21 @@ async function refreshRems(){
   return n;
 }
 
-// Auto-open on launch / first visit to the dashboard, unless muted for today
+// Auto-open on launch / resume / first visit to the dashboard,
+// unless muted for today or something else is already on screen.
 function maybeAutoShowRems(){
-  if(_remAutoShown || !remCfg.enabled) return;
+  const td=today();
+  if(_remAutoShownOn===td || !remCfg.enabled) return;
   if(!_remCache.length || remDismissedToday()) return;
-  // 只有真的逾期才打斷使用者；「即將到期」「代墊未收」交給清單上方那張提醒卡，
-  // 資訊不會漏掉，但不會一開 App 就被彈窗擋住。
-  if(!_remCache.some(r=>r.type==='overdue')) return;
-  _remAutoShown=true;
+  // 逾期與即將到期都有時效，錯過就是遲繳，值得打斷。原本只認 overdue，
+  // 準時繳費的人永遠只有 due-soon，於是彈窗一次都不會出現。
+  // 「代墊未收回」刻意排除：它可能掛好幾個月，每次開啟都彈會被當成雜訊
+  // 直接關掉，資訊仍保留在清單上方的提醒卡與分頁角標上。
+  if(!_remCache.some(r=>r.type==='overdue'||r.type==='due-soon')) return;
+  // 別疊在其他彈窗或表單上面（從背景喚醒時特別容易撞到）
+  if(document.querySelector('.overlay.on')) return;
+  if(document.getElementById('fsform')?.classList.contains('on')) return;
+  _remAutoShownOn=td;
   openRemModal();
 }
 
@@ -3970,6 +3990,8 @@ function remOpenItem(id){
 function setRemDismissToday(on){
   if(on){remDismissed=today();localStorage.setItem('ep_rem_dis',remDismissed);}
   else  {remDismissed='';localStorage.removeItem('ep_rem_dis');}
+  // 關掉再打開時要重新武裝，否則今天剩下的時間都不會再彈
+  _remAutoShownOn = on ? today() : '';
   refreshRems();
   toast(on?'今日不再自動顯示提醒':'已恢復自動提醒');
 }
@@ -6298,6 +6320,19 @@ function renderNetState() {
 }
 window.addEventListener('online',  () => { renderNetState(); toast('已恢復連線'); });
 window.addEventListener('offline', () => { renderNetState(); });
+
+// ── 從背景喚醒時重新檢查 ─────────────────────────────────
+// 從主畫面點開時，行程若還在記憶體裡，瀏覽器直接恢復畫面，load 與
+// DOMContentLoaded 都不會再觸發 —— 開啟時的提醒檢查因此只在冷啟動跑過那
+// 一次。這裡補上恢復前景時的重新檢查，順帶處理「開著過午夜」：today() 變
+// 了，逾期天數、每日可花、發薪日倒數全部都要重算。
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden || !DB) return;
+  diag('resume', '重新檢查提醒');
+  dirtyAll();                            // 所有以 today() 為基準的計算都要重來
+  if (activeScreen === 'home') rHome();  // rHome 內含 refreshRems + maybeAutoShowRems
+  else { await refreshRems(); maybeAutoShowRems(); }
+});
 
 // ── Init ─────────────────────────────────────────────────
 openDB().then(async ()=>{
