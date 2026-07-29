@@ -118,6 +118,8 @@ input,select,textarea,button{font-family:inherit;font-size:16px}
 .intro .hero-main-card{animation:fadeUp .4s ease both}
 .intro .hero-big-num{animation:countUp .5s .1s ease both}
 .intro .sub-chip{animation:fadeUp .45s ease both}
+/* 每次進入首頁重播一次，但用 JS 明確觸發，而不是靠 display 切換的副作用 */
+.hero-main-card.replay .hero-big-num{animation:countUp .5s ease both}
 
 @keyframes countUp{
   from{opacity:0;transform:translateY(4px) scale(.96)}
@@ -213,8 +215,8 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .screen{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
 .screen.on{display:flex}
 .scroll-body{
-  flex:1;overflow-y:auto;overflow-x:hidden;
-  /* contain 只保證不把捲動傳給父層；none 才連瀏覽器的下拉重整一起關掉 */
+  flex:1;position:relative;overflow-y:auto;overflow-x:hidden;
+  /* 原生下拉重整是整頁 reload，會清掉檢視中的月份；改用自製的下拉重整 */
   overscroll-behavior-y:none;-webkit-overflow-scrolling:touch;
   padding:14px 16px calc(24px + var(--safe-b));min-height:0;
 }
@@ -1630,6 +1632,28 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   border-top:1px solid var(--border);margin-top:7px;padding-top:7px;
 }
 
+/* ── 下拉重新整理指示器 ───────────────────────────────────── */
+.ptr{
+  position:absolute;top:0;left:50%;margin-left:-17px;
+  width:34px;height:34px;border-radius:50%;
+  background:var(--bg);box-shadow:var(--shadow-md);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transform:translateY(-46px);
+  pointer-events:none;z-index:6;
+}
+.ptr svg{
+  width:17px;height:17px;stroke:var(--text3);fill:none;
+  stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;
+  transition:stroke var(--t-fast);
+}
+.ptr.ready svg,.ptr.spinning svg{stroke:var(--green)}
+.ptr.snap{transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s}
+.ptr.spinning svg{animation:ptrSpin .75s linear infinite}
+@keyframes ptrSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){
+  .ptr.spinning svg{animation-duration:1.6s}
+}
+
 /* ── 診斷面板 ─────────────────────────────────────────────── */
 .diag-panel{
   position:fixed;left:8px;right:8px;bottom:calc(70px + var(--safe-b));
@@ -1984,7 +2008,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.6.1</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.7.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -3149,6 +3173,47 @@ async function copyDiag(){
   });
 })();
 
+// ══════════════════════════════════════════════════════════
+//  數字滾動動畫
+//  金額從舊值滾到新值。首次顯示與換月時從 0 起跳，
+//  資料變動時從上一個值接續，避免每次重繪都從 0 重數。
+// ══════════════════════════════════════════════════════════
+const _reduceMotion = () =>
+  window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function animNum(el, to, formatter=fmt, opts={}){
+  if(!el) return;
+  to = Math.round(to||0);
+  const dur   = opts.dur ?? 700;
+  const from  = opts.from!=null ? Math.round(opts.from) : Math.round(+el.dataset.num || 0);
+  el.dataset.num = to;
+
+  if(el._raf) cancelAnimationFrame(el._raf);
+  if(from===to || _reduceMotion() || !dur){ el.textContent=formatter(to); return; }
+
+  const t0=performance.now();
+  const tick=t=>{
+    const p=Math.min(1,(t-t0)/dur);
+    const e=1-Math.pow(1-p,3);                 // easeOutCubic：快進慢收
+    el.textContent=formatter(from+(to-from)*e);
+    if(p<1) el._raf=requestAnimationFrame(tick);
+    else { el._raf=0; el.textContent=formatter(to); }
+  };
+  el._raf=requestAnimationFrame(tick);
+}
+
+// 進入首頁 / 換月時重播 hero 的入場動畫與數字滾動
+function replayHeroIntro(fromZero){
+  const card=document.querySelector('.hero-main-card');
+  if(card && !_reduceMotion()){
+    card.classList.remove('replay'); void card.offsetWidth; card.classList.add('replay');
+  }
+  const tot=document.getElementById('h-tot');
+  if(tot && tot.dataset.num!=null){
+    animNum(tot, +tot.dataset.num, fmt, {from: fromZero ? 0 : undefined, dur:750});
+  }
+}
+
 // ── 視窗釘選 & 捲動鎖定 ──────────────────────────────────
 // 手機鍵盤彈出時，版面視窗(layout viewport)不變，但可視視窗
 // (visual viewport)會縮小並上移；position:fixed 仍貼著版面視窗，
@@ -3288,33 +3353,76 @@ async function copyDiag(){
   });
 })();
 
-// ── 下拉重整守衛 ──────────────────────────────────────────
-// overscroll-behavior 在 iOS PWA 上不見得擋得住下拉重整；
-// 重載會讓提醒視窗自動彈出、入場動畫重播，看起來就像畫面亂跳。
-// 這裡在捲到頂端還繼續往下拉時直接吃掉手勢。
-(function pullGuard(){
+// ══════════════════════════════════════════════════════════
+//  下拉重新整理
+//  自己實作而不用瀏覽器原生的下拉重整——原生的是整頁 reload，
+//  會清掉檢視中的月份、重跑 Service Worker、閃一下白畫面。
+//  這裡只重新查詢資料並重繪目前畫面，狀態全部保留。
+// ══════════════════════════════════════════════════════════
+(function pullRefresh(){
+  const THRESH=64, MAX=92, RESIST=.5, MIN_SPIN=650;
+
   document.querySelectorAll('.scroll-body').forEach(box=>{
-    // 門檻式守衛：短距離下拉仍讓瀏覽器做原生橡皮筋（手感自然），
-    // 只有累積超過 SLACK 才攔下——那才是會觸發下拉重整的幅度。
-    const SLACK=64;
-    let yPrev=0, pulled=0, logged=false;
+    const ind=document.createElement('div');
+    ind.className='ptr';
+    ind.setAttribute('aria-hidden','true');
+    ind.innerHTML='<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-3.2-6.9"/><polyline points="21 3 21 9.5 14.5 9.5"/></svg>';
+    box.insertBefore(ind, box.firstChild);
+
+    let y0=0, pull=0, active=false, busy=false;
+
+    const place=(px, snap)=>{
+      ind.classList.toggle('snap', !!snap);
+      ind.style.transform=`translateY(${px-46}px) rotate(${Math.round(px*4)}deg)`;
+      ind.style.opacity=Math.min(1, px/THRESH).toFixed(2);
+    };
+    const reset=()=>{
+      place(0, true);
+      setTimeout(()=>ind.classList.remove('snap','spinning','ready'), 320);
+    };
+
     box.addEventListener('touchstart', e=>{
-      if(e.touches.length!==1) return;
-      yPrev=e.touches[0].clientY; pulled=0; logged=false;
+      if(busy || e.touches.length!==1){ active=false; return; }
+      y0=e.touches[0].clientY; pull=0;
+      active = box.scrollTop<=0;
+      ind.classList.remove('snap');
     }, {passive:true});
+
     box.addEventListener('touchmove', e=>{
-      if(e.touches.length!==1) return;
-      const y=e.touches[0].clientY, dy=y-yPrev;
-      yPrev=y;
-      // 每一幀重新判斷，不用 touchstart 的 latch——
-      // 否則從清單中段一路拉到頂端再繼續拉時守衛會失效
-      if(box.scrollTop > 0){ pulled=0; return; }
-      if(dy > 0) pulled += dy; else pulled = Math.max(0, pulled+dy);
-      if(pulled > SLACK && e.cancelable){
-        e.preventDefault();
-        if(!logged){ diag('pull-blocked', `累積 ${Math.round(pulled)}px`); logged=true; }
-      }
+      if(!active || busy || e.touches.length!==1) return;
+      if(box.scrollTop>0){ if(pull) reset(); active=false; pull=0; return; }
+      const dy=e.touches[0].clientY-y0;
+      if(dy<=0){ if(pull){ pull=0; place(0); } return; }
+      // 接管手勢：原生橡皮筋交給我們自己畫，才控制得了指示器
+      if(e.cancelable) e.preventDefault();
+      pull=Math.min(MAX, dy*RESIST);
+      place(pull);
+      ind.classList.toggle('ready', pull>=THRESH);
     }, {passive:false});
+
+    box.addEventListener('touchend', async ()=>{
+      if(!active || busy){ active=false; return; }
+      active=false;
+      if(pull < THRESH){ if(pull) reset(); pull=0; return; }
+
+      busy=true;
+      ind.classList.add('snap','spinning');
+      ind.style.transform='translateY(18px)';
+      ind.style.opacity='1';
+      diag('ptr-refresh', activeScreen);
+
+      const t0=Date.now();
+      try{
+        _minYmCache=null;
+        dirtyAll();
+        await renderActive();
+        replayHeroIntro(true);           // 重繪完讓數字重新滾一次，回饋才明確
+      }catch(err){ console.warn('下拉重整失敗：', err); }
+
+      setTimeout(()=>{ reset(); pull=0; busy=false; }, Math.max(0, MIN_SPIN-(Date.now()-t0)));
+    }, {passive:true});
+
+    box.addEventListener('touchcancel', ()=>{ if(!busy && pull){ reset(); pull=0; } active=false; }, {passive:true});
   });
 })();
 
@@ -4031,7 +4139,8 @@ async function rHome(){
 
   // ── Hero: month label, one big number, ONE supporting line ──────────
   document.getElementById('h-period').textContent='個人支出';  // 月份已在 eyebrow 的選擇器上
-  document.getElementById('h-tot').textContent=fmt(total);
+  animNum(document.getElementById('h-tot'), total, fmt,
+          {from: _lastHomeYm!==key ? 0 : undefined, dur:750});
   let sub=`已繳 <b class="g">${fmt(paid)}</b><span class="sep">·</span>未繳 <b class="r">${fmt(unpaid)}</b>`;
   if(advOn()&&advUnrec>0) sub+=`<span class="sep">·</span>待收 <b class="o">${fmt(advUnrec)}</b>`;
   document.getElementById('h-subline').innerHTML=sub;
@@ -4066,7 +4175,7 @@ async function rHome(){
     const over=remain<0;
     const remLbl=document.getElementById('h-remain-lbl');
     if(remLbl) remLbl.textContent = over?'預算超支':'預算剩餘';
-    remEl.textContent=fmt(Math.abs(remain));
+    animNum(remEl, Math.abs(remain), fmt, {dur:620});
     remEl.className='hero-remain-val'+(over?' r':'');
     remSub.textContent=`預算 ${fmt(bTotal)}`;
     pctEl.textContent=rawPct+'%';
@@ -4081,7 +4190,7 @@ async function rHome(){
   }else{
     const remLbl2=document.getElementById('h-remain-lbl');
     if(remLbl2) remLbl2.textContent='預算剩餘';
-    remEl.textContent='未設定';remEl.className='hero-remain-val';
+    remEl.textContent='未設定';remEl.className='hero-remain-val';remEl.dataset.num=0;
     remSub.textContent='可於設定頁設定預算';
     pctEl.textContent='未設定';pctEl.className='bud-ring-pct na';
     capEl.textContent='';
@@ -4095,7 +4204,8 @@ async function rHome(){
     const pace=budgetPacing(bTotal-total);
     const over=(bTotal-total)<0;
     const dailyEl=document.getElementById('h-daily');
-    dailyEl.textContent=over?'超支':fmt(pace.daily);
+    if(over){ dailyEl.textContent='超支'; dailyEl.dataset.num=0; }
+    else animNum(dailyEl, pace.daily, fmt, {dur:560});
     dailyEl.className='hero-stat-num'+(over?' r':'');
     document.getElementById('h-daily-lbl').textContent=
       over?'已無可用額度':`每日可花（÷${pace.coverDays} 天）`;
@@ -5514,7 +5624,10 @@ function showS(name){
   window.scrollTo(0,0);
   if(name==='chart'&&dirty.chart)      rChart();
   else if(name==='list'&&dirty.list)   rList();
-  else if(name==='home'){ if(dirty.home) rHome(); else maybeAutoShowRems(); }
+  else if(name==='home'){
+    if(dirty.home) rHome();
+    else { replayHeroIntro(true); maybeAutoShowRems(); }
+  }
   else if(name==='settings')           rSettings();
 }
 
