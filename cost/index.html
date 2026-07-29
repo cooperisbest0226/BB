@@ -1390,44 +1390,64 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
 
 
-/* ── 訂閱 chip（hero 卡下方）─────────────────────────────── */
+/* ── 訂閱單行細條（hero 卡下方，高度壓到約 34px）────────── */
 .sub-chip{
   width:100%;
-  display:flex;align-items:center;gap:10px;
+  display:flex;align-items:center;gap:8px;
   background:var(--bg);border:none;
-  border-radius:var(--radius-lg);
-  padding:12px 14px;margin-bottom:10px;
+  border-radius:99px;
+  padding:0 13px;height:34px;margin-bottom:10px;
   box-shadow:var(--shadow-sm);
   cursor:pointer;text-align:left;
   transition:background var(--t-fast),transform var(--t-fast);
   animation:fadeUp .45s ease both;
 }
 .sub-chip:active{background:var(--surface3);transform:scale(.99)}
-.sub-chip-ico{
-  width:32px;height:32px;flex-shrink:0;border-radius:10px;
-  background:var(--blue-lt);
-  display:flex;align-items:center;justify-content:center;
+.sub-chip-ico{width:14px;height:14px;flex-shrink:0;stroke:var(--blue);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.sub-chip-txt{
+  flex:1;min-width:0;font-size:12px;color:var(--text2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.sub-chip-ico svg{width:16px;height:16px;stroke:var(--blue);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.sub-chip-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.sub-chip-lbl{font-size:13px;font-weight:600;color:var(--text)}
-.sub-chip-sub{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub-chip-amt{
-  font-family:'DM Mono',monospace;font-size:14px;font-weight:600;
-  color:var(--text2);flex-shrink:0;
+  font-family:'DM Mono',monospace;font-size:12.5px;font-weight:600;
+  color:var(--text);flex-shrink:0;
 }
-.sub-chip-arrow{width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+.sub-chip-arrow{width:12px;height:12px;stroke:var(--text3);fill:none;stroke-width:2.2;stroke-linecap:round;flex-shrink:0}
+
+/* 篩選列的訂閱捷徑（零額外高度）*/
+.sub-icon-btn{position:relative}
+.sub-icon-dot{
+  position:absolute;top:8px;right:9px;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--orange);border:1.5px solid var(--bg);
+}
 
 /* ── 訂閱清單 ─────────────────────────────────────────────── */
 .sub-summary{
   background:var(--surface3);border-radius:var(--radius);
-  padding:13px 15px;margin-bottom:6px;
+  padding:13px 15px;margin-bottom:10px;
 }
-.sub-sum-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.sub-sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
 .sub-sum-row:last-child{margin-bottom:0}
-.sub-sum-lbl{font-size:12px;color:var(--text2)}
-.sub-sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--text)}
+.sub-sum-lbl{font-size:12px;color:var(--text2);flex-shrink:0}
+.sub-sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--text);text-align:right}
 .sub-sum-val.sm{font-size:13px;font-weight:500;color:var(--text2)}
+
+/* 未來 12 個月扣款分佈 */
+.sub-forecast{margin-bottom:4px}
+.fc-hdr{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:11.5px;color:var(--text2);font-weight:600;padding:0 2px 8px;
+}
+.fc-hdr span:last-child{font-family:'DM Mono',monospace;color:var(--text3);font-weight:500}
+.fc-chart{display:flex;align-items:flex-end;gap:3px;height:62px;padding:0 2px}
+.fc-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-end}
+.fc-bar{width:100%;border-radius:3px 3px 0 0;background:var(--surface4)}
+.fc-bar.peak{background:var(--orange)}
+.fc-lbl{font-size:9px;color:var(--text3);line-height:1}
+.fc-lbl.now{color:var(--green);font-weight:700}
+.fc-cap{font-size:10.5px;color:var(--text3);padding:8px 2px 0;line-height:1.5}
+
 .sub-note-box{
   background:var(--blue-lt);border:1px solid rgba(74,127,191,.18);
   border-radius:var(--radius);padding:9px 12px;margin-bottom:14px;
@@ -1439,6 +1459,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 }
 .sub-card-hdr span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub-card-hdr span:last-child{font-family:'DM Mono',monospace;color:var(--text3);font-weight:500;flex-shrink:0}
+.sub-fee-tag{
+  display:inline-block;font-size:9px;font-weight:600;margin-left:6px;
+  padding:1px 6px;border-radius:99px;background:var(--surface4);color:var(--text3);
+}
 .sub-row{
   display:flex;align-items:center;gap:10px;
   background:var(--surface3);border-radius:var(--radius);
@@ -1452,6 +1476,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .sub-row-meta{font-size:11px;color:var(--text3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub-row-right{text-align:right;flex-shrink:0}
 .sub-row-amt{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--text)}
+.sub-row-unit{font-size:10px;font-weight:400;color:var(--text3)}
 .sub-row-cyc{font-size:10px;color:var(--text3);margin-top:2px}
 .sub-badge{
   display:inline-block;font-size:9.5px;font-weight:700;
@@ -1460,6 +1485,8 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .sub-badge.pause{background:var(--amber-lt);color:var(--amber)}
 .sub-badge.off{background:var(--surface4);color:var(--text3)}
 .sub-badge.due{background:var(--orange-lt);color:var(--orange)}
+.sub-badge.fx{background:var(--blue-lt);color:var(--blue)}
+.sub-badge.split{background:var(--green-lt);color:var(--green)}
 .sub-sec-hdr{
   font-size:11.5px;font-weight:600;color:var(--text3);
   padding:14px 2px 7px;border-top:1px solid var(--border);margin-top:10px;
@@ -1473,6 +1500,25 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 }
 .sub-add-btn:active{background:var(--surface3)}
 .sub-add-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* 編輯表單的試算盒 */
+.sub-calc{
+  background:var(--surface3);border-radius:var(--radius);
+  padding:12px 14px;margin-top:4px;
+}
+.sub-calc-row{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:12px;color:var(--text2);padding:3px 0;
+}
+.sub-calc-row span:last-child{font-family:'DM Mono',monospace;flex-shrink:0}
+.sub-calc-row.strong{
+  color:var(--text);font-weight:600;font-size:13px;
+  border-top:1px solid var(--border);margin-top:4px;padding-top:7px;
+}
+.sub-calc-foot{
+  font-size:10.5px;color:var(--text3);
+  border-top:1px solid var(--border);margin-top:7px;padding-top:7px;
+}
 
 /* ── Offline banner ───────────────────────────────────────── */
 .offline-bar{
@@ -1577,16 +1623,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
     </div>
 
-    <!-- 訂閱攤提：純參考資訊，金額已含在信用卡帳單中，不計入上方支出 -->
-    <button class="sub-chip" id="sub-chip" type="button" onclick="openSubModal()"
-            aria-label="訂閱管理">
-      <span class="sub-chip-ico">
-        <svg viewBox="0 0 24 24"><path d="M3 9h18M7 3v4M17 3v4"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 14h4"/></svg>
-      </span>
-      <span class="sub-chip-body">
-        <span class="sub-chip-lbl">訂閱攤提</span>
-        <span class="sub-chip-sub" id="sub-chip-sub">尚未建立訂閱</span>
-      </span>
+    <!-- 訂閱攤提：單行細條。純參考資訊，金額已含在信用卡帳單中，不計入上方支出 -->
+    <button class="sub-chip" id="sub-chip" type="button" onclick="openSubModal()" aria-label="訂閱管理">
+      <svg class="sub-chip-ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M7 3v4M17 3v4"/></svg>
+      <span class="sub-chip-txt" id="sub-chip-txt">訂閱</span>
       <span class="sub-chip-amt" id="sub-chip-amt"></span>
       <svg class="sub-chip-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
@@ -1597,6 +1637,11 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <button class="filter-btn" id="hf-all" onclick="setHomeView('all')" aria-pressed="false">全部</button>
     <button class="cal-open-btn" onclick="openCalModal()" aria-label="行事曆檢視" title="行事曆檢視">
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    </button>
+    <button class="cal-open-btn sub-icon-btn" id="sub-icon-btn" onclick="openSubModal()"
+            aria-label="訂閱管理" title="訂閱管理">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M7 3v4M17 3v4"/></svg>
+      <span class="sub-icon-dot" id="sub-icon-dot" style="display:none"></span>
     </button>
   </div>
 
@@ -1797,7 +1842,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">費用管理</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.1.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.2.0</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/28</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -2114,6 +2159,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         <p>訂閱僅記錄期間與每月攤提，<strong>不計入支出總額</strong>。實際金額已含在對應的信用卡帳單裡。</p>
       </div>
       <div class="sub-summary" id="sub-summary"></div>
+      <div class="sub-forecast" id="sub-forecast"></div>
       <div id="sub-rows"></div>
       <button class="sub-add-btn" onclick="openSubEdit(null)">
         <svg viewBox="0 0 16 16"><path d="M8 2v12M2 8h12"/></svg>
@@ -2139,14 +2185,22 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         <select id="sb-cat" aria-label="訂閱類別"></select></div>
 
       <div class="field">
-        <label>扣款金額（元）</label>
+        <label>記在哪張卡</label>
+        <input id="sb-card" type="text" list="sb-card-list" placeholder="例：中國信託 LINE Pay 卡"
+               autocomplete="off" oninput="onSubCardChange()">
+        <datalist id="sb-card-list"></datalist>
+        <p class="field-note" id="sb-card-note">用來對照這筆訂閱包含在哪張信用卡帳單中</p>
+      </div>
+
+      <div class="field">
+        <label>扣款金額</label>
         <div class="amt-wrap" onclick="document.getElementById('sb-amt-r').focus()">
-          <span class="amt-unit">$</span>
+          <span class="amt-unit" id="sb-amt-unit">$</span>
           <span class="amt-disp ph" id="sb-amt-d" aria-hidden="true">0</span>
-          <input class="amt-input" id="sb-amt-r" type="number" inputmode="numeric" min="0" step="1"
+          <input class="amt-input" id="sb-amt-r" type="number" inputmode="decimal" min="0" step="0.01"
                  oninput="syncAmt('sb-amt-r','sb-amt-d');updateSubCalc()" onfocus="this.select()">
         </div>
-        <p class="field-note" id="sb-amt-note">每期實際扣款金額，不是攤提後的金額</p>
+        <p class="field-note">每期實際扣款金額，不是攤提後的金額</p>
       </div>
 
       <div class="field">
@@ -2155,14 +2209,54 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
           <label class="radio-opt"><input type="radio" name="sbcyc" id="sb-cyc-m" value="monthly" onchange="updateSubCalc()"> 每月</label>
           <label class="radio-opt"><input type="radio" name="sbcyc" id="sb-cyc-y" value="yearly" onchange="updateSubCalc()"> 每年</label>
         </div>
-        <p class="field-note" id="sb-calc-note"></p>
       </div>
 
+      <!-- 外幣：預設收合，台幣直扣的訂閱不需要面對這些欄位 -->
       <div class="field">
-        <label>記在哪張卡</label>
-        <input id="sb-card" type="text" list="sb-card-list" placeholder="例：中國信託 LINE Pay 卡" autocomplete="off">
-        <datalist id="sb-card-list"></datalist>
-        <p class="field-note">用來對照這筆訂閱包含在哪張信用卡帳單中</p>
+        <label>扣款幣別</label>
+        <select id="sb-cur" onchange="onSubCurChange()" aria-label="扣款幣別"></select>
+      </div>
+
+      <div id="sb-fx-block" style="display:none">
+        <div class="field">
+          <div class="range-row">
+            <div style="flex:1;min-width:0">
+              <label>匯率（1 外幣 = ? 台幣）</label>
+              <input id="sb-fx" type="number" inputmode="decimal" min="0" step="0.001"
+                     placeholder="例：32.5" oninput="updateSubCalc()">
+            </div>
+            <div style="flex:1;min-width:0">
+              <label>國外手續費（%）</label>
+              <input id="sb-fee" type="number" inputmode="decimal" min="0" max="10" step="0.1"
+                     placeholder="例：1.5" oninput="this.dataset.touched='1';updateSubCalc()">
+            </div>
+          </div>
+          <p class="field-note">匯率為手動估算值，實際入帳以帳單為準。手續費率會記在這張卡上，下次自動帶入。</p>
+        </div>
+        <div class="field">
+          <label>實際扣繳金額（選填，台幣）</label>
+          <input id="sb-charged" type="number" inputmode="numeric" min="0" step="1"
+                 placeholder="留空則用上方公式估算" oninput="updateSubCalc()">
+          <p class="field-note">帳單才是真相。填了就以這個數字為準，不再用匯率推算。</p>
+        </div>
+      </div>
+
+      <!-- 家庭 / 共用分攤：純資訊，不產生代墊記錄 -->
+      <div class="field">
+        <label>分攤</label>
+        <div class="range-row">
+          <div style="flex:1;min-width:0">
+            <input id="sb-split-total" type="number" inputmode="numeric" min="1" max="20" step="1"
+                   placeholder="總份數" oninput="updateSubCalc()">
+          </div>
+          <span class="range-sep">份，我出</span>
+          <div style="flex:1;min-width:0">
+            <input id="sb-split-mine" type="number" inputmode="numeric" min="1" max="20" step="1"
+                   placeholder="我的份數" oninput="updateSubCalc()">
+          </div>
+        </div>
+        <input id="sb-split-names" type="text" placeholder="分攤成員（選填）例：小明、小華" autocomplete="off" style="margin-top:8px">
+        <p class="field-note">僅計算「我實際負擔多少」，不會產生代墊記錄或影響支出</p>
       </div>
 
       <div class="field"><label>起訂日 / 首次扣款日</label>
@@ -2184,6 +2278,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
       <div class="field"><label>備註（選填）</label>
         <textarea id="sb-note" placeholder="例：家庭方案、與家人共用"></textarea></div>
+
+      <!-- 試算：把整條計算鏈攤開，避免使用者要自己心算 -->
+      <div class="sub-calc" id="sub-calc" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -2304,9 +2401,78 @@ const SUB_STATUS={
   cancelled:{lbl:'已取消', cls:'off'}
 };
 
-// 每月攤提：年繳除以 12。這是純顯示用的推估值，不寫回任何記錄。
-const subMonthly = x => (x.cycle==='yearly' ? (x.amount||0)/12 : (x.amount||0));
-const subYearly  = x => (x.cycle==='yearly' ? (x.amount||0)    : (x.amount||0)*12);
+// 常見扣款幣別
+const SUB_CURRENCIES=['TWD','USD','JPY','EUR','GBP','HKD','CNY','KRW','SGD','AUD'];
+
+// ── 卡片設定 ──────────────────────────────────────────────
+// 外幣手續費率是「卡片」的屬性，不是訂閱的屬性：同一張卡的所有
+// 外幣訂閱費率都一樣。存成 { 卡名: {feeRate} }，新增訂閱時自動帶入，
+// 使用者只要設定一次。
+let cardCfg = (()=>{ try{ return JSON.parse(localStorage.getItem('ep_cards')||'{}')||{}; }catch{ return {}; } })();
+function saveCardCfg(){ localStorage.setItem('ep_cards', JSON.stringify(cardCfg)); }
+const cardFee = name => (cardCfg[(name||'').trim()]?.feeRate) ?? null;
+function learnCard(name, feeRate){
+  const k=(name||'').trim(); if(!k) return;
+  cardCfg[k]={...(cardCfg[k]||{}), feeRate:+feeRate||0};
+  saveCardCfg();
+}
+
+// ── 金額計算鏈 ────────────────────────────────────────────
+//   原幣金額 × 匯率      = 台幣本金
+//   台幣本金 × 費率%     = 國外手續費
+//   台幣本金 + 手續費    = 扣繳金額   ← 信用卡帳單上看到的就是這個
+//   扣繳金額 × 我的份數/總份數 = 我實際負擔
+// 全部是顯示用的推估值，不寫回任何記錄，也不進 items。
+const subIsFX   = x => !!x.currency && x.currency!=='TWD';
+const subBase   = x => (x.amount||0) * (subIsFX(x) ? (+x.fxRate||1) : 1);
+const subFee    = x => subIsFX(x) ? subBase(x)*((+x.feeRate||0)/100) : 0;
+// 使用者若填了實際扣繳金額，以帳單為準——公式永遠會有幾塊錢誤差
+const subCharged = x => (+x.chargedAmount>0) ? +x.chargedAmount : (subBase(x)+subFee(x));
+
+const splitTotal = x => Math.max(1, +x.splitCount||1);
+const splitMine  = x => Math.min(splitTotal(x), Math.max(1, +x.splitMine||1));
+const subHasSplit= x => splitTotal(x) > 1;
+const subMine    = x => subCharged(x) * splitMine(x)/splitTotal(x);
+const subOthers  = x => subCharged(x) - subMine(x);
+
+const cycMonths  = x => (SUB_CYCLES[x.cycle]||SUB_CYCLES.monthly).months;
+// 帳單視角（整筆扣款）
+const subMonthly = x => subCharged(x)/cycMonths(x);
+const subYearly  = x => subCharged(x)*(12/cycMonths(x));
+// 個人視角（扣掉別人分攤的部分）
+const subMonthlyMine = x => subMine(x)/cycMonths(x);
+const subYearlyMine  = x => subMine(x)*(12/cycMonths(x));
+
+// ── 未來 12 個月現金流 ────────────────────────────────────
+// 年繳訂閱的痛點不是總額，是集中在某一個月爆出來。
+// 回傳 [{ym, label, total, mine, rows:[{name, charged}]}]，共 12 筆。
+function subForecast12(subs){
+  const out=[]; const idx={};
+  const now=new Date(today()+'T00:00:00');
+  for(let i=0;i<12;i++){
+    const d=new Date(now.getFullYear(), now.getMonth()+i, 1);
+    const key=ymStr(d.getFullYear(), d.getMonth()+1);
+    idx[key]=out.length;
+    out.push({ym:key, mon:d.getMonth()+1, year:d.getFullYear(), total:0, mine:0, rows:[]});
+  }
+  // 走訪上限必須跟最後一桶對齊，否則落在桶外的扣款會被靜默丟掉
+  const lastYm=out[out.length-1].ym;
+  subs.filter(subIsLive).forEach(x=>{
+    const step=cycMonths(x);
+    let d=subNextBill(x), guard=0;
+    while(d && d.slice(0,7) <= lastYm && guard++ < 40){
+      if(x.endDate && d > x.endDate) break;
+      const cell=out[idx[d.slice(0,7)]];
+      if(cell){
+        cell.total += subCharged(x);
+        cell.mine  += subMine(x);
+        cell.rows.push({name:x.name, charged:subCharged(x), date:d});
+      }
+      d=addMonthsDS(d, step);
+    }
+  });
+  return out;
+}
 
 // 加月份並處理月底：1/31 加一個月要落在 2/28，不能溢位到 3/3
 function addMonthsDS(ds, n){
@@ -2347,21 +2513,34 @@ let _editSubId = null;
 // ── Hero 卡下方的攤提 chip ────────────────────────────────
 async function renderSubChip(){
   if(!DB) return;
+  const txtEl=document.getElementById('sub-chip-txt');
   const amtEl=document.getElementById('sub-chip-amt');
-  const subEl=document.getElementById('sub-chip-sub');
-  if(!amtEl||!subEl) return;
+  const dotEl=document.getElementById('sub-icon-dot');
+  if(!txtEl||!amtEl) return;
+
   let all=[];
   try{ all=await getAllSubs(); }catch{ return; }
   const live=all.filter(subIsLive);
+
   if(!live.length){
     amtEl.textContent='';
-    subEl.textContent = all.length ? `${all.length} 項已暫停／取消，點此檢視` : '尚未建立訂閱，點此新增';
+    txtEl.textContent = all.length ? `訂閱 · ${all.length} 項未啟用` : '訂閱 · 尚未建立';
+    if(dotEl) dotEl.style.display='none';
     return;
   }
-  const mo=live.reduce((t,x)=>t+subMonthly(x),0);
-  const yr=live.reduce((t,x)=>t+subYearly(x),0);
-  amtEl.textContent=fmt(mo);
-  subEl.textContent=`${live.length} 項 · 年約 ${fmt(yr)} · 已含在信用卡帳單`;
+
+  const hasSplit=live.some(subHasSplit);
+  const mo     = live.reduce((t,x)=>t+subMonthly(x),0);
+  const moMine = live.reduce((t,x)=>t+subMonthlyMine(x),0);
+
+  amtEl.textContent = fmt(hasSplit?moMine:mo)+' /月';
+  txtEl.textContent = `訂閱 ${live.length} 項${hasSplit?`　我負擔（帳單 ${fmt(mo)}）`:'　已含在信用卡帳單'}`;
+
+  // 7 天內有扣款就在篩選列的捷徑上點一顆紅點
+  if(dotEl){
+    const soon=live.some(x=>{ const d=subNextBill(x); return d && diffDays(d)<=7; });
+    dotEl.style.display = soon ? '' : 'none';
+  }
 }
 
 // ── 清單 ──────────────────────────────────────────────────
@@ -2385,16 +2564,25 @@ function _subRowHTML(x){
   const d=next?diffDays(next):null;
   const cyc=(SUB_CYCLES[x.cycle]||SUB_CYCLES.monthly).lbl;
   const st=SUB_STATUS[x.status]||SUB_STATUS.active;
+  const split=subHasSplit(x);
 
   let badge='';
   if(x.status!=='active') badge=`<span class="sub-badge ${st.cls}">${st.lbl}</span>`;
   else if(subExpired(x))  badge=`<span class="sub-badge off">已到期</span>`;
   else if(d!==null&&d<=7) badge=`<span class="sub-badge due">${d<=0?'今日扣款':d+' 天後扣款'}</span>`;
+  if(subIsFX(x)) badge+=`<span class="sub-badge fx">${x.currency}</span>`;
+  if(split)      badge+=`<span class="sub-badge split">${splitMine(x)}/${splitTotal(x)}</span>`;
 
   const meta=[];
   if(x.startDate) meta.push(`${subDate(x.startDate)} 起訂 · ${subElapsedLabel(x)}`);
   if(live&&next)  meta.push(`下次 ${subDate(next)}`);
   if(x.endDate)   meta.push(`至 ${subDate(x.endDate)}`);
+
+  // 有分攤時主數字顯示「我負擔」，副行才是整筆扣繳
+  const main = split ? subMonthlyMine(x) : subMonthly(x);
+  const sub2 = split
+    ? `${cyc}扣 ${fmt(subCharged(x))} · 我 ${fmt(subMine(x))}`
+    : `${cyc}扣 ${fmt(subCharged(x))}`;
 
   return `<div class="sub-row${live?'':' dim'}" onclick="openSubEdit(${x.id})">
     <div class="sub-row-body">
@@ -2402,32 +2590,84 @@ function _subRowHTML(x){
       <div class="sub-row-meta">${esc(meta.join(' · ')||'—')}</div>
     </div>
     <div class="sub-row-right">
-      <div class="sub-row-amt">${fmt(subMonthly(x))}<span style="font-size:10px;font-weight:400;color:var(--text3)"> /月</span></div>
-      <div class="sub-row-cyc">${cyc}扣 ${fmt(x.amount)}</div>
+      <div class="sub-row-amt">${fmt(main)}<span class="sub-row-unit"> /月</span></div>
+      <div class="sub-row-cyc">${sub2}</div>
     </div>
   </div>`;
+}
+
+// 未來 12 個月的現金流長條圖 —— 年繳訂閱會在某個月集中爆出來，
+// 這張圖的價值就是先看到那一根。
+let _forecastCache=[];
+function _fcCaption(c, prefix){
+  if(!c || !c.total) return `${c?`${c.year}/${c.mon} 月`:''} 沒有扣款`;
+  const names=c.rows.map(r=>`${r.name} ${fmt(r.charged)}`);
+  return `${prefix} ${c.year}/${c.mon} 月　${fmt(c.total)}<br><span style="color:var(--text3)">${esc(names.join('、'))}</span>`;
+}
+// 點長條看該月明細——年繳落在哪一個月才是這張圖真正要回答的問題
+function showForecastMonth(i){
+  const c=_forecastCache[i]; const el=document.getElementById('fc-cap');
+  if(!c||!el) return;
+  el.innerHTML=_fcCaption(c, '');
+}
+
+function _forecastHTML(subs){
+  const f=subForecast12(subs);
+  const max=Math.max(...f.map(c=>c.total), 1);
+  const sum=f.reduce((t,c)=>t+c.total,0);
+  const sumMine=f.reduce((t,c)=>t+c.mine,0);
+  const hasSplit=subs.some(subHasSplit);
+  const peak=f.reduce((a,c)=>c.total>a.total?c:a, f[0]);
+
+  const bars=f.map((c,i)=>{
+    const h=Math.max(2, Math.round(c.total/max*46));
+    const isPeak=c.total>0 && c.total===peak.total;
+    return `<div class="fc-col" onclick="showForecastMonth(${i})">
+      <div class="fc-bar${isPeak?' peak':''}" style="height:${h}px"></div>
+      <div class="fc-lbl${i===0?' now':''}">${c.mon}</div>
+    </div>`;
+  }).join('');
+
+  _forecastCache=f;
+  const cap = peak.total>0 ? _fcCaption(peak, '最高在') : '未來 12 個月沒有扣款';
+
+  return `<div class="fc-hdr">
+      <span>未來 12 個月扣款分佈</span>
+      <span>此期間 ${fmt(sum)}${hasSplit?`　我 ${fmt(sumMine)}`:''}</span>
+    </div>
+    <div class="fc-chart">${bars}</div>
+    <div class="fc-cap" id="fc-cap">${cap}</div>`;
 }
 
 async function renderSubList(){
   const all=await getAllSubs();
   const live=all.filter(subIsLive);
   const rest=all.filter(x=>!subIsLive(x));
+  const hasSplit=live.some(subHasSplit);
 
   const mo=live.reduce((t,x)=>t+subMonthly(x),0);
+  const moMine=live.reduce((t,x)=>t+subMonthlyMine(x),0);
   const yr=live.reduce((t,x)=>t+subYearly(x),0);
+
   document.getElementById('sub-summary').innerHTML=`
     <div class="sub-sum-row">
-      <span class="sub-sum-lbl">每月攤提合計</span>
+      <span class="sub-sum-lbl">每月攤提（帳單）</span>
       <span class="sub-sum-val">${fmt(mo)}</span>
     </div>
+    ${hasSplit?`<div class="sub-sum-row">
+      <span class="sub-sum-lbl">每月攤提（我實際負擔）</span>
+      <span class="sub-sum-val" style="color:var(--green)">${fmt(moMine)}</span>
+    </div>`:''}
     <div class="sub-sum-row">
-      <span class="sub-sum-lbl">年度合計</span>
-      <span class="sub-sum-val sm">${fmt(yr)}</span>
+      <span class="sub-sum-lbl">年度合計（年化）</span>
+      <span class="sub-sum-val sm">${fmt(yr)}${hasSplit?`　我 ${fmt(live.reduce((t,x)=>t+subYearlyMine(x),0))}`:''}</span>
     </div>
     <div class="sub-sum-row">
       <span class="sub-sum-lbl">訂閱中項目</span>
       <span class="sub-sum-val sm">${live.length} 項${rest.length?`（另有 ${rest.length} 項未啟用）`:''}</span>
     </div>`;
+
+  document.getElementById('sub-forecast').innerHTML = live.length ? _forecastHTML(live) : '';
 
   // 依信用卡分組，才看得出每張卡各扛了多少固定支出
   const groups={};
@@ -2437,7 +2677,9 @@ async function renderSubList(){
   Object.keys(groups).sort().forEach(card=>{
     const rows=groups[card].sort((a,b)=>subMonthly(b)-subMonthly(a));
     const sum=rows.reduce((t,x)=>t+subMonthly(x),0);
-    html+=`<div class="sub-card-hdr"><span>${esc(card)}</span><span>${fmt(sum)} /月</span></div>`;
+    const fee=cardFee(card);
+    const feeTag=(fee!=null&&fee>0)?`<span class="sub-fee-tag">外幣 ${fee}%</span>`:'';
+    html+=`<div class="sub-card-hdr"><span>${esc(card)}${feeTag}</span><span>${fmt(sum)} /月</span></div>`;
     html+=rows.map(_subRowHTML).join('');
   });
   if(!live.length) html+=`<div class="empty-msg" style="padding:26px 12px">
@@ -2460,43 +2702,130 @@ async function _buildCardList(){
   dl.innerHTML=[...names].sort().map(n=>`<option value="${esc(n)}"></option>`).join('');
 }
 
-function updateSubCalc(){
-  const amt=getAmt('sb-amt-r');
-  const yearly=document.getElementById('sb-cyc-y').checked;
-  const note=document.getElementById('sb-calc-note');
-  if(!amt){ note.textContent=''; return; }
-  const mo=yearly?amt/12:amt;
-  const yr=yearly?amt:amt*12;
-  const start=document.getElementById('sb-start').value;
-  let nx='';
-  if(start){
-    const d=subNextBill({startDate:start, cycle:yearly?'yearly':'monthly'});
-    const dd=diffDays(d);
-    nx=` · 下次扣款 ${d.replace(/-/g,'/')}（${dd<=0?'今日':dd+' 天後'}）`;
+function _readSubForm(){
+  const cur=document.getElementById('sb-cur').value||'TWD';
+  return {
+    name:      document.getElementById('sb-name').value.trim(),
+    cat:       document.getElementById('sb-cat').value,
+    amount:    parseFloat(document.getElementById('sb-amt-r').value)||0,
+    cycle:     document.getElementById('sb-cyc-y').checked?'yearly':'monthly',
+    currency:  cur,
+    fxRate:    cur==='TWD'?1:(parseFloat(document.getElementById('sb-fx').value)||0),
+    feeRate:   cur==='TWD'?0:(parseFloat(document.getElementById('sb-fee').value)||0),
+    chargedAmount: cur==='TWD'?0:(parseFloat(document.getElementById('sb-charged').value)||0),
+    card:      document.getElementById('sb-card').value.trim(),
+    splitCount:parseInt(document.getElementById('sb-split-total').value)||1,
+    splitMine: parseInt(document.getElementById('sb-split-mine').value)||1,
+    splitNames:document.getElementById('sb-split-names').value.trim(),
+    startDate: document.getElementById('sb-start').value,
+    endDate:   document.getElementById('sb-end').value,
+    status:    document.getElementById('sb-status').value,
+    note:      document.getElementById('sb-note').value.trim()
+  };
+}
+
+// 幣別切換：台幣直扣不需要面對匯率與手續費
+function onSubCurChange(){
+  const cur=document.getElementById('sb-cur').value||'TWD';
+  document.getElementById('sb-fx-block').style.display = cur==='TWD' ? 'none' : '';
+  document.getElementById('sb-amt-unit').textContent = cur==='TWD' ? '$' : cur;
+  if(cur!=='TWD'){
+    const fee=document.getElementById('sb-fee');
+    if(!fee.value){
+      const known=cardFee(document.getElementById('sb-card').value);
+      fee.value = (known!=null) ? known : 1.5;   // Visa / Mastercard 常見值
+    }
   }
-  note.textContent=`每月攤提 ${fmt(mo)} · 年度 ${fmt(yr)}${nx}`;
+  updateSubCalc();
+}
+
+// 換卡片時自動帶入該卡已設定的手續費率
+function onSubCardChange(){
+  const name=document.getElementById('sb-card').value.trim();
+  const known=cardFee(name);
+  const note=document.getElementById('sb-card-note');
+  if(known!=null && known>0){
+    note.textContent=`這張卡的國外手續費率為 ${known}%（已記住，可於下方修改）`;
+    const fee=document.getElementById('sb-fee');
+    if(document.getElementById('sb-cur').value!=='TWD' && !fee.dataset.touched) fee.value=known;
+  }else{
+    note.textContent='用來對照這筆訂閱包含在哪張信用卡帳單中';
+  }
+  updateSubCalc();
+}
+
+function updateSubCalc(){
+  const x=_readSubForm();
+  const box=document.getElementById('sub-calc');
+  if(!x.amount){ box.style.display='none'; return; }
+  box.style.display='';
+
+  const rows=[];
+  if(subIsFX(x)){
+    rows.push([`原幣 ${x.currency} ${fmtN(x.amount)} × 匯率 ${x.fxRate||'—'}`, fmt(subBase(x))]);
+    rows.push([`國外手續費 ${x.feeRate||0}%`, '+ '+fmt(subFee(x))]);
+  }
+  const overridden = +x.chargedAmount>0;
+  rows.push([overridden?'扣繳金額（依帳單）':'扣繳金額', fmt(subCharged(x)), 'strong']);
+
+  if(subHasSplit(x)){
+    rows.push([`我負擔（${splitMine(x)}/${splitTotal(x)} 份）`, fmt(subMine(x))]);
+    rows.push(['他人應付', fmt(subOthers(x))]);
+  }
+
+  const cycLbl=(SUB_CYCLES[x.cycle]||SUB_CYCLES.monthly).lbl;
+  rows.push([`每月攤提${subHasSplit(x)?'（我）':''}`,
+             fmt(subHasSplit(x)?subMonthlyMine(x):subMonthly(x)), 'strong']);
+  rows.push([`年度${subHasSplit(x)?'（我）':''}`,
+             fmt(subHasSplit(x)?subYearlyMine(x):subYearly(x))]);
+
+  let nx='';
+  if(x.startDate){
+    const d=subNextBill(x), dd=diffDays(d);
+    nx=`<div class="sub-calc-foot">${cycLbl}扣款 · 下次 ${d.replace(/-/g,'/')}（${dd<=0?'今日':dd+' 天後'}）</div>`;
+  }
+
+  box.innerHTML = rows.map(([l,v,cls])=>
+    `<div class="sub-calc-row${cls==='strong'?' strong':''}"><span>${esc(l)}</span><span>${v}</span></div>`
+  ).join('') + nx;
 }
 
 async function openSubEdit(id){
   _editSubId=id;
   const cat=document.getElementById('sb-cat');
   cat.innerHTML=getCats().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  const cur=document.getElementById('sb-cur');
+  cur.innerHTML=SUB_CURRENCIES.map(c=>`<option value="${c}">${c==='TWD'?'TWD 台幣（無手續費）':c}</option>`).join('');
   await _buildCardList();
 
   const x = id ? await getSubById(id) : null;
   document.getElementById('sub-edit-title').textContent = x ? '編輯訂閱' : '新增訂閱';
   document.getElementById('sub-del-btn').style.display = x ? '' : 'none';
 
-  document.getElementById('sb-name').value   = x?.name || '';
+  document.getElementById('sb-name').value = x?.name || '';
   cat.value = (x?.cat && getCats().includes(x.cat)) ? x.cat : (getCats().includes('訂閱')?'訂閱':getCats()[0]);
-  setAmt('sb-amt-r','sb-amt-d', x?.amount || 0);
+  document.getElementById('sb-amt-r').value = x?.amount || '';
+  syncAmt('sb-amt-r','sb-amt-d');
   document.getElementById(x?.cycle==='yearly' ? 'sb-cyc-y' : 'sb-cyc-m').checked = true;
-  document.getElementById('sb-card').value   = x?.card || '';
+  document.getElementById('sb-card').value = x?.card || '';
+  cur.value = x?.currency || 'TWD';
+
+  const fee=document.getElementById('sb-fee');
+  delete fee.dataset.touched;
+  document.getElementById('sb-fx').value          = (x?.fxRate && x.fxRate!==1) ? x.fxRate : '';
+  fee.value                                       = x?.feeRate ? x.feeRate : '';
+  document.getElementById('sb-charged').value      = x?.chargedAmount ? x.chargedAmount : '';
+  document.getElementById('sb-split-total').value  = (x?.splitCount>1) ? x.splitCount : '';
+  document.getElementById('sb-split-mine').value   = (x?.splitCount>1) ? (x.splitMine||1) : '';
+  document.getElementById('sb-split-names').value  = x?.splitNames || '';
   document.getElementById('sb-start').value  = x?.startDate || today();
   document.getElementById('sb-end').value    = x?.endDate || '';
   document.getElementById('sb-status').value = x?.status || 'active';
   document.getElementById('sb-note').value   = x?.note || '';
-  updateSubCalc();
+  if(x?.feeRate) fee.dataset.touched='1';
+
+  onSubCurChange();
+  onSubCardChange();
 
   document.getElementById('sub-view-list').style.display='none';
   document.getElementById('sub-view-edit').style.display='';
@@ -2512,34 +2841,27 @@ function closeSubEdit(silent){
 }
 
 async function saveSub(){
-  const name=document.getElementById('sb-name').value.trim();
-  if(!name){ alert('請填寫訂閱名稱'); return; }
-  const amount=getAmt('sb-amt-r');
-  if(amount<0){ alert('金額不可為負數'); return; }
-  const start=document.getElementById('sb-start').value;
-  if(!start){ alert('請選擇起訂日'); return; }
-  const end=document.getElementById('sb-end').value;
-  if(end && end < start){ alert('結束日不可早於起訂日'); return; }
+  const rec=_readSubForm();
+  if(!rec.name){ alert('請填寫訂閱名稱'); return; }
+  if(rec.amount<0){ alert('金額不可為負數'); return; }
+  if(!rec.startDate){ alert('請選擇起訂日'); return; }
+  if(rec.endDate && rec.endDate < rec.startDate){ alert('結束日不可早於起訂日'); return; }
+  if(subIsFX(rec) && !rec.fxRate && !rec.chargedAmount){
+    alert('外幣訂閱請填寫匯率，或直接填入實際扣繳金額'); return;
+  }
+  if(rec.splitMine > rec.splitCount){ alert('我的份數不可大於總份數'); return; }
 
-  const rec={
-    name,
-    cat:       document.getElementById('sb-cat').value,
-    amount,
-    cycle:     document.getElementById('sb-cyc-y').checked ? 'yearly' : 'monthly',
-    card:      document.getElementById('sb-card').value.trim(),
-    startDate: start,
-    endDate:   end,
-    status:    document.getElementById('sb-status').value,
-    note:      document.getElementById('sb-note').value.trim()
-  };
   if(_editSubId) rec.id=_editSubId;
   const wasEditing=!!_editSubId;
   await putSub(rec);
 
+  // 手續費率記在卡片上，下次新增同卡訂閱自動帶入
+  if(rec.card && rec.feeRate>0) learnCard(rec.card, rec.feeRate);
+
   closeSubEdit(true);
   await renderSubList();
   await renderSubChip();
-  toast(`${wasEditing?'已更新':'已新增'}訂閱：${name}`);
+  toast(`${wasEditing?'已更新':'已新增'}訂閱：${rec.name}`);
 }
 
 async function deleteSub(){
@@ -5012,7 +5334,8 @@ function collectSettings(){
     payday:         payday||0,
     reminders:      {...remCfg},
     advanceFeature: advOn(),
-    selectedYears:  selYears?[...selYears]:null
+    selectedYears:  selYears?[...selYears]:null,
+    cards:          {...cardCfg}          // 卡片的外幣手續費率
     // ep_rem_dis（今日不再顯示）刻意不備份 —— 那是當天的暫時狀態
   };
 }
@@ -5071,6 +5394,12 @@ function applySettings(st){
     const d=parseInt(remCfg.dueSoonDays);
     remCfg.dueSoonDays=[1,3,7,14].includes(d)?d:DEF_REM.dueSoonDays;
     saveRemCfg(); done.push('提醒設定');
+  }
+
+  if(st.cards&&typeof st.cards==='object'){
+    cardCfg={...cardCfg,...st.cards}; saveCardCfg();
+    const n=Object.keys(st.cards).length;
+    if(n) done.push(`卡片手續費設定 ${n} 張`);
   }
 
   if(typeof st.advanceFeature==='boolean'){
