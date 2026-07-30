@@ -2028,7 +2028,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">COST</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.9.0</span></div>
+        <div class="app-info-row"><span>版本</span><span>v4.9.2</span></div>
         <div class="app-info-row"><span>建置日期</span><span>2026/07/29</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
@@ -5808,7 +5808,11 @@ function rSettings(){
   const ms=document.getElementById('pwa-mode-sub');
   if(ms) ms.textContent = isStandalone() ? '已安裝 · 主畫面模式執行中' : '目前在瀏覽器分頁中執行';
   const ss=document.getElementById('pwa-sw-sub');
-  if(ss) ss.textContent = swReg ? '離線快取已啟用' : (PWA_CAPABLE ? '離線快取尚未就緒' : '需以 https 網址開啟才能離線');
+  if(ss) ss.textContent =
+    swState === 'ready'   ? '離線快取已啟用' :
+    swState === 'pending' ? '離線快取啟用中…' :
+    swState === 'failed'  ? '離線元件載入失敗 · 點此重試' :
+                            '需以 https 網址開啟才能離線';
   const qs=document.getElementById('pwa-quota-sub');
   if(qs && navigator.storage && navigator.storage.estimate){
     navigator.storage.estimate().then(({usage=0,quota=0})=>{
@@ -6400,29 +6404,64 @@ const PWA_CAPABLE =
   (location.protocol === 'https:') ||
   ['localhost', '127.0.0.1'].includes(location.hostname);
 
-if ('serviceWorker' in navigator && PWA_CAPABLE) {
+// swReg === null 有三種完全不同的原因，之前全部被當成「環境不支援」回報：
+//   unsupported → 真的不行（http:// 或 file://，或瀏覽器沒有這個 API）
+//   failed      → 環境沒問題，但註冊失敗（最常見：sw.js 沒上傳，404）
+//   pending     → 還在註冊中（註冊掛在 load 事件裡，而且是 async）
+// 混成同一句話會讓人往錯的方向查，所以分開記。
+let swState = (PWA_CAPABLE && ('serviceWorker' in navigator)) ? 'pending' : 'unsupported';
+let swError = null;
+
+async function registerSW() {
+  if (swState === 'unsupported') return false;
+  try {
+    swReg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    swState = 'ready';
+    swError = null;
+
+    // 有新版本下載完成 → 提示使用者，不強制中斷手上的輸入
+    swReg.addEventListener('updatefound', () => {
+      const nw = swReg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          toastUpdate();
+        }
+      });
+    });
+    return true;
+  } catch (err) {
+    swState = 'failed';
+    swError = err;
+    console.warn('Service Worker 註冊失敗：', err);
+    return false;
+  }
+}
+
+// 註冊失敗時多做一步診斷：直接抓一次 sw.js，把「檔案不在」跟其他原因分開。
+// 這是實務上最常見的失敗原因，值得講清楚而不是丟一句「註冊失敗」。
+async function swDiagnosis() {
+  try {
+    const r = await fetch('./sw.js', { cache: 'no-store' });
+    if (r.status === 404) return 'sw.js 找不到（404）· 請確認它與網頁同一層';
+    if (!r.ok) return `sw.js 回應 ${r.status}`;
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    if (ct && !ct.includes('javascript')) return `sw.js 的 Content-Type 是 ${ct}，需為 JavaScript`;
+    return '檔案存在但註冊被拒絕' + (swError && swError.message ? `：${swError.message}` : '');
+  } catch {
+    return '無法取得 sw.js，請確認網路與網址';
+  }
+}
+
+if (swState === 'pending') {
   window.addEventListener('load', async () => {
-    try {
-      swReg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    await registerSW();
+    rSettings();                                  // 讓設定頁的狀態列反映結果
 
-      // 有新版本下載完成 → 提示使用者，不強制中斷手上的輸入
-      swReg.addEventListener('updatefound', () => {
-        const nw = swReg.installing;
-        if (!nw) return;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            toastUpdate();
-          }
-        });
-      });
-
-      // 回到前景時順手查一次更新
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && swReg) swReg.update().catch(() => {});
-      });
-    } catch (err) {
-      console.warn('Service Worker 註冊失敗：', err);
-    }
+    // 回到前景時順手查一次更新
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && swReg) swReg.update().catch(() => {});
+    });
   });
 
   let _reloading = false;
@@ -6445,7 +6484,20 @@ function applyUpdate() {
   else location.reload();
 }
 async function checkUpdate() {
-  if (!swReg) { toast('此環境不支援離線快取'); return; }
+  if (swState === 'unsupported') {
+    toast(location.protocol === 'https:' ? '此瀏覽器不支援離線快取'
+                                         : '需以 https 網址開啟才能離線');
+    return;
+  }
+  if (swState === 'pending') { toast('離線快取正在啟用，請稍候再試'); return; }
+  if (swState === 'failed') {
+    // 使用者可能已經把漏掉的檔案補上去了，先重試一次再回報原因
+    toast('重新嘗試啟用離線快取…');
+    if (await registerSW()) { toast('離線快取已啟用'); rSettings(); return; }
+    toast(await swDiagnosis());
+    rSettings();
+    return;
+  }
   toast('檢查更新中…');
   try { await swReg.update(); setTimeout(() => toast('已是最新版本'), 1200); }
   catch { toast('檢查失敗，請確認網路'); }
