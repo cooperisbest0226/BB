@@ -1,0 +1,176 @@
+/* ==========================================================
+   Base / App Shell
+   ========================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--label);
+  font: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  font-variant-numeric: tabular-nums; /* 數字對齊，表格與金額不跳動 */
+}
+
+body {
+  overscroll-behavior-y: none;  /* 擋掉整頁橡皮筋，只讓內容捲動區彈 */
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { border: 0; background: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
+a { color: var(--accent); text-decoration: none; }
+h1,h2,h3,h4,p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+img { display: block; max-width: 100%; }
+
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 尊重系統的「減少動態效果」設定 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- 版面骨架 ---------- */
+.app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 導覽列（Large Title 收合式） ---------- */
+.navbar {
+  position: relative;
+  z-index: 30;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-2);
+  height: calc(var(--nav-h) + var(--sa-top));
+  padding: var(--sa-top) calc(var(--gutter) - 4px) 0;
+  background: transparent;
+  transition: background var(--dur-fast) linear;
+}
+/* 捲動超過大標題後：玻璃底 + 髮絲線 + 行內標題淡入 */
+.navbar::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--separator);
+  opacity: 0;
+  transition: opacity var(--dur-fast) linear;
+}
+.navbar.is-condensed {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.navbar.is-condensed::after { opacity: 1; }
+
+.navbar__title {
+  font: var(--t-headline);
+  letter-spacing: -.2px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.navbar.is-condensed .navbar__title { opacity: 1; transform: none; }
+
+.navbar__side { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.navbar__side--right { justify-content: flex-end; }
+
+/* 導覽列按鈕 */
+.nav-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+  min-width: var(--touch); height: var(--touch);
+  padding: 0 4px;
+  color: var(--accent);
+  font: var(--t-body);
+  border-radius: var(--r-sm);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.nav-btn:active { opacity: .35; }
+.nav-btn--back { margin-left: -6px; padding-right: 8px; }
+.nav-btn__label { margin-left: -2px; }
+.nav-btn .icon { width: 22px; height: 22px; }
+
+/* ---------- 捲動內容區 ---------- */
+.view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+  padding: 0 var(--gutter);
+  /* 底部留出分頁列 + Home Indicator 的空間 */
+  padding-bottom: calc(var(--tab-h) + var(--sa-bottom) + var(--sp-7));
+}
+.view--no-tabbar { padding-bottom: calc(var(--sa-bottom) + var(--sp-7)); }
+
+/* Large Title */
+.large-title {
+  font: var(--t-large-title);
+  letter-spacing: -.6px;
+  padding: var(--sp-2) 0 var(--sp-3);
+  scroll-margin-top: 0;
+}
+.large-title__sub {
+  display: block;
+  font: var(--t-subhead);
+  color: var(--label-secondary);
+  letter-spacing: 0;
+  margin-top: 2px;
+}
+
+/* 換頁／推入轉場 */
+.view-enter { animation: viewFade var(--dur-mid) var(--ease-out) both; }
+.view-push  { animation: viewPush var(--dur-mid) var(--ease-ios) both; }
+@keyframes viewFade { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes viewPush { from { opacity: .4; transform: translateX(28px) } to { opacity: 1; transform: none } }
+
+/* ---------- 分頁列 ---------- */
+.tabbar {
+  position: relative;
+  z-index: 30;
+  flex: none;
+  display: flex;
+  height: calc(var(--tab-h) + var(--sa-bottom));
+  padding-bottom: var(--sa-bottom);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-top: .5px solid var(--separator);
+}
+.tabbar[hidden] { display: none; }
+
+.tab {
+  flex: 1 1 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  color: var(--label-secondary);
+  font: var(--t-caption2);
+  padding-top: 3px;
+  transition: color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.tab .icon { width: 26px; height: 26px; }
+.tab.is-active { color: var(--accent); }
+.tab:active { transform: scale(.92); }
