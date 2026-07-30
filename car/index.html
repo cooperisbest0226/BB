@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<!-- viewport-fit=cover：讓 safe-area-inset 生效，iPhone 全螢幕才不會被瀏海/Home Indicator 切到 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>車庫</title>
+
+<!-- iOS 加到主畫面 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="車庫">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="light dark">
+<!-- theme-color 跟著淺／深色走，狀態列才不會突兀 -->
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F2F7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+
+<!-- 所有路徑都用相對路徑，才能部署在 GitHub Pages 的子路徑（例如 /car/） -->
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./css/components.css">
+</head>
+<body>
+
+<!-- App Shell：導覽列 + 捲動內容 + 分頁列，各 view 只負責填內容 -->
+<div id="app" class="app">
+  <header id="navbar" class="navbar" role="banner">
+    <div class="navbar__side navbar__side--left" id="nav-left"></div>
+    <div class="navbar__title" id="nav-title" aria-hidden="true"></div>
+    <div class="navbar__side navbar__side--right" id="nav-right"></div>
+  </header>
+
+  <main id="view" class="view" role="main" tabindex="-1"></main>
+
+  <nav id="tabbar" class="tabbar" role="tablist" aria-label="主要分頁"></nav>
+</div>
+
+<!-- 覆蓋層根節點：sheet / 對話框 / toast 都掛在這裡，避免 z-index 打架 -->
+<div id="overlay-root" class="overlay-root"></div>
+<div id="toast-root" class="toast-root" aria-live="polite"></div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
