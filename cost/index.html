@@ -5,15 +5,22 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="費用管理">
+<meta name="apple-mobile-web-app-title" content="COST">
 <meta name="theme-color" content="#EDE8DF">
 <meta name="description" content="離線可用的個人費用記帳工具：月支出、代墊款拆分、預算追蹤與到期提醒。">
 <meta name="color-scheme" content="light">
 <meta name="mobile-web-app-capable" content="yes">
-<title>費用管理</title>
+<title>COST</title>
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
-<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<!-- iOS 主畫面圖示。iOS 不吃 manifest 的 icons（16.4 之前完全不吃，之後也仍以
+     apple-touch-icon 優先），所以這幾行是 iPhone 能不能拿到圖示的關鍵。
+     圖檔已補成滿版且不含透明度 —— iOS 會自己套圓角遮罩，若留白或帶 alpha
+     就會出現白邊或黑底。 -->
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="167x167" href="./icons/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="./icons/apple-touch-icon-152.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -2018,7 +2025,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-icon">
         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       </div>
-      <div class="app-info-name">費用管理</div>
+      <div class="app-info-name">COST</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row"><span>版本</span><span>v4.9.0</span></div>
@@ -6148,7 +6155,7 @@ async function exportJSON(){
   const all=await getAll();
   const subs=await getAllSubs();
   const payload={
-    app:'費用管理', v:BACKUP_VER,
+    app:'COST', v:BACKUP_VER,
     exported:new Date().toISOString(),
     settings:collectSettings(),
     items:all,
