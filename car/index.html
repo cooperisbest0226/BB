@@ -95,7 +95,6 @@ h1,h2,h3,p{margin:0}
 .car-meta i{width:1px;height:13px;background:var(--border-strong);display:block}
 .car-stage{position:relative;margin-top:-4px}
 .car-stage svg{width:100%;height:auto;display:block}
-.car-photo{width:100%;height:210px;object-fit:contain;display:block;filter:drop-shadow(0 22px 26px rgba(0,0,0,.5))}
 
 /* ---------- 健康環卡 §1 簽名元素 ---------- */
 .health{
@@ -390,10 +389,10 @@ const TYPES={
 
 /* 預設保養週期（可於「我的」調整里程週期） */
 const DEFAULT_RULES=[
-  {id:'oil',   name:'機油更換',   km:5000,  months:6},
-  {id:'air',   name:'空氣濾芯檢查', km:10000, months:12},
-  {id:'tire',  name:'輪胎換位',   km:10000, months:12},
-  {id:'brake', name:'煞車來令片檢查', km:20000, months:24}
+  {id:'oil',   name:'機油更換',   km:5000,  months:6,  match:['機油']},
+  {id:'air',   name:'空氣濾芯檢查', km:10000, months:12, match:['濾芯','空氣芯','空氣濾']},
+  {id:'tire',  name:'輪胎換位',   km:10000, months:12, match:['輪胎','調胎']},
+  {id:'brake', name:'煞車來令片檢查', km:20000, months:24, match:['來令片','煞車','碟盤']}
 ];
 
 /* ============================================================
@@ -448,8 +447,9 @@ function computeHealth(){
   const items=[];
 
   rules.forEach(r=>{
+    const kws=r.match||[r.name];
     const last=S.records
-      .filter(x=>x.type==='maint' && x.item===r.name)
+      .filter(x=>x.type==='maint' && kws.some(kw=>(x.item+' '+x.note).includes(kw)))
       .sort((a,b)=>b.date.localeCompare(a.date))[0];
     const lastKm   = last? Number(last.mileage)||0 : (Number(v.baseMileage)||0);
     const lastDate = last? last.date : (v.baseDate||v.createdAt||today());
@@ -489,33 +489,109 @@ function itemIcon(name){
    車輛插畫（無照片時的預設）
    ============================================================ */
 const CAR_SVG=`
-<svg viewBox="0 0 480 200" role="img" aria-label="車輛示意圖">
+<svg viewBox="0 0 520 230" role="img" aria-label="車輛示意圖">
   <defs>
     <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FAFBFD"/><stop offset=".42" stop-color="#CBD2DE"/>
-      <stop offset="1" stop-color="#7F8899"/>
+      <stop offset="0"    stop-color="#FFFFFF"/>
+      <stop offset=".18"  stop-color="#EDF0F5"/>
+      <stop offset=".38"  stop-color="#C7CEDA"/>
+      <stop offset=".62"  stop-color="#9AA3B4"/>
+      <stop offset="1"    stop-color="#6B7386"/>
+    </linearGradient>
+    <linearGradient id="roofG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D7DCE6"/>
     </linearGradient>
     <linearGradient id="glassG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#39456A"/><stop offset="1" stop-color="#161C2E"/>
+      <stop offset="0" stop-color="#4A5A8C"/><stop offset=".55" stop-color="#232C48"/><stop offset="1" stop-color="#11162A"/>
     </linearGradient>
-    <radialGradient id="shG"><stop offset="0" stop-color="#000" stop-opacity=".5"/>
-      <stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glassHi" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".55"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rimG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF1F6"/><stop offset="1" stop-color="#8A93A6"/>
+    </linearGradient>
+    <radialGradient id="tireSh" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="headGlow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#EAF2FF" stop-opacity=".95"/><stop offset="1" stop-color="#EAF2FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tailGlow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FF5A5F" stop-opacity=".9"/><stop offset="1" stop-color="#FF5A5F" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="floorRefl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7C8CE0" stop-opacity=".35"/><stop offset="1" stop-color="#7C8CE0" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path d="M18,168 C14,168 12,160 14,150 C17,138 30,132 46,129 L86,121
+      C99,96 116,73 138,60 C152,52 168,47 186,46 L296,44 C320,44 340,50 356,62 L392,88
+      C418,92 448,98 468,108 C486,116 496,128 496,142 L496,158 C496,165 491,168 484,168 Z"/></clipPath>
   </defs>
-  <ellipse cx="240" cy="178" rx="196" ry="15" fill="url(#shG)"/>
-  <path d="M28 150c-6-19-3-32 16-37l44-9c13-3 21-10 32-23l24-28c8-9 18-14 31-14h140c22 0 37 8 47 23l24 36 42 10c20 5 26 20 24 40l-1 8H28z"
-        fill="url(#bodyG)"/>
-  <path d="M148 84l25-30c6-7 13-10 22-10h37v40z" fill="url(#glassG)"/>
-  <path d="M242 44h68c16 0 27 5 34 16l17 24H242z" fill="url(#glassG)"/>
-  <path d="M236 44v40" stroke="#6E778A" stroke-width="3"/>
-  <path d="M236 86v56M330 92v50" stroke="#9AA3B4" stroke-width="2.5" opacity=".7"/>
-  <rect x="252" y="98" width="22" height="6" rx="3" fill="#6E778A"/>
-  <path d="M36 116h30c6 0 9 4 9 9s-3 9-9 9H33z" fill="#EFF3FA" opacity=".95"/>
-  <path d="M448 118h-26c-6 0-9 4-9 9s3 9 9 9h27z" fill="#FF6B6B" opacity=".9"/>
-  <circle cx="124" cy="148" r="34" fill="#0D1017"/><circle cx="124" cy="148" r="20" fill="#3B4356"/>
-  <circle cx="124" cy="148" r="9" fill="#8792A6"/>
-  <circle cx="366" cy="148" r="34" fill="#0D1017"/><circle cx="366" cy="148" r="20" fill="#3B4356"/>
-  <circle cx="366" cy="148" r="9" fill="#8792A6"/>
-  <path d="M30 152h420" stroke="#FFF" stroke-width="1" opacity=".08"/>
+
+  <!-- 地面反光 -->
+  <ellipse cx="260" cy="196" rx="230" ry="14" fill="url(#tireSh)"/>
+  <ellipse cx="260" cy="176" rx="200" ry="26" fill="url(#floorRefl)" opacity=".5"/>
+
+  <!-- 車身主體 -->
+  <path d="M18,168 C14,168 12,160 14,150 C17,138 30,132 46,129 L86,121
+    C99,96 116,73 138,60 C152,52 168,47 186,46 L296,44 C320,44 340,50 356,62 L392,88
+    C418,92 448,98 468,108 C486,116 496,128 496,142 L496,158 C496,165 491,168 484,168 Z"
+    fill="url(#bodyG)"/>
+
+  <!-- 車頂高光 -->
+  <path d="M138,60 C152,52 168,47 186,46 L296,44 C320,44 340,50 356,62"
+    fill="none" stroke="url(#roofG)" stroke-width="10" stroke-linecap="round" opacity=".9" clip-path="url(#bodyClip)"/>
+
+  <!-- 車窗（前擋 + 側窗 + 後擋） -->
+  <path d="M150,116 L170,68 C179,60 190,56 202,55 L202,116 Z" fill="url(#glassG)"/>
+  <path d="M212,55 L288,54 C304,54 318,59 328,68 L340,116 L212,116 Z" fill="url(#glassG)"/>
+  <path d="M350,68 C370,72 388,79 400,90 L410,116 L352,116 Z" fill="url(#glassG)"/>
+  <path d="M150,116 L400,116" stroke="#0B0D18" stroke-width="3"/>
+  <path d="M204,55 L204,116 M340,68 L344,116" stroke="#0B0D18" stroke-width="2.5"/>
+  <path d="M160,105 L200,62" stroke="url(#glassHi)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M225,100 L305,60" stroke="url(#glassHi)" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+
+  <!-- 車身腰線高光 -->
+  <path d="M22,140 C90,130 260,124 495,140" stroke="#FFFFFF" stroke-width="2" opacity=".55" fill="none" clip-path="url(#bodyClip)"/>
+  <path d="M22,158 C120,150 380,150 494,156" stroke="#000000" stroke-width="10" opacity=".08" fill="none" clip-path="url(#bodyClip)"/>
+
+  <!-- 把手 / 細節 -->
+  <rect x="246" y="96" width="26" height="6" rx="3" fill="#5B6478"/>
+  <rect x="368" y="102" width="20" height="5.5" rx="2.75" fill="#5B6478"/>
+
+  <!-- 頭燈 / 尾燈 -->
+  <ellipse cx="480" cy="128" rx="20" ry="13" fill="url(#headGlow)"/>
+  <path d="M462,120 C472,116 486,117 494,124 C496,130 494,136 486,138 L464,136 Z" fill="#F4F7FF"/>
+  <ellipse cx="26" cy="140" rx="16" ry="11" fill="url(#tailGlow)"/>
+  <path d="M18,132 L44,134 L44,148 L20,148 C15,148 13,142 18,132 Z" fill="#FF6B6B"/>
+
+  <!-- 前後保桿分隔線 -->
+  <path d="M14,150 C40,146 80,144 96,146" stroke="#5B6478" stroke-width="2" opacity=".5" fill="none"/>
+  <path d="M412,116 C440,116 470,118 490,124" stroke="#5B6478" stroke-width="2" opacity=".5" fill="none"/>
+
+  <!-- 車輪 -->
+  <g>
+    <circle cx="128" cy="168" r="38" fill="#0A0C14"/>
+    <circle cx="128" cy="168" r="24" fill="url(#rimG)"/>
+    <circle cx="128" cy="168" r="9" fill="#3B4356"/>
+    <g stroke="#6B7386" stroke-width="2.4">
+      <line x1="128" y1="148" x2="128" y2="188"/><line x1="108" y1="168" x2="148" y2="168"/>
+      <line x1="114" y1="154" x2="142" y2="182"/><line x1="142" y1="154" x2="114" y2="182"/>
+    </g>
+    <circle cx="128" cy="168" r="38" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2"/>
+  </g>
+  <g>
+    <circle cx="412" cy="168" r="38" fill="#0A0C14"/>
+    <circle cx="412" cy="168" r="24" fill="url(#rimG)"/>
+    <circle cx="412" cy="168" r="9" fill="#3B4356"/>
+    <g stroke="#6B7386" stroke-width="2.4">
+      <line x1="412" y1="148" x2="412" y2="188"/><line x1="392" y1="168" x2="432" y2="168"/>
+      <line x1="398" y1="154" x2="426" y2="182"/><line x1="426" y1="154" x2="398" y2="182"/>
+    </g>
+    <circle cx="412" cy="168" r="38" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2"/>
+  </g>
+
+  <!-- 底盤陰影 -->
+  <path d="M18,168 L484,168 L480,174 L22,174 Z" fill="#05060A" opacity=".5"/>
 </svg>`;
 
 /* ============================================================
@@ -564,7 +640,7 @@ function renderHome(){
       </div>
     </div>
     <div class="car-stage">
-      ${v.photo? `<img class="car-photo" src="${v.photo}" alt="${esc(v.name)}">` : CAR_SVG}
+      ${CAR_SVG}
     </div>
   </div>
 
@@ -927,48 +1003,21 @@ function openVehicleForm(){
       <div class="field"><label>第三人責任險到期</label>
         <input type="date" id="v-ins2" value="${esc(v.insThird||'')}"></div>
     </div>
-    <div class="field"><label>車輛照片</label>
-      <input type="file" id="v-photo" accept="image/*">
-      <p class="hint" style="margin:8px 0 0">選填。建議用去背或深色背景的照片，首頁會直接以大圖呈現。</p></div>
     <button class="btn btn-primary" onclick="saveVehicle()">儲存</button>
-    ${S.vehicle?`<button class="btn btn-danger" style="margin-top:10px" onclick="clearPhoto()">移除照片，改用預設插畫</button>`:''}
     <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
 }
 async function saveVehicle(){
   const name=document.getElementById('v-name').value.trim();
   if(!name){ toast('請填寫車款名稱'); return; }
-  const f=document.getElementById('v-photo').files[0];
-  const photo=f? await readImage(f) : (S.vehicle&&S.vehicle.photo)||'';
   const v=Object.assign({},S.vehicle||{id:uid(),createdAt:today(),baseDate:today(),rules:DEFAULT_RULES},{
     name, year:document.getElementById('v-year').value.trim(),
     plate:document.getElementById('v-plate').value.trim(),
     mileage:Number(document.getElementById('v-km').value)||0,
     insCompulsory:document.getElementById('v-ins1').value,
-    insThird:document.getElementById('v-ins2').value,
-    photo
+    insThird:document.getElementById('v-ins2').value
   });
   if(v.baseMileage==null) v.baseMileage=v.mileage;
   await put('vehicles',v); await reload(); closeSheet(); toast('已儲存車輛資料');
-}
-async function clearPhoto(){
-  S.vehicle.photo=''; await put('vehicles',S.vehicle); await reload(); closeSheet(); toast('已改用預設插畫');
-}
-function readImage(file){
-  return new Promise(res=>{
-    const r=new FileReader();
-    r.onload=()=>{
-      const img=new Image();
-      img.onload=()=>{
-        const max=900, sc=Math.min(1,max/Math.max(img.width,img.height));
-        const c=document.createElement('canvas');
-        c.width=img.width*sc; c.height=img.height*sc;
-        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-        res(c.toDataURL('image/png'));
-      };
-      img.src=r.result;
-    };
-    r.readAsDataURL(file);
-  });
 }
 
 function openMileage(){

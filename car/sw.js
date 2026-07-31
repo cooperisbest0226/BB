@@ -1,5 +1,5 @@
 /* 車輛保養紀錄 — Service Worker */
-const CACHE = 'vehicle-maint-v1.0.0';
+const CACHE = 'vehicle-maint-v1.1.0';
 const ASSETS = [
   './',
   './index.html',
