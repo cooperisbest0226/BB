@@ -1,10 +1,11 @@
 /* Workspace service worker
    改版時務必調高 CACHE 版本號，否則使用者拿到的是舊快取。 */
-const CACHE = 'workspace-v1.1.0';
+const CACHE = 'workspace-v1.3.0';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './vendor/chart.umd.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-180.png',
