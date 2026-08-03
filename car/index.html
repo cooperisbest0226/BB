@@ -24,7 +24,7 @@
   --text:#F5F6FA; --text2:#9095A6; --disabled:#4A4D5C;
   --primary:#4A90F5; --success:#34D399; --warning:#F5A623; --danger:#FF5A5F;
   --cat-maint:#8B5CF6; --cat-repair:#4FA8F5; --cat-ins:#34D399; --cat-exp:#F5A623;
-  --glow-1:#6D5AE0; --glow-2:#3F6FE0;
+  --glow-1:#6D5AE0; --glow-2:#3F6FE0; --hero-fade:#08090F;
   --shadow-card:none;
   --r-hero:28px; --r-card:24px; --r-quick:20px; --r-list:16px; --r-btn:14px;
   --pad:20px;
@@ -39,7 +39,7 @@
   --text:#14181F; --text2:#6B7280; --disabled:#C2C6CC;
   --primary:#2F6FD6; --success:#1F9D6E; --warning:#D6910F; --danger:#E0454B;
   --cat-maint:#7C5CE0; --cat-repair:#2F7FD6; --cat-ins:#1F9D6E; --cat-exp:#D6910F;
-  --glow-1:#B7A9F0; --glow-2:#AFC7F5;
+  --glow-1:#B7A9F0; --glow-2:#AFC7F5; --hero-fade:#F5F6F8;
   --shadow-card:0 1px 2px rgba(20,24,31,.04), 0 8px 24px rgba(20,24,31,.06);
 }
 
@@ -51,6 +51,7 @@ body{
   font-size:16px; line-height:1.45;
   -webkit-font-smoothing:antialiased;
   overscroll-behavior-y:none;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;
 }
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
      font-family:-apple-system,"SF Pro Rounded","SF Pro Text",system-ui,sans-serif;letter-spacing:-.5px}
@@ -67,20 +68,29 @@ h1,h2,h3,p{margin:0}
 
 .wrap{padding:0 var(--pad)}
 .sec{margin-top:32px}
-.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;padding:0 var(--pad)}
-.sec-title{font-size:22px;font-weight:600;letter-spacing:-.2px}
-.link{color:var(--primary);font-size:15px;font-weight:500;display:flex;align-items:center;gap:2px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 var(--pad)}
+.sec-title{font-size:22px;font-weight:600;letter-spacing:-.2px;min-width:0;
+           white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 熱區補到 44pt（padding + 負 margin），視覺大小不變 */
+.link{color:var(--primary);font-size:15px;font-weight:500;display:flex;align-items:center;gap:2px;
+      flex:none;padding:12px 0 12px 12px;margin:-12px -0 -12px 0;min-height:44px}
 
 /* ---------- 英雄圖區 §5.2 ---------- */
-.hero{position:relative;padding:calc(var(--sat) + 8px) 0 0;overflow:hidden}
-.hero::before{
-  content:"";position:absolute;inset:-10% -20% 20%;
-  background:radial-gradient(60% 55% at 62% 26%,var(--glow-1) 0%,var(--glow-2) 42%,transparent 74%);
-  opacity:.85;filter:blur(6px);
-  animation:breathe 6s ease-in-out infinite;
+/* width:100% 必要 — 只給 aspect-ratio 而讓 min-height 生效時，
+   瀏覽器會反推寬度把 hero 撐得比畫面寬，導致整頁可橫向捲動 */
+.hero{position:relative;width:100%;overflow:hidden;isolation:isolate;
+      aspect-ratio:1536/1644;max-height:62dvh}
+.hero-media{position:absolute;inset:0;z-index:0;display:block}
+.hero-media img{width:100%;height:100%;object-fit:cover;object-position:50% 58%;display:block}
+/* 上方壓暗保文字對比、下方淡出融入頁面背景 */
+.hero-media::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(3,4,9,.80) 0%,rgba(3,4,9,.42) 18%,rgba(3,4,9,0) 38%),
+    linear-gradient(180deg,transparent 52%,var(--hero-fade) 96%);
 }
-@keyframes breathe{0%,100%{opacity:.82}50%{opacity:.92}}
-.hero-bar{position:relative;display:flex;justify-content:space-between;padding:8px var(--pad) 0}
+.hero-content{position:relative;z-index:2;padding:calc(var(--sat) + 8px) 0 0}
+.hero-bar{display:flex;justify-content:space-between;padding:8px var(--pad) 0}
 .round-btn{
   width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
   background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -88,13 +98,16 @@ h1,h2,h3,p{margin:0}
 }
 .round-btn:active{transform:scale(.94)}
 .dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--primary);border:2px solid var(--bg)}
-.hero-txt{position:relative;padding:14px var(--pad) 0}
-.eyebrow{font-size:15px;color:var(--text2);font-weight:400}
-.car-name{font-size:38px;font-weight:700;letter-spacing:-.5px;line-height:1.1;margin-top:2px}
-.car-meta{margin-top:6px;font-size:15px;color:var(--text2);display:flex;align-items:center;gap:10px}
-.car-meta i{width:1px;height:13px;background:var(--border-strong);display:block}
-.car-stage{position:relative;margin-top:-4px}
-.car-stage svg{width:100%;height:auto;display:block}
+.hero-txt{padding:14px var(--pad) 0;text-shadow:0 1px 14px rgba(0,0,0,.5)}
+.eyebrow{font-size:15px;color:rgba(255,255,255,.72);font-weight:400}
+.car-name{
+  font-size:clamp(28px,9vw,38px);font-weight:700;letter-spacing:-.5px;line-height:1.12;
+  margin-top:2px;color:#fff;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
+}
+.car-meta{margin-top:6px;font-size:15px;color:rgba(255,255,255,.72);
+          display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.car-meta i{width:1px;height:13px;background:rgba(255,255,255,.28);display:block;flex:none}
 
 /* ---------- 健康環卡 §1 簽名元素 ---------- */
 .health{
@@ -102,22 +115,30 @@ h1,h2,h3,p{margin:0}
   border-radius:var(--r-hero);background:var(--glass);border:1px solid var(--border-strong);
   backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:var(--shadow-card)
 }
-.health-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.health-label{font-size:14px;color:var(--text2);display:flex;align-items:center;gap:5px}
-.health-pct{font-size:56px;font-weight:700;line-height:1.02;margin:2px 0 0}
-.health-state{font-size:15px;font-weight:500;margin-top:2px}
-.ring{width:112px;height:112px;flex:none;position:relative}
-.ring svg{transform:rotate(-90deg)}
+.health-top{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.health-info{min-width:0;flex:1 1 auto}
+.health-label{font-size:14px;color:var(--text2);display:flex;align-items:center;gap:5px;
+              white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.health-label svg{flex:none}
+.health-pct{font-size:clamp(40px,15vw,56px);font-weight:700;line-height:1.02;margin:2px 0 0}
+.health-state{font-size:15px;font-weight:500;margin-top:2px;
+              white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ring{width:clamp(88px,28vw,112px);aspect-ratio:1;flex:none;position:relative}
+/* 只旋轉量規本身；用 .ring svg 會連環中央的心跳圖示一起轉 90 度並撐大 */
+.ring-gauge{width:100%;height:100%;display:block;transform:rotate(-90deg)}
 .ring-bg{stroke:var(--border-strong)}
 .ring-fg{stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.32,.72,0,1)}
 .ring-ico{position:absolute;inset:0;display:grid;place-items:center}
 .health-div{height:1px;background:var(--border-strong);margin:18px -22px 0}
-.health-foot{display:flex;align-items:center;gap:14px;padding:14px 0 12px}
-.hf-label{font-size:14px;color:var(--text2);flex:none}
-.hf-val{font-size:22px;font-weight:600;display:flex;align-items:baseline;gap:3px}
-.hf-val small{font-size:13px;font-weight:500;color:var(--text2)}
-.hf-sep{color:var(--text2);font-size:13px}
-.hf-ico{color:var(--text2);display:flex;align-items:center}
+.health-foot{display:flex;align-items:stretch;gap:16px;padding:14px 0 14px}
+.hf-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.hf-head{display:flex;align-items:center;gap:6px;color:var(--text2);min-width:0}
+.hf-head svg{flex:none}
+.hf-label{font-size:12.5px;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hf-val{font-size:22px;font-weight:600;display:flex;align-items:baseline;gap:4px;margin-top:4px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hf-val small{font-size:13px;font-weight:500;color:var(--text2);flex:none}
+.hf-line{width:1px;background:var(--border-strong);flex:none;margin:2px 0}
 
 /* ---------- 四宮格快速入口 §5.1 分類多色 ---------- */
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 var(--pad);margin-top:20px}
@@ -127,8 +148,9 @@ h1,h2,h3,p{margin:0}
   transition:transform .12s ease;box-shadow:var(--shadow-card)
 }
 .q:active{transform:scale(.96)}
-.q-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center}
-.q span{font-size:12.5px;color:var(--text);font-weight:500;letter-spacing:.2px}
+.q-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none}
+.q span{font-size:12.5px;color:var(--text);font-weight:500;letter-spacing:.2px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 
 /* ---------- 提醒 / 列表卡 ---------- */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);
@@ -139,17 +161,20 @@ h1,h2,h3,p{margin:0}
 .row+.row{border-top:1px solid var(--border)}
 .row-ico{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center}
 .row-mid{flex:1;min-width:0}
-.row-t{font-size:16px;font-weight:600;letter-spacing:-.1px}
+.row-t{font-size:16px;font-weight:600;letter-spacing:-.1px;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row-s{font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row-end{display:flex;align-items:center;gap:6px;flex:none}
-.row-val{font-size:16px;font-weight:600}
+.row-end{display:flex;align-items:center;gap:6px;flex:none;max-width:45%}
+.row-val{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chev{color:var(--disabled);display:flex}
 
 /* ---------- 分段控制 §7 ---------- */
 .segs{display:flex;gap:4px;margin:0 var(--pad) 14px;padding:4px;border-radius:13px;
       background:var(--card);border:1px solid var(--border)}
-.seg{flex:1;padding:8px 4px;border-radius:9px;font-size:14px;font-weight:500;color:var(--text2);
-     text-align:center;transition:all .18s ease}
+.seg{flex:1;min-width:0;min-height:44px;padding:8px 2px;border-radius:10px;
+     font-size:13.5px;font-weight:500;color:var(--text2);
+     display:flex;align-items:center;justify-content:center;
+     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .18s ease}
 .seg.on{background:var(--primary);color:#fff}
 
 /* ---------- 導覽列（次頁 / 一般分頁） ---------- */
@@ -195,21 +220,28 @@ h1,h2,h3,p{margin:0}
 .sheet .hint{font-size:13.5px;color:var(--text2);margin-bottom:18px}
 
 /* ---------- 表單 ---------- */
-.field{margin-bottom:16px}
+.field{margin-bottom:16px;min-width:0}
 .field label{display:block;font-size:13px;color:var(--text2);font-weight:500;margin-bottom:7px;letter-spacing:.2px}
 .field input,.field select,.field textarea{
-  width:100%;padding:14px 15px;background:var(--card);border:1px solid var(--border);
-  border-radius:var(--r-btn);outline:none;transition:border-color .16s ease,box-shadow .16s ease
+  display:block;width:100%;min-width:0;max-width:100%;
+  padding:14px 15px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r-btn);outline:none;transition:border-color .16s ease,box-shadow .16s ease;
+  -webkit-appearance:none;appearance:none
 }
+/* iOS 的 date 欄位有自帶內距與最小寬度，不歸零會撐破格線 */
+.field input[type=date]{min-height:52px;line-height:normal}
+.field input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+.field input[type=date]::-webkit-calendar-picker-indicator{margin-left:auto;opacity:.55}
 .field textarea{resize:none;min-height:76px}
 .field input:focus,.field select:focus,.field textarea:focus{
   border-color:var(--primary);box-shadow:0 0 0 3px rgba(74,144,245,.16)
 }
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f2>*{min-width:0}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--border);
-      font-size:14px;font-weight:500;color:var(--text2);display:flex;align-items:center;gap:6px;
-      transition:all .16s ease}
+.chip{min-height:44px;padding:10px 16px;border-radius:12px;background:var(--card);
+      border:1px solid var(--border);font-size:14px;font-weight:500;color:var(--text2);
+      display:flex;align-items:center;justify-content:center;gap:6px;transition:all .16s ease}
 .chip.on{color:#fff;border-color:transparent}
 
 .btn{width:100%;height:50px;border-radius:var(--r-btn);font-size:17px;font-weight:600;
@@ -236,10 +268,30 @@ h1,h2,h3,p{margin:0}
 .cb-lbl{font-size:11px;color:var(--text2)}
 .chart-base{height:1px;background:var(--border);margin-top:0}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 var(--pad)}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r-quick);padding:18px 16px;box-shadow:var(--shadow-card)}
-.stat-l{font-size:13px;color:var(--text2)}
-.stat-v{font-size:26px;font-weight:700;margin-top:5px}
-.legend{display:flex;flex-direction:column;gap:2px;padding:4px 0}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r-quick);
+      padding:18px 16px;box-shadow:var(--shadow-card);min-width:0}
+.stat-l{font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-v{font-size:clamp(19px,6.2vw,26px);font-weight:700;margin-top:5px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- Dialog §5.7（破壞性操作確認） ---------- */
+#dialog{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:28px;
+        background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+        opacity:0;pointer-events:none;transition:opacity .22s ease}
+#dialog.on{opacity:1;pointer-events:auto}
+.dlg{width:100%;max-width:300px;border-radius:22px;overflow:hidden;text-align:center;
+     background:var(--glass-strong);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+     border:1px solid var(--border-strong);transform:scale(.92);transition:transform .28s cubic-bezier(.32,.72,0,1)}
+#dialog.on .dlg{transform:none}
+.dlg h3{font-size:17px;font-weight:600;padding:22px 22px 0}
+.dlg p{font-size:13.5px;color:var(--text2);padding:6px 22px 20px;line-height:1.5}
+.dlg-btns{display:flex;border-top:1px solid var(--border-strong)}
+.dlg-b{flex:1;min-height:48px;font-size:17px;color:var(--primary);
+       display:flex;align-items:center;justify-content:center;transition:background .12s ease}
+.dlg-b+.dlg-b{border-left:1px solid var(--border-strong)}
+.dlg-b.danger{color:var(--danger);font-weight:600}
+.dlg-b:active{background:rgba(255,255,255,.06)}
+[data-theme="light"] .dlg-b:active{background:rgba(0,0,0,.04)}
 
 /* ---------- Toast §5.7 ---------- */
 #toast{
@@ -258,6 +310,15 @@ h1,h2,h3,p{margin:0}
   transform:translateY(-100%);transition:transform .3s ease
 }
 #offline.on{transform:none}
+#update{
+  position:fixed;top:0;left:0;right:0;z-index:71;padding:calc(var(--sat) + 9px) 16px 9px;
+  background:var(--primary);color:#fff;font-size:13.5px;font-weight:600;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  transform:translateY(-100%);transition:transform .3s ease
+}
+#update.on{transform:none}
+#update button{background:rgba(255,255,255,.22);border-radius:99px;padding:8px 16px;
+               font-size:13px;font-weight:600;min-height:44px;display:flex;align-items:center}
 
 /* ---------- 骨架屏 §5.6 ---------- */
 .sk{background:linear-gradient(100deg,var(--card) 30%,rgba(255,255,255,.07) 50%,var(--card) 70%);
@@ -270,6 +331,18 @@ h1,h2,h3,p{margin:0}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
                        transition-duration:.01ms!important}
 }
+/* 小螢幕（iPhone SE 等 ≤360px）收緊間距，避免四宮格與健康卡被擠爆 */
+@media (max-width:360px){
+  :root{--pad:14px}
+  .quick{gap:8px}
+  .q{padding:14px 4px 10px}
+  .q-ico{width:38px;height:38px;border-radius:12px}
+  .q span{font-size:11.5px;letter-spacing:0}
+  .health{padding:18px 16px 4px}
+  .health-div{margin:16px -16px 0}
+  .row{padding:14px 14px;gap:11px}
+  .row-ico{width:36px;height:36px}
+}
 @media (min-width:600px){
   #app{max-width:600px;margin:0 auto}
   .tabbar{left:50%;right:auto;width:100%;max-width:600px;transform:translateX(-50%)}
@@ -281,6 +354,7 @@ h1,h2,h3,p{margin:0}
 <body>
 
 <div id="offline">離線中 · 顯示的是已儲存的紀錄</div>
+<div id="update">有新版本可用 <button>重新載入</button></div>
 
 <div id="app">
 
@@ -304,7 +378,7 @@ h1,h2,h3,p{margin:0}
 
   <!-- ══════════ 統計 ══════════ -->
   <section class="screen" id="s-stats">
-    <div class="navbar"><h1>統計</h1><div class="sub">近 6 個月的養車花費</div></div>
+    <div class="navbar"><h1>統計</h1><div class="sub">你的養車花費一覽</div></div>
     <div id="stats-body"></div>
   </section>
 
@@ -343,6 +417,7 @@ h1,h2,h3,p{margin:0}
 
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet"><div class="grab"></div><div id="sheet-body"></div></div>
+<div id="dialog" aria-live="polite"></div>
 <div id="toast"></div>
 
 <script>
@@ -378,7 +453,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 /* ============================================================
    狀態
    ============================================================ */
-const S={vehicle:null, records:[], tab:'home', filter:'all', theme:'dark'};
+const S={vehicle:null, records:[], tab:'home', filter:'all', theme:'dark', statMode:'year'};
 
 const TYPES={
   maint :{label:'保養', color:'var(--cat-maint)',  key:'maint'},
@@ -486,115 +561,6 @@ function itemIcon(name){
 }
 
 /* ============================================================
-   車輛插畫（無照片時的預設）
-   ============================================================ */
-const CAR_SVG=`
-<svg viewBox="0 0 520 230" role="img" aria-label="車輛示意圖">
-  <defs>
-    <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0"    stop-color="#FFFFFF"/>
-      <stop offset=".18"  stop-color="#EDF0F5"/>
-      <stop offset=".38"  stop-color="#C7CEDA"/>
-      <stop offset=".62"  stop-color="#9AA3B4"/>
-      <stop offset="1"    stop-color="#6B7386"/>
-    </linearGradient>
-    <linearGradient id="roofG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D7DCE6"/>
-    </linearGradient>
-    <linearGradient id="glassG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#4A5A8C"/><stop offset=".55" stop-color="#232C48"/><stop offset="1" stop-color="#11162A"/>
-    </linearGradient>
-    <linearGradient id="glassHi" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".55"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="rimG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#EEF1F6"/><stop offset="1" stop-color="#8A93A6"/>
-    </linearGradient>
-    <radialGradient id="tireSh" cx=".5" cy=".5" r=".5">
-      <stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="headGlow" cx=".5" cy=".5" r=".5">
-      <stop offset="0" stop-color="#EAF2FF" stop-opacity=".95"/><stop offset="1" stop-color="#EAF2FF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="tailGlow" cx=".5" cy=".5" r=".5">
-      <stop offset="0" stop-color="#FF5A5F" stop-opacity=".9"/><stop offset="1" stop-color="#FF5A5F" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="floorRefl" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7C8CE0" stop-opacity=".35"/><stop offset="1" stop-color="#7C8CE0" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="bodyClip"><path d="M18,168 C14,168 12,160 14,150 C17,138 30,132 46,129 L86,121
-      C99,96 116,73 138,60 C152,52 168,47 186,46 L296,44 C320,44 340,50 356,62 L392,88
-      C418,92 448,98 468,108 C486,116 496,128 496,142 L496,158 C496,165 491,168 484,168 Z"/></clipPath>
-  </defs>
-
-  <!-- 地面反光 -->
-  <ellipse cx="260" cy="196" rx="230" ry="14" fill="url(#tireSh)"/>
-  <ellipse cx="260" cy="176" rx="200" ry="26" fill="url(#floorRefl)" opacity=".5"/>
-
-  <!-- 車身主體 -->
-  <path d="M18,168 C14,168 12,160 14,150 C17,138 30,132 46,129 L86,121
-    C99,96 116,73 138,60 C152,52 168,47 186,46 L296,44 C320,44 340,50 356,62 L392,88
-    C418,92 448,98 468,108 C486,116 496,128 496,142 L496,158 C496,165 491,168 484,168 Z"
-    fill="url(#bodyG)"/>
-
-  <!-- 車頂高光 -->
-  <path d="M138,60 C152,52 168,47 186,46 L296,44 C320,44 340,50 356,62"
-    fill="none" stroke="url(#roofG)" stroke-width="10" stroke-linecap="round" opacity=".9" clip-path="url(#bodyClip)"/>
-
-  <!-- 車窗（前擋 + 側窗 + 後擋） -->
-  <path d="M150,116 L170,68 C179,60 190,56 202,55 L202,116 Z" fill="url(#glassG)"/>
-  <path d="M212,55 L288,54 C304,54 318,59 328,68 L340,116 L212,116 Z" fill="url(#glassG)"/>
-  <path d="M350,68 C370,72 388,79 400,90 L410,116 L352,116 Z" fill="url(#glassG)"/>
-  <path d="M150,116 L400,116" stroke="#0B0D18" stroke-width="3"/>
-  <path d="M204,55 L204,116 M340,68 L344,116" stroke="#0B0D18" stroke-width="2.5"/>
-  <path d="M160,105 L200,62" stroke="url(#glassHi)" stroke-width="9" stroke-linecap="round"/>
-  <path d="M225,100 L305,60" stroke="url(#glassHi)" stroke-width="7" stroke-linecap="round" opacity=".7"/>
-
-  <!-- 車身腰線高光 -->
-  <path d="M22,140 C90,130 260,124 495,140" stroke="#FFFFFF" stroke-width="2" opacity=".55" fill="none" clip-path="url(#bodyClip)"/>
-  <path d="M22,158 C120,150 380,150 494,156" stroke="#000000" stroke-width="10" opacity=".08" fill="none" clip-path="url(#bodyClip)"/>
-
-  <!-- 把手 / 細節 -->
-  <rect x="246" y="96" width="26" height="6" rx="3" fill="#5B6478"/>
-  <rect x="368" y="102" width="20" height="5.5" rx="2.75" fill="#5B6478"/>
-
-  <!-- 頭燈 / 尾燈 -->
-  <ellipse cx="480" cy="128" rx="20" ry="13" fill="url(#headGlow)"/>
-  <path d="M462,120 C472,116 486,117 494,124 C496,130 494,136 486,138 L464,136 Z" fill="#F4F7FF"/>
-  <ellipse cx="26" cy="140" rx="16" ry="11" fill="url(#tailGlow)"/>
-  <path d="M18,132 L44,134 L44,148 L20,148 C15,148 13,142 18,132 Z" fill="#FF6B6B"/>
-
-  <!-- 前後保桿分隔線 -->
-  <path d="M14,150 C40,146 80,144 96,146" stroke="#5B6478" stroke-width="2" opacity=".5" fill="none"/>
-  <path d="M412,116 C440,116 470,118 490,124" stroke="#5B6478" stroke-width="2" opacity=".5" fill="none"/>
-
-  <!-- 車輪 -->
-  <g>
-    <circle cx="128" cy="168" r="38" fill="#0A0C14"/>
-    <circle cx="128" cy="168" r="24" fill="url(#rimG)"/>
-    <circle cx="128" cy="168" r="9" fill="#3B4356"/>
-    <g stroke="#6B7386" stroke-width="2.4">
-      <line x1="128" y1="148" x2="128" y2="188"/><line x1="108" y1="168" x2="148" y2="168"/>
-      <line x1="114" y1="154" x2="142" y2="182"/><line x1="142" y1="154" x2="114" y2="182"/>
-    </g>
-    <circle cx="128" cy="168" r="38" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2"/>
-  </g>
-  <g>
-    <circle cx="412" cy="168" r="38" fill="#0A0C14"/>
-    <circle cx="412" cy="168" r="24" fill="url(#rimG)"/>
-    <circle cx="412" cy="168" r="9" fill="#3B4356"/>
-    <g stroke="#6B7386" stroke-width="2.4">
-      <line x1="412" y1="148" x2="412" y2="188"/><line x1="392" y1="168" x2="432" y2="168"/>
-      <line x1="398" y1="154" x2="426" y2="182"/><line x1="426" y1="154" x2="398" y2="182"/>
-    </g>
-    <circle cx="412" cy="168" r="38" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2"/>
-  </g>
-
-  <!-- 底盤陰影 -->
-  <path d="M18,168 L484,168 L480,174 L22,174 Z" fill="#05060A" opacity=".5"/>
-</svg>`;
-
-/* ============================================================
    首頁
    ============================================================ */
 function renderHome(){
@@ -623,36 +589,41 @@ function renderHome(){
 
   el.innerHTML=`
   <div class="hero">
-    <div class="hero-bar">
-      <button class="round-btn" onclick="openReminders()" aria-label="提醒">
-        ${svg(I.bell,21)}${upcoming.some(x=>x.ratio<.15)?'<i class="dot"></i>':''}
-      </button>
-      <button class="round-btn" onclick="openAdd()" aria-label="新增紀錄">
-        ${svg('<path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',22)}
-      </button>
-    </div>
-    <div class="hero-txt">
-      <div class="eyebrow">我的愛車</div>
-      <h1 class="car-name">${esc(v.name)}</h1>
-      <div class="car-meta">
-        <span class="num">${esc(v.year||'')}</span>${v.year?'<i></i>':''}
-        <span class="num">${nf(v.mileage)} km</span>
+    <picture class="hero-media">
+      <source type="image/webp" srcset="img/hero-car.webp 780w, img/hero-car@2x.webp 1170w"
+              sizes="100vw">
+      <img src="img/hero-car.jpg" srcset="img/hero-car.jpg 780w, img/hero-car@2x.jpg 1170w"
+           sizes="100vw" alt="" fetchpriority="high" decoding="async">
+    </picture>
+    <div class="hero-content">
+      <div class="hero-bar">
+        <button class="round-btn" onclick="openReminders()" aria-label="保養提醒">
+          ${svg(I.bell,21)}${upcoming.some(x=>x.ratio<.15)?'<i class="dot"></i>':''}
+        </button>
+        <button class="round-btn" onclick="openAdd()" aria-label="新增紀錄">
+          ${svg('<path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',22)}
+        </button>
       </div>
-    </div>
-    <div class="car-stage">
-      ${CAR_SVG}
+      <div class="hero-txt">
+        <div class="eyebrow">我的愛車</div>
+        <h1 class="car-name">${esc(v.name)}</h1>
+        <div class="car-meta">
+          ${v.year?`<span class="num">${esc(v.year)}</span><i></i>`:''}
+          <span class="num">${nf(v.mileage)} km</span>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="health">
     <div class="health-top">
-      <div>
+      <div class="health-info">
         <div class="health-label">車輛健康度 ${svg(I.info,15)}</div>
         <div class="health-pct num" id="h-pct" style="color:var(--text)">0%</div>
         <div class="health-state" style="color:${col}">${healthText(h.score)}</div>
       </div>
       <div class="ring">
-        <svg width="112" height="112" viewBox="0 0 112 112">
+        <svg class="ring-gauge" viewBox="0 0 112 112" preserveAspectRatio="xMidYMid meet">
           <circle class="ring-bg" cx="56" cy="56" r="${R}" fill="none" stroke-width="8"/>
           <circle class="ring-fg" id="h-ring" cx="56" cy="56" r="${R}" fill="none" stroke="${col}"
                   stroke-width="8" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}"/>
@@ -662,12 +633,15 @@ function renderHome(){
     </div>
     <div class="health-div"></div>
     <div class="health-foot">
-      <span class="hf-label">距離下次保養</span>
-      <span class="hf-val num">${kmTxt}<small>km</small></span>
-      <span class="hf-ico">${svg(I.car,19)}</span>
-      <span class="hf-sep">或</span>
-      <span class="hf-val num">${dayTxt}<small>天</small></span>
-      <span class="hf-ico" style="margin-left:auto">${svg(I.cal,19)}</span>
+      <div class="hf-cell">
+        <div class="hf-head">${svg(I.car,16)}<span class="hf-label">距離下次保養</span></div>
+        <div class="hf-val num">${kmTxt}<small>km</small></div>
+      </div>
+      <div class="hf-line"></div>
+      <div class="hf-cell">
+        <div class="hf-head">${svg(I.cal,16)}<span class="hf-label">或還剩</span></div>
+        <div class="hf-val num">${dayTxt}<small>天</small></div>
+      </div>
     </div>
   </div>
 
@@ -750,11 +724,12 @@ function renderTime(){
       lastM=m;
     }
     const t=TYPES[r.type]||TYPES.other;
+    const sub=[fmtDate(r.date), r.mileage?nf(r.mileage)+' km':'', r.note||''].filter(Boolean).join(' · ');
     html+=`<div class="row" onclick="openRecord('${r.id}')">
       <span class="row-ico" style="background:color-mix(in srgb, ${t.color} 16%, transparent);color:${t.color}">${svg(itemIcon(r.item),21)}</span>
       <div class="row-mid">
         <div class="row-t">${esc(r.item)}</div>
-        <div class="row-s">${fmtDate(r.date)} · ${ago(r.date)}${r.mileage?` · ${nf(r.mileage)} km`:''}</div>
+        <div class="row-s">${esc(sub)}</div>
       </div>
       <div class="row-end"><span class="row-val num">${r.cost?'$'+nf(r.cost):''}</span>${svg(I.chev,17)}</div>
     </div>`;
@@ -772,40 +747,78 @@ function renderStats(){
     el.innerHTML=`<div class="empty">
       ${svg('<path d="M10 52V32M22 52V14M34 52V26M46 52V20" stroke="var(--primary)" stroke-width="3.2" stroke-linecap="round"/><path d="M6 58h52" stroke="var(--cat-exp)" stroke-width="2.4" stroke-linecap="round"/>',64)}
       <h3>還沒有可統計的花費</h3>
-      <p>新增幾筆帶金額的紀錄，這裡就會出現每月花費走勢。</p>
+      <p>新增幾筆帶金額的紀錄，這裡就會出現花費走勢。</p>
       <button class="btn btn-primary" onclick="openAdd()">新增紀錄</button></div>`;
     return;
   }
-  const months=[]; const now=new Date();
-  for(let i=5;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:`${d.getMonth()+1}月`,sum:0});
-  }
-  let total=0; const byType={};
+
+  const now=new Date(), yNow=now.getFullYear();
+  const byYear={}, byType={};
+  let total=0;
   S.records.forEach(r=>{
     const c=Number(r.cost)||0; total+=c;
+    byYear[r.date.slice(0,4)]=(byYear[r.date.slice(0,4)]||0)+c;
     byType[r.type]=(byType[r.type]||0)+c;
-    const m=months.find(x=>x.key===r.date.slice(0,7)); if(m)m.sum+=c;
   });
-  const max=Math.max(...months.map(m=>m.sum),1);
-  const half=months.slice(0,6).reduce((s,m)=>s+m.sum,0);
+
+  let buckets;
+  if(S.statMode==='month'){
+    buckets=[];
+    for(let i=11;i>=0;i--){
+      const d=new Date(yNow,now.getMonth()-i,1);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      buckets.push({key,label:`${d.getMonth()+1}`,sum:0});
+    }
+    S.records.forEach(r=>{
+      const b=buckets.find(x=>x.key===r.date.slice(0,7)); if(b)b.sum+=Number(r.cost)||0;
+    });
+  }else{
+    const years=Object.keys(byYear).sort();
+    const from=years.length? Math.min(Number(years[0]), yNow-5) : yNow-5;
+    buckets=[];
+    for(let y=from;y<=yNow;y++) buckets.push({key:String(y),label:String(y).slice(2),sum:byYear[y]||0});
+    if(buckets.length>8) buckets=buckets.slice(-8);
+  }
+
+  const max=Math.max(...buckets.map(b=>b.sum),1);
+  const thisYear=byYear[yNow]||0;
+
+  // 每公里養車成本（以最早紀錄里程到目前里程計算）
+  const kms=S.records.map(r=>Number(r.mileage)||0).filter(Boolean);
+  const spanKm=(Number(S.vehicle?.mileage)||Math.max(...kms,0)) - Math.min(...kms, Number(S.vehicle?.baseMileage)||Infinity);
+  const perKm = spanKm>0 ? total/spanKm : null;
 
   el.innerHTML=`
     <div class="stat-grid">
-      <div class="stat"><div class="stat-l">近 6 個月花費</div><div class="stat-v num">$${nf(half)}</div></div>
+      <div class="stat"><div class="stat-l">${yNow} 年花費</div><div class="stat-v num">$${nf(thisYear)}</div></div>
       <div class="stat"><div class="stat-l">累計總花費</div><div class="stat-v num">$${nf(total)}</div></div>
     </div>
+    ${perKm!=null?`<div class="stat-grid" style="margin-top:12px">
+      <div class="stat"><div class="stat-l">平均每公里成本</div>
+        <div class="stat-v num">$${perKm.toFixed(2)}</div></div>
+      <div class="stat"><div class="stat-l">紀錄涵蓋里程</div>
+        <div class="stat-v num">${nf(spanKm)}<span style="font-size:14px;color:var(--text2)"> km</span></div></div>
+    </div>`:''}
+
     <div class="sec">
-      <div class="sec-head"><h2 class="sec-title">每月花費</h2></div>
+      <div class="sec-head"><h2 class="sec-title">花費走勢</h2></div>
+      <div class="segs" id="stat-segs" style="margin-top:0">
+        <button class="seg ${S.statMode!=='month'?'on':''}" data-m="year"
+                style="${S.statMode!=='month'?'background:var(--primary);color:#fff':''}">依年度</button>
+        <button class="seg ${S.statMode==='month'?'on':''}" data-m="month"
+                style="${S.statMode==='month'?'background:var(--primary);color:#fff':''}">近 12 個月</button>
+      </div>
       <div class="card"><div class="chart">
         <div class="chart-bars">
-          ${months.map((m,i)=>`<div class="cb">
-            <div class="cb-fill ${i===5?'now':''}" style="height:0" data-h="${(m.sum/max*100).toFixed(1)}"></div>
+          ${buckets.map((m,i)=>`<div class="cb">
+            <div class="cb-fill ${i===buckets.length-1?'now':''}" style="height:0"
+                 data-h="${(m.sum/max*100).toFixed(1)}" title="$${nf(m.sum)}"></div>
             <div class="cb-lbl">${m.label}</div></div>`).join('')}
         </div>
         <div class="chart-base"></div>
       </div></div>
     </div>
+
     <div class="sec">
       <div class="sec-head"><h2 class="sec-title">分類佔比</h2></div>
       <div class="card">
@@ -819,6 +832,10 @@ function renderStats(){
         }).join('')}
       </div>
     </div>`;
+
+  el.querySelectorAll('#stat-segs .seg').forEach(s=>s.onclick=()=>{
+    S.statMode=s.dataset.m; renderStats();
+  });
   requestAnimationFrame(()=>{
     el.querySelectorAll('.cb-fill').forEach((b,i)=>{
       setTimeout(()=>b.style.height=Math.max(2,+b.dataset.h)+'%', i*40);
@@ -880,10 +897,29 @@ function renderMe(){
     <div class="card">
       <div class="row"><div class="row-mid">
         <div class="row-t">車輛保養紀錄</div>
-        <div class="row-s">版本 1.0.0 · 資料只存在這台裝置上</div></div></div>
+        <div class="row-s">版本 1.2.0 · 共 ${S.records.length} 筆紀錄 · 資料只存在這台裝置</div></div></div>
+      <div class="row" onclick="clearAll()">
+        <span class="row-ico" style="background:color-mix(in srgb, var(--danger) 16%, transparent);color:var(--danger)">
+          ${svg('<path d="M5.4 7.2h13.2M9.6 7.2V5.4a1.4 1.4 0 0 1 1.4-1.4h2a1.4 1.4 0 0 1 1.4 1.4v1.8M7 7.2l.8 11.4a1.6 1.6 0 0 0 1.6 1.5h5.2a1.6 1.6 0 0 0 1.6-1.5L17 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',21)}</span>
+        <div class="row-mid"><div class="row-t" style="color:var(--danger)">清除所有資料</div>
+          <div class="row-s">建議先匯出備份再執行</div></div>
+        <div class="row-end">${svg(I.chev,17)}</div>
+      </div>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none">`;
   document.getElementById('importFile').onchange=importData;
+}
+
+async function clearAll(){
+  const ok=await confirmDialog({
+    title:'清除所有資料？',
+    body:`會刪掉車輛資料與全部 ${S.records.length} 筆紀錄，且無法復原。`,
+    danger:'全部清除'
+  });
+  if(!ok)return;
+  for(const v of await getAll('vehicles')) await del('vehicles',v.id);
+  for(const r of await getAll('records'))  await del('records',r.id);
+  await reload(); go('home'); toast('已清除所有資料');
 }
 
 /* ============================================================
@@ -936,49 +972,85 @@ function bindChips(id){
     };
   });
 }
-async function saveRecord(){
+async function saveRecord(editId){
   const type=document.querySelector('#rc-type .chip.on').dataset.k;
   const item=document.getElementById('rc-item').value.trim();
   if(!item){ toast('請填寫項目名稱'); return; }
   const km=document.getElementById('rc-km').value;
+  const old=editId? S.records.find(x=>x.id===editId) : null;
   const rec={
-    id:uid(), vehicleId:S.vehicle.id, type, item,
+    id: editId || uid(),
+    vehicleId:S.vehicle.id, type, item,
     date:document.getElementById('rc-date').value||today(),
-    mileage:km?Number(km):Number(S.vehicle.mileage)||0,
+    mileage:km!==''?Number(km):(old?old.mileage:Number(S.vehicle.mileage)||0),
     cost:Number(document.getElementById('rc-cost').value)||0,
     shop:document.getElementById('rc-shop').value.trim(),
     note:document.getElementById('rc-note').value.trim(),
-    createdAt:new Date().toISOString()
+    createdAt: old? old.createdAt : new Date().toISOString()
   };
   await put('records',rec);
   if(rec.mileage>(Number(S.vehicle.mileage)||0)){
     S.vehicle.mileage=rec.mileage; await put('vehicles',S.vehicle);
   }
-  await reload(); closeSheet(); toast('已儲存紀錄');
+  await reload(); closeSheet(); toast(editId?'已更新紀錄':'已儲存紀錄');
 }
 
 function openRecord(id){
   const r=S.records.find(x=>x.id===id); if(!r)return;
-  const t=TYPES[r.type]||TYPES.other;
   openSheet(`
-    <h2>${esc(r.item)}</h2>
-    <p class="hint">${t.label} · ${fmtDate(r.date)}</p>
-    <div class="card" style="margin:0 0 18px">
-      <div class="row"><div class="row-mid"><div class="row-s">里程</div>
-        <div class="row-t num">${nf(r.mileage)} km</div></div></div>
-      <div class="row"><div class="row-mid"><div class="row-s">金額</div>
-        <div class="row-t num">NT$ ${nf(r.cost)}</div></div></div>
-      ${r.shop?`<div class="row"><div class="row-mid"><div class="row-s">店家</div>
-        <div class="row-t">${esc(r.shop)}</div></div></div>`:''}
-      ${r.note?`<div class="row"><div class="row-mid"><div class="row-s">備註</div>
-        <div class="row-t" style="font-weight:400;font-size:15px">${esc(r.note)}</div></div></div>`:''}
+    <h2>編輯紀錄</h2>
+    <p class="hint">改完按儲存，健康度與提醒會立刻重算。</p>
+    <div class="field"><label>類型</label><div class="chips" id="rc-type">
+      ${Object.keys(TYPES).map(k=>`<button class="chip ${k===r.type?'on':''}" data-k="${k}"
+        style="${k===r.type?`background:${TYPES[k].color}`:''}">${TYPES[k].label}</button>`).join('')}
+    </div></div>
+    <div class="field"><label>項目</label>
+      <input id="rc-item" value="${esc(r.item)}"></div>
+    <div class="f2">
+      <div class="field"><label>日期</label><input type="date" id="rc-date" value="${esc(r.date)}"></div>
+      <div class="field"><label>當時里程 (km)</label>
+        <input type="number" inputmode="numeric" id="rc-km" value="${esc(r.mileage||'')}"></div>
     </div>
-    <button class="btn btn-danger" onclick="removeRecord('${r.id}')">刪除這筆紀錄</button>
-    <button class="btn btn-ghost" onclick="closeSheet()">關閉</button>`);
+    <div class="f2">
+      <div class="field"><label>金額 (NT$)</label>
+        <input type="number" inputmode="numeric" id="rc-cost" value="${esc(r.cost||'')}"></div>
+      <div class="field"><label>店家</label><input id="rc-shop" value="${esc(r.shop||'')}"></div>
+    </div>
+    <div class="field"><label>備註</label><textarea id="rc-note">${esc(r.note||'')}</textarea></div>
+    <button class="btn btn-primary" onclick="saveRecord('${r.id}')">儲存變更</button>
+    <button class="btn btn-danger" style="margin-top:10px" onclick="removeRecord('${r.id}')">刪除這筆紀錄</button>
+    <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
+  bindChips('rc-type');
 }
 async function removeRecord(id){
-  if(!confirm('刪除後無法復原，確定要刪除嗎？'))return;
+  const r=S.records.find(x=>x.id===id);
+  const ok=await confirmDialog({
+    title:'刪除這筆紀錄？',
+    body:`「${r?r.item:''}」刪除後無法復原。`,
+    danger:'刪除'
+  });
+  if(!ok)return;
   await del('records',id); await reload(); closeSheet(); toast('已刪除紀錄');
+}
+
+/* ---------- 自訂確認對話框（取代瀏覽器原生 confirm） ---------- */
+function confirmDialog({title,body,danger='確定',cancel='取消'}){
+  return new Promise(res=>{
+    const d=document.getElementById('dialog');
+    d.innerHTML=`
+      <div class="dlg">
+        <h3>${esc(title)}</h3>
+        <p>${esc(body)}</p>
+        <div class="dlg-btns">
+          <button class="dlg-b" data-v="0">${esc(cancel)}</button>
+          <button class="dlg-b danger" data-v="1">${esc(danger)}</button>
+        </div>
+      </div>`;
+    d.classList.add('on');
+    const done=v=>{ d.classList.remove('on'); res(v); };
+    d.querySelectorAll('.dlg-b').forEach(b=>b.onclick=()=>done(b.dataset.v==='1'));
+    d.onclick=e=>{ if(e.target===d) done(false); };
+  });
 }
 
 /* ---------- 車輛資料 ---------- */
@@ -1153,12 +1225,32 @@ async function boot(){
   /* 注意：boot() 是 async，執行到這裡時 load 事件很可能已經觸發過，
      若只掛 addEventListener('load') 會永遠註冊不到 SW。 */
   if('serviceWorker' in navigator){
-    const reg=()=>navigator.serviceWorker.register('sw.js')
-      .then(r=>console.log('SW 已註冊：',r.scope))
-      .catch(err=>console.warn('SW 註冊失敗：',err));
+    const reg=async()=>{
+      try{
+        const r=await navigator.serviceWorker.register('sw.js');
+        console.log('SW 已註冊：',r.scope);
+        // 有新版本待命時提示重新載入，避免使用者卡在舊快取
+        r.addEventListener('updatefound',()=>{
+          const sw=r.installing; if(!sw)return;
+          sw.addEventListener('statechange',()=>{
+            if(sw.state==='installed' && navigator.serviceWorker.controller) showUpdateBanner();
+          });
+        });
+        if(r.waiting && navigator.serviceWorker.controller) showUpdateBanner();
+        setInterval(()=>r.update().catch(()=>{}), 60*60*1000);
+      }catch(err){ console.warn('SW 註冊失敗：',err); }
+    };
     if(document.readyState==='complete') reg();
     else addEventListener('load',reg,{once:true});
   }
+}
+
+let updateShown=false;
+function showUpdateBanner(){
+  if(updateShown)return; updateShown=true;
+  const b=document.getElementById('update');
+  b.classList.add('on');
+  b.querySelector('button').onclick=()=>location.reload();
 }
 boot().catch(e=>{
   console.error(e);

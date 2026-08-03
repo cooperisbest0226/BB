@@ -1,9 +1,13 @@
 /* 車輛保養紀錄 — Service Worker */
-const CACHE = 'vehicle-maint-v1.1.0';
+const CACHE = 'vehicle-maint-v1.2.0';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './img/hero-car.webp',
+  './img/hero-car@2x.webp',
+  './img/hero-car.jpg',
+  './img/hero-car@2x.jpg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
@@ -13,7 +17,10 @@ const ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
+      // 逐項加入：任何一個資源 404 都不該讓整個 SW 安裝失敗
+      .then(c => Promise.all(ASSETS.map(u =>
+        c.add(u).catch(err => console.warn('[SW] 快取失敗：', u, err))
+      )))
       .then(() => self.skipWaiting())
   );
 });
