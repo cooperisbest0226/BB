@@ -16,7 +16,7 @@
 <style>
 :root{
   --bg:#f7f7f8; --surface:#ffffff; --surface-2:#f2f2f4; --surface-3:#ebebee;
-  --text:#18181b; --text-2:#63636d; --text-3:#9b9ba4;
+  --text:#18181b; --text-2:#5c5c66; --text-3:#76767e;
   --border:#e6e6ea; --border-2:#d6d6dc;
   --primary:#2563eb; --primary-soft:#eaf1fe; --primary-text:#1d4ed8;
   --success:#15803d; --success-soft:#e8f5ec;
@@ -32,7 +32,7 @@
 }
 [data-theme="dark"]{
   --bg:#0b0b0d; --surface:#151518; --surface-2:#1d1d21; --surface-3:#26262b;
-  --text:#f4f4f5; --text-2:#a1a1ab; --text-3:#6e6e78;
+  --text:#f4f4f5; --text-2:#a8a8b2; --text-3:#84848f;
   --border:#26262b; --border-2:#35353c;
   --primary:#5b8dee; --primary-soft:#17233d; --primary-text:#8fb2f5;
   --success:#4ade80; --success-soft:#13291c;
@@ -115,7 +115,7 @@ ul{margin:0;padding:0;list-style:none}
 }
 textarea.field{height:auto;min-height:76px;padding:9px 11px;line-height:1.6;resize:vertical;font-family:inherit}
 select.field{appearance:none;cursor:pointer;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239b9ba4' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2376767e' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 9px center;padding-right:30px}
 .field:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
 .field::placeholder{color:var(--text-3)}
@@ -283,7 +283,8 @@ select.field{appearance:none;cursor:pointer;
 .tab:hover{color:var(--text-2)}
 .tab[aria-selected="true"]{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
 .crumb{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text-3);margin-bottom:10px}
-.crumb button{color:var(--text-3);transition:color var(--dur)}
+.crumb button{color:var(--text-3);transition:color var(--dur);display:inline-flex;align-items:center;gap:4px;padding:7px 8px;margin:-7px -8px;border-radius:7px}
+.crumb button:hover{background:var(--surface-2)}
 .crumb button:hover{color:var(--primary)}
 .crumb svg{width:13px;height:13px}
 .proj-hero{display:flex;align-items:flex-start;gap:13px;margin-bottom:18px}
@@ -335,6 +336,115 @@ dialog::backdrop{background:rgba(10,10,12,.42);backdrop-filter:blur(2px)}
 }
 .updatebar.show{display:flex}
 .updatebar button{margin-left:auto;font-weight:600;color:var(--primary-text);font-size:13px}
+
+/* ---------- calendar ---------- */
+.cal-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.cal-month{font-size:16px;font-weight:600;letter-spacing:-.01em;min-width:118px}
+.cal-nav{display:flex;gap:4px}
+.cal-layout{display:grid;grid-template-columns:minmax(0,1fr) 232px;gap:16px;align-items:start}
+.cal-grid{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.cal-dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--border)}
+.cal-dow span{padding:7px 0;text-align:center;font-size:11.5px;color:var(--text-3);font-weight:500}
+.cal-weeks{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cal-day{
+  min-height:96px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:5px 6px;transition:background var(--dur);position:relative;overflow:hidden;
+}
+.cal-day:nth-child(7n){border-right:none}
+.cal-weeks .cal-day:nth-last-child(-n+7){border-bottom:none}
+.cal-day.other{background:var(--surface-2)}
+.cal-day.other .calchip{opacity:.7}
+.cal-day.other .cal-date{color:var(--text-3);opacity:.75}
+.cal-day.dragover{background:var(--primary-soft);box-shadow:inset 0 0 0 2px var(--primary)}
+.cal-date{
+  display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;
+  font-size:12px;font-variant-numeric:tabular-nums;color:var(--text-2);border-radius:11px;margin-bottom:3px;
+}
+.cal-day.today .cal-date{background:var(--primary);color:#fff;font-weight:600}
+.cal-day.weekend:not(.other){background:color-mix(in srgb,var(--surface-2) 45%,transparent)}
+.calchip{
+  display:flex;align-items:center;gap:5px;padding:2.5px 6px;border-radius:6px;margin-bottom:3px;
+  font-size:11.5px;line-height:1.4;background:var(--surface-2);cursor:grab;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background var(--dur);
+}
+.calchip:hover{background:var(--surface-3)}
+.calchip.dragging{opacity:.4}
+.calchip.is-done{color:var(--text-3);text-decoration:line-through}
+.calchip.is-over{background:var(--danger-soft);color:var(--danger)}
+.calchip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.calchip-text{overflow:hidden;text-overflow:ellipsis}
+.cal-more{font-size:11px;color:var(--text-3);padding:1px 6px}
+.cal-more:hover{color:var(--primary)}
+.tray{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;position:sticky;top:0}
+.tray.dragover{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.tray-title{font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:3px}
+.tray-hint{font-size:11.5px;color:var(--text-3);margin-bottom:10px;line-height:1.5}
+.tray-item{
+  display:flex;align-items:center;gap:7px;padding:7px 9px;border:1px solid var(--border);
+  border-radius:8px;margin-bottom:6px;font-size:12.5px;cursor:grab;background:var(--surface);
+  transition:border-color var(--dur);
+}
+.tray-item:hover{border-color:var(--border-2)}
+.tray-item.dragging{opacity:.4}
+.tray-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-daylist{display:none}
+
+/* ---------- timeline ---------- */
+.tl-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.tl-range{font-size:13.5px;font-weight:500;min-width:150px}
+.tl-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.tl-inner{min-width:600px}
+.tl-axis{display:grid;border-bottom:1px solid var(--border);position:relative}
+.tl-axis-label{
+  padding:6px 2px;text-align:center;font-size:10.5px;color:var(--text-3);
+  font-variant-numeric:tabular-nums;border-left:1px solid var(--border);
+}
+.tl-axis-label.is-today{color:var(--primary);font-weight:600}
+.tl-axis-label.is-weekend{background:var(--surface-2)}
+.tl-axis-label:first-child{border-left:none}
+.tl-row{display:grid;border-bottom:1px solid var(--border);position:relative;min-height:38px;align-items:center}
+.tl-row:last-child{border-bottom:none}
+.tl-row:hover{background:var(--surface-2)}
+.tl-name{
+  padding:8px 11px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  position:sticky;left:0;background:var(--surface);z-index:2;border-right:1px solid var(--border);
+}
+.tl-row:hover .tl-name{background:var(--surface-2)}
+.tl-name.is-done{color:var(--text-3);text-decoration:line-through}
+.tl-cells{display:grid;position:relative;height:100%}
+.tl-cell{border-left:1px solid var(--border)}
+.tl-cell.is-weekend{background:color-mix(in srgb,var(--surface-2) 50%,transparent)}
+.tl-bar{
+  position:absolute;height:20px;top:50%;transform:translateY(-50%);border-radius:5px;
+  display:flex;align-items:center;padding:0 7px;font-size:11px;color:#fff;
+  white-space:nowrap;overflow:hidden;cursor:pointer;transition:filter var(--dur);z-index:1;
+}
+.tl-bar:hover{filter:brightness(1.1)}
+.tl-bar.is-done{opacity:.5}
+.tl-bar.is-milestone{
+  width:16px!important;height:16px;border-radius:4px;transform:translateY(-50%) rotate(45deg);padding:0;
+}
+.tl-today{position:absolute;top:0;bottom:0;width:2px;background:var(--primary);z-index:3;pointer-events:none;opacity:.55}
+.tl-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:11.5px;color:var(--text-3)}
+.tl-legend span{display:flex;align-items:center;gap:5px}
+.tl-legend i{width:11px;height:11px;border-radius:3px;display:block}
+
+@media (max-width:860px){
+  .cal-layout{grid-template-columns:minmax(0,1fr)}
+  .tray{position:static}
+}
+@media (max-width:640px){
+  .cal-day{min-height:52px;padding:4px 3px}
+  .cal-date{font-size:11px;min-width:20px;height:20px;margin-bottom:2px}
+  .calchip{padding:0;background:none!important;gap:0;margin-bottom:2px;justify-content:center}
+  .calchip:hover{background:none}
+  .calchip-text{display:none}
+  .calchip-dot{width:5px;height:5px}
+  .cal-day .calchip{display:inline-flex;width:auto;margin-right:2px}
+  .cal-more{display:none}
+  .cal-daylist{display:block;margin-top:14px}
+  .tl-inner{min-width:520px}
+}
 
 /* ---------- mobile ---------- */
 .mobilenav{display:none}
@@ -393,6 +503,7 @@ dialog::backdrop{background:rgba(10,10,12,.42);backdrop-filter:blur(2px)}
       <main class="page">
         <section class="view" id="view-dashboard"></section>
         <section class="view" id="view-tasks" hidden></section>
+        <section class="view" id="view-calendar" hidden></section>
         <section class="view" id="view-projects" hidden></section>
         <section class="view" id="view-settings" hidden></section>
       </main>
@@ -406,7 +517,7 @@ dialog::backdrop{background:rgba(10,10,12,.42);backdrop-filter:blur(2px)}
 <dialog id="dlg"><div class="sheet" id="dlgSheet"></div></dialog>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script>
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const DB_NAME = 'work_dash_v1';
 const DB_VER = 1;
 
@@ -424,6 +535,7 @@ const P = {
   moon:'<path d="M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10"/>',
   monitor:'<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
   chevronLeft:'<path d="m14 6-6 6 6 6"/>',
+  chevronRight:'<path d="m10 6 6 6-6 6"/>',
   download:'<path d="M12 3v12M7 11l5 5 5-5"/><path d="M4 20h16"/>',
   upload:'<path d="M12 20V8M7 12l5-5 5 5"/><path d="M4 20h16"/>',
   layout:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
@@ -500,6 +612,8 @@ const S = {
   route:'dashboard', projects:[], tasks:[], settings:{},
   taskView:'list', taskFilter:'all', taskProject:'all', selectedTask:null,
   openProject:null, projectTab:'tasks',
+  calMonth:null, calSelectedDay:null,
+  tlSpan:'month', tlAnchor:null,
 };
 const projectById = id => S.projects.find(p => p.id === id);
 const activeProjects = () => S.projects.filter(p => !p.archived);
@@ -637,6 +751,7 @@ async function removeProject(id){
 const NAV = [
   {id:'dashboard', label:'Dashboard', icon:'home'},
   {id:'tasks', label:'Tasks', icon:'checks'},
+  {id:'calendar', label:'Calendar', icon:'calendar'},
   {id:'projects', label:'Projects', icon:'folder'},
   {id:'settings', label:'Settings', icon:'settings'},
 ];
@@ -877,6 +992,9 @@ function renderProjectDetail(p){
       ? `<ul>${list.map(t => taskRow(t)).join('')}</ul>`
       : `<div class="empty"><p class="empty-title">這個專案還沒有任務</p><p class="empty-text">用下面的欄位加第一件</p></div>`}</div>
       <label class="quickadd" style="margin-top:12px">${icon('plus')}<input id="projQuickAdd" placeholder="在「${esc(p.name)}」新增任務" aria-label="新增任務"></label>`;
+  } else if (S.projectTab === 'timeline') {
+    S.tlAnchor ||= todayISO();
+    body = renderTimeline(p);
   } else if (S.projectTab === 'notes') {
     body = `<textarea class="field" id="projNotes" placeholder="專案筆記" style="min-height:220px">${esc(p.notes || '')}</textarea>
       <p style="font-size:12px;color:var(--text-3);margin-top:8px">離開欄位時自動儲存。Markdown 渲染排在後面的階段。</p>`;
@@ -902,7 +1020,7 @@ function renderProjectDetail(p){
     <button class="btn btn-icon" type="button" data-editproject="${p.id}" aria-label="編輯專案">${icon('edit')}</button>
   </div>
   <div class="tabs" role="tablist">
-    ${[['tasks','任務'],['notes','Notes'],['stats','統計']].map(([k,l]) =>
+    ${[['tasks','任務'],['timeline','Timeline'],['notes','Notes'],['stats','統計']].map(([k,l]) =>
       `<button class="tab" type="button" role="tab" data-ptab="${k}" aria-selected="${S.projectTab === k}">${l}</button>`).join('')}
   </div>
   ${body}`;
@@ -972,8 +1090,253 @@ function renderSettings(){
   </div>`;
 }
 
+/* ================= Phase 2: Calendar ================= */
+const DOW = ['日','一','二','三','四','五','六'];
+const ymOf = iso => iso.slice(0, 7);
+function monthCells(ym){
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const start = new Date(first);
+  start.setDate(1 - first.getDay());
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    cells.push(d.toISOString().slice(0, 10));
+    if (i >= 34 && cells[i].slice(0, 7) !== ym && cells[34].slice(0, 7) !== ym) break;
+  }
+  return cells.length > 35 && cells.slice(35).every(c => c.slice(0, 7) !== ym) ? cells.slice(0, 35) : cells;
+}
+function shiftMonth(ym, n){
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function calChip(t){
+  const p = t.projectId ? projectById(t.projectId) : null;
+  const done = t.status === 'done';
+  const over = isOverdue(t);
+  const color = p ? p.color : 'var(--text-3)';
+  return `<div class="calchip${done ? ' is-done' : ''}${over ? ' is-over' : ''}" draggable="true" data-calchip="${t.id}" title="${esc(t.title)}">
+    <span class="calchip-dot" style="background:${done ? 'var(--success)' : color}"></span>
+    <span class="calchip-text">${esc(t.title)}</span>
+  </div>`;
+}
+function renderCalendar(){
+  const ym = S.calMonth;
+  const cells = monthCells(ym);
+  const today = todayISO();
+  const byDay = {};
+  for (const t of S.tasks) if (t.dueDate) (byDay[t.dueDate] ||= []).push(t);
+  for (const k in byDay) byDay[k].sort((a, b) => (a.status === 'done') - (b.status === 'done'));
+
+  const unscheduled = S.tasks.filter(t => !t.dueDate && t.status !== 'done');
+  const [yy, mm] = ym.split('-');
+  const monthTasks = S.tasks.filter(t => t.dueDate && ymOf(t.dueDate) === ym);
+  const monthDone = monthTasks.filter(t => t.status === 'done').length;
+
+  const weeks = cells.map(iso => {
+    const d = new Date(iso + 'T00:00:00');
+    const items = byDay[iso] || [];
+    const other = iso.slice(0, 7) !== ym;
+    const wknd = d.getDay() === 0 || d.getDay() === 6;
+    const shown = items.slice(0, 3);
+    return `<div class="cal-day${other ? ' other' : ''}${iso === today ? ' today' : ''}${wknd ? ' weekend' : ''}" data-calday="${iso}">
+      <span class="cal-date num">${d.getDate()}</span>
+      ${shown.map(calChip).join('')}
+      ${items.length > 3 ? `<button class="cal-more" type="button" data-calmore="${iso}">還有 ${items.length - 3} 件</button>` : ''}
+    </div>`;
+  }).join('');
+
+  const sel = S.calSelectedDay;
+  const selItems = sel ? (byDay[sel] || []) : [];
+
+  return `
+  <div class="cal-head">
+    <h2 class="cal-month num">${yy} 年 ${Number(mm)} 月</h2>
+    <div class="cal-nav">
+      <button class="btn btn-icon" type="button" data-calnav="-1" aria-label="上個月">${icon('chevronLeft')}</button>
+      <button class="btn btn-sm" type="button" data-calnav="0">今天</button>
+      <button class="btn btn-icon" type="button" data-calnav="1" aria-label="下個月">${icon('chevronRight')}</button>
+    </div>
+    <span style="margin-left:auto;font-size:12.5px;color:var(--text-3)" class="num">本月 ${monthDone} / ${monthTasks.length} 項完成</span>
+  </div>
+  <div class="cal-layout">
+    <div>
+      <div class="cal-grid">
+        <div class="cal-dow">${DOW.map(d => `<span>${d}</span>`).join('')}</div>
+        <div class="cal-weeks">${weeks}</div>
+      </div>
+      <div class="cal-daylist">
+        ${sel ? `<div class="sec-head"><h3 class="sec-title">${Number(sel.slice(5,7))} 月 ${Number(sel.slice(8))} 日</h3>
+          <button class="sec-link" type="button" data-calday-clear>清除</button></div>
+          <div class="panel">${selItems.length
+            ? `<ul>${selItems.map(t => taskRow(t)).join('')}</ul>`
+            : `<div class="empty"><p class="empty-text">這天沒有任務</p></div>`}</div>`
+        : `<p style="font-size:12.5px;color:var(--text-3);text-align:center">點某一天看當天的任務</p>`}
+      </div>
+    </div>
+    <div class="tray" id="calTray">
+      <p class="tray-title">未排程</p>
+      <p class="tray-hint">${unscheduled.length ? '拖到日期上就排進去了，拖回這裡則取消日期。' : '所有未完成的任務都有日期了。'}</p>
+      ${unscheduled.map(t => {
+        const p = t.projectId ? projectById(t.projectId) : null;
+        return `<div class="tray-item" draggable="true" data-calchip="${t.id}">
+          <span class="calchip-dot" style="background:${p ? p.color : 'var(--text-3)'}"></span>
+          <span>${esc(t.title)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function bindCalendar(host){
+  let dragId = null;
+  const setDrag = el => {
+    el.addEventListener('dragstart', e => {
+      dragId = el.dataset.calchip;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragId);
+    });
+    el.addEventListener('dragend', () => { dragId = null; el.classList.remove('dragging'); });
+  };
+  host.querySelectorAll('[data-calchip]').forEach(setDrag);
+
+  const reschedule = async (id, date) => {
+    const t = S.tasks.find(x => x.id === id);
+    if (!t || t.dueDate === date) return;
+    t.dueDate = date;
+    await saveTask(t);
+    render();
+    toast(date ? `已排到 ${dueLabel(date)}` : '已移回未排程');
+  };
+
+  host.querySelectorAll('.cal-day').forEach(cell => {
+    cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('dragover'); });
+    cell.addEventListener('dragleave', () => cell.classList.remove('dragover'));
+    cell.addEventListener('drop', e => {
+      e.preventDefault(); cell.classList.remove('dragover');
+      const id = dragId || e.dataTransfer.getData('text/plain');
+      if (id) reschedule(id, cell.dataset.calday);
+    });
+  });
+  const tray = host.querySelector('#calTray');
+  if (tray) {
+    tray.addEventListener('dragover', e => { e.preventDefault(); tray.classList.add('dragover'); });
+    tray.addEventListener('dragleave', () => tray.classList.remove('dragover'));
+    tray.addEventListener('drop', e => {
+      e.preventDefault(); tray.classList.remove('dragover');
+      const id = dragId || e.dataTransfer.getData('text/plain');
+      if (id) reschedule(id, null);
+    });
+  }
+}
+
+/* ================= Phase 2: Timeline ================= */
+function tlRange(p){
+  const span = S.tlSpan;
+  const anchor = S.tlAnchor || todayISO();
+  if (span === 'week') {
+    const d = new Date(anchor + 'T00:00:00');
+    const start = addDays(anchor, -d.getDay());
+    return {start, days: 14, label: `${start.slice(5).replace('-','/')} – ${addDays(start, 13).slice(5).replace('-','/')}`};
+  }
+  const ym = ymOf(anchor);
+  const [y, m] = ym.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  return {start: `${ym}-01`, days, label: `${y} 年 ${m} 月`};
+}
+function renderTimeline(p){
+  const {start, days, label} = tlRange(p);
+  const end = addDays(start, days - 1);
+  const today = todayISO();
+  const all = tasksOf(p.id);
+  const dated = all.filter(t => t.dueDate || t.startDate);
+  const undated = all.filter(t => !t.dueDate && !t.startDate);
+
+  const inRange = dated.filter(t => {
+    const s = t.startDate || t.dueDate;
+    const e = t.dueDate || t.startDate;
+    return !(e < start || s > end);
+  }).sort((a, b) => (a.startDate || a.dueDate).localeCompare(b.startDate || b.dueDate));
+
+  const cols = `140px repeat(${days}, minmax(20px, 1fr))`;
+  const axis = Array.from({length: days}, (_, i) => {
+    const iso = addDays(start, i);
+    const d = new Date(iso + 'T00:00:00');
+    const wknd = d.getDay() === 0 || d.getDay() === 6;
+    return `<div class="tl-axis-label${iso === today ? ' is-today' : ''}${wknd ? ' is-weekend' : ''}">
+      ${days > 20 ? d.getDate() : `${DOW[d.getDay()]}<br>${d.getDate()}`}
+    </div>`;
+  }).join('');
+
+  const todayIdx = (today >= start && today <= end) ? Math.round((new Date(today) - new Date(start)) / 86400000) : -1;
+  const todayLine = todayIdx >= 0
+    ? `<div class="tl-today" style="left:calc(${(todayIdx + 0.5) / days * 100}%)"></div>` : '';
+
+  const rows = inRange.map(t => {
+    const s = t.startDate && t.startDate >= start ? t.startDate : (t.startDate ? start : (t.dueDate < start ? start : t.dueDate));
+    const e = t.dueDate && t.dueDate <= end ? t.dueDate : (t.dueDate ? end : s);
+    const si = Math.max(0, Math.round((new Date(s) - new Date(start)) / 86400000));
+    const ei = Math.min(days - 1, Math.round((new Date(e) - new Date(start)) / 86400000));
+    const span = Math.max(1, ei - si + 1);
+    const milestone = span === 1 && !t.startDate;
+    const done = t.status === 'done';
+    const color = isOverdue(t) ? 'var(--danger)' : done ? 'var(--success)' : p.color;
+    const cells = Array.from({length: days}, (_, i) => {
+      const d = new Date(addDays(start, i) + 'T00:00:00');
+      const wknd = d.getDay() === 0 || d.getDay() === 6;
+      return `<div class="tl-cell${wknd ? ' is-weekend' : ''}"></div>`;
+    }).join('');
+    const left = si / days * 100;
+    const width = span / days * 100;
+    return `<div class="tl-row" style="grid-template-columns:${cols}">
+      <div class="tl-name${done ? ' is-done' : ''}" title="${esc(t.title)}">${esc(t.title)}</div>
+      <div class="tl-cells" style="grid-column:2 / -1;grid-template-columns:repeat(${days}, minmax(20px,1fr))">
+        ${cells}
+        <div class="tl-bar${done ? ' is-done' : ''}${milestone ? ' is-milestone' : ''}"
+             style="left:${milestone ? `calc(${left}% + ${(width / 2)}% - 8px)` : `${left}%`};width:${width}%;background:${color}"
+             data-task="${t.id}" title="${esc(t.title)}">${milestone || span < 3 ? '' : esc(t.title)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="tl-head">
+    <div class="seg">
+      <button type="button" data-tlspan="week" aria-pressed="${S.tlSpan === 'week'}">兩週</button>
+      <button type="button" data-tlspan="month" aria-pressed="${S.tlSpan === 'month'}">月</button>
+    </div>
+    <div class="cal-nav">
+      <button class="btn btn-icon" type="button" data-tlnav="-1" aria-label="上一段">${icon('chevronLeft')}</button>
+      <button class="btn btn-sm" type="button" data-tlnav="0">今天</button>
+      <button class="btn btn-icon" type="button" data-tlnav="1" aria-label="下一段">${icon('chevronRight')}</button>
+    </div>
+    <span class="tl-range num" style="margin-left:4px">${label}</span>
+  </div>
+  ${inRange.length ? `<div class="tl-scroll"><div class="tl-inner" style="position:relative">
+    <div class="tl-axis" style="grid-template-columns:${cols}">
+      <div class="tl-axis-label" style="border-left:none"></div>${axis}
+      ${todayLine ? `<div class="tl-today" style="left:calc(140px + (100% - 140px) * ${(todayIdx + 0.5) / days})"></div>` : ''}
+    </div>
+    ${rows}
+  </div></div>
+  <div class="tl-legend">
+    <span><i style="background:${p.color}"></i>進行中</span>
+    <span><i style="background:var(--success)"></i>已完成</span>
+    <span><i style="background:var(--danger)"></i>逾期</span>
+    <span><i style="background:${p.color};transform:rotate(45deg);width:9px;height:9px"></i>單日到期</span>
+  </div>`
+  : `<div class="panel"><div class="empty"><p class="empty-title">這段期間沒有排程的任務</p><p class="empty-text">用上面的箭頭換一段時間，或在任務詳情裡設定開始日與到期日</p></div></div>`}
+  ${undated.length ? `<div style="margin-top:18px">
+    <div class="sec-head"><h3 class="sec-title">未排程（${undated.length}）</h3></div>
+    <div class="panel"><ul>${undated.map(t => taskRow(t)).join('')}</ul></div>
+  </div>` : ''}`;
+}
+
 /* ---------------- master render ---------------- */
-const TITLES = {dashboard:'Dashboard', tasks:'Tasks', projects:'Projects', settings:'Settings'};
+const TITLES = {dashboard:'Dashboard', tasks:'Tasks', calendar:'Calendar', projects:'Projects', settings:'Settings'};
 function render(){
   renderNav();
   $('#pageTitle').textContent = S.openProject && S.route === 'projects' ? 'Projects' : TITLES[S.route];
@@ -987,6 +1350,7 @@ function render(){
   const host = $('#view-' + S.route);
   if (S.route === 'dashboard') host.innerHTML = renderDashboard();
   else if (S.route === 'tasks') host.innerHTML = renderTasks();
+  else if (S.route === 'calendar') { S.calMonth ||= ymOf(todayISO()); host.innerHTML = renderCalendar(); }
   else if (S.route === 'projects') host.innerHTML = renderProjects();
   else host.innerHTML = renderSettings();
   applyTheme();
@@ -1131,6 +1495,8 @@ function bindView(){
 
   if (S.route === 'tasks' && S.taskView === 'list') bindDetail(host);
   if (S.route === 'tasks' && S.taskView === 'board') bindBoard(host);
+  if (S.route === 'calendar') bindCalendar(host);
+  if (S.route === 'projects' && S.openProject && S.projectTab === 'timeline') bindCalendar(host);
 
   const notes = host.querySelector('#projNotes');
   if (notes) notes.onblur = async () => {
@@ -1234,11 +1600,38 @@ document.addEventListener('click', e => {
   const proj = e.target.closest('[data-project]');
   if (proj) { S.openProject = proj.dataset.project; S.projectTab = 'tasks'; S.route = 'projects'; render(); $('#scroller').scrollTop = 0; return; }
 
+  const cn = e.target.closest('[data-calnav]');
+  if (cn) {
+    const n = +cn.dataset.calnav;
+    S.calMonth = n === 0 ? ymOf(todayISO()) : shiftMonth(S.calMonth, n);
+    return render();
+  }
+  const cm = e.target.closest('[data-calmore]');
+  if (cm) { S.calSelectedDay = cm.dataset.calmore; return render(); }
+  if (e.target.closest('[data-calday-clear]')) { S.calSelectedDay = null; return render(); }
+  const cd = e.target.closest('[data-calday]');
+  if (cd && !e.target.closest('[data-calchip]')) { S.calSelectedDay = cd.dataset.calday; return render(); }
+
+  const ts = e.target.closest('[data-tlspan]');
+  if (ts) { S.tlSpan = ts.dataset.tlspan; return render(); }
+  const tn = e.target.closest('[data-tlnav]');
+  if (tn) {
+    const n = +tn.dataset.tlnav;
+    if (n === 0) S.tlAnchor = todayISO();
+    else if (S.tlSpan === 'week') S.tlAnchor = addDays(S.tlAnchor || todayISO(), n * 14);
+    else S.tlAnchor = shiftMonth(ymOf(S.tlAnchor || todayISO()), n) + '-01';
+    return render();
+  }
+
   const tv = e.target.closest('[data-taskview]');
   if (tv) { S.taskView = tv.dataset.taskview; return render(); }
 
   const f = e.target.closest('[data-filter]');
   if (f) { S.taskFilter = f.dataset.filter; return render(); }
+
+  const chip = e.target.closest('[data-calchip]');
+  if (chip) { S.selectedTask = chip.dataset.calchip; S.route = 'tasks'; S.taskView = 'list';
+    S.taskFilter = 'all'; S.taskProject = 'all'; return render(); }
 
   const row = e.target.closest('[data-task]');
   if (row && !row.classList.contains('kcard')) {

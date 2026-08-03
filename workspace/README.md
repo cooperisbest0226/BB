@@ -1,6 +1,6 @@
 # Workspace — 個人工作進度追蹤 PWA
 
-Phase 1（v1.0.0）。純前端、無後端、資料存在瀏覽器 IndexedDB。
+Phase 2（v1.1.0）。純前端、無後端、資料存在瀏覽器 IndexedDB。
 
 ## 部署到 GitHub Pages
 
@@ -35,6 +35,18 @@ Phase 1（v1.0.0）。純前端、無後端、資料存在瀏覽器 IndexedDB。
 導覽請求走 network-first，所以有網路時通常會拿到新版；但版本號沒動的話，
 離線狀態與部分快取情境仍會回舊檔。
 
+## Phase 2 新增（v1.1.0）
+
+**Calendar** — 月曆檢視，任務依到期日落在格子上；上/下月與「今天」切換。
+右側是「未排程」托盤：把任務拖到某一天就排進去，拖回托盤則清掉日期。
+點格子上的任務會跳到 Tasks 頁並開啟該筆詳情。
+手機版格子會把任務收成彩色圓點，點某天在下方展開當天清單。
+
+**Timeline** — 專案詳情多了 Timeline 分頁，甘特式長條圖。
+有開始日的任務畫成橫條，只有到期日的畫成菱形里程碑；
+綠色是已完成、紅色是逾期，其餘用專案顏色。有今日垂直指示線，
+可切換「兩週」與「月」兩種尺度，沒排日期的任務列在下方。
+
 ## Phase 1 已完成
 
 **Dashboard** — 時段問候、今日狀態句與進度條、四張指標卡（今日進度／近 7 天完成／
@@ -64,7 +76,9 @@ settings: { key, value }
 
 `status` 是 `todo` / `doing` / `waiting` / `done`，`priority` 是 `high` / `mid` / `low`。
 
-Phase 2 的行事曆、Timeline 都是讀同一份 `tasks`，不需要改 schema。
+Phase 2 的行事曆與 Timeline 完全沒有改動 schema —— 它們只是把同一份 `tasks`
+換個方式排列。Timeline 的長條用 `startDate` → `dueDate`；只有 `dueDate`
+的任務畫成單日里程碑。
 
 ## 已知取捨
 
@@ -76,6 +90,5 @@ Phase 2 的行事曆、Timeline 都是讀同一份 `tasks`，不需要改 schema
 
 ## 接下來
 
-- **Phase 2** — 月曆檢視（拖拉排程）、專案 Timeline
 - **Phase 3** — 統計頁（Chart.js）、完成熱力圖、Focus Tasks
 - **Phase 4** — Markdown Notes、全域搜尋與 Command Palette（Ctrl+K）
