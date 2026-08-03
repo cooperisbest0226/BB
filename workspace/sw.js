@@ -1,6 +1,6 @@
 /* Workspace service worker
    改版時務必調高 CACHE 版本號，否則使用者拿到的是舊快取。 */
-const CACHE = 'workspace-v1.3.1';
+const CACHE = 'workspace-v1.4.0';
 const ASSETS = [
   './',
   './index.html',

@@ -90,6 +90,9 @@ ul{margin:0;padding:0;list-style:none}
 .topbar-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .page{max-width:960px;margin:0 auto;padding:26px 24px 90px}
+/* 行事曆與 Timeline 是網格，需要寬度；其餘頁面維持 960px 的易讀寬度。
+   設 1500px 天花板，否則超寬螢幕上格子會寬到難以掃視。 */
+body[data-wide="1"] .page{max-width:1500px}
 .view[hidden]{display:none}
 
 /* ---------- controls ---------- */
@@ -345,11 +348,11 @@ dialog::backdrop{background:rgba(10,10,12,.42);backdrop-filter:blur(2px)}
 .cal-layout{display:grid;grid-template-columns:minmax(0,1fr) 232px;gap:16px;align-items:start}
 .cal-grid{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
 .cal-dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--border)}
-.cal-dow span{padding:7px 0;text-align:center;font-size:11.5px;color:var(--text-3);font-weight:500}
+.cal-dow span{padding:8px 0;text-align:center;font-size:12px;color:var(--text-3);font-weight:500}
 .cal-weeks{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .cal-day{
-  min-height:96px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);
-  padding:5px 6px;transition:background var(--dur);position:relative;overflow:hidden;
+  min-height:132px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:6px 7px;transition:background var(--dur);position:relative;overflow:hidden;
 }
 .cal-day:nth-child(7n){border-right:none}
 .cal-weeks .cal-day:nth-last-child(-n+7){border-bottom:none}
@@ -358,14 +361,14 @@ dialog::backdrop{background:rgba(10,10,12,.42);backdrop-filter:blur(2px)}
 .cal-day.other .cal-date{color:var(--text-3);opacity:.75}
 .cal-day.dragover{background:var(--primary-soft);box-shadow:inset 0 0 0 2px var(--primary)}
 .cal-date{
-  display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;
-  font-size:12px;font-variant-numeric:tabular-nums;color:var(--text-2);border-radius:11px;margin-bottom:3px;
+  display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;
+  font-size:13px;font-variant-numeric:tabular-nums;color:var(--text-2);border-radius:12px;margin-bottom:4px;
 }
 .cal-day.today .cal-date{background:var(--primary);color:#fff;font-weight:600}
 .cal-day.weekend:not(.other){background:color-mix(in srgb,var(--surface-2) 45%,transparent)}
 .calchip{
-  display:flex;align-items:center;gap:5px;padding:2.5px 6px;border-radius:6px;margin-bottom:3px;
-  font-size:11.5px;line-height:1.4;background:var(--surface-2);cursor:grab;
+  display:flex;align-items:center;gap:6px;padding:3px 7px;border-radius:6px;margin-bottom:3px;
+  font-size:12.5px;line-height:1.42;background:var(--surface-2);cursor:grab;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background var(--dur);
 }
 .calchip:hover{background:var(--surface-3)}
@@ -374,7 +377,7 @@ dialog::backdrop{background:rgba(10,10,12,.42);backdrop-filter:blur(2px)}
 .calchip.is-over{background:var(--danger-soft);color:var(--danger)}
 .calchip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 .calchip-text{overflow:hidden;text-overflow:ellipsis}
-.cal-more{font-size:11px;color:var(--text-3);padding:9px 6px;margin:-6px;border-radius:6px;display:block;text-align:left}
+.cal-more{font-size:11.5px;color:var(--text-3);padding:8px 6px;margin:-4px -6px;border-radius:6px;display:block;text-align:left}
 .cal-more:hover{color:var(--primary)}
 .tray{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;position:sticky;top:0}
 .tray.dragover{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
@@ -705,7 +708,7 @@ kbd{
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 const DB_NAME = 'work_dash_v1';
 const DB_VER = 1;
 
@@ -1328,6 +1331,7 @@ function renderSettings(){
 
 /* ================= Phase 2: Calendar ================= */
 const DOW = ['日','一','二','三','四','五','六'];
+const CAL_MAX_CHIPS = 4;   // 與 .cal-day 的 min-height 綁在一起，改高度時要一起調
 const ymOf = iso => iso.slice(0, 7);
 function monthCells(ym){
   const [y, m] = ym.split('-').map(Number);
@@ -1377,11 +1381,11 @@ function renderCalendar(){
     const items = byDay[iso] || [];
     const other = iso.slice(0, 7) !== ym;
     const wknd = d.getDay() === 0 || d.getDay() === 6;
-    const shown = items.slice(0, 3);
+    const shown = items.slice(0, CAL_MAX_CHIPS);
     return `<div class="cal-day${other ? ' other' : ''}${iso === today ? ' today' : ''}${wknd ? ' weekend' : ''}" data-calday="${iso}">
       <span class="cal-date num">${d.getDate()}</span>
       ${shown.map(calChip).join('')}
-      ${items.length > 3 ? `<button class="cal-more" type="button" data-calmore="${iso}">還有 ${items.length - 3} 件</button>` : ''}
+      ${items.length > CAL_MAX_CHIPS ? `<button class="cal-more" type="button" data-calmore="${iso}">還有 ${items.length - CAL_MAX_CHIPS} 件</button>` : ''}
     </div>`;
   }).join('');
 
@@ -2182,6 +2186,8 @@ function render(){
   actions.innerHTML = searchBtn + primaryBtn;
 
   destroyCharts();
+  const wide = S.route === 'calendar' || (S.route === 'projects' && S.openProject && S.projectTab === 'timeline');
+  document.body.dataset.wide = wide ? '1' : '0';
   for (const r of Object.keys(TITLES)) $('#view-' + r).hidden = r !== S.route;
   const host = $('#view-' + S.route);
   if (S.route === 'dashboard') host.innerHTML = renderDashboard();
@@ -2417,6 +2423,31 @@ function bindBoard(host){
     });
   });
 }
+
+/* 拖曳到接近視窗上下緣時自動捲動 —— 月曆一個月可能比視窗還高，
+   沒有這個就無法把任務拖到看不見的日期。 */
+(function initDragAutoScroll(){
+  const EDGE = 90, MAX_STEP = 18;
+  let pointerY = null, raf = null;
+  const tick = () => {
+    const sc = document.getElementById('scroller');
+    if (pointerY == null || !sc) { raf = null; return; }
+    const r = sc.getBoundingClientRect();
+    if (pointerY < r.top + EDGE) {
+      sc.scrollTop -= Math.min(MAX_STEP, Math.ceil((r.top + EDGE - pointerY) / 4));
+    } else if (pointerY > r.bottom - EDGE) {
+      sc.scrollTop += Math.min(MAX_STEP, Math.ceil((pointerY - (r.bottom - EDGE)) / 4));
+    }
+    raf = requestAnimationFrame(tick);
+  };
+  const stop = () => { pointerY = null; if (raf) { cancelAnimationFrame(raf); raf = null; } };
+  document.addEventListener('dragover', e => {
+    pointerY = e.clientY;
+    if (!raf) raf = requestAnimationFrame(tick);
+  }, true);
+  document.addEventListener('dragend', stop, true);
+  document.addEventListener('drop', stop, true);
+})();
 
 /* global delegated clicks */
 document.addEventListener('click', e => {
