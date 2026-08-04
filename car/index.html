@@ -24,6 +24,7 @@
   --text:#F5F6FA; --text2:#9095A6; --disabled:#4A4D5C;
   --primary:#4A90F5; --success:#34D399; --warning:#F5A623; --danger:#FF5A5F;
   --cat-maint:#8B5CF6; --cat-repair:#4FA8F5; --cat-ins:#34D399; --cat-exp:#F5A623;
+  --cat-fuel:#22D3EE;
   --glow-1:#6D5AE0; --glow-2:#3F6FE0; --hero-fade:#08090F;
   --shadow-card:none;
   --r-hero:28px; --r-card:24px; --r-quick:20px; --r-list:16px; --r-btn:14px;
@@ -39,6 +40,7 @@
   --text:#14181F; --text2:#6B7280; --disabled:#C2C6CC;
   --primary:#2F6FD6; --success:#1F9D6E; --warning:#D6910F; --danger:#E0454B;
   --cat-maint:#7C5CE0; --cat-repair:#2F7FD6; --cat-ins:#1F9D6E; --cat-exp:#D6910F;
+  --cat-fuel:#0E90A8;
   --glow-1:#B7A9F0; --glow-2:#AFC7F5; --hero-fade:#F5F6F8;
   --shadow-card:0 1px 2px rgba(20,24,31,.04), 0 8px 24px rgba(20,24,31,.06);
 }
@@ -82,6 +84,13 @@ h1,h2,h3,p{margin:0}
       aspect-ratio:1536/1644;max-height:62dvh}
 .hero-media{position:absolute;inset:0;z-index:0;display:block}
 .hero-media img{width:100%;height:100%;object-fit:cover;object-position:50% 58%;display:block}
+.hero-media picture{position:absolute;inset:0;display:block}
+/* 無實拍照片時（機車／自建車輛）疊在光暈底圖上的圖示浮水印 */
+.hero-art{position:absolute;left:50%;bottom:11%;transform:translateX(-50%);
+          width:46%;max-width:200px;aspect-ratio:1;color:rgba(255,255,255,.4);
+          filter:drop-shadow(0 0 24px rgba(140,160,255,.45))}
+/* 圖示原為 24px 設計，放大到 200px 時筆畫會等比變成 8 倍粗，需覆寫 */
+.hero-art *{stroke-width:.55px!important;vector-effect:non-scaling-stroke}
 /* 上方壓暗保文字對比、下方淡出融入頁面背景 */
 .hero-media::after{
   content:"";position:absolute;inset:0;pointer-events:none;
@@ -100,6 +109,10 @@ h1,h2,h3,p{margin:0}
 .dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--primary);border:2px solid var(--bg)}
 .hero-txt{padding:14px var(--pad) 0;text-shadow:0 1px 14px rgba(0,0,0,.5)}
 .eyebrow{font-size:15px;color:rgba(255,255,255,.72);font-weight:400}
+.car-switch{display:flex;align-items:center;gap:4px;min-width:0;max-width:100%;min-height:44px;
+            padding:2px 0;margin:0;text-align:left;transition:opacity .12s ease}
+.car-switch:active{opacity:.6}
+.car-chev{color:rgba(255,255,255,.6);display:flex;flex:none;margin-top:4px}
 .car-name{
   font-size:clamp(28px,9vw,38px);font-weight:700;letter-spacing:-.5px;line-height:1.12;
   margin-top:2px;color:#fff;overflow-wrap:anywhere;
@@ -370,6 +383,7 @@ h1,h2,h3,p{margin:0}
       <button class="seg on" data-f="all">全部</button>
       <button class="seg" data-f="maint">保養</button>
       <button class="seg" data-f="repair">維修</button>
+      <button class="seg" data-f="fuel">加油</button>
       <button class="seg" data-f="ins">保險</button>
       <button class="seg" data-f="other">其他</button>
     </div>
@@ -453,22 +467,48 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 /* ============================================================
    狀態
    ============================================================ */
-const S={vehicle:null, records:[], tab:'home', filter:'all', theme:'dark', statMode:'year'};
+const S={vehicles:[], vehicle:null, allRecords:[], records:[],
+         tab:'home', filter:'all', theme:'dark', statMode:'year'};
 
 const TYPES={
   maint :{label:'保養', color:'var(--cat-maint)',  key:'maint'},
   repair:{label:'維修', color:'var(--cat-repair)', key:'repair'},
+  fuel  :{label:'加油', color:'var(--cat-fuel)',   key:'fuel'},
   ins   :{label:'保險', color:'var(--cat-ins)',    key:'ins'},
   other :{label:'其他', color:'var(--cat-exp)',    key:'other'}
 };
 
-/* 預設保養週期（可於「我的」調整里程週期） */
-const DEFAULT_RULES=[
-  {id:'oil',   name:'機油更換',   km:5000,  months:6,  match:['機油']},
-  {id:'air',   name:'空氣濾芯檢查', km:10000, months:12, match:['濾芯','空氣芯','空氣濾']},
-  {id:'tire',  name:'輪胎換位',   km:10000, months:12, match:['輪胎','調胎']},
-  {id:'brake', name:'煞車來令片檢查', km:20000, months:24, match:['來令片','煞車','碟盤']}
-];
+const KINDS={
+  car :{label:'汽車', icon:'car'},
+  moto:{label:'機車', icon:'moto'}
+};
+
+/* 保養週期預設值（依車型）——使用者可在「保養週期設定」自行調整 */
+const RULE_PRESETS={
+  car:[
+    {id:'oil',     name:'機油更換',     km:5000,  months:6,  match:['機油']},
+    {id:'oilf',    name:'機油芯更換',   km:10000, months:12, match:['機油芯','機油濾']},
+    {id:'air',     name:'空氣濾芯',     km:10000, months:12, match:['空氣芯','空氣濾','空濾']},
+    {id:'tire',    name:'輪胎換位',     km:10000, months:12, match:['輪胎','調胎']},
+    {id:'brake',   name:'煞車來令片',   km:20000, months:24, match:['來令片','煞車','碟盤']},
+    {id:'atf',     name:'變速箱油',     km:40000, months:48, match:['變速箱油','ATF']},
+    {id:'plug',    name:'火星塞',       km:40000, months:48, match:['火星塞']},
+    {id:'coolant', name:'水箱精／冷卻液', km:40000, months:48, match:['水箱','冷卻液','水箱精']},
+    {id:'battery', name:'電瓶檢查',     km:0,     months:36, match:['電瓶']}
+  ],
+  moto:[
+    {id:'oil',     name:'機油更換',     km:1500,  months:3,  match:['機油']},
+    {id:'gear',    name:'齒輪油更換',   km:6000,  months:12, match:['齒輪油']},
+    {id:'belt',    name:'傳動皮帶／普利珠', km:15000, months:24, match:['皮帶','普利','傳動']},
+    {id:'plug',    name:'火星塞',       km:10000, months:12, match:['火星塞']},
+    {id:'air',     name:'空氣濾芯',     km:10000, months:12, match:['空氣芯','空濾','空氣濾']},
+    {id:'brake',   name:'煞車皮／來令片', km:10000, months:12, match:['來令片','煞車皮','煞車']},
+    {id:'tire',    name:'輪胎檢查',     km:15000, months:24, match:['輪胎']},
+    {id:'coolant', name:'冷卻液（水冷車）', km:20000, months:24, match:['冷卻液','水箱']},
+    {id:'battery', name:'電瓶檢查',     km:0,     months:24, match:['電瓶']}
+  ]
+};
+const rulesFor=kind=>JSON.parse(JSON.stringify(RULE_PRESETS[kind]||RULE_PRESETS.car));
 
 /* ============================================================
    圖示
@@ -485,6 +525,10 @@ const I={
   bell:'<path d="M12 3.2a5.6 5.6 0 0 0-5.6 5.6c0 5-2 6.4-2 6.4h15.2s-2-1.4-2-6.4A5.6 5.6 0 0 0 12 3.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/><path d="M10.3 19a2 2 0 0 0 3.4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   info:'<circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 11v5.2M12 7.9v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   car:'<path d="M3.6 15.2h16.8M6.2 15.2v1.9M17.8 15.2v1.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.4 15.2l1.3-4.6A2 2 0 0 1 7.6 9h8.8a2 2 0 0 1 1.9 1.6l1.3 4.6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/>',
+  moto:'<circle cx="5.2" cy="16.4" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="18.8" cy="16.4" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M5.2 16.4h4l3.4-5.2h4.4l2.2 5.2" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" fill="none"/><path d="M9.6 11.2H7.2M14.4 7.2h2.8l1.6 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  check:'<circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M8.4 12.2l2.4 2.4 4.8-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+  fuel:'<path d="M5 20.4V5.6A1.6 1.6 0 0 1 6.6 4h6.8A1.6 1.6 0 0 1 15 5.6v14.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/><path d="M3.6 20.4h12.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5 11.4h10" stroke="currentColor" stroke-width="1.7"/><path d="M15 8.6h2.4a1.6 1.6 0 0 1 1.6 1.6v6a1.4 1.4 0 0 0 2.8 0V9.2l-2.2-2.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+  swap:'<path d="M7.2 4.8 3.6 8.4l3.6 3.6M3.6 8.4h13.2a3.6 3.6 0 0 1 3.6 3.6M16.8 19.2l3.6-3.6-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
   cal:'<rect x="3.6" y="5.4" width="16.8" height="15" rx="2.6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M3.6 10h16.8M8.4 3.4v3.4M15.6 3.4v3.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
   pulse:'<path d="M4 12h3.6l2.2-5.4 3.4 11L15.6 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
 };
@@ -517,7 +561,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
    ============================================================ */
 function computeHealth(){
   const v=S.vehicle; if(!v) return null;
-  const rules=v.rules||DEFAULT_RULES;
+  const rules=v.rules||rulesFor(v.kind);
   const km=Number(v.mileage)||0;
   const items=[];
 
@@ -535,13 +579,14 @@ function computeHealth(){
     items.push({rule:r,kmLeft,dayLeft,ratio:Math.min(kmRatio,dayRatio),never:!last});
   });
 
-  const ins=[];
-  if(v.insCompulsory) ins.push({name:'強制險到期',date:v.insCompulsory});
-  if(v.insThird)      ins.push({name:'第三人責任險到期',date:v.insThird});
-  ins.forEach(x=>{
+  const dated=[];
+  if(v.insCompulsory) dated.push({name:'強制險到期',      date:v.insCompulsory, span:365});
+  if(v.insThird)      dated.push({name:'第三人責任險到期', date:v.insThird,      span:365});
+  if(v.inspection)    dated.push({name:'定期排氣檢驗',     date:v.inspection,    span:365});
+  dated.forEach(x=>{
     const dl=dayDiff(x.date,today());
     items.push({rule:{name:x.name,ins:true,date:x.date},kmLeft:null,dayLeft:dl,
-                ratio:Math.max(0,Math.min(1,dl/365)),never:false});
+                ratio:Math.max(0,Math.min(1,dl/x.span)),never:false});
   });
 
   const score=items.length? Math.round(items.reduce((s,x)=>s+x.ratio,0)/items.length*100) : 100;
@@ -552,7 +597,8 @@ const healthColor=s=> s>=60?'var(--success)': s>=30?'var(--warning)':'var(--dang
 const healthText =s=> s>=60?'狀態良好'      : s>=30?'建議安排保養'  :'需要盡快處理';
 const itemColor  =r=> r>=.4?'var(--success)': r>=.15?'var(--warning)':'var(--danger)';
 
-function itemIcon(name){
+function itemIcon(name,type){
+  if(type==='fuel')return I.fuel;
   if(name.includes('機油'))return I.oil;
   if(name.includes('濾'))  return I.filter;
   if(name.includes('胎'))  return I.tire;
@@ -561,8 +607,63 @@ function itemIcon(name){
 }
 
 /* ============================================================
-   首頁
+   油耗計算
+   ------------------------------------------------------------
+   只有「加滿 → 加滿」的區間能算出準確油耗：
+   兩次加滿之間跑的里程 ÷ 這段期間灌進去的總油量。
+   中途沒加滿的紀錄，油量會累加進下一次加滿的區間。
    ============================================================ */
+function computeFuel(){
+  const logs=S.records
+    .filter(r=>r.type==='fuel' && Number(r.mileage)>0 && Number(r.litres)>0)
+    .sort((a,b)=>Number(a.mileage)-Number(b.mileage));
+
+  const segments=[];
+  let anchor=null, pending=0;
+  logs.forEach(r=>{
+    if(anchor!==null){
+      pending+=Number(r.litres);
+      if(r.full){
+        const km=Number(r.mileage)-Number(anchor.mileage);
+        if(km>0 && pending>0)
+          segments.push({from:anchor,to:r,km,litres:pending,kmL:km/pending});
+        anchor=r; pending=0;
+      }
+    }else if(r.full){ anchor=r; pending=0; }
+  });
+
+  const totalKm=segments.reduce((s,x)=>s+x.km,0);
+  const segL   =segments.reduce((s,x)=>s+x.litres,0);
+  const totalL =logs.reduce((s,r)=>s+Number(r.litres),0);
+  const totalCost=logs.reduce((s,r)=>s+(Number(r.cost)||0),0);
+  return {
+    segments, logs, totalL, totalCost,
+    avg: segL>0 ? totalKm/segL : null,
+    last: segments[segments.length-1]||null,
+    costPerKm: totalKm>0 ? segments.reduce((s,x)=>s+x.litres*(Number(x.to.pricePerL)||0),0)/totalKm : null
+  };
+}
+
+/* 依車輛決定 hero 封面：自訂照片 > 汽車實拍 > 光暈底圖 + 圖示浮水印 */
+function heroMedia(v){
+  if(v.photo)
+    return `<div class="hero-media"><img src="${v.photo}" alt="" decoding="async"></div>`;
+  if(v.kind!=='moto')
+    return `<picture class="hero-media">
+      <source type="image/webp" srcset="img/hero-car.webp 780w, img/hero-car@2x.webp 1170w" sizes="100vw">
+      <img src="img/hero-car.jpg" srcset="img/hero-car.jpg 780w, img/hero-car@2x.jpg 1170w"
+           sizes="100vw" alt="" fetchpriority="high" decoding="async"></picture>`;
+  return `<div class="hero-media">
+    <picture>
+      <source type="image/webp" srcset="img/hero-plate.webp 780w, img/hero-plate@2x.webp 1170w" sizes="100vw">
+      <img src="img/hero-plate.jpg" srcset="img/hero-plate.jpg 780w, img/hero-plate@2x.jpg 1170w"
+           sizes="100vw" alt="" fetchpriority="high" decoding="async">
+    </picture>
+    <svg class="hero-art" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      ${I[KINDS[v.kind]?KINDS[v.kind].icon:'car']}
+    </svg>
+  </div>`;
+}
 function renderHome(){
   const el=document.getElementById('home-body');
   const v=S.vehicle;
@@ -574,7 +675,7 @@ function renderHome(){
         ${svg('<rect x="6" y="16" width="52" height="40" rx="6" stroke="var(--primary)" stroke-width="2.4" fill="none"/><path d="M6 28h52M14 44h10M40 44h10" stroke="var(--cat-exp)" stroke-width="2.4" stroke-linecap="round"/><path d="M18 16V9h28v7" stroke="var(--primary)" stroke-width="2.4" stroke-linecap="round"/>',64)}
         <h3>先加入你的第一台車</h3>
         <p>記下車款與目前里程，之後每一次保養、維修與保險<br>都會整理成一份完整的紀錄。</p>
-        <button class="btn btn-primary" onclick="openVehicleForm()">加入車輛</button>
+        <button class="btn btn-primary" onclick="openVehicleForm(null,true)">加入車輛</button>
       </div>`;
     return;
   }
@@ -589,12 +690,7 @@ function renderHome(){
 
   el.innerHTML=`
   <div class="hero">
-    <picture class="hero-media">
-      <source type="image/webp" srcset="img/hero-car.webp 780w, img/hero-car@2x.webp 1170w"
-              sizes="100vw">
-      <img src="img/hero-car.jpg" srcset="img/hero-car.jpg 780w, img/hero-car@2x.jpg 1170w"
-           sizes="100vw" alt="" fetchpriority="high" decoding="async">
-    </picture>
+    ${heroMedia(v)}
     <div class="hero-content">
       <div class="hero-bar">
         <button class="round-btn" onclick="openReminders()" aria-label="保養提醒">
@@ -605,11 +701,16 @@ function renderHome(){
         </button>
       </div>
       <div class="hero-txt">
-        <div class="eyebrow">我的愛車</div>
-        <h1 class="car-name">${esc(v.name)}</h1>
+        <div class="eyebrow">${KINDS[v.kind]?KINDS[v.kind].label:'汽車'}${S.vehicles.length>1?` · 共 ${S.vehicles.length} 台`:''}</div>
+        <button class="car-switch" onclick="openVehiclePicker()"
+                ${S.vehicles.length>1?'':'aria-label="切換或新增車輛"'}>
+          <h1 class="car-name">${esc(v.name)}</h1>
+          <span class="car-chev">${svg(I.chev,20)}</span>
+        </button>
         <div class="car-meta">
           ${v.year?`<span class="num">${esc(v.year)}</span><i></i>`:''}
           <span class="num">${nf(v.mileage)} km</span>
+          ${v.plate?`<i></i><span>${esc(v.plate)}</span>`:''}
         </div>
       </div>
     </div>
@@ -648,8 +749,8 @@ function renderHome(){
   <div class="quick">
     ${quickBtn('maint','保養紀錄',I.wrench)}
     ${quickBtn('repair','維修紀錄',I.lift)}
+    ${quickBtn('fuel','加油紀錄',I.fuel)}
     ${quickBtn('ins','保險資訊',I.shield)}
-    ${quickBtn('other','支出統計',I.pie)}
   </div>
 
   <div class="sec">
@@ -669,7 +770,7 @@ function renderHome(){
 }
 
 const quickBtn=(k,label,icon)=>`
-  <button class="q" onclick="${k==='other'?'go(\'stats\')':`goFilter('${k}')`}">
+  <button class="q" onclick="goFilter('${k}')">
     <span class="q-ico" style="background:color-mix(in srgb, ${TYPES[k].color} 18%, transparent);color:${TYPES[k].color}">${svg(icon,23)}</span>
     <span>${label}</span>
   </button>`;
@@ -704,7 +805,8 @@ function renderTime(){
   const list=S.records
     .filter(r=>S.filter==='all'||r.type===S.filter)
     .sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('time-sub').textContent=`共 ${S.records.length} 筆紀錄`;
+  document.getElementById('time-sub').textContent=`${S.vehicle?S.vehicle.name+' · ':''}共 ${S.records.length} 筆紀錄`;
+  const fuelInfo=computeFuel();
 
   if(!list.length){
     el.innerHTML=`<div class="empty">
@@ -724,9 +826,18 @@ function renderTime(){
       lastM=m;
     }
     const t=TYPES[r.type]||TYPES.other;
-    const sub=[fmtDate(r.date), r.mileage?nf(r.mileage)+' km':'', r.note||''].filter(Boolean).join(' · ');
+    let sub;
+    if(r.type==='fuel'){
+      const seg=fuelInfo.segments.find(x=>x.to.id===r.id);
+      sub=[fmtDate(r.date), nf(r.mileage)+' km',
+           (Number(r.litres)||0).toFixed(2)+' L',
+           r.full?'':'未加滿',
+           seg? seg.kmL.toFixed(1)+' km/L':''].filter(Boolean).join(' · ');
+    }else{
+      sub=[fmtDate(r.date), r.mileage?nf(r.mileage)+' km':'', r.note||''].filter(Boolean).join(' · ');
+    }
     html+=`<div class="row" onclick="openRecord('${r.id}')">
-      <span class="row-ico" style="background:color-mix(in srgb, ${t.color} 16%, transparent);color:${t.color}">${svg(itemIcon(r.item),21)}</span>
+      <span class="row-ico" style="background:color-mix(in srgb, ${t.color} 16%, transparent);color:${t.color}">${svg(itemIcon(r.item,r.type),21)}</span>
       <div class="row-mid">
         <div class="row-t">${esc(r.item)}</div>
         <div class="row-s">${esc(sub)}</div>
@@ -831,7 +942,9 @@ function renderStats(){
             <div class="row-end"><span class="row-val num">$${nf(v)}</span></div></div>`;
         }).join('')}
       </div>
-    </div>`;
+    </div>
+
+    ${fuelSection()}`;
 
   el.querySelectorAll('#stat-segs .seg').forEach(s=>s.onclick=()=>{
     S.statMode=s.dataset.m; renderStats();
@@ -843,29 +956,119 @@ function renderStats(){
   });
 }
 
+/* 統計頁的油耗區塊 */
+function fuelSection(){
+  const f=computeFuel();
+  if(!f.logs.length) return '';
+
+  if(!f.segments.length){
+    return `<div class="sec">
+      <div class="sec-head"><h2 class="sec-title">油耗</h2></div>
+      <div class="card"><div class="row"><div class="row-mid">
+        <div class="row-t">還算不出油耗</div>
+        <div class="row-s">需要至少兩次「加滿」的紀錄，才能算出中間跑了多少</div>
+      </div></div></div></div>`;
+  }
+
+  const segs=f.segments.slice(-8);
+  const mx=Math.max(...segs.map(s=>s.kmL));
+  const mn=Math.min(...segs.map(s=>s.kmL));
+  const span=Math.max(mx-mn,0.1);
+  const best=f.segments.reduce((a,b)=>b.kmL>a.kmL?b:a);
+  const worst=f.segments.reduce((a,b)=>b.kmL<a.kmL?b:a);
+
+  return `
+    <div class="sec">
+      <div class="sec-head"><h2 class="sec-title">油耗</h2></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-l">平均油耗</div>
+          <div class="stat-v num" style="color:var(--cat-fuel)">${f.avg.toFixed(1)}<span style="font-size:14px;color:var(--text2)"> km/L</span></div></div>
+        <div class="stat"><div class="stat-l">最近一次</div>
+          <div class="stat-v num">${f.last.kmL.toFixed(1)}<span style="font-size:14px;color:var(--text2)"> km/L</span></div></div>
+      </div>
+      <div class="stat-grid" style="margin-top:12px">
+        <div class="stat"><div class="stat-l">每公里油錢</div>
+          <div class="stat-v num">$${f.costPerKm? f.costPerKm.toFixed(2):'—'}</div></div>
+        <div class="stat"><div class="stat-l">累計加油</div>
+          <div class="stat-v num">${f.totalL.toFixed(0)}<span style="font-size:14px;color:var(--text2)"> L</span></div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><h2 class="sec-title">油耗變化</h2></div>
+      <div class="card"><div class="chart">
+        <div class="chart-bars">
+          ${segs.map((s,i)=>{
+            const h=20+((s.kmL-mn)/span)*80;
+            return `<div class="cb">
+              <div class="cb-fill" style="height:0;background:var(--cat-fuel)"
+                   data-h="${h.toFixed(1)}" title="${s.kmL.toFixed(2)} km/L"></div>
+              <div class="cb-lbl">${s.kmL.toFixed(1)}</div></div>`;
+          }).join('')}
+        </div>
+        <div class="chart-base"></div>
+        <p class="hint" style="margin:12px 0 0;text-align:center">
+          最近 ${segs.length} 個加滿區間（km/L，越高越省）</p>
+      </div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><h2 class="sec-title">最省與最耗</h2></div>
+      <div class="card">
+        <div class="row">
+          <span class="row-ico" style="background:color-mix(in srgb, var(--success) 16%, transparent);color:var(--success)">${svg(I.fuel,20)}</span>
+          <div class="row-mid"><div class="row-t">最省的一次</div>
+            <div class="row-s">${fmtDate(best.to.date)} · 跑 ${nf(Math.round(best.km))} km 用 ${best.litres.toFixed(1)} L</div></div>
+          <div class="row-end"><span class="row-val num" style="color:var(--success)">${best.kmL.toFixed(1)}</span></div>
+        </div>
+        <div class="row">
+          <span class="row-ico" style="background:color-mix(in srgb, var(--warning) 16%, transparent);color:var(--warning)">${svg(I.fuel,20)}</span>
+          <div class="row-mid"><div class="row-t">最耗的一次</div>
+            <div class="row-s">${fmtDate(worst.to.date)} · 跑 ${nf(Math.round(worst.km))} km 用 ${worst.litres.toFixed(1)} L</div></div>
+          <div class="row-end"><span class="row-val num" style="color:var(--warning)">${worst.kmL.toFixed(1)}</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
 /* ============================================================
    我的
    ============================================================ */
 function renderMe(){
   const el=document.getElementById('me-body'), v=S.vehicle;
   el.innerHTML=`
-    ${v?`<div class="card" style="margin-bottom:20px">
-      <div class="row" onclick="openVehicleForm()">
-        <span class="row-ico" style="background:color-mix(in srgb, var(--primary) 16%, transparent);color:var(--primary)">${svg(I.car,21)}</span>
-        <div class="row-mid"><div class="row-t">${esc(v.name)}</div>
-          <div class="row-s">${esc(v.plate||'未填車牌')} · ${nf(v.mileage)} km</div></div>
+    ${S.vehicles.length?`<div class="sec-head" style="margin-top:4px"><h2 class="sec-title" style="font-size:17px;color:var(--text2)">我的車庫</h2></div>
+    <div class="card" style="margin-bottom:20px">
+      ${S.vehicles.map(x=>{
+        const on=v&&x.id===v.id, c=on?'var(--primary)':'var(--text2)';
+        return `<div class="row" onclick="openVehicleForm('${x.id}')">
+          <span class="row-ico" style="background:color-mix(in srgb, ${c} 16%, transparent);color:${c}">
+            ${svg(I[KINDS[x.kind]?KINDS[x.kind].icon:'car'],21)}</span>
+          <div class="row-mid"><div class="row-t">${esc(x.name)}${on?' <span style="font-size:12px;color:var(--primary)">· 使用中</span>':''}</div>
+            <div class="row-s">${KINDS[x.kind]?KINDS[x.kind].label:'汽車'} · ${esc(x.plate||'未填車牌')} · ${nf(x.mileage)} km</div></div>
+          <div class="row-end">${svg(I.chev,17)}</div>
+        </div>`;
+      }).join('')}
+      <div class="row" onclick="openVehicleForm(null,true)">
+        <span class="row-ico" style="background:color-mix(in srgb, var(--primary) 16%, transparent);color:var(--primary)">
+          ${svg('<path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',21)}</span>
+        <div class="row-mid"><div class="row-t">新增車輛</div>
+          <div class="row-s">汽車或機車都可以</div></div>
         <div class="row-end">${svg(I.chev,17)}</div>
       </div>
+    </div>`:''}
+
+    ${v?`<div class="card" style="margin-bottom:20px">
       <div class="row" onclick="openMileage()">
         <span class="row-ico" style="background:color-mix(in srgb, var(--cat-exp) 16%, transparent);color:var(--cat-exp)">${svg(I.pulse,21)}</span>
         <div class="row-mid"><div class="row-t">更新目前里程</div>
-          <div class="row-s">健康度與提醒會依此重新計算</div></div>
+          <div class="row-s">${esc(v.name)} · 目前 ${nf(v.mileage)} km</div></div>
         <div class="row-end">${svg(I.chev,17)}</div>
       </div>
       <div class="row" onclick="openRules()">
         <span class="row-ico" style="background:color-mix(in srgb, var(--cat-maint) 16%, transparent);color:var(--cat-maint)">${svg(I.wrench,21)}</span>
         <div class="row-mid"><div class="row-t">保養週期設定</div>
-          <div class="row-s">調整各項目的里程與月份間隔</div></div>
+          <div class="row-s">${esc(v.name)} 的各項里程與月份間隔</div></div>
         <div class="row-end">${svg(I.chev,17)}</div>
       </div>
     </div>`:''}
@@ -897,7 +1100,7 @@ function renderMe(){
     <div class="card">
       <div class="row"><div class="row-mid">
         <div class="row-t">車輛保養紀錄</div>
-        <div class="row-s">版本 1.2.0 · 共 ${S.records.length} 筆紀錄 · 資料只存在這台裝置</div></div></div>
+        <div class="row-s">版本 1.4.0 · ${S.vehicles.length} 台車 · 共 ${S.allRecords.length} 筆紀錄 · 資料只存在這台裝置</div></div></div>
       <div class="row" onclick="clearAll()">
         <span class="row-ico" style="background:color-mix(in srgb, var(--danger) 16%, transparent);color:var(--danger)">
           ${svg('<path d="M5.4 7.2h13.2M9.6 7.2V5.4a1.4 1.4 0 0 1 1.4-1.4h2a1.4 1.4 0 0 1 1.4 1.4v1.8M7 7.2l.8 11.4a1.6 1.6 0 0 0 1.6 1.5h5.2a1.6 1.6 0 0 0 1.6-1.5L17 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',21)}</span>
@@ -913,12 +1116,13 @@ function renderMe(){
 async function clearAll(){
   const ok=await confirmDialog({
     title:'清除所有資料？',
-    body:`會刪掉車輛資料與全部 ${S.records.length} 筆紀錄，且無法復原。`,
+    body:`會刪掉全部 ${S.vehicles.length} 台車與 ${S.allRecords.length} 筆紀錄，且無法復原。`,
     danger:'全部清除'
   });
   if(!ok)return;
   for(const v of await getAll('vehicles')) await del('vehicles',v.id);
   for(const r of await getAll('records'))  await del('records',r.id);
+  await del('settings','activeVehicle');
   await reload(); go('home'); toast('已清除所有資料');
 }
 
@@ -937,31 +1141,102 @@ function closeSheet(){
 document.getElementById('scrim').onclick=closeSheet;
 
 /* ---------- 新增 / 編輯紀錄 ---------- */
+/* 新增與編輯共用同一份表單；r 為 null 代表新增 */
+function recordForm(r,presetType,presetItem){
+  const t = r? r.type : (presetType||'maint');
+  const v = r||{};
+  return `
+    <div class="field"><label>類型</label><div class="chips" id="rc-type">
+      ${Object.keys(TYPES).map(k=>`<button class="chip ${k===t?'on':''}" data-k="${k}"
+        style="${k===t?`background:${TYPES[k].color};color:#fff;border-color:transparent`:''}">${TYPES[k].label}</button>`).join('')}
+    </div></div>
+
+    <div class="field"><label>項目</label>
+      <input id="rc-item" placeholder="${t==='fuel'?'例如：中油 92 無鉛':'例如：機油更換'}"
+             value="${esc(r? r.item : (presetItem || (t==='fuel'?'加油':'')))}"></div>
+
+    <div class="f2">
+      <div class="field"><label>日期</label>
+        <input type="date" id="rc-date" value="${esc(v.date||today())}"></div>
+      <div class="field"><label>當時里程 (km)</label>
+        <input type="number" inputmode="numeric" id="rc-km"
+               value="${esc(v.mileage||'')}" placeholder="${nf(S.vehicle.mileage)}"></div>
+    </div>
+
+    <!-- 加油專屬欄位 -->
+    <div id="rc-fuel" style="display:${t==='fuel'?'block':'none'}">
+      <div class="f2">
+        <div class="field"><label>加油量 (公升)</label>
+          <input type="number" inputmode="decimal" step="0.01" id="rc-litres"
+                 value="${esc(v.litres||'')}" placeholder="0.00"></div>
+        <div class="field"><label>每公升單價</label>
+          <input type="number" inputmode="decimal" step="0.1" id="rc-price"
+                 value="${esc(v.pricePerL||'')}" placeholder="0.0"></div>
+      </div>
+      <div class="field"><label>是否加滿</label><div class="chips" id="rc-full">
+        <button class="chip ${(!r||v.full!==false)?'on':''}" data-v="1"
+          style="${(!r||v.full!==false)?'background:var(--cat-fuel);color:#fff;border-color:transparent':''}">加滿</button>
+        <button class="chip ${(r&&v.full===false)?'on':''}" data-v="0"
+          style="${(r&&v.full===false)?'background:var(--cat-fuel);color:#fff;border-color:transparent':''}">沒加滿</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">油耗是用「加滿→加滿」的區間計算，所以加滿時務必勾加滿，數字才會準。</p></div>
+    </div>
+
+    <div class="f2">
+      <div class="field"><label>金額 (NT$)</label>
+        <input type="number" inputmode="numeric" id="rc-cost" value="${esc(v.cost||'')}" placeholder="0"></div>
+      <div class="field"><label>店家</label>
+        <input id="rc-shop" value="${esc(v.shop||'')}" placeholder="選填"></div>
+    </div>
+    <div class="field"><label>備註</label><textarea id="rc-note" placeholder="選填">${esc(v.note||'')}</textarea></div>`;
+}
+
 function openAdd(type,item){
-  if(!S.vehicle){ toast('請先加入一台車'); openVehicleForm(); return; }
-  const t=type||'maint';
+  if(!S.vehicle){ toast('請先加入一台車'); openVehicleForm(null,true); return; }
   openSheet(`
     <h2>新增紀錄</h2>
     <p class="hint">記下這次做了什麼、花了多少、當時的里程。</p>
-    <div class="field"><label>類型</label><div class="chips" id="rc-type">
-      ${Object.keys(TYPES).map(k=>`<button class="chip ${k===t?'on':''}" data-k="${k}"
-        style="${k===t?`background:${TYPES[k].color}`:''}">${TYPES[k].label}</button>`).join('')}
-    </div></div>
-    <div class="field"><label>項目</label>
-      <input id="rc-item" placeholder="例如：機油更換" value="${esc(item||'')}"></div>
-    <div class="f2">
-      <div class="field"><label>日期</label><input type="date" id="rc-date" value="${today()}"></div>
-      <div class="field"><label>當時里程 (km)</label>
-        <input type="number" inputmode="numeric" id="rc-km" placeholder="${nf(S.vehicle.mileage)}"></div>
-    </div>
-    <div class="f2">
-      <div class="field"><label>金額 (NT$)</label><input type="number" inputmode="numeric" id="rc-cost" placeholder="0"></div>
-      <div class="field"><label>店家</label><input id="rc-shop" placeholder="選填"></div>
-    </div>
-    <div class="field"><label>備註</label><textarea id="rc-note" placeholder="選填"></textarea></div>
+    ${recordForm(null,type,item)}
     <button class="btn btn-primary" onclick="saveRecord()">儲存紀錄</button>
     <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
+  bindRecordForm();
+}
+
+/* 類型切換要連動：顯示／隱藏加油欄位、自動帶入項目名稱、油量×單價自動算金額 */
+function bindRecordForm(){
   bindChips('rc-type');
+  const fullBox=document.getElementById('rc-full');
+  if(fullBox) fullBox.querySelectorAll('.chip').forEach(c=>{
+    c.onclick=()=>{
+      fullBox.querySelectorAll('.chip').forEach(x=>{
+        x.classList.remove('on'); x.style.background=''; x.style.color=''; x.style.borderColor='';
+      });
+      c.classList.add('on');
+      c.style.background='var(--cat-fuel)'; c.style.color='#fff'; c.style.borderColor='transparent';
+    };
+  });
+
+  const item=document.getElementById('rc-item');
+  const box=document.getElementById('rc-type');
+  box.querySelectorAll('.chip').forEach(c=>{
+    const prev=c.onclick;
+    c.onclick=()=>{
+      prev && prev();
+      const k=c.dataset.k;
+      document.getElementById('rc-fuel').style.display = k==='fuel'?'block':'none';
+      item.placeholder = k==='fuel'?'例如：中油 92 無鉛':'例如：機油更換';
+      if(k==='fuel' && !item.value.trim()) item.value='加油';
+      if(k!=='fuel' && item.value.trim()==='加油') item.value='';
+    };
+  });
+
+  const L=document.getElementById('rc-litres'), P=document.getElementById('rc-price'),
+        C=document.getElementById('rc-cost');
+  const calc=()=>{
+    const l=parseFloat(L.value), p=parseFloat(P.value);
+    if(l>0 && p>0) C.value=Math.round(l*p);
+  };
+  if(L&&P){ L.addEventListener('input',calc); P.addEventListener('input',calc); }
 }
 function bindChips(id){
   const box=document.getElementById(id);
@@ -974,10 +1249,20 @@ function bindChips(id){
 }
 async function saveRecord(editId){
   const type=document.querySelector('#rc-type .chip.on').dataset.k;
-  const item=document.getElementById('rc-item').value.trim();
+  let item=document.getElementById('rc-item').value.trim();
+  if(!item && type==='fuel') item='加油';
   if(!item){ toast('請填寫項目名稱'); return; }
   const km=document.getElementById('rc-km').value;
   const old=editId? S.records.find(x=>x.id===editId) : null;
+
+  const litres=parseFloat(document.getElementById('rc-litres').value)||0;
+  const price =parseFloat(document.getElementById('rc-price').value)||0;
+  if(type==='fuel'){
+    if(!litres){ toast('請填寫加油量'); return; }
+    if(!km){ toast('加油紀錄需要填當時里程才能算油耗'); return; }
+  }
+  const fullBtn=document.querySelector('#rc-full .chip.on');
+
   const rec={
     id: editId || uid(),
     vehicleId:S.vehicle.id, type, item,
@@ -988,6 +1273,12 @@ async function saveRecord(editId){
     note:document.getElementById('rc-note').value.trim(),
     createdAt: old? old.createdAt : new Date().toISOString()
   };
+  if(type==='fuel'){
+    rec.litres=litres;
+    rec.pricePerL=price||(litres? Math.round(rec.cost/litres*10)/10 : 0);
+    rec.full = fullBtn ? fullBtn.dataset.v==='1' : true;
+  }
+
   await put('records',rec);
   if(rec.mileage>(Number(S.vehicle.mileage)||0)){
     S.vehicle.mileage=rec.mileage; await put('vehicles',S.vehicle);
@@ -999,28 +1290,12 @@ function openRecord(id){
   const r=S.records.find(x=>x.id===id); if(!r)return;
   openSheet(`
     <h2>編輯紀錄</h2>
-    <p class="hint">改完按儲存，健康度與提醒會立刻重算。</p>
-    <div class="field"><label>類型</label><div class="chips" id="rc-type">
-      ${Object.keys(TYPES).map(k=>`<button class="chip ${k===r.type?'on':''}" data-k="${k}"
-        style="${k===r.type?`background:${TYPES[k].color}`:''}">${TYPES[k].label}</button>`).join('')}
-    </div></div>
-    <div class="field"><label>項目</label>
-      <input id="rc-item" value="${esc(r.item)}"></div>
-    <div class="f2">
-      <div class="field"><label>日期</label><input type="date" id="rc-date" value="${esc(r.date)}"></div>
-      <div class="field"><label>當時里程 (km)</label>
-        <input type="number" inputmode="numeric" id="rc-km" value="${esc(r.mileage||'')}"></div>
-    </div>
-    <div class="f2">
-      <div class="field"><label>金額 (NT$)</label>
-        <input type="number" inputmode="numeric" id="rc-cost" value="${esc(r.cost||'')}"></div>
-      <div class="field"><label>店家</label><input id="rc-shop" value="${esc(r.shop||'')}"></div>
-    </div>
-    <div class="field"><label>備註</label><textarea id="rc-note">${esc(r.note||'')}</textarea></div>
+    <p class="hint">改完按儲存，健康度與油耗會立刻重算。</p>
+    ${recordForm(r)}
     <button class="btn btn-primary" onclick="saveRecord('${r.id}')">儲存變更</button>
     <button class="btn btn-danger" style="margin-top:10px" onclick="removeRecord('${r.id}')">刪除這筆紀錄</button>
     <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
-  bindChips('rc-type');
+  bindRecordForm();
 }
 async function removeRecord(id){
   const r=S.records.find(x=>x.id===id);
@@ -1053,14 +1328,48 @@ function confirmDialog({title,body,danger='確定',cancel='取消'}){
   });
 }
 
-/* ---------- 車輛資料 ---------- */
-function openVehicleForm(){
-  const v=S.vehicle||{};
+/* ---------- 車輛切換器 ---------- */
+function openVehiclePicker(){
   openSheet(`
-    <h2>${S.vehicle?'編輯車輛':'加入車輛'}</h2>
-    <p class="hint">這些資料會用來計算健康度與保養提醒。</p>
-    <div class="field"><label>車款名稱</label>
-      <input id="v-name" placeholder="例如：Honda Fit" value="${esc(v.name||'')}"></div>
+    <h2>切換車輛</h2>
+    <p class="hint">每台車有各自的紀錄、保養週期與健康度。</p>
+    <div class="card" style="margin:0 0 18px">
+      ${S.vehicles.map(v=>{
+        const on=v.id===S.vehicle.id;
+        const cnt=S.allRecords.filter(r=>r.vehicleId===v.id).length;
+        const c=on?'var(--primary)':'var(--text2)';
+        return `<div class="row" onclick="switchVehicle('${v.id}')">
+          <span class="row-ico" style="background:color-mix(in srgb, ${c} 16%, transparent);color:${c}">
+            ${svg(I[KINDS[v.kind]?KINDS[v.kind].icon:'car'],21)}</span>
+          <div class="row-mid"><div class="row-t">${esc(v.name)}</div>
+            <div class="row-s">${KINDS[v.kind]?KINDS[v.kind].label:'汽車'} · ${nf(v.mileage)} km · ${cnt} 筆紀錄</div></div>
+          <div class="row-end">${on?`<span style="color:var(--primary)">${svg(I.check,20)}</span>`:svg(I.chev,17)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-primary" onclick="openVehicleForm(null,true)">新增一台車</button>
+    <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
+}
+async function switchVehicle(id){
+  await put('settings',{key:'activeVehicle',value:id});
+  await reload(); closeSheet(); go('home');
+}
+
+/* ---------- 車輛資料 ---------- */
+function openVehicleForm(id,isNew){
+  const v = isNew ? {} : (id? S.vehicles.find(x=>x.id===id) : S.vehicle) || {};
+  const k = v.kind || 'car';
+  const creating = isNew || !v.id;
+  openSheet(`
+    <h2>${creating?'新增車輛':'編輯車輛'}</h2>
+    <p class="hint">車型會決定預設的保養週期，之後仍可自行調整。</p>
+    <div class="field"><label>車型</label><div class="chips" id="v-kind">
+      ${Object.keys(KINDS).map(kk=>`<button class="chip ${kk===k?'on':''}" data-k="${kk}"
+        style="${kk===k?'background:var(--primary);color:#fff;border-color:transparent':''}">
+        ${svg(I[KINDS[kk].icon],18)}${KINDS[kk].label}</button>`).join('')}
+    </div></div>
+    <div class="field"><label>名稱</label>
+      <input id="v-name" placeholder="例如：Honda Fit、GOGORO 2" value="${esc(v.name||'')}"></div>
     <div class="f2">
       <div class="field"><label>年份</label>
         <input type="number" inputmode="numeric" id="v-year" placeholder="2011" value="${esc(v.year||'')}"></div>
@@ -1068,28 +1377,98 @@ function openVehicleForm(){
         <input id="v-plate" placeholder="選填" value="${esc(v.plate||'')}"></div>
     </div>
     <div class="field"><label>目前里程 (km)</label>
-      <input type="number" inputmode="numeric" id="v-km" placeholder="125430" value="${esc(v.mileage||'')}"></div>
+      <input type="number" inputmode="numeric" id="v-km" placeholder="0" value="${esc(v.mileage||'')}"></div>
     <div class="f2">
       <div class="field"><label>強制險到期日</label>
         <input type="date" id="v-ins1" value="${esc(v.insCompulsory||'')}"></div>
       <div class="field"><label>第三人責任險到期</label>
         <input type="date" id="v-ins2" value="${esc(v.insThird||'')}"></div>
     </div>
-    <button class="btn btn-primary" onclick="saveVehicle()">儲存</button>
+    <div class="field"><label>下次定期排氣檢驗</label>
+      <input type="date" id="v-insp" value="${esc(v.inspection||'')}">
+      <p class="hint" style="margin:8px 0 0">機車出廠滿 5 年起每年一次；汽車滿 5 年起每年、滿 10 年每半年。</p></div>
+    <div class="field"><label>封面照片</label>
+      <input type="file" id="v-photo" accept="image/*">
+      <p class="hint" style="margin:8px 0 0">選填。不指定的話，汽車用內建實拍圖、機車用光暈底圖。</p></div>
+    <button class="btn btn-primary" onclick="saveVehicle('${creating?'':(v.id||'')}')">儲存</button>
+    ${v.photo?`<button class="btn btn-danger" style="margin-top:10px" onclick="clearPhoto('${v.id}')">移除封面照片</button>`:''}
+    ${(!creating && S.vehicles.length>1)?`<button class="btn btn-danger" style="margin-top:10px" onclick="removeVehicle('${v.id}')">刪除這台車</button>`:''}
     <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
+  bindKindChips();
 }
-async function saveVehicle(){
-  const name=document.getElementById('v-name').value.trim();
-  if(!name){ toast('請填寫車款名稱'); return; }
-  const v=Object.assign({},S.vehicle||{id:uid(),createdAt:today(),baseDate:today(),rules:DEFAULT_RULES},{
-    name, year:document.getElementById('v-year').value.trim(),
-    plate:document.getElementById('v-plate').value.trim(),
-    mileage:Number(document.getElementById('v-km').value)||0,
-    insCompulsory:document.getElementById('v-ins1').value,
-    insThird:document.getElementById('v-ins2').value
+function bindKindChips(){
+  const box=document.getElementById('v-kind');
+  box.querySelectorAll('.chip').forEach(c=>{
+    c.onclick=()=>{
+      box.querySelectorAll('.chip').forEach(x=>{
+        x.classList.remove('on'); x.style.background=''; x.style.color=''; x.style.borderColor='';
+      });
+      c.classList.add('on');
+      c.style.background='var(--primary)'; c.style.color='#fff'; c.style.borderColor='transparent';
+    };
   });
-  if(v.baseMileage==null) v.baseMileage=v.mileage;
-  await put('vehicles',v); await reload(); closeSheet(); toast('已儲存車輛資料');
+}
+async function saveVehicle(editId){
+  const name=document.getElementById('v-name').value.trim();
+  if(!name){ toast('請填寫車輛名稱'); return; }
+  const kind=document.querySelector('#v-kind .chip.on').dataset.k;
+  const old = editId? S.vehicles.find(x=>x.id===editId) : null;
+  const f=document.getElementById('v-photo').files[0];
+  const photo = f? await readImage(f) : (old?old.photo:'')||'';
+  const mileage=Number(document.getElementById('v-km').value)||0;
+
+  const v=Object.assign({}, old||{id:uid(),createdAt:today(),baseDate:today(),baseMileage:mileage}, {
+    kind, name, photo, mileage,
+    year:document.getElementById('v-year').value.trim(),
+    plate:document.getElementById('v-plate').value.trim(),
+    insCompulsory:document.getElementById('v-ins1').value,
+    insThird:document.getElementById('v-ins2').value,
+    inspection:document.getElementById('v-insp').value
+  });
+  // 車型變更或首次建立時套用該車型的預設週期
+  if(!old || old.kind!==kind) v.rules=rulesFor(kind);
+  if(v.baseMileage==null) v.baseMileage=mileage;
+
+  await put('vehicles',v);
+  if(!old) await put('settings',{key:'activeVehicle',value:v.id});
+  await reload(); closeSheet();
+  toast(old?'已更新車輛資料':`已新增「${v.name}」`);
+}
+async function clearPhoto(id){
+  const v=S.vehicles.find(x=>x.id===id); if(!v)return;
+  v.photo=''; await put('vehicles',v); await reload(); closeSheet(); toast('已移除封面照片');
+}
+async function removeVehicle(id){
+  const v=S.vehicles.find(x=>x.id===id); if(!v)return;
+  const cnt=S.allRecords.filter(r=>r.vehicleId===id).length;
+  const ok=await confirmDialog({
+    title:`刪除「${v.name}」？`,
+    body:`連同這台車的 ${cnt} 筆紀錄一起刪除，無法復原。`,
+    danger:'刪除'
+  });
+  if(!ok)return;
+  for(const r of S.allRecords.filter(x=>x.vehicleId===id)) await del('records',r.id);
+  await del('vehicles',id);
+  const rest=(await getAll('vehicles'))[0];
+  await put('settings',{key:'activeVehicle',value:rest?rest.id:''});
+  await reload(); closeSheet(); go('home'); toast('已刪除車輛');
+}
+function readImage(file){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=1000, sc=Math.min(1,max/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',0.82));
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(file);
+  });
 }
 
 function openMileage(){
@@ -1107,10 +1486,10 @@ async function saveMileage(){
 }
 
 function openRules(){
-  const rules=S.vehicle.rules||DEFAULT_RULES;
+  const rules=S.vehicle.rules||rulesFor(S.vehicle.kind);
   openSheet(`
     <h2>保養週期設定</h2>
-    <p class="hint">依你的用車習慣調整，健康度會跟著重新計算。</p>
+    <p class="hint">${esc(S.vehicle.name)}（${KINDS[S.vehicle.kind]?KINDS[S.vehicle.kind].label:'汽車'}）· 依你的用車習慣調整，健康度會跟著重算。</p>
     ${rules.map((r,i)=>`
       <div class="field"><label>${esc(r.name)}</label><div class="f2">
         <input type="number" inputmode="numeric" id="ru-km-${i}" value="${r.km||''}" placeholder="里程 km">
@@ -1120,7 +1499,7 @@ function openRules(){
     <button class="btn btn-ghost" onclick="closeSheet()">取消</button>`);
 }
 async function saveRules(){
-  const base=S.vehicle.rules||DEFAULT_RULES;
+  const base=S.vehicle.rules||rulesFor(S.vehicle.kind);
   S.vehicle.rules=base.map((r,i)=>Object.assign({},r,{
     km:Number(document.getElementById('ru-km-'+i).value)||0,
     months:Number(document.getElementById('ru-mo-'+i).value)||0
@@ -1204,9 +1583,28 @@ document.querySelectorAll('#time-segs .seg').forEach(s=>s.onclick=()=>{
    啟動
    ============================================================ */
 async function reload(){
-  const vs=await getAll('vehicles');
-  S.vehicle=vs[0]||null;
-  S.records=await getAll('records');
+  S.vehicles = await getAll('vehicles');
+  S.allRecords = await getAll('records');
+
+  // 舊版（單一車輛、無 kind）資料自動遷移
+  let migrated=false;
+  for(const v of S.vehicles){
+    if(!v.kind){ v.kind='car'; migrated=true; }
+    if(!v.rules || !v.rules.length){ v.rules=rulesFor(v.kind); migrated=true; }
+    if(migrated) await put('vehicles',v);
+  }
+  if(S.vehicles.length===1){
+    const only=S.vehicles[0];
+    const orphans=S.allRecords.filter(r=>!r.vehicleId || !S.vehicles.some(v=>v.id===r.vehicleId));
+    for(const r of orphans){ r.vehicleId=only.id; await put('records',r); }
+    if(orphans.length) S.allRecords = await getAll('records');
+  }
+
+  const st=await getAll('settings');
+  const act=(st.find(x=>x.key==='activeVehicle')||{}).value;
+  S.vehicle = S.vehicles.find(v=>v.id===act) || S.vehicles[0] || null;
+  S.records = S.vehicle ? S.allRecords.filter(r=>r.vehicleId===S.vehicle.id) : [];
+
   renderHome();
   if(S.tab==='time')renderTime(); if(S.tab==='stats')renderStats(); if(S.tab==='me')renderMe();
 }

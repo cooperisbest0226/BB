@@ -1,5 +1,5 @@
 /* 車輛保養紀錄 — Service Worker */
-const CACHE = 'vehicle-maint-v1.2.0';
+const CACHE = 'vehicle-maint-v1.4.0';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,10 @@ const ASSETS = [
   './img/hero-car@2x.webp',
   './img/hero-car.jpg',
   './img/hero-car@2x.jpg',
+  './img/hero-plate.webp',
+  './img/hero-plate@2x.webp',
+  './img/hero-plate.jpg',
+  './img/hero-plate@2x.jpg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
