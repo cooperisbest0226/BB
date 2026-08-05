@@ -511,7 +511,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v2';
+const APP_VERSION='v5';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -578,7 +578,7 @@ const RO_JOBS={
   royal_guard:{n:"皇家禁衛隊",c:"三轉",p:"paladin",s:["先鋒部隊","威信","王的恩典","聖冕加護","聚集","虔誠"]},
   rune_knight:{n:"盧恩騎士",c:"三轉",p:"lord_knight",s:[]},
   shadow_chaser:{n:"魅影追蹤者",c:"三轉",p:"stalker",s:[]},
-  sorcerer:{n:"妖術師",c:"三轉",p:"professor",s:["加熱術","精靈治癒","精靈激發","精靈結界"]},
+  sorcerer:{n:"妖術師",c:"三轉",p:"professor",s:["加熱術","地之紋章","打擊強化","水之紋章","火之紋章","精靈治癒","精靈激發","精靈結界","風之紋章"]},
   sura:{n:"修羅",c:"三轉",p:"champion",s:[]},
   wanderer:{n:"浪姬舞者",c:"三轉",p:"gypsy",s:["戀人交響樂","課程","豐年頌","魔力之歌"]},
   warlock:{n:"咒術士",c:"三轉",p:"high_wizard",s:[]},
@@ -590,7 +590,7 @@ const RO_JOBS={
   elemental_master:{n:"元素支配者",c:"四轉",p:"sorcerer",s:["元素天幕","咒力賦予"]},
   imperial_guard:{n:"帝國聖衛軍",c:"四轉",p:"royal_guard",s:["守護神盾","抗性聖盾","霸權震域"]},
   inquisitor:{n:"聖裁者",c:"四轉",p:"sura",s:["聖油洗禮"]},
-  meister:{n:"機甲神匠",c:"四轉",p:"mechanic",s:[]},
+  meister:{n:"機甲神匠",c:"四轉",p:"mechanic",s:["衝擊撼動"]},
   shadow_cross:{n:"十字影武",c:"四轉",p:"guillotine_cross",s:[]},
   troubadour:{n:"天籟頌者",c:"四轉",p:"minstrel",s:["普隆德拉進行曲","神秘交響曲","舞台禮儀"]},
   wind_hawk:{n:"風鷹狩獵者",c:"四轉",p:"ranger",s:["熱愛自然"]},
@@ -1159,18 +1159,20 @@ function roleSheet(id, draft){
    current：目前的 BUFF 文字（沿用既有的自由輸入內容，不會被洗掉）
    roleName：職業名稱，用來自動對應到 RO 職業 */
 function buffPickerSheet(current, roleName, onApply, onCancel){
-  const CATS=['一轉','二轉','轉生二轉','三轉','四轉','擴充職業'];
+  const CATS=['初心者','一轉','二轉','轉生二轉','三轉','四轉','擴充職業'];
   const picks=(current||'').split('、').map(x=>x.trim()).filter(Boolean);
   const selected=new Set(picks);
   const pickable=roPickableJobs();
   let jobId=roJobIdByName(roleName);
-  if(!jobId||!pickable.includes(jobId)){
+  if(!jobId||!RO_JOBS[jobId]){
     const sameCat=jobId&&RO_JOBS[jobId]?pickable.find(j=>RO_JOBS[j].c===RO_JOBS[jobId].c):null;
-    jobId=sameCat||pickable[0];
+    jobId=sameCat||pickable[0]||Object.keys(RO_JOBS)[0];
   }
 
+  /* 下拉選單列出「全部」職業（不只是有 BUFF 的），這樣自己的職業一定找得到、選得到，
+     就算這條轉職線目前沒收錄支援技能，也會清楚顯示原因，而不是整個從清單消失 */
   const opts=CATS.map(c=>{
-    const list=pickable.filter(jid=>RO_JOBS[jid].c===c);
+    const list=Object.keys(RO_JOBS).filter(jid=>RO_JOBS[jid].c===c);
     if(!list.length) return '';
     return `<optgroup label="${c}">`+list.map(jid=>
       `<option value="${jid}" ${jid===jobId?'selected':''}>${esc(RO_JOBS[jid].n)}</option>`).join('')+`</optgroup>`;
