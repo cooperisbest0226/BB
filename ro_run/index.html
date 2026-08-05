@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef1f7">
+<title>星座塔團隊</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="./icons/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="星座塔團隊">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1f7;
+  --ink:#15171c;
+  --ink-2:#3d434f;
+  --muted:#7b8194;
+  --faint:#a8aec0;
+  --line:rgba(21,23,28,.09);
+  --line-2:rgba(21,23,28,.055);
+  --glass:rgba(255,255,255,.72);
+  --glass-2:rgba(255,255,255,.55);
+  --accent:#4f46e5;
+  --accent-soft:rgba(79,70,229,.1);
+  --danger:#dc2626;
+  --ok:#0f9d76;
+  --r-lg:20px; --r-md:14px; --r-sm:9px;
+  --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
+  --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
+  --ease:cubic-bezier(.32,.72,0,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); min-height:100vh;
+  font-family:'Inter','Noto Sans TC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:none;
+}
+/* ambient night-sky wash */
+body::before{
+  content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(60vw 50vh at 12% -8%, rgba(99,102,241,.20), transparent 62%),
+    radial-gradient(55vw 45vh at 92% 4%, rgba(139,92,246,.16), transparent 60%),
+    radial-gradient(70vw 55vh at 50% 108%, rgba(34,211,238,.13), transparent 62%);
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:none;background:none;cursor:pointer;padding:0}
+input,textarea,select{
+  width:100%; background:rgba(255,255,255,.8); border:1px solid var(--line);
+  border-radius:var(--r-sm); padding:9px 11px; outline:none; transition:border-color .16s, box-shadow .16s;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1}
+
+/* ── layout ─────────────────────────────────────────────── */
+.app{max-width:1180px; margin:0 auto; padding:0 16px calc(120px + env(safe-area-inset-bottom)); transition:padding-bottom .3s var(--ease)}
+.app.nobench{padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+.topbar{
+  position:sticky; top:0; z-index:30; margin:0 -16px; padding:10px 16px 10px;
+  background:rgba(238,241,247,.82); backdrop-filter:blur(20px) saturate(1.6);
+  -webkit-backdrop-filter:blur(20px) saturate(1.6); border-bottom:1px solid var(--line-2);
+}
+.topbar-row{display:flex; align-items:center; gap:10px}
+.brand{display:flex; align-items:baseline; gap:8px; margin-right:auto; min-width:0}
+.brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
+.brand-sub{font-size:11px; color:var(--faint); letter-spacing:.4px; white-space:nowrap}
+.icon-btn{
+  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+  color:var(--ink-2); background:var(--glass-2); border:1px solid var(--line-2);
+  transition:background .16s, color .16s, transform .12s var(--ease);
+}
+.icon-btn:hover{background:#fff; color:var(--ink)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn:disabled{opacity:.32; cursor:default}
+.icon-btn svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+
+/* tabs */
+.tabbar{display:flex; gap:2px; margin-top:9px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px}
+.tab{
+  flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
+  color:var(--muted); transition:color .18s, background .18s, box-shadow .18s; white-space:nowrap;
+}
+.tab[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
+.view{display:none; animation:rise .34s var(--ease) both}
+.view.active{display:block}
+@keyframes rise{from{opacity:0; transform:translateY(7px)} to{opacity:1; transform:none}}
+
+/* section heading */
+.sec{display:flex; align-items:center; gap:10px; margin:26px 0 12px}
+.sec-t{font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.sec-line{flex:1; height:1px; background:var(--line-2)}
+
+/* ── date rail ──────────────────────────────────────────── */
+.daterail{display:flex; align-items:center; gap:8px; margin-top:14px}
+.dates{
+  display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x mandatory;
+  flex:1; padding:2px 0; scrollbar-width:none;
+}
+.dates::-webkit-scrollbar{display:none}
+.datechip{
+  scroll-snap-align:start; flex:0 0 auto; min-width:66px; padding:9px 13px 10px;
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
+  text-align:center; transition:transform .18s var(--ease), box-shadow .18s, border-color .18s;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.datechip:active{transform:scale(.96)}
+.datechip .dc-dow{font-size:10px; color:var(--faint); letter-spacing:.06em; font-weight:500}
+.datechip .dc-md{font-size:16px; font-weight:600; letter-spacing:-.3px; margin-top:1px}
+.datechip .dc-meta{font-size:10px; color:var(--faint); margin-top:2px}
+.datechip[aria-current="true"]{
+  background:var(--ink); border-color:var(--ink); color:#fff; box-shadow:var(--shadow-lift);
+}
+.datechip[aria-current="true"] .dc-dow,
+.datechip[aria-current="true"] .dc-meta{color:rgba(255,255,255,.62)}
+
+/* ── PT cards ───────────────────────────────────────────── */
+.ptgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:13px; margin-top:6px}
+.ptcard{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
+  backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  box-shadow:var(--shadow); overflow:hidden; transition:box-shadow .22s, border-color .18s, transform .18s var(--ease);
+  animation:rise .4s var(--ease) both;
+}
+.ptcard.drop-on{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft), var(--shadow-lift)}
+.pt-head{display:flex; align-items:flex-start; gap:10px; padding:14px 15px 0}
+.pt-id{min-width:0; flex:1}
+.pt-name{font-size:15.5px; font-weight:650; letter-spacing:-.2px; display:flex; align-items:center; gap:7px}
+.pt-time{font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px}
+.pt-count{text-align:right; line-height:1; white-space:nowrap}
+.pt-count b{font-size:21px; font-weight:680; letter-spacing:-.8px}
+.pt-count span{font-size:12px; color:var(--faint); font-weight:500}
+.pt-count.full b{color:var(--ok)}
+
+/* signature: segmented capacity meter */
+.meter{display:flex; gap:2.5px; padding:11px 15px 12px}
+.pip{flex:1; height:4px; border-radius:2px; background:rgba(21,23,28,.09); transition:background .3s var(--ease)}
+.pip.on{background:var(--accent)}
+.pip.full{background:var(--ok)}
+
+.slots{display:flex; flex-direction:column; gap:1px; background:var(--line-2); border-top:1px solid var(--line-2)}
+.slot{
+  display:flex; align-items:center; gap:9px; padding:9px 15px; background:rgba(255,255,255,.62);
+  transition:background .16s;
+}
+.slot:hover{background:rgba(255,255,255,.9)}
+.slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
+.slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rolepill{
+  font-size:11.5px; font-weight:600; padding:3.5px 9px; border-radius:99px; white-space:nowrap;
+  border:1px solid; transition:transform .12s var(--ease);
+}
+.rolepill:active{transform:scale(.93)}
+.rolepill.empty{color:var(--faint); border-color:var(--line); background:transparent; font-weight:500}
+.slot-x{color:var(--faint); font-size:15px; line-height:1; padding:2px 3px; border-radius:5px; transition:color .16s, background .16s}
+.slot-x:hover{color:var(--danger); background:rgba(220,38,38,.08)}
+.slot-empty{
+  padding:10px 15px; font-size:12.5px; color:var(--faint); background:rgba(255,255,255,.42);
+  text-align:center;
+}
+.pt-foot{display:flex; gap:7px; padding:10px 13px; border-top:1px solid var(--line-2); background:rgba(255,255,255,.45)}
+
+/* small ghost button */
+.gbtn{
+  font-size:12px; font-weight:500; color:var(--ink-2); padding:6px 11px; border-radius:8px;
+  border:1px solid var(--line); background:rgba(255,255,255,.7); transition:background .16s, border-color .16s, transform .12s var(--ease);
+}
+.gbtn:hover{background:#fff; border-color:var(--line)}
+.gbtn:active{transform:scale(.96)}
+.gbtn.accent{color:#fff; background:var(--ink); border-color:var(--ink)}
+.gbtn.accent:hover{background:#000}
+.gbtn.warn:hover{color:var(--danger); border-color:rgba(220,38,38,.3); background:rgba(220,38,38,.05)}
+
+/* ── bench (unassigned pool) ────────────────────────────── */
+.bench{
+  position:fixed; left:0; right:0; bottom:0; z-index:25;
+  background:rgba(238,241,247,.9); backdrop-filter:blur(22px) saturate(1.6);
+  -webkit-backdrop-filter:blur(22px) saturate(1.6); border-top:1px solid var(--line);
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  transition:transform .3s var(--ease);
+}
+.bench.drop-on{box-shadow:inset 0 3px 0 var(--accent)}
+.bench.hidden{transform:translateY(105%); pointer-events:none}
+.bench-top{display:flex; align-items:center; gap:9px; margin-bottom:8px}
+.bench-t{font-size:11.5px; font-weight:600; color:var(--muted); letter-spacing:.03em}
+.bench-list{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; min-height:34px}
+.bench-list::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:7px 12px;
+  background:#fff; border:1px solid var(--line-2); border-radius:99px; font-size:13px; font-weight:500;
+  box-shadow:0 1px 2px rgba(21,23,28,.05); touch-action:none; cursor:grab;
+  transition:transform .14s var(--ease), box-shadow .16s, opacity .16s;
+}
+.chip:active{cursor:grabbing}
+.chip.picked{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.chip.dragging{opacity:.32}
+.chip-dot{width:7px; height:7px; border-radius:99px; flex:0 0 auto}
+.chip-n{
+  font-size:10px; font-weight:700; color:#fff; background:var(--accent); border-radius:99px;
+  min-width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; padding:0 4px;
+}
+.bench-empty{font-size:12.5px; color:var(--faint); padding:8px 2px}
+.drag-ghost{
+  position:fixed; z-index:999; pointer-events:none; padding:7px 12px; background:#fff;
+  border-radius:99px; font-size:13px; font-weight:600; box-shadow:var(--shadow-lift);
+  border:1px solid var(--accent); transform:translate(-50%,-50%) scale(1.04);
+}
+
+/* ── rows (members / roles) ─────────────────────────────── */
+.list{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow)}
+.row{display:flex; align-items:center; gap:11px; padding:12px 15px; border-bottom:1px solid var(--line-2); transition:background .16s}
+.row:last-child{border-bottom:none}
+.row:hover{background:rgba(255,255,255,.72)}
+.row-main{flex:1; min-width:0}
+.row-t{font-size:14px; font-weight:550; display:flex; align-items:center; gap:7px}
+.row-s{font-size:11.5px; color:var(--muted); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.swatch{width:22px; height:22px; border-radius:7px; flex:0 0 auto; border:1px solid rgba(21,23,28,.1)}
+.checkbox{
+  width:21px; height:21px; border-radius:7px; flex:0 0 auto; border:1.5px solid var(--line);
+  background:#fff; position:relative; transition:background .16s, border-color .16s;
+}
+.checkbox.on{background:var(--accent); border-color:var(--accent)}
+.checkbox.on::after{
+  content:''; position:absolute; left:6px; top:2.5px; width:5px; height:10px;
+  border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+.row-selectable{cursor:pointer}
+.row-selectable:active{background:rgba(79,70,229,.06)}
+.badge{font-size:10px; font-weight:600; padding:2px 7px; border-radius:99px; background:rgba(21,23,28,.06); color:var(--muted)}
+.badge.off{background:rgba(220,38,38,.09); color:var(--danger)}
+.emptystate{
+  text-align:center; padding:38px 20px; color:var(--muted); font-size:13.5px;
+  background:var(--glass); border:1px dashed var(--line); border-radius:var(--r-lg);
+}
+.emptystate b{display:block; font-size:15px; color:var(--ink); font-weight:600; margin-bottom:5px}
+
+/* ── stats ──────────────────────────────────────────────── */
+.statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:11px}
+.stat{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px; box-shadow:var(--shadow)}
+.stat-k{font-size:11px; color:var(--muted); font-weight:500; letter-spacing:.03em}
+.stat-v{font-size:27px; font-weight:680; letter-spacing:-1px; margin-top:3px; line-height:1}
+.stat-v small{font-size:13px; color:var(--faint); font-weight:500; letter-spacing:0}
+.bars{display:flex; flex-direction:column; gap:9px; margin-top:4px}
+.bar-row{display:flex; align-items:center; gap:10px}
+.bar-l{font-size:12.5px; font-weight:500; width:74px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bar-track{flex:1; height:7px; background:rgba(21,23,28,.07); border-radius:99px; overflow:hidden}
+.bar-fill{height:100%; border-radius:99px; transition:width .5s var(--ease)}
+.bar-n{font-size:12px; color:var(--muted); width:22px; text-align:right; flex:0 0 auto}
+
+
+/* ── PT 計算 ────────────────────────────────────────────── */
+.attrcard{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
+  padding:13px 15px 14px; margin-bottom:9px; box-shadow:var(--shadow);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-left:3px solid var(--ac); animation:rise .4s var(--ease) both;
+}
+.attr-top{display:flex; align-items:center; gap:8px; margin-bottom:9px}
+.attr-nm{font-size:14.5px; font-weight:600; letter-spacing:-.2px}
+.attr-en{font-size:10.5px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase}
+.attr-pt{
+  margin-left:auto; font-size:12px; font-weight:650; padding:3px 9px; border-radius:99px;
+  color:var(--ac); background:var(--ac-soft); border:1px solid var(--ac-line);
+}
+.stars{display:flex; align-items:center; gap:3px}
+.star{
+  width:30px; height:30px; display:grid; place-items:center; border-radius:8px; font-size:18px;
+  color:rgba(21,23,28,.13); transition:color .18s var(--ease), transform .14s var(--ease), background .16s;
+}
+.star:hover{background:rgba(21,23,28,.04)}
+.star:active{transform:scale(.88)}
+.star.on{color:var(--ac)}
+.star-lb{margin-left:7px; font-size:11px; color:var(--faint); font-weight:500}
+
+.totalcard{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
+  padding:19px 18px 17px; box-shadow:var(--shadow); text-align:center;
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+}
+.total-k{font-size:11px; font-weight:550; color:var(--muted); letter-spacing:.07em; text-transform:uppercase}
+.total-v{font-size:52px; font-weight:700; letter-spacing:-2.5px; line-height:1.05; margin:5px 0 3px}
+.total-v small{font-size:16px; font-weight:550; color:var(--faint); letter-spacing:-.2px; margin-left:2px}
+.total-meter{display:flex; gap:2.5px; margin:13px 0 12px}
+.tier{
+  display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600;
+  padding:6px 14px; border-radius:99px; background:var(--accent-soft); color:var(--accent);
+  border:1px solid rgba(79,70,229,.2);
+}
+.tier.hi{background:rgba(15,157,118,.1); color:var(--ok); border-color:rgba(15,157,118,.25)}
+.tier-dot{width:6px; height:6px; border-radius:99px; background:currentColor}
+.presets{display:flex; gap:5px; margin-top:13px}
+.presets .gbtn{flex:1; min-width:0; text-align:center; padding:9px 4px; font-weight:550; font-size:11.5px; letter-spacing:-.2px}
+.bd{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); overflow:hidden; box-shadow:var(--shadow)}
+.bd-row{display:flex; align-items:center; gap:11px; padding:10px 15px; border-bottom:1px solid var(--line-2); font-size:13px}
+.bd-row:last-child{border-bottom:none}
+.bd-nm{font-weight:500; width:44px; flex:0 0 auto}
+.bd-st{color:var(--faint); font-size:12px; letter-spacing:1px; flex:1}
+.bd-pt{font-weight:600; color:var(--ac)}
+
+/* ── sheet / modal ──────────────────────────────────────── */
+.scrim{
+  position:fixed; inset:0; z-index:100; background:rgba(21,23,28,.34);
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  display:flex; align-items:flex-end; justify-content:center; animation:fade .2s ease both;
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{
+  width:100%; max-width:480px; background:#fff; border-radius:22px 22px 0 0;
+  padding:8px 18px calc(20px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto;
+  animation:slide .34s var(--ease) both; box-shadow:0 -8px 40px rgba(21,23,28,.2);
+}
+@keyframes slide{from{transform:translateY(100%)}to{transform:none}}
+.grip{width:34px; height:4px; background:rgba(21,23,28,.14); border-radius:99px; margin:6px auto 12px}
+.sheet-t{font-size:16.5px; font-weight:650; letter-spacing:-.2px; margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block; font-size:11.5px; font-weight:550; color:var(--muted); margin-bottom:5px}
+.field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.sheet-foot{display:flex; gap:9px; margin-top:16px}
+.sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
+.rolegrid{display:flex; flex-wrap:wrap; gap:7px}
+.swatches{display:flex; flex-wrap:wrap; gap:7px}
+.sw-opt{width:30px; height:30px; border-radius:9px; border:2px solid transparent; transition:transform .14s var(--ease)}
+.sw-opt[aria-pressed="true"]{border-color:var(--ink); transform:scale(1.1)}
+.toggle{display:flex; align-items:center; gap:9px; font-size:13.5px; padding:9px 0}
+.toggle input{width:auto; margin:0}
+
+/* toast */
+.toast{
+  position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:200;
+  transform:translateX(-50%); background:var(--ink); color:#fff; font-size:13px; font-weight:500;
+  padding:10px 17px; border-radius:99px; box-shadow:var(--shadow-lift); animation:toastIn .3s var(--ease) both;
+}
+@keyframes toastIn{from{opacity:0; transform:translate(-50%,10px)}to{opacity:1; transform:translate(-50%,0)}}
+
+/* export canvas surface (built fresh, no buttons/animations) */
+.exportwrap{position:fixed; left:-99999px; top:0; background:#fff; padding:28px 30px; width:auto}
+.ex-h{font-size:21px; font-weight:700; letter-spacing:-.4px; color:#15171c}
+.ex-sub{font-size:12px; color:#7b8194; margin-top:3px}
+.ex-pt{margin-top:20px; border:1px solid #e6e8ef; border-radius:14px; overflow:hidden; min-width:250px}
+.ex-pt-h{display:flex; align-items:baseline; gap:9px; padding:11px 14px; background:#f6f7fb; border-bottom:1px solid #e6e8ef}
+.ex-pt-n{font-size:15px; font-weight:650; color:#15171c}
+.ex-pt-t{font-size:11.5px; color:#7b8194}
+.ex-pt-c{margin-left:auto; font-size:13px; font-weight:600; color:#3d434f}
+.ex-row{display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid #f0f1f6}
+.ex-row:last-child{border-bottom:none}
+.ex-nm{font-size:13.5px; color:#15171c; font-weight:500; min-width:88px; display:flex; flex-direction:column; gap:1px}
+.ex-buff{font-size:10.5px; color:#4f46e5; font-weight:500}
+.ex-rl{font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; border:1px solid}
+.ex-cols{display:flex; gap:16px; align-items:flex-start}
+
+@media (max-width:560px){
+  .pt-count b{font-size:19px}
+  .ptgrid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <span class="brand-mark">星座塔團隊</span>
+        <span class="brand-sub" id="brandSub"></span>
+      </div>
+      <button class="icon-btn" id="btnUndo" title="復原" aria-label="復原">
+        <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
+      </button>
+      <button class="icon-btn" id="btnRedo" title="重做" aria-label="重做">
+        <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>
+      </button>
+      <button class="icon-btn" id="btnMore" title="更多" aria-label="更多">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+      </button>
+    </div>
+    <div class="tabbar" role="tablist">
+      <button class="tab" role="tab" aria-selected="true"  data-view="board">陣容分配</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="calc">PT 計算</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="members">成員</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="roles">職業</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="stats">統計</button>
+    </div>
+  </div>
+
+  <!-- 排班 -->
+  <section class="view active" id="view-board">
+    <div class="daterail">
+      <button class="icon-btn" id="btnPrevDate" aria-label="前一天">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="dates" id="dateRail"></div>
+      <button class="icon-btn" id="btnNextDate" aria-label="後一天">
+        <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <button class="icon-btn" id="btnAddDate" aria-label="新增日期">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div class="sec"><span class="sec-t" id="boardLabel">RUN</span><div class="sec-line"></div>
+      <button class="gbtn" id="btnAddPt">＋ 新增 RUN</button>
+    </div>
+    <div class="ptgrid" id="ptGrid"></div>
+  </section>
+
+
+  <!-- PT 計算 -->
+  <section class="view" id="view-calc">
+    <div class="sec"><span class="sec-t">屬性配置</span><div class="sec-line"></div></div>
+    <div id="attrCards"></div>
+
+    <div class="sec"><span class="sec-t">合計</span><div class="sec-line"></div></div>
+    <div class="totalcard">
+      <div class="total-k">總 PT 等級</div>
+      <div class="total-v num" id="calcTotal">0<small>pt</small></div>
+      <div class="total-meter" id="calcMeter"></div>
+      <span class="tier" id="calcTier"><span class="tier-dot"></span><span id="calcTierText">50 層挑戰範圍</span></span>
+      <div class="presets">
+        <button class="gbtn" data-preset="0,0,0,0,0">重置</button>
+        <button class="gbtn" data-preset="0,5,5,3,5">825PT</button>
+        <button class="gbtn" data-preset="0,5,5,5,5">925PT</button>
+        <button class="gbtn" data-preset="3,5,5,5,5">970PT</button>
+        <button class="gbtn" data-preset="5,5,5,5,5">1000PT</button>
+      </div>
+    </div>
+
+    <div class="sec"><span class="sec-t">屬性明細</span><div class="sec-line"></div></div>
+    <div class="bd" id="calcBreak"></div>
+  </section>
+
+  <!-- 成員 -->
+  <section class="view" id="view-members">
+    <div class="sec"><span class="sec-t">成員</span><div class="sec-line"></div>
+      <button class="gbtn accent" id="btnAddMember">＋ 新增成員</button>
+    </div>
+    <div class="field"><input id="memberSearch" placeholder="搜尋名字或暱稱⋯"></div>
+    <div id="memberList"></div>
+  </section>
+
+  <!-- 職業 -->
+  <section class="view" id="view-roles">
+    <div class="sec"><span class="sec-t">職業</span><div class="sec-line"></div>
+      <div id="roleHeaderActions"></div>
+    </div>
+    <div id="roleList"></div>
+  </section>
+
+  <!-- 統計 -->
+  <section class="view" id="view-stats">
+    <div class="sec"><span class="sec-t" id="statsLabel">統計</span><div class="sec-line"></div></div>
+    <div class="statgrid" id="statCards"></div>
+    <div class="sec"><span class="sec-t">職業分佈</span><div class="sec-line"></div></div>
+    <div class="bars" id="roleBars"></div>
+    <div class="sec"><span class="sec-t">出勤次數</span><div class="sec-line"></div></div>
+    <div class="bars" id="attendBars"></div>
+  </section>
+</div>
+
+<!-- 待分配成員 -->
+<div class="bench" id="bench" data-drop="bench">
+  <div class="bench-top">
+    <span class="bench-t" id="benchTitle">待分配</span>
+    <div class="sec-line"></div>
+    <button class="gbtn" id="btnClearDay">清空本日</button>
+  </div>
+  <div class="bench-list" id="benchList"></div>
+</div>
+
+<div id="sheetHost"></div>
+<div id="exportHost"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   星座塔團隊 — 資料模型
+   state = { members, roles, schedule:{ 'YYYY-MM-DD': [pt,...] } }
+   pt    = { id, name, time, capacity, slots:[{memberId, roleId}] }
+   ══════════════════════════════════════════════════════════ */
+const KEY='pt-manager-v1';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
+
+// 四轉職業（基本職業／四轉欄）——新安裝的預設職業清單
+const FOURTH_JOBS=[
+  {name:'盧恩龍爵',icon:'🐉'},   // Dragon Knight
+  {name:'帝國聖衛軍',icon:'🛡'}, // Imperial Guard
+  {name:'深淵追跡者',icon:'🔪'}, // Abyss Chaser
+  {name:'機甲神匠',icon:'🔧'},   // Meister
+  {name:'生命締造者',icon:'🧪'}, // Biolo
+  {name:'風鷹狩獵者',icon:'🏹'}, // Wind Hawk
+  {name:'天籟頌者',icon:'🎵'},   // Troubadour
+  {name:'樂之舞靈',icon:'💃'},   // Trouvere
+  {name:'禁咒魔導士',icon:'🔮'}, // Arch Mage
+  {name:'元素支配者',icon:'✨'}, // Elemental Master
+  {name:'樞機主教',icon:'⛪'},   // Cardinal
+  {name:'聖裁者',icon:'🔥'},     // Inquisitor
+];
+
+// 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
+function seed(){
+  const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
+  return {members:[],roles,schedule:{}};
+}
+
+function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[]}; }
+function todayKey(){ const d=new Date(); return ymd(d); }
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
+const DOW=['日','一','二','三','四','五','六'];
+function fmtDate(k){ const d=parseYmd(k); return String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0'); }
+function fmtDow(k){ return '週'+DOW[parseYmd(k).getDay()]; }
+function shiftDate(k,n){ const d=parseYmd(k); d.setDate(d.getDate()+n); return ymd(d); }
+
+let state=load(), curDate=null, undoStack=[], redoStack=[], picked=null, roleFilter=null;
+
+function load(){
+  try{
+    const r=localStorage.getItem(KEY);
+    if(r){ const p=JSON.parse(r); if(p&&p.members&&p.roles&&p.schedule) return migrate(p); }
+  }catch(e){}
+  return seed();
+}
+// 舊資料相容：把 PT 1 / PT1 這類舊命名轉成 RUN 1 / RUN1
+function migrate(p){
+  Object.values(p.schedule).forEach(pts=>pts.forEach(pt=>{
+    const m=/^PT\s*(\d+)$/i.exec((pt.name||'').trim());
+    if(m) pt.name='RUN '+m[1];
+  }));
+  return p;
+}
+function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){ toast('儲存失敗，裝置空間可能已滿'); } }
+function snap(){ return JSON.stringify(state); }
+
+/* 每次改動前呼叫，寫入復原點 */
+function commit(fn){
+  const before=snap();
+  fn();
+  if(snap()===before) return;
+  undoStack.push(before); if(undoStack.length>60) undoStack.shift();
+  redoStack.length=0;
+  persist(); render();
+}
+function undo(){
+  if(!undoStack.length) return;
+  redoStack.push(snap());
+  state=JSON.parse(undoStack.pop());
+  persist(); render(); toast('已復原');
+}
+function redo(){
+  if(!redoStack.length) return;
+  undoStack.push(snap());
+  state=JSON.parse(redoStack.pop());
+  persist(); render(); toast('已重做');
+}
+
+/* ── 查詢輔助 ─────────────────────────────────────────── */
+const dates=()=>Object.keys(state.schedule).sort();
+const ptsOf=k=>state.schedule[k]||[];
+const memberById=id=>state.members.find(m=>m.id===id);
+const roleById=id=>state.roles.find(r=>r.id===id);
+const sortedRoles=()=>[...state.roles].sort((a,b)=>a.order-b.order);
+function assignedIds(k){ const s=new Set(); ptsOf(k).forEach(p=>p.slots.forEach(x=>s.add(x.memberId))); return s; }
+/* 同一天可以把同一個人加進多個 RUN，所以「成員名單」永遠列出全部啟用中的成員，
+   不會因為已經加過就消失 —— 這樣才能重複拖曳/點選加入不同場次。 */
+function countRuns(k,memberId){ return ptsOf(k).reduce((n,p)=>n+(p.slots.some(s=>s.memberId===memberId)?1:0),0); }
+function benchMembers(k){ return state.members.filter(m=>m.active); }
+/* 純粹「今天一場都還沒排到」的人 —— 給統計卡片用 */
+function unassignedMembers(k){ const a=assignedIds(k); return state.members.filter(m=>m.active&&!a.has(m.id)); }
+function ensureDate(k){ if(!state.schedule[k]) state.schedule[k]=[]; }
+
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const el=document.createElement('div'); el.className='toast'; el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); },1900);
+}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
+
+/* ══════════════════════════════════════════════════════════
+   繪製
+   ══════════════════════════════════════════════════════════ */
+function render(){
+  const ks=dates();
+  if(!ks.length){ ensureDate(todayKey()); persist(); }
+  if(!curDate||!state.schedule[curDate]) curDate=dates().includes(todayKey())?todayKey():dates()[0];
+  renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderStats();
+  document.getElementById('btnUndo').disabled=!undoStack.length;
+  document.getElementById('btnRedo').disabled=!redoStack.length;
+  document.getElementById('brandSub').textContent=fmtDate(curDate)+' '+fmtDow(curDate);
+}
+
+function renderDates(){
+  const rail=document.getElementById('dateRail');
+  rail.innerHTML=dates().map(k=>{
+    const pts=ptsOf(k), used=assignedIds(k).size;
+    return `<button class="datechip" data-date="${k}" aria-current="${k===curDate}">
+      <div class="dc-dow">${fmtDow(k)}</div>
+      <div class="dc-md num">${fmtDate(k)}</div>
+      <div class="dc-meta num">${pts.length} RUN · ${used} 人</div>
+    </button>`;
+  }).join('');
+  const cur=rail.querySelector('[aria-current="true"]');
+  if(cur) cur.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+}
+
+function renderBoard(){
+  const grid=document.getElementById('ptGrid'), pts=ptsOf(curDate);
+  document.getElementById('boardLabel').textContent=`${fmtDate(curDate)} ${fmtDow(curDate)} · ${pts.length} RUN`;
+  if(!pts.length){
+    grid.innerHTML=`<div class="emptystate"><b>這天還沒有 RUN</b>先建一個 RUN，再把待分配的成員拖進來。</div>`;
+    return;
+  }
+  grid.innerHTML=pts.map((pt,i)=>{
+    const n=pt.slots.length, full=n>=pt.capacity;
+    const pips=Array.from({length:pt.capacity},(_,j)=>
+      `<div class="pip ${j<n?(full?'full':'on'):''}"></div>`).join('');
+    const rows=pt.slots.length ? pt.slots.map((s,si)=>{
+      const m=memberById(s.memberId), r=roleById(s.roleId);
+      if(!m) return '';
+      const pill=r
+        ? `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
+             style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
+        : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
+      return `<div class="slot" data-chip="${m.id}" data-from="${pt.id}">
+        <div class="slot-nm">
+          <span class="slot-name">${esc(m.name)}</span>
+          ${m.buff?`<span class="slot-buff">${esc(m.buff)}</span>`:''}
+        </div>${pill}
+        <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
+      </div>`;
+    }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
+    return `<div class="ptcard" data-drop="pt" data-pt="${pt.id}" style="animation-delay:${i*45}ms">
+      <div class="pt-head">
+        <div class="pt-id">
+          <div class="pt-name">${esc(pt.name)}</div>
+          <div class="pt-time num">${esc(pt.time||'未設定時間')}</div>
+        </div>
+        <div class="pt-count num ${full?'full':''}"><b>${n}</b><span>/${pt.capacity}</span></div>
+      </div>
+      <div class="meter">${pips}</div>
+      <div class="slots">${rows}</div>
+      <div class="pt-foot">
+        <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
+        <button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>
+        <button class="gbtn warn" data-act="delPt" data-pt="${pt.id}" style="margin-left:auto">刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBench(){
+  const host=document.getElementById('benchList');
+  let list=benchMembers(curDate);
+  if(roleFilter) list=list.filter(m=>m.defaultRoleId===roleFilter);
+  document.getElementById('benchTitle').textContent=`成員 ${list.length}`;
+  if(!list.length){
+    host.innerHTML=`<div class="bench-empty">${roleFilter?'這個職業沒有符合的成員':'還沒有啟用中的成員'}</div>`;
+    return;
+  }
+  host.innerHTML=list.map(m=>{
+    const r=roleById(m.defaultRoleId), n=countRuns(curDate,m.id);
+    return `<button class="chip ${picked===m.id?'picked':''}" data-chip="${m.id}" data-from="bench">
+      ${r?`<span class="chip-dot" style="background:${r.color}"></span>`:''}${esc(m.name)}${n?`<span class="chip-n">${n}</span>`:''}
+    </button>`;
+  }).join('');
+}
+
+function renderMembers(){
+  const q=(document.getElementById('memberSearch').value||'').trim().toLowerCase();
+  const host=document.getElementById('memberList');
+  const list=state.members.filter(m=>!q||m.name.toLowerCase().includes(q));
+  if(!list.length){
+    host.innerHTML=`<div class="emptystate"><b>${q?'找不到符合的成員':'還沒有成員'}</b>${q?'換個關鍵字試試。':'新增成員後就能開始排班。'}</div>`;
+    return;
+  }
+  host.innerHTML=`<div class="list">`+list.map(m=>{
+    const r=roleById(m.defaultRoleId);
+    const meta=[r?r.name:'', m.buff, m.notes].filter(Boolean).join(' · ');
+    return `<div class="row" data-act="editMember" data-id="${m.id}">
+      <div class="row-main">
+        <div class="row-t">${esc(m.name)}${m.active?'':'<span class="badge off">停用</span>'}</div>
+        ${meta?`<div class="row-s">${esc(meta)}</div>`:''}
+      </div>
+      ${r?`<span class="rolepill" style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.name)}</span>`:''}
+    </div>`;
+  }).join('')+`</div>`;
+}
+
+let roleSelectMode=false, roleSelected=new Set();
+function renderRoles(){
+  const rs=sortedRoles();
+  document.getElementById('roleHeaderActions').innerHTML = roleSelectMode
+    ? `<button class="gbtn" id="roleSelCancel">取消</button>
+       <button class="gbtn warn" id="roleSelDelete" ${roleSelected.size?'':'disabled'}
+         style="${roleSelected.size?'color:#fff;background:var(--danger);border-color:var(--danger)':''}">刪除${roleSelected.size?` (${roleSelected.size})`:''}</button>`
+    : `<button class="gbtn" id="roleSelStart" ${rs.length?'':'disabled'}>勾選管理</button>
+       <button class="gbtn accent" data-act="addRole">＋ 新增職業</button>`;
+
+  const host=document.getElementById('roleList');
+  if(!rs.length){ host.innerHTML=`<div class="emptystate"><b>還沒有職業</b>先建立職業，排班時才能指定。</div>`; return; }
+  host.innerHTML=`<div class="list">`+rs.map((r,i)=>{
+    const checked=roleSelected.has(r.id);
+    return `
+    <div class="row ${roleSelectMode?'row-selectable':''}" ${roleSelectMode?`data-act="toggleRoleSel" data-id="${r.id}"`:''}>
+      ${roleSelectMode?`<span class="checkbox ${checked?'on':''}"></span>`:`<span class="swatch" style="background:${r.color}"></span>`}
+      <div class="row-main" ${roleSelectMode?'':`data-act="editRole" data-id="${r.id}"`}>
+        <div class="row-t">${esc(r.icon||'')}${esc(r.name)}</div>
+        <div class="row-s">排序 ${i+1}</div>
+      </div>
+      ${roleSelectMode?'':`
+      <button class="icon-btn" data-act="roleUp" data-id="${r.id}" ${i===0?'disabled':''} aria-label="上移">
+        <svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></button>
+      <button class="icon-btn" data-act="roleDown" data-id="${r.id}" ${i===rs.length-1?'disabled':''} aria-label="下移">
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>`}
+    </div>`;
+  }).join('')+`</div>`;
+
+  const start=document.getElementById('roleSelStart');
+  if(start) start.onclick=()=>{ roleSelectMode=true; roleSelected=new Set(); renderRoles(); };
+  const cancel=document.getElementById('roleSelCancel');
+  if(cancel) cancel.onclick=()=>{ roleSelectMode=false; roleSelected=new Set(); renderRoles(); };
+  const del=document.getElementById('roleSelDelete');
+  if(del) del.onclick=()=>{
+    if(!roleSelected.size) return;
+    const ids=[...roleSelected], names=ids.map(id=>roleById(id)?.name).filter(Boolean).join('、');
+    confirmSheet(`刪除「${names}」共 ${ids.length} 個職業？已指定這些職業的人會變成未指定。`, ()=>{
+      commit(()=>{
+        state.roles=state.roles.filter(x=>!ids.includes(x.id));
+        Object.values(state.schedule).forEach(ps=>ps.forEach(p=>p.slots.forEach(sl=>{ if(ids.includes(sl.roleId)) sl.roleId=null; })));
+        state.members.forEach(m=>{ if(ids.includes(m.defaultRoleId)) m.defaultRoleId=null; });
+      });
+      roleSelectMode=false; roleSelected=new Set(); render();
+    });
+  };
+}
+
+function renderStats(){
+  const pts=ptsOf(curDate);
+  const cap=pts.reduce((a,p)=>a+p.capacity,0);
+  const used=pts.reduce((a,p)=>a+p.slots.length,0);
+  const noRole=pts.reduce((a,p)=>a+p.slots.filter(s=>!s.roleId).length,0);
+  document.getElementById('statsLabel').textContent=`${fmtDate(curDate)} ${fmtDow(curDate)}`;
+  document.getElementById('statCards').innerHTML=[
+    ['出席人數',`${used}<small>/${cap}</small>`],
+    ['RUN 數', pts.length],
+    ['空位', cap-used],
+    ['未指定職業', noRole],
+    ['待分配', unassignedMembers(curDate).length],
+    ['總成員', state.members.filter(m=>m.active).length],
+  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
+
+  const counts={}; pts.forEach(p=>p.slots.forEach(s=>{ if(s.roleId) counts[s.roleId]=(counts[s.roleId]||0)+1; }));
+  const max=Math.max(1,...Object.values(counts));
+  const rb=sortedRoles().filter(r=>counts[r.id]);
+  document.getElementById('roleBars').innerHTML = rb.length
+    ? rb.map(r=>`<div class="bar-row"><span class="bar-l">${esc(r.name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${counts[r.id]/max*100}%;background:${r.color}"></div></div>
+        <span class="bar-n num">${counts[r.id]}</span></div>`).join('')
+    : `<div class="bench-empty">這天還沒有指定任何職業</div>`;
+
+  const att={}; dates().forEach(k=>assignedIds(k).forEach(id=>att[id]=(att[id]||0)+1));
+  const amax=Math.max(1,...Object.values(att));
+  const rows=state.members.filter(m=>att[m.id]).sort((a,b)=>att[b.id]-att[a.id]);
+  document.getElementById('attendBars').innerHTML = rows.length
+    ? rows.map(m=>`<div class="bar-row"><span class="bar-l">${esc(m.name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${att[m.id]/amax*100}%;background:var(--accent)"></div></div>
+        <span class="bar-n num">${att[m.id]}</span></div>`).join('')
+    : `<div class="bench-empty">還沒有出勤紀錄</div>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   指派 / 移動
+   ══════════════════════════════════════════════════════════ */
+function assign(memberId, ptId){
+  commit(()=>{
+    const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+    if(pt.slots.some(s=>s.memberId===memberId)){ toast(`已經在 ${pt.name} 裡了`); return; }
+    if(pt.slots.length>=pt.capacity){ toast(`${pt.name} 已滿`); return; }
+    const m=memberById(memberId);
+    pt.slots.push({memberId, roleId:m?.defaultRoleId||null});
+  });
+  picked=null;
+}
+/* 只移出「拖曳來源那一個 RUN」，同一人在其他 RUN 裡的紀錄不受影響 */
+function unassign(memberId, ptId){
+  commit(()=>{
+    const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+    pt.slots=pt.slots.filter(s=>s.memberId!==memberId);
+  });
+  picked=null;
+}
+
+/* ── 拖曳（滑鼠與觸控通用，用 pointer events） ─────────── */
+let drag=null;
+document.addEventListener('pointerdown',e=>{
+  const chip=e.target.closest('[data-chip]');
+  if(!chip||e.target.closest('button[data-act]')) return;
+  drag={id:chip.dataset.chip, from:chip.dataset.from, x:e.clientX, y:e.clientY, el:chip, moved:false, ghost:null};
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  if(!drag.moved){
+    if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<7) return;
+    drag.moved=true; drag.el.classList.add('dragging');
+    const m=memberById(drag.id);
+    const g=document.createElement('div'); g.className='drag-ghost'; g.textContent=m?m.name:'';
+    document.body.appendChild(g); drag.ghost=g;
+  }
+  drag.ghost.style.left=e.clientX+'px'; drag.ghost.style.top=e.clientY+'px';
+  document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  const t=dropTargetAt(e.clientX,e.clientY);
+  if(t) t.classList.add('drop-on');
+});
+document.addEventListener('pointerup',e=>{
+  if(!drag) return;
+  const d=drag; drag=null;
+  document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  d.el.classList.remove('dragging');
+  if(d.ghost) d.ghost.remove();
+  if(!d.moved){ tapChip(d.id); return; }
+  const t=dropTargetAt(e.clientX,e.clientY);
+  if(!t) return;
+  if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.id,d.from); }
+  else if(t.dataset.pt!==d.from) assign(d.id,t.dataset.pt);
+});
+document.addEventListener('pointercancel',()=>{
+  if(!drag) return;
+  drag.el.classList.remove('dragging'); if(drag.ghost) drag.ghost.remove();
+  document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  drag=null;
+});
+function dropTargetAt(x,y){
+  const el=document.elementFromPoint(x,y);
+  return el?el.closest('[data-drop]'):null;
+}
+/* 點一下＝選取，再點隊伍卡片＝加入 */
+function tapChip(id){
+  if(picked===id){ picked=null; }
+  else if(picked===null){ picked=id; toast('已選取 — 點一下 RUN 加入'); }
+  else { picked=id; }
+  renderBench();
+}
+document.addEventListener('click',e=>{
+  if(!picked) return;
+  if(e.target.closest('[data-chip]')) return; // 這個點擊已經由 pointerup 的 tapChip() 處理過，不要再重複指派
+  const card=e.target.closest('[data-drop="pt"]');
+  if(card&&!e.target.closest('button[data-act]')) assign(picked,card.dataset.pt);
+});
+
+/* ══════════════════════════════════════════════════════════
+   Sheet（底部彈出面板）
+   ══════════════════════════════════════════════════════════ */
+function sheet(title, bodyHtml, onMount){
+  const host=document.getElementById('sheetHost');
+  host.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-modal="true">
+    <div class="grip"></div><div class="sheet-t">${esc(title)}</div>${bodyHtml}</div></div>`;
+  const scrim=host.querySelector('.scrim');
+  scrim.addEventListener('click',ev=>{ if(ev.target===scrim) closeSheet(); });
+  document.addEventListener('keydown',escClose);
+  onMount&&onMount(host.querySelector('.sheet'));
+  const f=host.querySelector('input,textarea,select'); if(f&&window.innerWidth>760) f.focus();
+}
+function closeSheet(){ document.getElementById('sheetHost').innerHTML=''; document.removeEventListener('keydown',escClose); }
+function escClose(e){ if(e.key==='Escape') closeSheet(); }
+const val=(s,n)=>s.querySelector(`[name="${n}"]`).value.trim();
+
+
+/* 原生 confirm() 在 PWA 獨立模式下不一定會顯示，改用畫面內的確認卡片 */
+function confirmSheet(message, onConfirm){
+  sheet('請確認',`
+    <p style="font-size:13.5px; color:var(--ink-2); line-height:1.6; margin:0 0 16px">${esc(message)}</p>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="no">取消</button>
+      <button class="gbtn warn" data-s="yes" style="background:var(--danger);color:#fff;border-color:var(--danger)">確定刪除</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="no"]').onclick=closeSheet;
+    s.querySelector('[data-s="yes"]').onclick=()=>{ closeSheet(); onConfirm(); };
+  });
+}
+
+function memberSheet(id){
+  const m=id?memberById(id):{name:'',active:true,notes:'',defaultRoleId:null,buff:''};
+  const opts=`<option value="">不指定</option>`+sortedRoles().map(r=>
+    `<option value="${r.id}" ${m.defaultRoleId===r.id?'selected':''}>${esc(r.name)}</option>`).join('');
+  sheet(id?'編輯成員':'新增成員',`
+    <div class="field"><label>名字</label><input name="name" value="${esc(m.name)}" placeholder="遊戲角色名"></div>
+    <div class="field"><label>預設職業</label><select name="role">${opts}</select></div>
+    <div class="field"><label>技能 BUFF（會顯示在陣容分配的 RUN 上）</label><input name="buff" value="${esc(m.buff)}" placeholder="例：攻擊 BUFF"></div>
+    <div class="field"><label>備註</label><input name="notes" value="${esc(m.notes)}" placeholder="選填"></div>
+    <label class="toggle"><input type="checkbox" name="active" ${m.active?'checked':''}> 目前有在跑（停用後不會出現在成員名單）</label>
+    <div class="sheet-foot">
+      ${id?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name'); if(!name) return toast('請輸入名字');
+      commit(()=>{
+        const d={name,notes:val(s,'notes'),buff:val(s,'buff'),
+          defaultRoleId:s.querySelector('[name="role"]').value||null,
+          active:s.querySelector('[name="active"]').checked};
+        if(id) Object.assign(memberById(id),d); else state.members.push({id:uid(),...d});
+      });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    const del=s.querySelector('[data-s="del"]');
+    if(del) del.onclick=()=>{
+      confirmSheet(`刪除「${m.name}」？所有日期的排班紀錄也會一併移除。`, ()=>{
+        commit(()=>{
+          state.members=state.members.filter(x=>x.id!==id);
+          Object.values(state.schedule).forEach(ps=>ps.forEach(p=>{p.slots=p.slots.filter(x=>x.memberId!==id);}));
+        });
+      });
+    };
+  });
+}
+
+function roleSheet(id){
+  const r=id?roleById(id):{name:'',color:PALETTE[state.roles.length%PALETTE.length],icon:''};
+  sheet(id?'編輯職業':'新增職業',`
+    <div class="field-2">
+      <div class="field"><label>名稱</label><input name="name" value="${esc(r.name)}" placeholder="例：妖術"></div>
+      <div class="field"><label>圖示（選填）</label><input name="icon" value="${esc(r.icon)}" placeholder="🔮" maxlength="2"></div>
+    </div>
+    <div class="field"><label>顏色</label><div class="swatches">${PALETTE.map(c=>
+      `<button class="sw-opt" data-c="${c}" style="background:${c}" aria-pressed="${c===r.color}"></button>`).join('')}</div></div>
+    <div class="sheet-foot">
+      ${id?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    let color=r.color;
+    s.querySelectorAll('.sw-opt').forEach(b=>b.onclick=()=>{
+      color=b.dataset.c;
+      s.querySelectorAll('.sw-opt').forEach(x=>x.setAttribute('aria-pressed',x.dataset.c===color));
+    });
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name'); if(!name) return toast('請輸入名稱');
+      commit(()=>{
+        const d={name,icon:val(s,'icon'),color};
+        if(id) Object.assign(roleById(id),d);
+        else state.roles.push({id:uid(),...d,order:state.roles.length});
+      });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    const del=s.querySelector('[data-s="del"]');
+    if(del) del.onclick=()=>{
+      confirmSheet(`刪除職業「${r.name}」？已指定這個職業的人會變成未指定。`, ()=>{
+        commit(()=>{
+          state.roles=state.roles.filter(x=>x.id!==id);
+          Object.values(state.schedule).forEach(ps=>ps.forEach(p=>p.slots.forEach(sl=>{ if(sl.roleId===id) sl.roleId=null; })));
+          state.members.forEach(m=>{ if(m.defaultRoleId===id) m.defaultRoleId=null; });
+        });
+      });
+    };
+  });
+}
+
+function ptSheet(id){
+  const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,time:'20:00',capacity:12};
+  sheet(id?'編輯 RUN':'新增 RUN',`
+    <div class="field"><label>RUN 名稱</label><input name="name" value="${esc(pt.name)}"></div>
+    <div class="field-2">
+      <div class="field"><label>時間</label><input name="time" value="${esc(pt.time)}" placeholder="20:00"></div>
+      <div class="field"><label>人數上限</label><input name="cap" type="number" min="1" max="30" value="${pt.capacity}"></div>
+    </div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name')||'PT';
+      const cap=Math.max(1,Math.min(30,parseInt(val(s,'cap'))||12));
+      commit(()=>{
+        if(id){ const p=ptsOf(curDate).find(x=>x.id===id); Object.assign(p,{name,time:val(s,'time'),capacity:cap});
+          if(p.slots.length>cap) p.slots=p.slots.slice(0,cap); }
+        else { ensureDate(curDate); state.schedule[curDate].push({...mkPt(name,val(s,'time'),cap)}); }
+      });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function rolePickSheet(ptId,i){
+  const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+  const slot=pt.slots[i], m=memberById(slot.memberId);
+  sheet(`${m?m.name:''} 的職業`,`
+    <div class="rolegrid">${sortedRoles().map(r=>
+      `<button class="rolepill" data-r="${r.id}"
+        style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)};padding:8px 14px;font-size:13px">
+        ${esc(r.icon||'')}${esc(r.name)}</button>`).join('')}</div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="clear">清除職業</button>
+      <button class="gbtn" data-s="cancel">取消</button>
+    </div>`,s=>{
+    s.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{
+      commit(()=>{ pt.slots[i].roleId=b.dataset.r; }); closeSheet();
+    });
+    s.querySelector('[data-s="clear"]').onclick=()=>{ commit(()=>{ pt.slots[i].roleId=null; }); closeSheet(); };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function dateSheet(){
+  const prev=dates().filter(k=>k<curDate).pop()||dates()[dates().length-1];
+  sheet('新增日期',`
+    <div class="field"><label>日期</label><input name="d" type="date" value="${shiftDate(curDate,1)}"></div>
+    ${prev?`<label class="toggle"><input type="checkbox" name="copy" checked> 複製 ${fmtDate(prev)} 的 RUN 與職業配置</label>`:''}
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">建立</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const k=s.querySelector('[name="d"]').value; if(!k) return toast('請選擇日期');
+      if(state.schedule[k]){ curDate=k; closeSheet(); render(); return toast('這天已經有排班了'); }
+      const copy=s.querySelector('[name="copy"]')?.checked;
+      commit(()=>{
+        state.schedule[k]= copy&&prev
+          ? JSON.parse(JSON.stringify(ptsOf(prev))).map(p=>({...p,id:uid()}))
+          : [mkPt('RUN 1','20:00',12)];
+      });
+      curDate=k; closeSheet(); render();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function moreSheet(){
+  sheet('更多',`
+    <div class="field"><label>職業篩選（只看某個預設職業的待分配成員）</label>
+      <select name="rf"><option value="">全部</option>${sortedRoles().map(r=>
+        `<option value="${r.id}" ${roleFilter===r.id?'selected':''}>${esc(r.name)}</option>`).join('')}</select></div>
+    <div class="sheet-foot" style="flex-wrap:wrap">
+      <button class="gbtn accent" data-s="img">產出圖片</button>
+      <button class="gbtn" data-s="csv">匯出 CSV</button>
+    </div>
+    <div class="sheet-foot" style="flex-wrap:wrap">
+      <button class="gbtn" data-s="exportJson">匯出設定 JSON</button>
+      <button class="gbtn" data-s="importJson">匯入設定 JSON</button>
+    </div>
+    <input type="file" name="jsonFile" accept="application/json,.json" style="display:none">`,s=>{
+    s.querySelector('[name="rf"]').onchange=e=>{ roleFilter=e.target.value||null; renderBench(); };
+    s.querySelector('[data-s="img"]').onclick=()=>{ closeSheet(); exportImage(); };
+    s.querySelector('[data-s="csv"]').onclick=()=>{ closeSheet(); exportCsv(); };
+    s.querySelector('[data-s="exportJson"]').onclick=()=>{ exportJson(); };
+    const fileInput=s.querySelector('[name="jsonFile"]');
+    s.querySelector('[data-s="importJson"]').onclick=()=>{ fileInput.click(); };
+    fileInput.onchange=()=>{
+      const file=fileInput.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        let data;
+        try{ data=JSON.parse(ev.target.result); }
+        catch(err){ toast('讀取失敗，請確認是有效的 JSON 檔'); return; }
+        if(!data||!Array.isArray(data.members)||!Array.isArray(data.roles)||typeof data.schedule!=='object'){
+          toast('檔案格式不正確'); return;
+        }
+        closeSheet();
+        confirmSheet('匯入將覆蓋目前所有成員、職業與排班資料，確定要匯入嗎？',()=>{
+          curDate=null;
+          commit(()=>{ state=migrate(data); });
+          toast('已匯入設定');
+        });
+      };
+      reader.readAsText(file);
+    };
+  });
+}
+
+function exportJson(){
+  const json=JSON.stringify(state,null,2);
+  download(new Blob([json],{type:'application/json'}),`星座塔團隊_設定_${todayKey()}.json`);
+  toast('已匯出設定 JSON');
+}
+
+/* ══════════════════════════════════════════════════════════
+   匯出
+   圖片：不截取畫面，改用資料重建一份乾淨的 DOM 再轉圖，
+   避免 html2canvas 對 <button> 與 CSS 動畫的已知問題。
+   ══════════════════════════════════════════════════════════ */
+function buildExportNode(){
+  const pts=ptsOf(curDate);
+  const cols=pts.map(pt=>{
+    const rows=pt.slots.length ? pt.slots.map(s=>{
+      const m=memberById(s.memberId), r=roleById(s.roleId);
+      if(!m) return '';
+      return `<div class="ex-row"><span class="ex-nm">${esc(m.name)}${m.buff?`<span class="ex-buff">${esc(m.buff)}</span>`:''}</span>`+
+        (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
+           :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
+    }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
+    return `<div class="ex-pt">
+      <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
+        <span class="ex-pt-t">${esc(pt.time||'')}</span>
+        <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
+      ${rows}</div>`;
+  }).join('');
+  const host=document.getElementById('exportHost');
+  host.innerHTML=`<div class="exportwrap" id="exportWrap">
+    <div class="ex-h">${fmtDate(curDate)}（${DOW[parseYmd(curDate).getDay()]}） 陣容分配</div>
+    <div class="ex-sub">${pts.length} RUN · 出席 ${pts.reduce((a,p)=>a+p.slots.length,0)} 人 · 產出於 ${new Date().toLocaleString('zh-TW',{hour12:false})}</div>
+    <div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>
+  </div>`;
+  return document.getElementById('exportWrap');
+}
+
+async function exportImage(){
+  if(typeof html2canvas==='undefined') return toast('圖片功能需要連線載入元件，請連上網路再試');
+  toast('產出中⋯');
+  const node=buildExportNode();
+  try{
+    const canvas=await html2canvas(node,{backgroundColor:'#ffffff',scale:2,useCORS:true});
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+    const file=new File([blob],`陣容分配_${fmtDate(curDate).replace('/','')}.png`,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file],title:'陣容分配'}); }
+      catch(err){ if(err.name!=='AbortError') download(blob,file.name); }
+    } else download(blob,file.name);
+  }catch(err){ console.error(err); toast('圖片產出失敗，請再試一次'); }
+  finally{ document.getElementById('exportHost').innerHTML=''; }
+}
+
+function exportCsv(){
+  const rows=[['日期','RUN','時間','成員','職業','BUFF']];
+  ptsOf(curDate).forEach(pt=>pt.slots.forEach(s=>{
+    const m=memberById(s.memberId), r=roleById(s.roleId);
+    if(m) rows.push([fmtDate(curDate),pt.name,pt.time||'',m.name,r?r.name:'',m.buff||'']);
+  }));
+  if(rows.length===1) return toast('這天還沒有排班資料');
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),`陣容分配_${fmtDate(curDate).replace('/','')}.csv`);
+  toast('已匯出 CSV');
+}
+function download(blob,name){
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════════════
+   事件綁定
+   ══════════════════════════════════════════════════════════ */
+document.addEventListener('click',e=>{
+  const chip=e.target.closest('[data-date]');
+  if(chip){ curDate=chip.dataset.date; picked=null; render(); return; }
+  const t=e.target.closest('.tab');
+  if(t){
+    document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+t.dataset.view));
+    const onBoard=t.dataset.view==='board';
+    document.getElementById('bench').classList.toggle('hidden',!onBoard);
+    document.querySelector('.app').classList.toggle('nobench',!onBoard);
+    return;
+  }
+  const btn=e.target.closest('[data-act]'); if(!btn) return;
+  const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
+  if(a==='role')      rolePickSheet(ptId,i);
+  if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
+  if(a==='editPt')    ptSheet(ptId);
+  if(a==='dupPt'){
+    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
+      state.schedule[curDate].push({...JSON.parse(JSON.stringify(p)),id:uid(),name:p.name+' 複本',slots:[]}); });
+  }
+  if(a==='delPt'){
+    const p=ptsOf(curDate).find(x=>x.id===ptId);
+    confirmSheet(`刪除「${p.name}」？`, ()=>{
+      commit(()=>{ state.schedule[curDate]=ptsOf(curDate).filter(x=>x.id!==ptId); });
+    });
+  }
+  if(a==='editMember') memberSheet(id);
+  if(a==='editRole')   roleSheet(id);
+  if(a==='addRole')    roleSheet(null);
+  if(a==='toggleRoleSel'){
+    if(roleSelected.has(id)) roleSelected.delete(id); else roleSelected.add(id);
+    renderRoles();
+  }
+  if(a==='roleUp'||a==='roleDown'){
+    commit(()=>{
+      const rs=sortedRoles(), i2=rs.findIndex(r=>r.id===id), j=a==='roleUp'?i2-1:i2+1;
+      if(j<0||j>=rs.length) return;
+      [rs[i2].order,rs[j].order]=[rs[j].order,rs[i2].order];
+    });
+  }
+});
+
+document.getElementById('btnUndo').onclick=undo;
+document.getElementById('btnRedo').onclick=redo;
+document.getElementById('btnMore').onclick=moreSheet;
+document.getElementById('btnAddDate').onclick=dateSheet;
+document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
+document.getElementById('btnAddMember').onclick=()=>memberSheet(null);
+document.getElementById('memberSearch').oninput=renderMembers;
+document.getElementById('btnPrevDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i>0){curDate=ks[i-1];render();} };
+document.getElementById('btnNextDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i<ks.length-1){curDate=ks[i+1];render();} };
+
+document.getElementById('btnClearDay').onclick=()=>{
+  if(!assignedIds(curDate).size) return toast('本日還沒有排班');
+  confirmSheet(`清空 ${fmtDate(curDate)} 所有 RUN 的成員？RUN 本身會保留。`, ()=>{
+    commit(()=>{ ptsOf(curDate).forEach(p=>p.slots=[]); });
+  });
+};
+
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select')) return;
+  const mod=e.metaKey||e.ctrlKey;
+  if(mod&&e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
+  if(mod&&e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); }
+});
+
+/* PWA：manifest 為 head 內的靜態檔（./manifest.webmanifest），離線快取由 ./sw.js 處理 */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+/* ══════════════════════════════════════════════════════════
+   PT 計算（屬性星數 → 總 PT 等級）
+   ══════════════════════════════════════════════════════════ */
+const ATTRS=[
+  {id:'hp',      label:'體力', en:'HP',       color:'#0f9d76', pts:[0,15,30,45,60,75]},
+  {id:'attack',  label:'攻擊', en:'Attack',   color:'#dc2626', pts:[0,20,40,60,80,100]},
+  {id:'recovery',label:'恢復', en:'Recovery', color:'#65a30d', pts:[0,30,60,90,120,150]},
+  {id:'defense', label:'防禦', en:'Defense',  color:'#ca8a04', pts:[0,50,100,150,200,250]},
+  {id:'trap',    label:'陷阱', en:'Trap',     color:'#9333ea', pts:[0,85,170,255,340,425]},
+];
+const MAX_PT=1000;
+const PT_TIERS=[
+  {pt:0,   label:'50 層挑戰範圍'},
+  {pt:600, label:'75 層挑戰範圍'},
+];
+const stars={hp:0,attack:0,recovery:0,defense:0,trap:0};
+const tierOf=t=>PT_TIERS.reduce((c,x)=>t>=x.pt?x:c,PT_TIERS[0]);
+
+function renderCalc(){
+  document.getElementById('attrCards').innerHTML=ATTRS.map((a,i)=>{
+    const n=stars[a.id];
+    return `<div class="attrcard" style="--ac:${a.color};--ac-soft:${hexA(a.color,.1)};--ac-line:${hexA(a.color,.28)};animation-delay:${i*40}ms">
+      <div class="attr-top">
+        <span class="attr-nm">${a.label}</span><span class="attr-en">${a.en}</span>
+        <span class="attr-pt num">${a.pts[n]} pt</span>
+      </div>
+      <div class="stars">
+        ${[1,2,3,4,5].map(v=>`<button class="star ${v<=n?'on':''}" data-attr="${a.id}" data-v="${v}" aria-label="${a.label} ${v} 顆星">★</button>`).join('')}
+        <span class="star-lb">${n?n+' 顆星':'封印'}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const total=ATTRS.reduce((s,a)=>s+a.pts[stars[a.id]],0);
+  const tier=tierOf(total), hi=tier.pt>=600;
+  document.getElementById('calcTotal').innerHTML=`${total}<small>pt</small>`;
+  document.getElementById('calcMeter').innerHTML=
+    Array.from({length:10},(_,i)=>`<div class="pip ${total/MAX_PT*10>i?(hi?'full':'on'):''}"></div>`).join('');
+  document.getElementById('calcTier').className='tier'+(hi?' hi':'');
+  document.getElementById('calcTierText').textContent=tier.label;
+  document.getElementById('calcBreak').innerHTML=ATTRS.map(a=>{
+    const n=stars[a.id];
+    return `<div class="bd-row" style="--ac:${a.color}">
+      <span class="bd-nm">${a.label}</span>
+      <span class="bd-st">${n?'★'.repeat(n):'封印中'}</span>
+      <span class="bd-pt num">${a.pts[n]} pt</span></div>`;
+  }).join('');
+}
+
+document.addEventListener('click',e=>{
+  const st=e.target.closest('.star');
+  if(st){
+    const id=st.dataset.attr, v=+st.dataset.v;
+    stars[id]= stars[id]===v ? v-1 : v;   // 再點同一顆＝取消該顆
+    renderCalc(); return;
+  }
+  const ps=e.target.closest('[data-preset]');
+  if(ps){
+    ps.dataset.preset.split(',').forEach((v,i)=>stars[ATTRS[i].id]=+v);
+    renderCalc();
+  }
+});
+renderCalc();
+
+render();
+</script>
+
+</body>
+</html>
