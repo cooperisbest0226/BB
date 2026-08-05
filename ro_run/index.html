@@ -158,7 +158,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .slot:hover{background:rgba(255,255,255,.9)}
 .slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
 .slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
 .rolepill{
   font-size:11.5px; font-weight:600; padding:3.5px 9px; border-radius:99px; white-space:nowrap;
   border:1px solid; transition:transform .12s var(--ease);
@@ -226,7 +226,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .row:hover{background:rgba(255,255,255,.72)}
 .row-main{flex:1; min-width:0}
 .row-t{font-size:14px; font-weight:550; display:flex; align-items:center; gap:7px}
-.row-s{font-size:11.5px; color:var(--muted); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.row-s{font-size:11.5px; color:var(--muted); margin-top:1px; overflow-wrap:anywhere; line-height:1.4}
 .swatch{width:22px; height:22px; border-radius:7px; flex:0 0 auto; border:1px solid rgba(21,23,28,.1)}
 .checkbox{
   width:21px; height:21px; border-radius:7px; flex:0 0 auto; border:1.5px solid var(--line);
@@ -828,6 +828,7 @@ function renderRoles(){
        <button class="gbtn warn" id="roleSelDelete" ${roleSelected.size?'':'disabled'}
          style="${roleSelected.size?'color:#fff;background:var(--danger);border-color:var(--danger)':''}">刪除${roleSelected.size?` (${roleSelected.size})`:''}</button>`
     : `<button class="gbtn" id="roleSelStart" ${rs.length?'':'disabled'}>勾選管理</button>
+       <button class="gbtn" data-act="addExpansionRole">＋ 擴充職業</button>
        <button class="gbtn accent" data-act="addRole">＋ 新增職業</button>`;
 
   const host=document.getElementById('roleList');
@@ -1201,6 +1202,29 @@ function buffPickerSheet(current, roleName, onApply, onCancel){
   });
 }
 
+/* 從 RO「擴充職業」快速新增職業：點一個就直接建立職業卡，之後可再進去挑 BUFF */
+function expansionRoleSheet(){
+  const list=roPickableJobs().filter(jid=>RO_JOBS[jid].c==='擴充職業');
+  sheet('新增擴充職業',`
+    <div class="rolegrid">${list.map(jid=>
+      `<button class="rolepill" data-j="${jid}" style="padding:9px 15px;font-size:13.5px">${esc(RO_JOBS[jid].n)}</button>`).join('')}</div>
+    <div class="sheet-foot"><button class="gbtn" data-s="cancel">取消</button></div>`,s=>{
+    s.querySelectorAll('[data-j]').forEach(b=>b.onclick=()=>{
+      const jid=b.dataset.j, name=RO_JOBS[jid].n;
+      const dup=state.roles.find(x=>x.name===name);
+      if(dup){ closeSheet(); return roleSheet(dup.id); }
+      let newId;
+      commit(()=>{
+        newId=uid();
+        state.roles.push({id:newId,name,color:PALETTE[state.roles.length%PALETTE.length],icon:'',buff:'',order:state.roles.length});
+      });
+      closeSheet();
+      roleSheet(newId);
+    });
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
 function ptSheet(id){
   const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,time:'20:00',capacity:12};
   sheet(id?'編輯 RUN':'新增 RUN',`
@@ -1418,6 +1442,7 @@ document.addEventListener('click',e=>{
   if(a==='editMember') memberSheet(id);
   if(a==='editRole')   roleSheet(id);
   if(a==='addRole')    roleSheet(null);
+  if(a==='addExpansionRole') expansionRoleSheet();
   if(a==='toggleRoleSel'){
     if(roleSelected.has(id)) roleSelected.delete(id); else roleSelected.add(id);
     renderRoles();
