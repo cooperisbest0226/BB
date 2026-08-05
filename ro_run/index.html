@@ -120,7 +120,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .datechip .dc-md{font-size:16px; font-weight:600; letter-spacing:-.3px; margin-top:1px}
 .datechip .dc-meta{font-size:10px; color:var(--faint); margin-top:2px}
 .datechip[aria-current="true"]{
-  background:var(--ink); border-color:var(--ink); color:#fff; box-shadow:var(--shadow-lift);
+  background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.35);
 }
 .datechip[aria-current="true"] .dc-dow,
 .datechip[aria-current="true"] .dc-meta{color:rgba(255,255,255,.62)}
@@ -411,6 +411,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
       <button class="icon-btn" id="btnAddDate" aria-label="新增日期">
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
+      <button class="icon-btn" id="btnDelDate" aria-label="刪除日期">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0v12a1 1 0 001 1h6a1 1 0 001-1V7"/></svg>
+      </button>
     </div>
     <div class="sec"><span class="sec-t" id="boardLabel">RUN</span><div class="sec-line"></div>
       <button class="gbtn" id="btnAddPt">＋ 新增 RUN</button>
@@ -636,7 +639,7 @@ function renderBoard(){
         ? `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
              style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
         : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
-      return `<div class="slot" data-chip="${m.id}" data-from="${pt.id}">
+      return `<div class="slot" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
           ${m.buff?`<span class="slot-buff">${esc(m.buff)}</span>`:''}
@@ -789,18 +792,19 @@ function renderStats(){
 function assign(memberId, ptId){
   commit(()=>{
     const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
-    if(pt.slots.some(s=>s.memberId===memberId)){ toast(`已經在 ${pt.name} 裡了`); return; }
     if(pt.slots.length>=pt.capacity){ toast(`${pt.name} 已滿`); return; }
     const m=memberById(memberId);
     pt.slots.push({memberId, roleId:m?.defaultRoleId||null});
   });
   picked=null;
 }
-/* 只移出「拖曳來源那一個 RUN」，同一人在其他 RUN 裡的紀錄不受影響 */
-function unassign(memberId, ptId){
+/* 依「拖曳來源那一個 slot 的 index」移除，不是依 memberId —
+   同一人可以在同一場 RUN 裡重複出現（雙開/多開），用 index 才不會一次把全部重複的都移掉 */
+function unassign(ptId, si){
   commit(()=>{
     const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
-    pt.slots=pt.slots.filter(s=>s.memberId!==memberId);
+    const i=+si;
+    if(Number.isInteger(i)&&pt.slots[i]!==undefined) pt.slots.splice(i,1);
   });
   picked=null;
 }
@@ -810,7 +814,7 @@ let drag=null;
 document.addEventListener('pointerdown',e=>{
   const chip=e.target.closest('[data-chip]');
   if(!chip||e.target.closest('button[data-act]')) return;
-  drag={id:chip.dataset.chip, from:chip.dataset.from, x:e.clientX, y:e.clientY, el:chip, moved:false, ghost:null};
+  drag={id:chip.dataset.chip, from:chip.dataset.from, si:chip.dataset.si, x:e.clientX, y:e.clientY, el:chip, moved:false, ghost:null};
 });
 document.addEventListener('pointermove',e=>{
   if(!drag) return;
@@ -835,7 +839,7 @@ document.addEventListener('pointerup',e=>{
   if(!d.moved){ tapChip(d.id); return; }
   const t=dropTargetAt(e.clientX,e.clientY);
   if(!t) return;
-  if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.id,d.from); }
+  if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.from,d.si); }
   else if(t.dataset.pt!==d.from) assign(d.id,t.dataset.pt);
 });
 document.addEventListener('pointercancel',()=>{
@@ -1233,6 +1237,14 @@ document.getElementById('btnUndo').onclick=undo;
 document.getElementById('btnRedo').onclick=redo;
 document.getElementById('btnMore').onclick=moreSheet;
 document.getElementById('btnAddDate').onclick=dateSheet;
+document.getElementById('btnDelDate').onclick=()=>{
+  if(dates().length<=1) return toast('至少要保留一天');
+  const target=curDate;
+  confirmSheet(`刪除 ${fmtDate(target)}（${fmtDow(target)}）這天的所有 RUN 與排班？`,()=>{
+    commit(()=>{ delete state.schedule[target]; });
+    curDate=null; render();
+  });
+};
 document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
 document.getElementById('btnAddMember').onclick=()=>memberSheet(null);
 document.getElementById('memberSearch').oninput=renderMembers;
