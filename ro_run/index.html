@@ -511,7 +511,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v1';
+const APP_VERSION='v2';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -536,6 +536,7 @@ const FOURTH_JOBS=[
    只收錄增益／支援類技能，不含攻擊、被動精熟等。
    p = 前一轉職業，用來把整條轉職鏈（一轉～四轉）的支援技能一起列出來。 */
 const RO_JOBS={
+  novice:{n:"初心者",c:"初心者",s:[]},
   acolyte:{n:"服事",c:"一轉",s:["光之障壁","加速術","天使之護","天使之賜福","天使之障壁","治療術","治癒術"]},
   archer:{n:"弓箭手",c:"一轉",s:[]},
   magician:{n:"魔法師",c:"一轉",s:[]},
@@ -552,17 +553,21 @@ const RO_JOBS={
   knight:{n:"騎士",c:"二轉",p:"swordman",s:[]},
   monk:{n:"武道家",c:"二轉",p:"acolyte",s:[]},
   priest:{n:"祭司",c:"二轉",p:"acolyte",s:["光耀之堂","幸運之頌歌","復活術","撒水祈福","犧牲祈福","痊癒術","神威祈福","聖之祈福","聖母之頌歌","轉生術"]},
+  rogue:{n:"流氓",c:"二轉",p:"thief",s:[]},
   sage:{n:"賢者",c:"二轉",p:"magician",s:["地元素領域","地屬性附加","水元素領域","水屬性附加","火元素領域","火屬性附加","風元素領域","風屬性附加"]},
+  wizard:{n:"巫師",c:"二轉",p:"magician",s:[]},
   assassin_cross:{n:"十字刺客",c:"轉生二轉",p:"assassin",s:[]},
   champion:{n:"武術宗師",c:"轉生二轉",p:"monk",s:[]},
   clown:{n:"搞笑藝人",c:"轉生二轉",p:"bard",s:[]},
   creator:{n:"創造者",c:"轉生二轉",p:"alchemist",s:["所有化學武器保護"]},
   gypsy:{n:"冷豔舞姬",c:"轉生二轉",p:"dancer",s:[]},
   high_priest:{n:"神官",c:"轉生二轉",p:"priest",s:["聖母之祈福"]},
+  high_wizard:{n:"超魔導師",c:"轉生二轉",p:"wizard",s:[]},
   lord_knight:{n:"騎士領主",c:"轉生二轉",p:"knight",s:[]},
   paladin:{n:"聖殿十字軍",c:"轉生二轉",p:"crusader",s:["聖音"]},
   professor:{n:"智者",c:"轉生二轉",p:"sage",s:[]},
   sniper:{n:"神射手",c:"轉生二轉",p:"hunter",s:[]},
+  stalker:{n:"神行太保",c:"轉生二轉",p:"rogue",s:[]},
   whitesmith:{n:"神工匠",c:"轉生二轉",p:"blacksmith",s:[]},
   archbishop:{n:"大主教",c:"三轉",p:"high_priest",s:["奉獻頌","感恩歌","感恩祈禱","慈悲術","折枝讚頌","淨化","祈禱文","純白百合花","羔羊歌頌","聖靈降臨祈禱","解除","贖罪","集結","高階治癒術"]},
   genetic:{n:"基因學者",c:"三轉",p:"creator",s:["調配料理"]},
@@ -572,9 +577,13 @@ const RO_JOBS={
   ranger:{n:"遊俠",c:"三轉",p:"sniper",s:[]},
   royal_guard:{n:"皇家禁衛隊",c:"三轉",p:"paladin",s:["先鋒部隊","威信","王的恩典","聖冕加護","聚集","虔誠"]},
   rune_knight:{n:"盧恩騎士",c:"三轉",p:"lord_knight",s:[]},
+  shadow_chaser:{n:"魅影追蹤者",c:"三轉",p:"stalker",s:[]},
   sorcerer:{n:"妖術師",c:"三轉",p:"professor",s:["加熱術","精靈治癒","精靈激發","精靈結界"]},
   sura:{n:"修羅",c:"三轉",p:"champion",s:[]},
   wanderer:{n:"浪姬舞者",c:"三轉",p:"gypsy",s:["戀人交響樂","課程","豐年頌","魔力之歌"]},
+  warlock:{n:"咒術士",c:"三轉",p:"high_wizard",s:[]},
+  abyss_chaser:{n:"深淵追跡者",c:"四轉",p:"shadow_chaser",s:[]},
+  arch_mage:{n:"禁咒魔導士",c:"四轉",p:"warlock",s:[]},
   biolo:{n:"生命締造者",c:"四轉",p:"genetic",s:["全影化學保護","全體化學保護"]},
   cardinal:{n:"樞機主教",c:"四轉",p:"archbishop",s:["光耀天命","全心奉獻","博愛治癒","治癒誓言","祝福讚歌","神聖權能","神聖花雨","神聖防護","聖光治癒","靈魂忠誠"]},
   dragon_knight:{n:"盧恩龍爵",c:"四轉",p:"rune_knight",s:["天龍光環","活力之源"]},
@@ -588,12 +597,16 @@ const RO_JOBS={
   windsinger:{n:"樂之舞靈",c:"四轉",p:"wanderer",s:["普隆德拉進行曲","神秘交響曲","舞台禮儀"]},
   alicia:{n:"阿利提亞",c:"擴充職業",p:"kanoss",s:["同步飛翔","大地豐收","自然助力","自然調和"]},
   druid:{n:"德魯伊",c:"擴充職業",s:["土地之花","繁花盛放","自然盾牌"]},
+  extended_super_novice:{n:"終極初學者",c:"擴充職業",p:"super_novice",s:[]},
+  gunslinger:{n:"神槍手",c:"擴充職業",s:[]},
   kagerou:{n:"日影忍者",c:"擴充職業",p:"ninja",s:["明鏡止水","靈魂阻隔"]},
   kagerou_upper:{n:"流浪忍者",c:"擴充職業",p:"kagerou",s:[]},
   kanoss:{n:"卡諾斯",c:"擴充職業",p:"druid",s:["自然保護","自然活力","風之帳幕"]},
+  night_watch:{n:"夜行使",c:"擴充職業",p:"rebellion",s:[]},
   ninja:{n:"忍者",c:"擴充職業",s:[]},
   oboro:{n:"月影忍者",c:"擴充職業",p:"ninja",s:["明鏡止水","靈魂阻隔"]},
   oboro_upper:{n:"疾風忍者",c:"擴充職業",p:"oboro",s:[]},
+  rebellion:{n:"反叛者",c:"擴充職業",p:"gunslinger",s:[]},
   sky:{n:"獵靈士",c:"擴充職業",p:"soul_linker",s:["凱渥特","巨人靈魂","影子靈魂","精靈靈魂","艾斯哈","艾斯帕","艾斯核","隼鷹靈魂","靈魂集結"]},
   soul_emperor:{n:"天帝",c:"擴充職業",p:"star_emperor",s:[]},
   soul_linker:{n:"悟靈士",c:"擴充職業",p:"taekwon",s:["一轉上等職業的靈魂","凱易哲","凱易娜","凱易特","凱誣僕","凱阿希","刺客的靈魂","十字軍的靈魂","吟遊詩人和舞孃的靈魂","巫師的靈魂","悟靈士的靈魂","拳聖的靈魂","武道家的靈魂","流氓的靈魂","獵人的靈魂","祭司的靈魂","艾斯克","艾斯卡","艾斯提","艾斯敦","艾斯誣","艾斯麻","賢者的靈魂","超級初學者的靈魂","鍊金術師的靈魂","鐵匠的靈魂","騎士的靈魂"]},
@@ -602,6 +615,7 @@ const RO_JOBS={
   star_emperor:{n:"拳皇",c:"擴充職業",p:"star_gladiator",s:[]},
   star_gladiator:{n:"拳聖",c:"擴充職業",p:"taekwon",s:["太陽和月亮和星星的朋友","太陽的平安感","太陽的祝福","星星的平安感","星星的祝福","月亮的平安感","月亮的祝福"]},
   summoner:{n:"召喚師",c:"擴充職業",s:["大地之魂","大地力量","海洋之魂","海洋力量","生命之魂","生命力量","舔毛"]},
+  super_novice:{n:"超級初學者",c:"擴充職業",s:[]},
   taekwon:{n:"跆拳少年",c:"擴充職業",s:["加油","溫暖的風"]}
 };
 /* 取得某職業的整條轉職鏈（一轉 → 該職業） */
@@ -1150,7 +1164,10 @@ function buffPickerSheet(current, roleName, onApply, onCancel){
   const selected=new Set(picks);
   const pickable=roPickableJobs();
   let jobId=roJobIdByName(roleName);
-  if(!jobId||!pickable.includes(jobId)) jobId=pickable[0];
+  if(!jobId||!pickable.includes(jobId)){
+    const sameCat=jobId&&RO_JOBS[jobId]?pickable.find(j=>RO_JOBS[j].c===RO_JOBS[jobId].c):null;
+    jobId=sameCat||pickable[0];
+  }
 
   const opts=CATS.map(c=>{
     const list=pickable.filter(jid=>RO_JOBS[jid].c===c);
@@ -1204,7 +1221,7 @@ function buffPickerSheet(current, roleName, onApply, onCancel){
 
 /* 從 RO「擴充職業」快速新增職業：點一個就直接建立職業卡，之後可再進去挑 BUFF */
 function expansionRoleSheet(){
-  const list=roPickableJobs().filter(jid=>RO_JOBS[jid].c==='擴充職業');
+  const list=Object.keys(RO_JOBS).filter(jid=>RO_JOBS[jid].c==='擴充職業');
   sheet('新增擴充職業',`
     <div class="rolegrid">${list.map(jid=>
       `<button class="rolepill" data-j="${jid}" style="padding:9px 15px;font-size:13.5px">${esc(RO_JOBS[jid].n)}</button>`).join('')}</div>
