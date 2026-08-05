@@ -427,6 +427,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
       <button class="icon-btn" id="btnAddDate" aria-label="新增日期">
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
+      <button class="icon-btn" id="btnEditDate" aria-label="修改日期">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
       <button class="icon-btn" id="btnDelDate" aria-label="刪除日期">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0v12a1 1 0 001 1h6a1 1 0 001-1V7"/></svg>
       </button>
@@ -511,7 +514,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v6';
+const APP_VERSION='v7';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -1314,6 +1317,31 @@ function dateSheet(){
   });
 }
 
+/* 修改目前這天的日期：把 state.schedule 底下的 RUN／排班資料整包搬到新的日期鍵上，內容不會不見 */
+function editDateSheet(){
+  const from=curDate;
+  sheet('修改日期',`
+    <div class="field"><label>把 ${fmtDate(from)}（${fmtDow(from)}）改成</label>
+      <input name="d" type="date" value="${from}"></div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const to=s.querySelector('[name="d"]').value; if(!to) return toast('請選擇日期');
+      if(to===from){ closeSheet(); return; }
+      if(state.schedule[to]){ return toast(`${fmtDate(to)} 已經有排班了，不能覆蓋`); }
+      commit(()=>{
+        state.schedule[to]=state.schedule[from];
+        delete state.schedule[from];
+      });
+      curDate=to; closeSheet(); render();
+      toast(`已改成 ${fmtDate(to)}`);
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
 function moreSheet(){
   sheet('更多',`
     <div class="field"><label>職業篩選（只看某個預設職業的待分配成員）</label>
@@ -1479,6 +1507,7 @@ document.getElementById('btnUndo').onclick=undo;
 document.getElementById('btnRedo').onclick=redo;
 document.getElementById('btnMore').onclick=moreSheet;
 document.getElementById('btnAddDate').onclick=dateSheet;
+document.getElementById('btnEditDate').onclick=editDateSheet;
 document.getElementById('btnDelDate').onclick=()=>{
   if(dates().length<=1) return toast('至少要保留一天');
   const target=curDate;
