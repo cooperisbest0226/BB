@@ -864,8 +864,33 @@ document.addEventListener('click',e=>{
 /* ══════════════════════════════════════════════════════════
    Sheet（底部彈出面板）
    ══════════════════════════════════════════════════════════ */
+/* iOS Safari 在 fixed 定位的彈窗裡點輸入框時，就算容器是 fixed，
+   還是會把「背後的頁面」往上捲動去對齊鍵盤，導致打字的地方被捲到看不見。
+   開彈窗時把 body 鎖成 fixed（等於背後頁面不能捲），Safari 就沒有頁面可以捲了。 */
+function lockBodyScroll(){
+  if(document.body.style.position==='fixed') return;
+  const y=window.scrollY||window.pageYOffset||0;
+  document.body.dataset.scrollY=y;
+  document.body.style.position='fixed';
+  document.body.style.top=(-y)+'px';
+  document.body.style.left='0';
+  document.body.style.right='0';
+  document.body.style.width='100%';
+}
+function unlockBodyScroll(){
+  if(document.body.style.position!=='fixed') return;
+  const y=parseInt(document.body.dataset.scrollY||'0',10);
+  document.body.style.position='';
+  document.body.style.top='';
+  document.body.style.left='';
+  document.body.style.right='';
+  document.body.style.width='';
+  delete document.body.dataset.scrollY;
+  window.scrollTo(0,y);
+}
 function sheet(title, bodyHtml, onMount){
   const host=document.getElementById('sheetHost');
+  lockBodyScroll();
   host.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-modal="true">
     <div class="grip"></div><div class="sheet-t">${esc(title)}</div>${bodyHtml}</div></div>`;
   const scrim=host.querySelector('.scrim');
@@ -874,7 +899,7 @@ function sheet(title, bodyHtml, onMount){
   onMount&&onMount(host.querySelector('.sheet'));
   const f=host.querySelector('input,textarea,select'); if(f&&window.innerWidth>760) f.focus();
 }
-function closeSheet(){ document.getElementById('sheetHost').innerHTML=''; document.removeEventListener('keydown',escClose); }
+function closeSheet(){ document.getElementById('sheetHost').innerHTML=''; document.removeEventListener('keydown',escClose); unlockBodyScroll(); }
 function escClose(e){ if(e.key==='Escape') closeSheet(); }
 const val=(s,n)=>s.querySelector(`[name="${n}"]`).value.trim();
 
