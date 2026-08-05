@@ -514,7 +514,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v7';
+const APP_VERSION='v8';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -524,6 +524,7 @@ const FOURTH_JOBS=[
   {name:'盧恩龍爵',icon:'🐉'},   // Dragon Knight
   {name:'帝國聖衛軍',icon:'🛡'}, // Imperial Guard
   {name:'深淵追跡者',icon:'🔪'}, // Abyss Chaser
+  {name:'十字影武',icon:'🗡'},   // Shadow Cross
   {name:'機甲神匠',icon:'🔧'},   // Meister
   {name:'生命締造者',icon:'🧪'}, // Biolo
   {name:'風鷹狩獵者',icon:'🏹'}, // Wind Hawk
@@ -650,6 +651,14 @@ function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,
 const DOW=['日','一','二','三','四','五','六'];
 function fmtDate(k){ const d=parseYmd(k); return String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0'); }
 function fmtDow(k){ return '週'+DOW[parseYmd(k).getDay()]; }
+/* 手動組時間字串，不用 toLocaleString —— zh-TW 這個 locale 在部分瀏覽器上 hour12:false 不會正確生效，
+   半夜容易跑出「24:xx」或又跳回 12 小時制帶「上午/下午」的錯誤格式，自己組才會保證是正確的 24 小時制在地時間 */
+function fmtNow(){
+  const d=new Date();
+  const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
+  const h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'), se=String(d.getSeconds()).padStart(2,'0');
+  return `${y}/${mo}/${da} ${h}:${mi}:${se}`;
+}
 function shiftDate(k,n){ const d=parseYmd(k); d.setDate(d.getDate()+n); return ymd(d); }
 
 let state=load(), curDate=null, undoStack=[], redoStack=[], picked=null, roleFilter=null;
@@ -1417,7 +1426,7 @@ function buildExportNode(){
   const host=document.getElementById('exportHost');
   host.innerHTML=`<div class="exportwrap" id="exportWrap">
     <div class="ex-h">${fmtDate(curDate)}（${DOW[parseYmd(curDate).getDay()]}） 陣容分配</div>
-    <div class="ex-sub">${pts.length} RUN · 出席 ${pts.reduce((a,p)=>a+p.slots.length,0)} 人 · 產出於 ${new Date().toLocaleString('zh-TW',{hour12:false})}</div>
+    <div class="ex-sub">${pts.length} RUN · 出席 ${pts.reduce((a,p)=>a+p.slots.length,0)} 人 · 產出於 ${fmtNow()}</div>
     <div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>
   </div>`;
   return document.getElementById('exportWrap');
