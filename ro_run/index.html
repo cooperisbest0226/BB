@@ -511,7 +511,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v5';
+const APP_VERSION='v6';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -570,7 +570,7 @@ const RO_JOBS={
   stalker:{n:"神行太保",c:"轉生二轉",p:"rogue",s:[]},
   whitesmith:{n:"神工匠",c:"轉生二轉",p:"blacksmith",s:[]},
   archbishop:{n:"大主教",c:"三轉",p:"high_priest",s:["奉獻頌","感恩歌","感恩祈禱","慈悲術","折枝讚頌","淨化","祈禱文","純白百合花","羔羊歌頌","聖靈降臨祈禱","解除","贖罪","集結","高階治癒術"]},
-  genetic:{n:"基因學者",c:"三轉",p:"creator",s:["調配料理"]},
+  genetic:{n:"基因學者",c:"三轉",p:"creator",s:["爆炸孢子","調配料理"]},
   guillotine_cross:{n:"十字斬首者",c:"三轉",p:"assassin_cross",s:["解毒劑"]},
   mechanic:{n:"機械工匠",c:"三轉",p:"whitesmith",s:[]},
   minstrel:{n:"宮廷樂師",c:"三轉",p:"clown",s:["和聲演奏","課程","豐年頌","魔力之歌"]},
@@ -583,7 +583,7 @@ const RO_JOBS={
   wanderer:{n:"浪姬舞者",c:"三轉",p:"gypsy",s:["戀人交響樂","課程","豐年頌","魔力之歌"]},
   warlock:{n:"咒術士",c:"三轉",p:"high_wizard",s:[]},
   abyss_chaser:{n:"深淵追跡者",c:"四轉",p:"shadow_chaser",s:[]},
-  arch_mage:{n:"禁咒魔導士",c:"四轉",p:"warlock",s:[]},
+  arch_mage:{n:"禁咒魔導士",c:"四轉",p:"warlock",s:["毀滅颶風","萬紫千紅"]},
   biolo:{n:"生命締造者",c:"四轉",p:"genetic",s:["全影化學保護","全體化學保護"]},
   cardinal:{n:"樞機主教",c:"四轉",p:"archbishop",s:["光耀天命","全心奉獻","博愛治癒","治癒誓言","祝福讚歌","神聖權能","神聖花雨","神聖防護","聖光治癒","靈魂忠誠"]},
   dragon_knight:{n:"盧恩龍爵",c:"四轉",p:"rune_knight",s:["天龍光環","活力之源"]},
