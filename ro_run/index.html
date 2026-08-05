@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --vvh:100vh; /* JS 依 visualViewport 動態更新，讓鍵盤彈出時 sheet 仍貼齊可視範圍，不被鍵盤蓋住或跑版 */
+  --vvh:100vh; --vvtop:0px; /* JS 依 visualViewport 動態更新，讓鍵盤彈出時 sheet 仍貼齊可視範圍，不被鍵盤蓋住或跑版 */
   --bg:#eef1f7;
   --ink:#15171c;
   --ink-2:#3d434f;
@@ -314,6 +314,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   position:fixed; left:0; right:0; top:0; height:calc(var(--vvh, 100vh)); z-index:100; background:rgba(21,23,28,.34);
   backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
   display:flex; align-items:flex-end; justify-content:center; animation:fade .2s ease both;
+  transform:translateY(var(--vvtop,0px));
 }
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .sheet{
@@ -876,6 +877,8 @@ function lockBodyScroll(){
   document.body.style.left='0';
   document.body.style.right='0';
   document.body.style.width='100%';
+  document.body.style.overflow='hidden';
+  document.documentElement.style.overflow='hidden';
 }
 function unlockBodyScroll(){
   if(document.body.style.position!=='fixed') return;
@@ -885,6 +888,8 @@ function unlockBodyScroll(){
   document.body.style.left='';
   document.body.style.right='';
   document.body.style.width='';
+  document.body.style.overflow='';
+  document.documentElement.style.overflow='';
   delete document.body.dataset.scrollY;
   window.scrollTo(0,y);
 }
@@ -1242,24 +1247,36 @@ document.getElementById('btnClearDay').onclick=()=>{
 };
 
 /* iOS Safari（尤其 standalone PWA）鍵盤彈出時不會縮小 fixed 元素所依據的 layout viewport，
-   改用 visualViewport 動態量測可視高度，寫進 --vvh，讓 sheet／scrim 貼齊實際看得到的範圍，
+   改用 visualViewport 動態量測可視高度／位移，寫進 --vvh／--vvtop，讓 sheet／scrim 貼齊實際看得到的範圍，
    避免鍵盤蓋住輸入欄或畫面被鍵盤頂到跑版。 */
 function syncVVH(){
-  const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  const vv=window.visualViewport;
+  const h=(vv&&vv.height)||window.innerHeight;
+  const top=(vv&&vv.offsetTop)||0;
   document.documentElement.style.setProperty('--vvh',h+'px');
+  document.documentElement.style.setProperty('--vvtop',top+'px');
 }
 syncVVH();
+let focusedField=null;
+document.addEventListener('focusin',e=>{
+  if(e.target.matches('input,textarea,select')) focusedField=e.target;
+});
+document.addEventListener('focusout',e=>{
+  if(e.target===focusedField) focusedField=null;
+});
+/* 只在 visualViewport 真的因鍵盤而變化「之後」才校正一次位置，
+   不用猜時間的 setTimeout（會跟 iOS 原生的捲動打架，越修越跑版）。 */
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',syncVVH);
+  window.visualViewport.addEventListener('resize',()=>{
+    syncVVH();
+    if(focusedField&&document.activeElement===focusedField){
+      focusedField.scrollIntoView({block:'nearest'});
+    }
+  });
   window.visualViewport.addEventListener('scroll',syncVVH);
 }else{
   window.addEventListener('resize',syncVVH);
 }
-/* 欄位取得焦點時鍵盤才會出現、視窗才會跟著變化，稍等一下再把該欄位捲到可視範圍內 */
-document.addEventListener('focusin',e=>{
-  if(!e.target.matches('input,textarea,select')) return;
-  setTimeout(()=>{ e.target.scrollIntoView({block:'center',behavior:'smooth'}); },320);
-});
 
 document.addEventListener('keydown',e=>{
   if(e.target.matches('input,textarea,select')) return;
