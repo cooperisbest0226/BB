@@ -330,6 +330,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .field label{display:block; font-size:11.5px; font-weight:550; color:var(--muted); margin-bottom:5px}
 .field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
 .sheet-foot{display:flex; gap:9px; margin-top:16px}
+.preset-row{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 16px}
 .sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
 .rolegrid{display:flex; flex-wrap:wrap; gap:7px}
 .swatches{display:flex; flex-wrap:wrap; gap:7px}
@@ -346,6 +347,18 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   font-size:12.5px; font-weight:500; transition:background .14s, color .14s, border-color .14s;
 }
 .skillpill[aria-pressed="true"]{color:#fff; background:var(--accent); border-color:var(--accent)}
+
+/* 掉落物 */
+.dropsec{margin-top:12px; padding-top:12px; border-top:1px solid var(--line-2)}
+.dropsec-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px}
+.dropsec-t{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em}
+.dropgrid{display:flex; flex-wrap:wrap; gap:7px}
+.droppill{
+  display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:99px;
+  border:1px solid rgba(180,83,9,.28); background:rgba(180,83,9,.08); color:#92400e;
+  font-size:12.5px; font-weight:500;
+}
+.droppill .drop-qty{font-weight:700; color:#b45309}
 .buffprev{
   font-size:12.5px; color:var(--ink-2); background:var(--accent-soft);
   border-radius:10px; padding:9px 11px; margin-top:14px; line-height:1.5;
@@ -374,6 +387,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .ex-row:last-child{border-bottom:none}
 .ex-nm{font-size:13.5px; color:#15171c; font-weight:500; min-width:88px; display:flex; flex-direction:column; gap:1px}
 .ex-buff{font-size:10.5px; color:#4f46e5; font-weight:500}
+.ex-drops{font-size:11px; color:#92400e; background:rgba(180,83,9,.08); padding:7px 14px; border-top:1px solid #f0f1f6}
 .ex-rl{font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; border:1px solid}
 .ex-cols{display:flex; gap:16px; align-items:flex-start}
 
@@ -410,7 +424,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
       <button class="tab" role="tab" aria-selected="false" data-view="calc">PT 計算</button>
       <button class="tab" role="tab" aria-selected="false" data-view="members">成員</button>
       <button class="tab" role="tab" aria-selected="false" data-view="roles">職業</button>
-      <button class="tab" role="tab" aria-selected="false" data-view="stats">統計</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="stats">材料統計</button>
     </div>
   </div>
 
@@ -482,14 +496,25 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
     <div id="roleList"></div>
   </section>
 
-  <!-- 統計 -->
+  <!-- 材料統計 -->
   <section class="view" id="view-stats">
-    <div class="sec"><span class="sec-t" id="statsLabel">統計</span><div class="sec-line"></div></div>
-    <div class="statgrid" id="statCards"></div>
-    <div class="sec"><span class="sec-t">職業分佈</span><div class="sec-line"></div></div>
-    <div class="bars" id="roleBars"></div>
-    <div class="sec"><span class="sec-t">出勤次數</span><div class="sec-line"></div></div>
-    <div class="bars" id="attendBars"></div>
+    <div class="sec"><span class="sec-t">材料統計</span><div class="sec-line"></div></div>
+    <div class="field-2">
+      <div class="field"><label>從</label><input type="date" id="matFrom"></div>
+      <div class="field"><label>到</label><input type="date" id="matTo"></div>
+    </div>
+    <div class="field"><label>場次（選填，只看特定 RUN 名稱）</label><select id="matRun"><option value="">全部</option></select></div>
+    <div class="preset-row">
+      <button class="gbtn" data-preset="today">今天</button>
+      <button class="gbtn" data-preset="week">本週</button>
+      <button class="gbtn" data-preset="month">本月</button>
+      <button class="gbtn" data-preset="all">全部</button>
+    </div>
+    <div class="statgrid" id="matCards"></div>
+    <div class="sec"><span class="sec-t">材料總計</span><div class="sec-line"></div></div>
+    <div class="bars" id="matBars"></div>
+    <div class="sec"><span class="sec-t">場次明細</span><div class="sec-line"></div></div>
+    <div id="matDetail"></div>
   </section>
 </div>
 
@@ -504,6 +529,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 </div>
 
 <div id="sheetHost"></div>
+<datalist id="materialNames"></datalist>
 <div id="exportHost"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -514,7 +540,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v8';
+const APP_VERSION='v10';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -644,7 +670,7 @@ function seed(){
   return {members:[],roles,schedule:{}};
 }
 
-function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[]}; }
+function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[]}; }
 function todayKey(){ const d=new Date(); return ymd(d); }
 function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
@@ -675,6 +701,7 @@ function migrate(p){
   Object.values(p.schedule).forEach(pts=>pts.forEach(pt=>{
     const m=/^PT\s*(\d+)$/i.exec((pt.name||'').trim());
     if(m) pt.name='RUN '+m[1];
+    if(!Array.isArray(pt.drops)) pt.drops=[];
   }));
   /* 技能 BUFF 從「成員」搬到「職業」：把成員身上舊的 buff 文字，搬到他預設職業的 buff 上（該職業還沒設定過的話），
      這樣同職業的人 BUFF 才會一致，也才能跟著指派的職業正確標記，不用每個成員手動輸入一次 */
@@ -743,7 +770,7 @@ function render(){
   const ks=dates();
   if(!ks.length){ ensureDate(todayKey()); persist(); }
   if(!curDate||!state.schedule[curDate]) curDate=dates().includes(todayKey())?todayKey():dates()[0];
-  renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderStats();
+  renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderMaterials();
   document.getElementById('btnUndo').disabled=!undoStack.length;
   document.getElementById('btnRedo').disabled=!redoStack.length;
   document.getElementById('brandSub').textContent=fmtDate(curDate)+' '+fmtDow(curDate);
@@ -799,6 +826,15 @@ function renderBoard(){
       </div>
       <div class="meter">${pips}</div>
       <div class="slots">${rows}</div>
+      <div class="dropsec">
+        <div class="dropsec-head">
+          <span class="dropsec-t">掉落物</span>
+          <button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">＋ 記錄掉落</button>
+        </div>
+        <div class="dropgrid">${(pt.drops&&pt.drops.length) ? pt.drops.map(d=>
+          `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`).join('')
+          : `<span class="bench-empty" style="padding:0">還沒有記錄</span>`}</div>
+      </div>
       <div class="pt-foot">
         <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
         <button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>
@@ -895,39 +931,80 @@ function renderRoles(){
   };
 }
 
-function renderStats(){
-  const pts=ptsOf(curDate);
-  const cap=pts.reduce((a,p)=>a+p.capacity,0);
-  const used=pts.reduce((a,p)=>a+p.slots.length,0);
-  const noRole=pts.reduce((a,p)=>a+p.slots.filter(s=>!s.roleId).length,0);
-  document.getElementById('statsLabel').textContent=`${fmtDate(curDate)} ${fmtDow(curDate)}`;
-  document.getElementById('statCards').innerHTML=[
-    ['出席人數',`${used}<small>/${cap}</small>`],
-    ['RUN 數', pts.length],
-    ['空位', cap-used],
-    ['未指定職業', noRole],
-    ['待分配', unassignedMembers(curDate).length],
-    ['總成員', state.members.filter(m=>m.active).length],
+/* ══════════════════════════════════════════════════════════
+   材料統計
+   ══════════════════════════════════════════════════════════ */
+let matFrom='', matTo='', matRunName='';
+
+function allRunNames(){
+  const set=new Set();
+  Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>set.add(pt.name)));
+  return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function matMatches(k,pt){
+  if(matFrom && k<matFrom) return false;
+  if(matTo && k>matTo) return false;
+  if(matRunName && pt.name!==matRunName) return false;
+  return true;
+}
+function renderMaterials(){
+  const runSel=document.getElementById('matRun');
+  runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
+    `<option value="${esc(n)}" ${n===matRunName?'selected':''}>${esc(n)}</option>`).join('');
+  document.getElementById('matFrom').value=matFrom;
+  document.getElementById('matTo').value=matTo;
+
+  const entries=[];
+  Object.keys(state.schedule).sort().forEach(k=>{
+    ptsOf(k).forEach(pt=>{ if(matMatches(k,pt)) entries.push({date:k,pt}); });
+  });
+
+  const totals={}; let dropSum=0, runsWithDrops=0;
+  entries.forEach(({pt})=>{
+    if(pt.drops&&pt.drops.length){
+      runsWithDrops++;
+      pt.drops.forEach(d=>{ totals[d.name]=(totals[d.name]||0)+d.qty; dropSum+=d.qty; });
+    }
+  });
+  const matNames=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+
+  document.getElementById('matCards').innerHTML=[
+    ['符合場次', entries.length],
+    ['有掉落的場次', runsWithDrops],
+    ['材料種類', matNames.length],
+    ['掉落總數量', dropSum],
   ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
 
-  const counts={}; pts.forEach(p=>p.slots.forEach(s=>{ if(s.roleId) counts[s.roleId]=(counts[s.roleId]||0)+1; }));
-  const max=Math.max(1,...Object.values(counts));
-  const rb=sortedRoles().filter(r=>counts[r.id]);
-  document.getElementById('roleBars').innerHTML = rb.length
-    ? rb.map(r=>`<div class="bar-row"><span class="bar-l">${esc(r.name)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${counts[r.id]/max*100}%;background:${r.color}"></div></div>
-        <span class="bar-n num">${counts[r.id]}</span></div>`).join('')
-    : `<div class="bench-empty">這天還沒有指定任何職業</div>`;
+  const max=Math.max(1,...matNames.map(n=>totals[n]));
+  document.getElementById('matBars').innerHTML = matNames.length
+    ? matNames.map(n=>`<div class="bar-row"><span class="bar-l">${esc(n)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${totals[n]/max*100}%;background:#b45309"></div></div>
+        <span class="bar-n num">${totals[n]}</span></div>`).join('')
+    : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 
-  const att={}; dates().forEach(k=>assignedIds(k).forEach(id=>att[id]=(att[id]||0)+1));
-  const amax=Math.max(1,...Object.values(att));
-  const rows=state.members.filter(m=>att[m.id]).sort((a,b)=>att[b.id]-att[a.id]);
-  document.getElementById('attendBars').innerHTML = rows.length
-    ? rows.map(m=>`<div class="bar-row"><span class="bar-l">${esc(m.name)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${att[m.id]/amax*100}%;background:var(--accent)"></div></div>
-        <span class="bar-n num">${att[m.id]}</span></div>`).join('')
-    : `<div class="bench-empty">還沒有出勤紀錄</div>`;
+  const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('matDetail').innerHTML = withDrops.length
+    ? withDrops.map(({date,pt})=>`<div class="ex-pt">
+        <div class="ex-pt-h"><span class="ex-pt-n">${fmtDate(date)} ${fmtDow(date)} · ${esc(pt.name)}</span>
+          <span class="ex-pt-t">${esc(pt.time||'')}</span></div>
+        <div class="dropgrid" style="padding:11px 14px">${pt.drops.map(d=>
+          `<span class="droppill">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
+      </div>`).join('')
+    : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 }
+function applyMatPreset(p){
+  const t=todayKey();
+  if(p==='today'){ matFrom=t; matTo=t; }
+  else if(p==='week'){ const d=parseYmd(t); const dow=(d.getDay()+6)%7; matFrom=shiftDate(t,-dow); matTo=shiftDate(t,6-dow); }
+  else if(p==='month'){ matFrom=t.slice(0,8)+'01'; const d=parseYmd(t); matTo=shiftDate(matFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1); }
+  else { matFrom=''; matTo=''; }
+  renderMaterials();
+}
+document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderMaterials(); };
+document.getElementById('matTo').onchange=e=>{ matTo=e.target.value; renderMaterials(); };
+document.getElementById('matRun').onchange=e=>{ matRunName=e.target.value; renderMaterials(); };
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>applyMatPreset(b.dataset.preset));
+
 
 /* ══════════════════════════════════════════════════════════
    指派 / 移動
@@ -1282,6 +1359,60 @@ function ptSheet(id){
   });
 }
 
+/* 預先知道的材料清單（星座之塔目前的掉落物項目），一開始就會出現在自動建議裡，不用等打過一次才有 */
+const KNOWN_MATERIALS=[
+  '未知的隕石碎片','稀微魔力符文石',
+  '威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
+  '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片',
+];
+/* 這個 App 目前用過的所有材料名稱（預設清單 + 跨全部日期、全部 RUN 實際打過的），給輸入自動建議用 */
+function allMaterialNames(){
+  const set=new Set(KNOWN_MATERIALS);
+  Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>(pt.drops||[]).forEach(d=>set.add(d.name))));
+  return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+
+/* 掉落物：新增或編輯一筆。同一場 RUN 裡輸入同名材料會自動累加數量，不會變成兩筆。 */
+function dropSheet(ptId,dropId){
+  const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+  const editing=dropId?(pt.drops||[]).find(d=>d.id===dropId):null;
+  document.getElementById('materialNames').innerHTML=allMaterialNames().map(n=>`<option value="${esc(n)}">`).join('');
+  sheet(editing?'編輯掉落物':'記錄掉落物',`
+    <div class="field"><label>材料名稱</label>
+      <input name="name" value="${esc(editing?editing.name:'')}" placeholder="例：隕石碎片" list="materialNames" ${editing?'':'autofocus'}></div>
+    <div class="field"><label>數量</label><input name="qty" type="number" min="1" value="${editing?editing.qty:1}"></div>
+    <div class="sheet-foot">
+      ${editing?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">${editing?'儲存':'新增'}</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name').trim(); if(!name) return toast('請輸入材料名稱');
+      const qty=Math.max(1,parseInt(val(s,'qty'))||1);
+      commit(()=>{
+        const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
+        if(!Array.isArray(p.drops)) p.drops=[];
+        if(editing){
+          const d=p.drops.find(x=>x.id===dropId); if(!d) return;
+          const dup=p.drops.find(x=>x.id!==dropId&&x.name===name);
+          if(dup){ dup.qty+=qty; p.drops=p.drops.filter(x=>x.id!==dropId); }
+          else { d.name=name; d.qty=qty; }
+        }else{
+          const dup=p.drops.find(x=>x.name===name);
+          if(dup) dup.qty+=qty;
+          else p.drops.push({id:uid(),name,qty});
+        }
+      });
+      closeSheet();
+    };
+    if(editing) s.querySelector('[data-s="del"]').onclick=()=>{
+      commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) p.drops=p.drops.filter(x=>x.id!==dropId); });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
 function rolePickSheet(ptId,i){
   const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
   const slot=pt.slots[i], m=memberById(slot.memberId);
@@ -1317,7 +1448,7 @@ function dateSheet(){
       const copy=s.querySelector('[name="copy"]')?.checked;
       commit(()=>{
         state.schedule[k]= copy&&prev
-          ? JSON.parse(JSON.stringify(ptsOf(prev))).map(p=>({...p,id:uid()}))
+          ? JSON.parse(JSON.stringify(ptsOf(prev))).map(p=>({...p,id:uid(),drops:[]}))
           : [mkPt('RUN 1','20:00',12)];
       });
       curDate=k; closeSheet(); render();
@@ -1421,7 +1552,9 @@ function buildExportNode(){
       <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
         <span class="ex-pt-t">${esc(pt.time||'')}</span>
         <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
-      ${rows}</div>`;
+      ${rows}
+      ${(pt.drops&&pt.drops.length)?`<div class="ex-drops">掉落：${pt.drops.map(d=>`${esc(d.name)}×${d.qty}`).join('、')}</div>`:''}
+      </div>`;
   }).join('');
   const host=document.getElementById('exportHost');
   host.innerHTML=`<div class="exportwrap" id="exportWrap">
@@ -1449,11 +1582,17 @@ async function exportImage(){
 }
 
 function exportCsv(){
-  const rows=[['日期','RUN','時間','成員','職業','BUFF']];
-  ptsOf(curDate).forEach(pt=>pt.slots.forEach(s=>{
-    const m=memberById(s.memberId), r=roleById(s.roleId);
-    if(m) rows.push([fmtDate(curDate),pt.name,pt.time||'',m.name,r?r.name:'',r&&r.buff||'']);
-  }));
+  const rows=[['日期','RUN','時間','成員','職業','BUFF','掉落物']];
+  ptsOf(curDate).forEach(pt=>{
+    pt.slots.forEach(s=>{
+      const m=memberById(s.memberId), r=roleById(s.roleId);
+      if(m) rows.push([fmtDate(curDate),pt.name,pt.time||'',m.name,r?r.name:'',r&&r.buff||'','']);
+    });
+    if(pt.drops&&pt.drops.length){
+      rows.push([fmtDate(curDate),pt.name,pt.time||'','','',
+        '',pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
+    }
+  });
   if(rows.length===1) return toast('這天還沒有排班資料');
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),`陣容分配_${fmtDate(curDate).replace('/','')}.csv`);
@@ -1484,10 +1623,12 @@ document.addEventListener('click',e=>{
   const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
   if(a==='role')      rolePickSheet(ptId,i);
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
+  if(a==='addDrop')   dropSheet(ptId,null);
+  if(a==='editDrop')  dropSheet(ptId,btn.dataset.d);
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
     commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
-      state.schedule[curDate].push({...JSON.parse(JSON.stringify(p)),id:uid(),name:p.name+' 複本',slots:[]}); });
+      state.schedule[curDate].push({...JSON.parse(JSON.stringify(p)),id:uid(),name:p.name+' 複本',slots:[],drops:[]}); });
   }
   if(a==='delPt'){
     const p=ptsOf(curDate).find(x=>x.id===ptId);
