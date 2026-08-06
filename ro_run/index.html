@@ -769,7 +769,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v22';
+const APP_VERSION='v23';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -2032,23 +2032,33 @@ function rolePickSheet(ptId,i){
 }
 
 function dateSheet(){
-  const prev=dates().filter(k=>k<curDate).pop()||dates()[dates().length-1];
+  const allDates=dates();
+  const prev=allDates.filter(k=>k<curDate).pop()||allDates[allDates.length-1];
   /* 今天還沒建立的話，預設就填今天（最常見的情境）；否則填目前這天的隔天 */
   const def=state.schedule[todayKey()]?shiftDate(curDate,1):todayKey();
+  const dateOpts=allDates.slice().reverse().map(k=>
+    `<option value="${k}" ${k===prev?'selected':''}>${fmtDate(k)} ${fmtDow(k)}（${ptsOf(k).length} RUN）</option>`).join('');
   sheet('新增日期',`
     <div class="field"><label>日期</label><input name="d" type="date" value="${def}"></div>
-    ${prev?`<label class="toggle"><input type="checkbox" name="copy" checked> 複製 ${fmtDate(prev)} 的 RUN 與職業配置</label>`:''}
+    ${allDates.length?`
+    <label class="toggle"><input type="checkbox" name="copy" checked> 複製指定日期的所有 RUN 與職業配置</label>
+    <div class="field" id="copyFromField"><label>從哪一天複製</label><select name="copyFrom">${dateOpts}</select></div>`:''}
     <div class="sheet-foot">
       <button class="gbtn" data-s="cancel">取消</button>
       <button class="gbtn accent" data-s="save">建立</button>
     </div>`,s=>{
+    const copyChk=s.querySelector('[name="copy"]'), copyField=s.querySelector('#copyFromField');
+    const syncCopyVisibility=()=>{ if(copyField) copyField.style.display=(copyChk&&copyChk.checked)?'':'none'; };
+    if(copyChk) copyChk.onchange=syncCopyVisibility;
+    syncCopyVisibility();
     s.querySelector('[data-s="save"]').onclick=()=>{
       const k=s.querySelector('[name="d"]').value; if(!k) return toast('請選擇日期');
       if(state.schedule[k]){ curDate=k; closeSheet(); render(); return toast('這天已經有排班了'); }
-      const copy=s.querySelector('[name="copy"]')?.checked;
+      const copy=copyChk?.checked;
+      const from=s.querySelector('[name="copyFrom"]')?.value;
       commit(()=>{
-        state.schedule[k]= copy&&prev
-          ? JSON.parse(JSON.stringify(ptsOf(prev))).map(p=>({...p,id:uid(),drops:[]}))
+        state.schedule[k]= (copy&&from&&state.schedule[from])
+          ? JSON.parse(JSON.stringify(ptsOf(from))).map(p=>({...p,id:uid(),drops:[]}))
           : [mkPt('RUN 1','20:00',12)];
       });
       curDate=k; closeSheet(); render();
