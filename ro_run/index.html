@@ -104,22 +104,30 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .sec-line{flex:1; height:1px; background:var(--line-2)}
 
 /* ── date rail ──────────────────────────────────────────── */
-.daterail{display:flex; align-items:center; gap:8px; margin-top:14px}
+.daterail{display:flex; align-items:center; gap:6px; margin-top:14px}
 .dates{
-  display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x mandatory;
-  flex:1; padding:2px 0; scrollbar-width:none;
+  display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity;
+  flex:1; min-width:0; padding:2px 0; scrollbar-width:none;
+  -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
 }
 .dates::-webkit-scrollbar{display:none}
 .datechip{
-  scroll-snap-align:start; flex:0 0 auto; min-width:66px; padding:9px 13px 10px;
+  /* 固定寬度，讓 390px 手機一次剛好看得到 4~5 天，其餘左右滑動 */
+  scroll-snap-align:center; flex:0 0 auto; width:64px; padding:8px 4px 9px;
   background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
   text-align:center; transition:transform .18s var(--ease), box-shadow .18s, border-color .18s;
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
 }
 .datechip:active{transform:scale(.96)}
-.datechip .dc-dow{font-size:10px; color:var(--faint); letter-spacing:.06em; font-weight:500}
-.datechip .dc-md{font-size:16px; font-weight:600; letter-spacing:-.3px; margin-top:1px}
-.datechip .dc-meta{font-size:10px; color:var(--faint); margin-top:2px}
+.datechip .dc-dow{font-size:9.5px; color:var(--faint); letter-spacing:.04em; font-weight:500}
+.datechip .dc-md{font-size:15px; font-weight:600; letter-spacing:-.3px; margin-top:1px}
+.datechip .dc-meta{font-size:9px; color:var(--faint); margin-top:2px; white-space:nowrap}
+.datechip.today .dc-dow{color:var(--accent); font-weight:700}
+.date-actions{display:flex; align-items:center; gap:7px; margin-top:9px; flex-wrap:wrap}
+.date-actions-gap{flex:1}
+.date-actions .gbtn{padding:6px 11px; font-size:12px}
+.icon-btn.sm{width:30px; height:30px; flex:0 0 auto}
+.icon-btn.sm svg{width:15px; height:15px}
 .datechip[aria-current="true"]{
   background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.35);
 }
@@ -431,22 +439,20 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   <!-- 排班 -->
   <section class="view active" id="view-board">
     <div class="daterail">
-      <button class="icon-btn" id="btnPrevDate" aria-label="前一天">
+      <div class="dates" id="dateRail"></div>
+    </div>
+    <div class="date-actions">
+      <button class="icon-btn sm" id="btnPrevDate" aria-label="前一天">
         <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <div class="dates" id="dateRail"></div>
-      <button class="icon-btn" id="btnNextDate" aria-label="後一天">
+      <button class="icon-btn sm" id="btnNextDate" aria-label="後一天">
         <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
       </button>
-      <button class="icon-btn" id="btnAddDate" aria-label="新增日期">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
-      <button class="icon-btn" id="btnEditDate" aria-label="修改日期">
-        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      </button>
-      <button class="icon-btn" id="btnDelDate" aria-label="刪除日期">
-        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0v12a1 1 0 001 1h6a1 1 0 001-1V7"/></svg>
-      </button>
+      <button class="gbtn" id="btnToday">今天</button>
+      <span class="date-actions-gap"></span>
+      <button class="gbtn" id="btnAddDate">＋ 新增</button>
+      <button class="gbtn" id="btnEditDate">修改</button>
+      <button class="gbtn warn" id="btnDelDate">刪除</button>
     </div>
     <div class="sec"><span class="sec-t" id="boardLabel">RUN</span><div class="sec-line"></div>
       <button class="gbtn" id="btnAddPt">＋ 新增 RUN</button>
@@ -529,7 +535,6 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 </div>
 
 <div id="sheetHost"></div>
-<datalist id="materialNames"></datalist>
 <div id="exportHost"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -540,7 +545,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v10';
+const APP_VERSION='v11';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -687,7 +692,7 @@ function fmtNow(){
 }
 function shiftDate(k,n){ const d=parseYmd(k); d.setDate(d.getDate()+n); return ymd(d); }
 
-let state=load(), curDate=null, undoStack=[], redoStack=[], picked=null, roleFilter=null;
+let state=load(), curDate=null, undoStack=[], redoStack=[], picked=null, roleFilter=null, dateRailReady=false;
 
 function load(){
   try{
@@ -766,10 +771,22 @@ function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2)
 /* ══════════════════════════════════════════════════════════
    繪製
    ══════════════════════════════════════════════════════════ */
+/* 開啟 App 預設停在「今天」；今天還沒建立排班時，退而求其次選離今天最近的一天（同距離優先選未來） */
+function defaultDate(){
+  const ks=dates(), tk=todayKey();
+  if(!ks.length) return tk;
+  if(ks.includes(tk)) return tk;
+  const t=parseYmd(tk).getTime();
+  return ks.slice().sort((a,b)=>{
+    const da=parseYmd(a).getTime()-t, db=parseYmd(b).getTime()-t;
+    const ad=Math.abs(da)-Math.abs(db);
+    return ad!==0?ad:(db-da);
+  })[0];
+}
 function render(){
   const ks=dates();
   if(!ks.length){ ensureDate(todayKey()); persist(); }
-  if(!curDate||!state.schedule[curDate]) curDate=dates().includes(todayKey())?todayKey():dates()[0];
+  if(!curDate||!state.schedule[curDate]) curDate=defaultDate();
   renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderMaterials();
   document.getElementById('btnUndo').disabled=!undoStack.length;
   document.getElementById('btnRedo').disabled=!redoStack.length;
@@ -777,17 +794,18 @@ function render(){
 }
 
 function renderDates(){
-  const rail=document.getElementById('dateRail');
+  const rail=document.getElementById('dateRail'), tk=todayKey();
   rail.innerHTML=dates().map(k=>{
     const pts=ptsOf(k), used=assignedIds(k).size;
-    return `<button class="datechip" data-date="${k}" aria-current="${k===curDate}">
-      <div class="dc-dow">${fmtDow(k)}</div>
+    return `<button class="datechip ${k===tk?'today':''}" data-date="${k}" aria-current="${k===curDate}">
+      <div class="dc-dow">${k===tk?'今天':fmtDow(k)}</div>
       <div class="dc-md num">${fmtDate(k)}</div>
-      <div class="dc-meta num">${pts.length} RUN · ${used} 人</div>
+      <div class="dc-meta num">${pts.length}R · ${used}人</div>
     </button>`;
   }).join('');
   const cur=rail.querySelector('[aria-current="true"]');
-  if(cur) cur.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+  if(cur) cur.scrollIntoView({block:'nearest',inline:'center',behavior:dateRailReady?'smooth':'auto'});
+  dateRailReady=true;
 }
 
 function renderBoard(){
@@ -1376,16 +1394,24 @@ function allMaterialNames(){
 function dropSheet(ptId,dropId){
   const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
   const editing=dropId?(pt.drops||[]).find(d=>d.id===dropId):null;
-  document.getElementById('materialNames').innerHTML=allMaterialNames().map(n=>`<option value="${esc(n)}">`).join('');
+
   sheet(editing?'編輯掉落物':'記錄掉落物',`
     <div class="field"><label>材料名稱</label>
-      <input name="name" value="${esc(editing?editing.name:'')}" placeholder="例：隕石碎片" list="materialNames" ${editing?'':'autofocus'}></div>
-    <div class="field"><label>數量</label><input name="qty" type="number" min="1" value="${editing?editing.qty:1}"></div>
+      <input name="name" value="${esc(editing?editing.name:'')}" placeholder="點下方選擇，或直接輸入"></div>
+    <div class="skillgrp">常用材料</div>
+    <div class="skillgrid" id="matPick">${allMaterialNames().map(n=>
+      `<button class="skillpill" data-m="${esc(n)}" aria-pressed="${editing&&editing.name===n}">${esc(n)}</button>`).join('')}</div>
+    <div class="field" style="margin-top:14px"><label>數量</label><input name="qty" type="number" min="1" value="${editing?editing.qty:1}"></div>
     <div class="sheet-foot">
       ${editing?'<button class="gbtn warn" data-s="del">刪除</button>':''}
       <button class="gbtn" data-s="cancel">取消</button>
       <button class="gbtn accent" data-s="save">${editing?'儲存':'新增'}</button>
     </div>`,s=>{
+    const nameInput=s.querySelector('[name="name"]');
+    const paintPick=()=>s.querySelectorAll('[data-m]').forEach(b=>
+      b.setAttribute('aria-pressed', b.dataset.m===nameInput.value.trim()));
+    s.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ nameInput.value=b.dataset.m; paintPick(); });
+    nameInput.oninput=paintPick;
     s.querySelector('[data-s="save"]').onclick=()=>{
       const name=val(s,'name').trim(); if(!name) return toast('請輸入材料名稱');
       const qty=Math.max(1,parseInt(val(s,'qty'))||1);
@@ -1435,8 +1461,10 @@ function rolePickSheet(ptId,i){
 
 function dateSheet(){
   const prev=dates().filter(k=>k<curDate).pop()||dates()[dates().length-1];
+  /* 今天還沒建立的話，預設就填今天（最常見的情境）；否則填目前這天的隔天 */
+  const def=state.schedule[todayKey()]?shiftDate(curDate,1):todayKey();
   sheet('新增日期',`
-    <div class="field"><label>日期</label><input name="d" type="date" value="${shiftDate(curDate,1)}"></div>
+    <div class="field"><label>日期</label><input name="d" type="date" value="${def}"></div>
     ${prev?`<label class="toggle"><input type="checkbox" name="copy" checked> 複製 ${fmtDate(prev)} 的 RUN 與職業配置</label>`:''}
     <div class="sheet-foot">
       <button class="gbtn" data-s="cancel">取消</button>
@@ -1658,6 +1686,11 @@ document.getElementById('btnRedo').onclick=redo;
 document.getElementById('btnMore').onclick=moreSheet;
 document.getElementById('btnAddDate').onclick=dateSheet;
 document.getElementById('btnEditDate').onclick=editDateSheet;
+document.getElementById('btnToday').onclick=()=>{
+  const tk=todayKey();
+  if(!state.schedule[tk]) return toast('今天還沒有建立排班，可以點「＋ 新增日期」建立');
+  curDate=tk; picked=null; render();
+};
 document.getElementById('btnDelDate').onclick=()=>{
   if(dates().length<=1) return toast('至少要保留一天');
   const target=curDate;
