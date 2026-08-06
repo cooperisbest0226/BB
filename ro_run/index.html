@@ -268,6 +268,39 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .bar-fill{height:100%; border-radius:99px; transition:width .5s var(--ease)}
 .bar-n{font-size:12px; color:var(--muted); width:22px; text-align:right; flex:0 0 auto}
 
+/* ── 材料統計：篩選收合 + 子分頁 + 系列分色 ─────────────── */
+/* 材料分三個系列：碎片(紅) / 浮塵(藍) / 其餘(綠)。同一套顏色也用在掉落標籤與匯出圖片上。 */
+.matfilt{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
+  padding:11px 13px; box-shadow:var(--shadow); margin-bottom:12px;
+}
+.matfilt-l{font-size:11px; font-weight:600; letter-spacing:.05em; color:var(--muted); flex:0 0 auto}
+.matfilt-v{font-size:13px; font-weight:550; color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.matfilt-c{width:15px; height:15px; margin-left:auto; flex:0 0 auto; stroke:var(--faint); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .22s var(--ease)}
+.matfilt[aria-expanded="true"] .matfilt-c{transform:rotate(180deg)}
+.matfilt-body{margin:-4px 0 14px; animation:rise .26s var(--ease) both}
+.matfilt-body[hidden]{display:none}
+
+.subseg{display:flex; gap:2px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px; margin:0 0 16px}
+.subseg button{
+  flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
+  color:var(--muted); white-space:nowrap; transition:color .18s, background .18s, box-shadow .18s;
+}
+.subseg button[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
+.subview{display:none}
+.subview.active{display:block; animation:rise .3s var(--ease) both}
+
+.matgrp{
+  background:var(--glass); border:1px solid var(--line-2); border-left:3px solid var(--ms);
+  border-radius:var(--r-md); padding:12px 14px 14px; margin-bottom:10px; box-shadow:var(--shadow);
+}
+.matgrp-h{display:flex; align-items:baseline; gap:8px; margin-bottom:11px}
+.matgrp-t{font-size:12.5px; font-weight:650; color:var(--ms)}
+.matgrp-k{font-size:11px; color:var(--faint)}
+.matgrp-v{margin-left:auto; font-size:16px; font-weight:680; color:var(--ink); letter-spacing:-.4px}
+.matgrp .bar-fill{background:var(--ms)}
+.matgrp .setrow.short .setrow-n,.matgrp .setrow.short .setrow-v b{color:#b45309}
 
 /* ── PT 計算 ────────────────────────────────────────────── */
 .attrcard{
@@ -375,18 +408,25 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .dropsec-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px}
 .dropsec-t{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em}
 .dropgrid{display:flex; flex-wrap:wrap; gap:7px}
+/* 掉落標籤跟著材料系列上色（碎片紅／浮塵藍／其餘綠），未指定系列時退回琥珀色 */
 .droppill{
   display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:99px;
-  border:1px solid rgba(180,83,9,.28); background:rgba(180,83,9,.08); color:#92400e;
-  font-size:12.5px; font-weight:500;
+  border:1px solid var(--ms-line,rgba(180,83,9,.28)); background:var(--ms-soft,rgba(180,83,9,.08));
+  color:var(--ms-ink,#92400e); font-size:12.5px; font-weight:500;
 }
-.droppill .drop-qty{font-weight:700; color:#b45309}
+.droppill .drop-qty{font-weight:700; color:var(--ms,#b45309)}
 
 /* 掉落物批次編輯 */
 .droprow{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line-2)}
 .droprow:last-child{border-bottom:none}
 .droprow-n{flex:1; min-width:0; font-size:13.5px; font-weight:500; overflow-wrap:anywhere}
-.droprow.on .droprow-n{color:#92400e; font-weight:650}
+.droprow.on .droprow-n{color:var(--ms,#92400e); font-weight:650}
+.dropgrp{
+  display:flex; align-items:center; gap:7px; margin:16px 0 3px;
+  font-size:11px; font-weight:650; letter-spacing:.05em; color:var(--ms,var(--muted));
+}
+.dropgrp:first-child{margin-top:2px}
+.dropgrp::after{content:''; flex:1; height:1px; background:var(--ms-line,var(--line-2))}
 .stepper{display:flex; align-items:center; gap:4px; flex:0 0 auto}
 .stepbtn{
   width:32px; height:32px; border-radius:9px; border:1px solid var(--line);
@@ -424,7 +464,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .exportwrap{position:fixed; left:-99999px; top:0; background:#fff; padding:28px 30px; width:auto}
 .ex-h{font-size:21px; font-weight:700; letter-spacing:-.4px; color:#15171c}
 .ex-sub{font-size:12px; color:#7b8194; margin-top:3px}
-.ex-pt{margin-top:20px; border:1px solid #e6e8ef; border-radius:14px; overflow:hidden; min-width:250px}
+/* 各欄固定同寬，掉落物標籤才會整齊分段換行，不會有的欄寬有的欄窄 */
+.ex-pt{margin-top:20px; border:1px solid #e6e8ef; border-radius:14px; overflow:hidden; flex:0 0 300px; width:300px}
 .ex-pt-h{display:flex; align-items:baseline; gap:9px; padding:11px 14px; background:#f6f7fb; border-bottom:1px solid #e6e8ef}
 .ex-pt-n{font-size:15px; font-weight:650; color:#15171c}
 .ex-pt-t{font-size:11.5px; color:#7b8194}
@@ -433,7 +474,22 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .ex-row:last-child{border-bottom:none}
 .ex-nm{font-size:13.5px; color:#15171c; font-weight:500; min-width:88px; display:flex; flex-direction:column; gap:1px}
 .ex-buff{font-size:10.5px; color:#4f46e5; font-weight:500}
-.ex-drops{font-size:11px; color:#92400e; background:rgba(180,83,9,.08); padding:7px 14px; border-top:1px solid #f0f1f6}
+/* 匯出圖片的掉落物：依系列分段（碎片紅／浮塵藍／其餘綠），每段的標籤自成一欄、材料自動換行，
+   避免以前一整排文字串在同一行、名單一長就看不完 */
+.ex-drops{padding:9px 14px 10px; border-top:1px solid #f0f1f6; background:#fbfbfd}
+.ex-dtop{font-size:10.5px; font-weight:600; color:#7b8194; letter-spacing:.04em; margin-bottom:7px}
+.ex-dgrp{display:flex; align-items:flex-start; gap:8px; margin-top:6px}
+.ex-dgrp:first-of-type{margin-top:0}
+.ex-dlb{
+  flex:0 0 auto; width:34px; text-align:center; font-size:10.5px; font-weight:700; line-height:1.5;
+  padding:3px 0; border-radius:6px; color:#fff; margin-top:1px;
+}
+.ex-dp{display:flex; flex-wrap:wrap; gap:5px; min-width:0}
+.ex-dpill{
+  font-size:11px; font-weight:500; padding:3px 8px; border-radius:99px;
+  border:1px solid; line-height:1.35; white-space:nowrap;
+}
+.ex-dpill b{font-weight:750; margin-left:3px}
 .ex-rl{font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; border:1px solid}
 .ex-cols{display:flex; gap:16px; align-items:flex-start}
 
@@ -543,30 +599,53 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   <!-- 材料統計 -->
   <section class="view" id="view-stats">
     <div class="sec"><span class="sec-t">材料統計</span><div class="sec-line"></div></div>
-    <div class="field-2 mat-range">
-      <div class="field"><label>從</label><input type="date" id="matFrom"></div>
-      <div class="field"><label>到</label><input type="date" id="matTo"></div>
+
+    <!-- 篩選條件平常收起來，只留一行摘要，需要調整才展開 -->
+    <button class="matfilt" id="matFiltBtn" aria-expanded="false" aria-controls="matFiltBody">
+      <span class="matfilt-l">篩選</span>
+      <span class="matfilt-v" id="matFiltText">全部日期 · 全部場次</span>
+      <svg class="matfilt-c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="matfilt-body" id="matFiltBody" hidden>
+      <div class="field-2 mat-range">
+        <div class="field"><label>從</label><input type="date" id="matFrom"></div>
+        <div class="field"><label>到</label><input type="date" id="matTo"></div>
+      </div>
+      <div class="field"><label>場次（選填，只看特定 RUN 名稱）</label><select id="matRun"><option value="">全部</option></select></div>
+      <div class="preset-row">
+        <button class="gbtn" data-preset="today">今天</button>
+        <button class="gbtn" data-preset="week">本週</button>
+        <button class="gbtn" data-preset="month">本月</button>
+        <button class="gbtn" data-preset="all">全部</button>
+      </div>
     </div>
-    <div class="field"><label>場次（選填，只看特定 RUN 名稱）</label><select id="matRun"><option value="">全部</option></select></div>
-    <div class="preset-row">
-      <button class="gbtn" data-preset="today">今天</button>
-      <button class="gbtn" data-preset="week">本週</button>
-      <button class="gbtn" data-preset="month">本月</button>
-      <button class="gbtn" data-preset="all">全部</button>
+
+    <div class="statgrid" id="matCards" style="margin-bottom:16px"></div>
+
+    <!-- 三塊內容改成子分頁切換，一次只看一件事 -->
+    <div class="subseg" role="tablist" id="matSeg">
+      <button role="tab" aria-selected="true"  data-sub="totals">材料總計</button>
+      <button role="tab" aria-selected="false" data-sub="sets">組數試算</button>
+      <button role="tab" aria-selected="false" data-sub="detail">場次明細</button>
     </div>
-    <div class="statgrid" id="matCards"></div>
-    <div class="sec"><span class="sec-t">材料總計</span><div class="sec-line"></div></div>
-    <div class="bars" id="matBars"></div>
-    <div class="sec"><span class="sec-t">組數試算</span><div class="sec-line"></div></div>
-    <div class="setcfg">
-      <label for="matPerSet">每種材料</label>
-      <input type="number" id="matPerSet" min="1" value="5">
-      <label for="matPerSet">個 = 1 組</label>
+
+    <div class="subview active" id="sub-totals">
+      <div id="matBars"></div>
     </div>
-    <div class="statgrid" id="setCards"></div>
-    <div class="bars" id="setDetail"></div>
-    <div class="sec"><span class="sec-t">場次明細</span><div class="sec-line"></div></div>
-    <div id="matDetail"></div>
+
+    <div class="subview" id="sub-sets">
+      <div class="setcfg">
+        <label for="matPerSet">每種材料</label>
+        <input type="number" id="matPerSet" min="1" value="5">
+        <label for="matPerSet">個 = 1 組</label>
+      </div>
+      <div class="statgrid" id="setCards" style="margin-bottom:16px"></div>
+      <div id="setDetail"></div>
+    </div>
+
+    <div class="subview" id="sub-detail">
+      <div id="matDetail"></div>
+    </div>
   </section>
 </div>
 
@@ -591,7 +670,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v13';
+const APP_VERSION='v15';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -895,8 +974,9 @@ function renderBoard(){
           <span class="dropsec-t">掉落物</span>
           <button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">${(pt.drops&&pt.drops.length)?'編輯掉落':'＋ 記錄掉落'}</button>
         </div>
-        <div class="dropgrid">${(pt.drops&&pt.drops.length) ? pt.drops.map(d=>
-          `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`).join('')
+        <div class="dropgrid">${(pt.drops&&pt.drops.length) ? [...pt.drops].sort((a,b)=>
+          MAT_SERIES.findIndex(s=>s.key===matSeries(a.name).key)-MAT_SERIES.findIndex(s=>s.key===matSeries(b.name).key)).map(d=>
+          `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`).join('')
           : `<span class="bench-empty" style="padding:0">還沒有記錄</span>`}</div>
       </div>
       <div class="pt-foot">
@@ -1000,6 +1080,30 @@ function renderRoles(){
    ══════════════════════════════════════════════════════════ */
 let matFrom='', matTo='', matRunName='';
 
+/* ── 材料系列分色 ─────────────────────────────────────────
+   碎片系列＝紅、浮塵系列＝藍、其餘（符文石之類）＝綠。
+   同一套顏色貫穿：統計頁長條圖、掉落標籤、批次編輯面板、匯出圖片。 */
+const MAT_SERIES=[
+  {key:'shard',label:'碎片',test:n=>n.includes('碎片'),
+   color:'#dc2626', ink:'#991b1b', soft:'rgba(220,38,38,.09)', line:'rgba(220,38,38,.26)'},
+  {key:'dust', label:'浮塵',test:n=>n.includes('浮塵'),
+   color:'#1d4ed8', ink:'#1e3a8a', soft:'rgba(29,78,216,.09)', line:'rgba(29,78,216,.26)'},
+  {key:'other',label:'其餘',test:()=>true,
+   color:'#0f9d76', ink:'#065f46', soft:'rgba(15,157,118,.10)', line:'rgba(15,157,118,.28)'},
+];
+function matSeries(name){ return MAT_SERIES.find(s=>s.test(name||'')) || MAT_SERIES[2]; }
+/* 給 CSS 變數用，元素只要吃 --ms / --ms-ink / --ms-soft / --ms-line 就自動變成該系列的顏色 */
+function msVars(s){ return `--ms:${s.color};--ms-ink:${s.ink};--ms-soft:${s.soft};--ms-line:${s.line}`; }
+/* 掉落標籤一律照系列排（碎片 → 浮塵 → 其餘），同系列內維持記錄順序 */
+function sortDrops(drops){
+  const rank=n=>MAT_SERIES.findIndex(s=>s.key===matSeries(n).key);
+  return [...drops].sort((a,b)=>rank(a.name)-rank(b.name));
+}
+/* 把材料名稱依系列分堆，順序固定：碎片 → 浮塵 → 其餘 */
+function groupBySeries(names){
+  return MAT_SERIES.map(s=>({s,names:names.filter(n=>matSeries(n).key===s.key)})).filter(g=>g.names.length);
+}
+
 function allRunNames(){
   const set=new Set();
   Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>set.add(pt.name)));
@@ -1019,12 +1123,21 @@ const SET_RECIPE=[
 ];
 let matPerSet=5;
 
+/* 篩選摘要（收合狀態下那一行字） */
+function matFilterText(){
+  const range = (!matFrom&&!matTo) ? '全部日期'
+    : (matFrom&&matTo&&matFrom===matTo) ? fmtDate(matFrom)
+    : `${matFrom?fmtDate(matFrom):'最早'} – ${matTo?fmtDate(matTo):'最新'}`;
+  return `${range} · ${matRunName||'全部場次'}`;
+}
+
 function renderMaterials(){
   const runSel=document.getElementById('matRun');
   runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
     `<option value="${esc(n)}" ${n===matRunName?'selected':''}>${esc(n)}</option>`).join('');
   document.getElementById('matFrom').value=matFrom;
   document.getElementById('matTo').value=matTo;
+  document.getElementById('matFiltText').textContent=matFilterText();
 
   const entries=[];
   Object.keys(state.schedule).sort().forEach(k=>{
@@ -1047,11 +1160,20 @@ function renderMaterials(){
     ['掉落總數量', dropSum],
   ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
 
+  /* 材料總計：分成 碎片／浮塵／其餘 三張卡，各自小計，長條圖用系列色 */
   const max=Math.max(1,...matNames.map(n=>totals[n]));
   document.getElementById('matBars').innerHTML = matNames.length
-    ? matNames.map(n=>`<div class="bar-row"><span class="bar-l">${esc(n)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${totals[n]/max*100}%;background:#b45309"></div></div>
-        <span class="bar-n num">${totals[n]}</span></div>`).join('')
+    ? groupBySeries(matNames).map(({s,names})=>{
+        const sum=names.reduce((a,n)=>a+totals[n],0);
+        return `<div class="matgrp" style="${msVars(s)}">
+          <div class="matgrp-h"><span class="matgrp-t">${s.label}</span>
+            <span class="matgrp-k">${names.length} 種</span>
+            <span class="matgrp-v num">${sum}</span></div>
+          <div class="bars">${names.map(n=>`<div class="bar-row"><span class="bar-l">${esc(n)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${totals[n]/max*100}%"></div></div>
+            <span class="bar-n num">${totals[n]}</span></div>`).join('')}</div>
+        </div>`;
+      }).join('')
     : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 
   /* ── 組數試算 ───────────────────────────────────────── */
@@ -1069,23 +1191,29 @@ function renderMaterials(){
     ['多餘零散', leftover],
   ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
 
-  document.getElementById('setDetail').innerHTML=SET_RECIPE.map(n=>{
-    const q=totals[n]||0, own=Math.floor(q/per), lack=Math.max(0,nextNeed-q);
-    /* 卡住整體組數的那幾種（木桶效應的短板）標成琥珀色，一眼看出瓶頸 */
-    return `<div class="setrow ${own===sets?'short':''}">
-      <span class="setrow-n">${esc(n)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,q/nextNeed*100)}%;background:${own===sets?'#b45309':'var(--accent)'}"></div></div>
-      <span class="setrow-v"><b>${q}</b> · ${lack?`缺 ${lack}`:'已足'}</span>
-    </div>`;
-  }).join('');
+  document.getElementById('setDetail').innerHTML=groupBySeries(SET_RECIPE).map(({s,names})=>
+    `<div class="matgrp" style="${msVars(s)}">
+      <div class="matgrp-h"><span class="matgrp-t">${s.label}</span>
+        <span class="matgrp-k">${names.length} 種</span>
+        <span class="matgrp-v num">${names.reduce((a,n)=>a+(totals[n]||0),0)}</span></div>
+      <div class="bars">${names.map(n=>{
+        const q=totals[n]||0, own=Math.floor(q/per), lack=Math.max(0,nextNeed-q);
+        /* 卡住整體組數的那幾種（木桶效應的短板）標成琥珀色，一眼看出瓶頸 */
+        return `<div class="setrow ${own===sets?'short':''}">
+          <span class="setrow-n">${esc(n)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,q/nextNeed*100)}%${own===sets?';background:#b45309':''}"></div></div>
+          <span class="setrow-v"><b>${q}</b> · ${lack?`缺 ${lack}`:'已足'}</span>
+        </div>`;
+      }).join('')}</div>
+    </div>`).join('');
 
   const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length).sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('matDetail').innerHTML = withDrops.length
     ? withDrops.map(({date,pt})=>`<div class="ex-pt">
         <div class="ex-pt-h"><span class="ex-pt-n">${fmtDate(date)} ${fmtDow(date)} · ${esc(pt.name)}</span>
           <span class="ex-pt-t">${esc(pt.time||'')}</span></div>
-        <div class="dropgrid" style="padding:11px 14px">${pt.drops.map(d=>
-          `<span class="droppill">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
+        <div class="dropgrid" style="padding:11px 14px">${sortDrops(pt.drops).map(d=>
+          `<span class="droppill" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
       </div>`).join('')
     : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 }
@@ -1101,6 +1229,19 @@ document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderM
 document.getElementById('matRun').onchange=e=>{ matRunName=e.target.value; renderMaterials(); };
 document.getElementById('matPerSet').oninput=e=>{ matPerSet=Math.max(1,parseInt(e.target.value)||1); renderMaterials(); };
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>applyMatPreset(b.dataset.preset));
+
+/* 篩選展開／收合 */
+const matFiltBtn=document.getElementById('matFiltBtn'), matFiltBody=document.getElementById('matFiltBody');
+matFiltBtn.onclick=()=>{
+  const open=matFiltBtn.getAttribute('aria-expanded')==='true';
+  matFiltBtn.setAttribute('aria-expanded',String(!open));
+  matFiltBody.hidden=open;
+};
+/* 材料總計 / 組數試算 / 場次明細 子分頁 */
+document.querySelectorAll('#matSeg [data-sub]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#matSeg [data-sub]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  document.querySelectorAll('.subview').forEach(v=>v.classList.toggle('active',v.id==='sub-'+b.dataset.sub));
+});
 
 
 /* ══════════════════════════════════════════════════════════
@@ -1464,9 +1605,12 @@ const KNOWN_MATERIALS=[
 ];
 /* 這個 App 目前用過的所有材料名稱（預設清單 + 跨全部日期、全部 RUN 實際打過的），給輸入自動建議用 */
 function allMaterialNames(){
-  const set=new Set(KNOWN_MATERIALS);
-  Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>(pt.drops||[]).forEach(d=>set.add(d.name))));
-  return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+  const seen=new Set(KNOWN_MATERIALS), extra=new Set();
+  Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>(pt.drops||[]).forEach(d=>{
+    if(!seen.has(d.name)) extra.add(d.name);
+  })));
+  /* 預設 14 種維持遊戲裡的屬性順序（威力→耐力→專注→創造→咒數→智慧），自訂材料排在後面 */
+  return [...KNOWN_MATERIALS, ...[...extra].sort((a,b)=>a.localeCompare(b,'zh-Hant'))];
 }
 
 /* 掉落物批次編輯：一次調整整場 RUN 的所有材料數量（新增／修改／刪除都在這裡完成）。
@@ -1478,7 +1622,7 @@ function dropsSheet(ptId){
   const names=allMaterialNames();
   (pt.drops||[]).forEach(d=>{ if(!names.includes(d.name)) names.push(d.name); });
 
-  const rowHtml=n=>`<div class="droprow ${(work.get(n)||0)>0?'on':''}" data-row="${esc(n)}">
+  const rowHtml=n=>`<div class="droprow ${(work.get(n)||0)>0?'on':''}" data-row="${esc(n)}" style="${msVars(matSeries(n))}">
       <span class="droprow-n">${esc(n)}</span>
       <div class="stepper">
         <button class="stepbtn" data-step="-1" data-m="${esc(n)}" ${(work.get(n)||0)<=0?'disabled':''}>−</button>
@@ -1487,8 +1631,12 @@ function dropsSheet(ptId){
       </div>
     </div>`;
 
+  /* 依系列分段列出（碎片／浮塵／其餘），一長串材料比較好找 */
+  const groupsHtml=()=>groupBySeries(names).map(({s,names:ns})=>
+    `<div class="dropgrp" style="${msVars(s)}">${s.label}</div>`+ns.map(rowHtml).join('')).join('');
+
   sheet(`${pt.name} 的掉落物`,`
-    <div id="dropRows">${names.map(rowHtml).join('')}</div>
+    <div id="dropRows">${groupsHtml()}</div>
     <div class="skillgrp">新增自訂材料</div>
     <div class="dropadd">
       <div class="field"><input name="newName" placeholder="清單裡沒有的材料名稱"></div>
@@ -1534,11 +1682,15 @@ function dropsSheet(ptId){
 
     s.querySelector('[data-s="addName"]').onclick=()=>{
       const nm=val(s,'newName').trim(); if(!nm) return toast('請輸入材料名稱');
-      if(names.includes(nm)){ toast('清單裡已經有這個材料了'); }
-      else{ names.push(nm); host.insertAdjacentHTML('beforeend',rowHtml(nm)); bindRow(host.lastElementChild); }
+      const dup=names.includes(nm);
+      if(dup) toast('清單裡已經有這個材料了'); else names.push(nm);
       work.set(nm,Math.max(1,work.get(nm)||0));
+      /* 新材料要落到它該去的系列分段裡，所以整份重畫再重綁 */
+      if(!dup){ host.innerHTML=groupsHtml(); host.querySelectorAll('.droprow').forEach(bindRow); }
       paintRow(nm); paintSum();
       s.querySelector('[name="newName"]').value='';
+      const added=host.querySelector(`[data-row="${CSS.escape(nm)}"]`);
+      if(added) added.scrollIntoView({block:'nearest'});
     };
     s.querySelector('[data-s="clear"]').onclick=()=>{
       names.forEach(n=>{ work.set(n,0); paintRow(n); });
@@ -1686,6 +1838,25 @@ function exportJson(){
    圖片：不截取畫面，改用資料重建一份乾淨的 DOM 再轉圖，
    避免 html2canvas 對 <button> 與 CSS 動畫的已知問題。
    ══════════════════════════════════════════════════════════ */
+/* 匯出圖片的掉落物區塊：以前是「掉落：A×3、B×5、…」一長行，材料一多就爆版看不完。
+   改成依系列分段（碎片紅／浮塵藍／其餘綠），每段一列標籤 + 可換行的材料標籤。
+   材料一律列出完整名稱（威力隕石碎片×3），不縮寫、不省略。 */
+function exDrops(pt){
+  if(!pt.drops||!pt.drops.length) return '';
+  const names=pt.drops.map(d=>d.name);
+  const qty=n=>pt.drops.filter(d=>d.name===n).reduce((a,d)=>a+d.qty,0);
+  const total=pt.drops.reduce((a,d)=>a+d.qty,0);
+  const segs=groupBySeries([...new Set(names)]).map(({s,names:ns})=>
+    `<div class="ex-dgrp">
+      <span class="ex-dlb" style="background:${s.color}">${s.label}</span>
+      <div class="ex-dp">${ns.map(n=>
+        `<span class="ex-dpill" style="color:${s.ink};border-color:${s.line};background:${s.soft}">${esc(n)}<b>×${qty(n)}</b></span>`
+      ).join('')}</div>
+    </div>`).join('');
+  return `<div class="ex-drops">
+    <div class="ex-dtop">掉落物 · ${new Set(names).size} 種 · 共 ${total} 個</div>${segs}</div>`;
+}
+
 function buildExportNode(){
   const pts=ptsOf(curDate);
   const cols=pts.map(pt=>{
@@ -1701,7 +1872,7 @@ function buildExportNode(){
         <span class="ex-pt-t">${esc(pt.time||'')}</span>
         <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
       ${rows}
-      ${(pt.drops&&pt.drops.length)?`<div class="ex-drops">掉落：${pt.drops.map(d=>`${esc(d.name)}×${d.qty}`).join('、')}</div>`:''}
+      ${exDrops(pt)}
       </div>`;
   }).join('');
   const host=document.getElementById('exportHost');
