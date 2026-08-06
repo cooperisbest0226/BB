@@ -167,23 +167,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 /* 便當：塞進來只領材料的人員，整列標成淺綠色方便一眼看出 */
 .slot.bento{background:rgba(34,197,94,.13)}
 .slot.bento:hover{background:rgba(34,197,94,.19)}
-/* 拖曳把手：按住即可把人員直接拖到這個 RUN 裡的任何位子，取代原本一次只能移一格的上下箭頭 */
-.slot-grip{
-  flex:0 0 auto; width:20px; height:28px; display:flex; align-items:center; justify-content:center;
-  color:var(--faint); cursor:grab; touch-action:none; border-radius:5px; transition:color .14s, background .14s;
-}
-.slot-grip svg{width:14px; height:14px; fill:currentColor}
-.slot:active .slot-grip, .slot.dragging .slot-grip{color:var(--accent); background:var(--accent-soft); cursor:grabbing}
+/* 拖曳中的整列（跨 RUN 指派 / 移到成員列表）稍微淡出，提示正在拖曳 */
 .slot.dragging{opacity:.4}
-/* 拖曳懸停在某一列時，用一條線指出「會插進這列的上面/下面」 */
-.slot.drop-before{box-shadow:inset 0 2px 0 0 var(--accent)}
-.slot.drop-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
-.slot-bento{
-  flex:0 0 auto; padding:0 8px; height:24px; border-radius:7px; font-size:11.5px; font-weight:600; line-height:1;
-  color:var(--faint); border:1px solid var(--line-2); background:transparent; transition:all .14s; white-space:nowrap;
-}
-.slot.bento .slot-bento{color:#16a34a; border-color:rgba(34,197,94,.4); background:rgba(34,197,94,.14)}
-.slot-bento:active{transform:scale(.94)}
 .slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
 .slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
@@ -437,6 +422,38 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .setrow-v b{color:var(--ink-2); font-weight:650}
 .setrow.short .setrow-v b{color:#b45309}
 .sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
+
+/* ── 全螢幕排序編輯器：把「陣容分配」拖曳排序獨立成大按鈕的專屬畫面，比清單裡的小把手好按 ── */
+.sheet.sheet-full{
+  max-width:100%; width:100%; height:var(--vvh,100vh); max-height:var(--vvh,100vh);
+  border-radius:0; display:flex; flex-direction:column; padding:calc(10px + env(safe-area-inset-top)) 0 0;
+}
+.sheet.sheet-full .grip{display:none}
+.sheet.sheet-full .sheet-t{padding:0 18px; margin-bottom:2px}
+.order-hint{font-size:12px; color:var(--muted); padding:0 18px 12px; line-height:1.5}
+.order-list{flex:1; overflow-y:auto; padding:2px 18px 18px; display:flex; flex-direction:column; gap:8px}
+.order-row{
+  display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:14px;
+  background:rgba(255,255,255,.85); border:1px solid var(--line-2); box-shadow:0 1px 2px rgba(21,23,28,.04);
+  transition:background .16s;
+}
+.order-row.bento{background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.35)}
+.order-row.dragging{opacity:.5; box-shadow:var(--shadow-lift); z-index:5; position:relative; pointer-events:none}
+.order-row.drop-before{box-shadow:inset 0 3px 0 0 var(--accent)}
+.order-row.drop-after{box-shadow:inset 0 -3px 0 0 var(--accent)}
+.order-grip{
+  flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  color:var(--faint); border-radius:9px; cursor:grab; touch-action:none;
+}
+.order-grip svg{width:19px; height:19px; fill:currentColor}
+.order-row:active .order-grip, .order-row.dragging .order-grip{color:var(--accent); background:var(--accent-soft); cursor:grabbing}
+.order-name{flex:1; min-width:0; font-size:15px; font-weight:550; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.order-bento{
+  flex:0 0 auto; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:650; line-height:1;
+  color:var(--faint); border:1px solid var(--line-2); background:transparent; transition:all .14s;
+}
+.order-row.bento .order-bento{color:#16a34a; border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.16)}
+.order-bento:active{transform:scale(.94)}
 .rolegrid{display:flex; flex-wrap:wrap; gap:7px}
 .swatches{display:flex; flex-wrap:wrap; gap:7px}
 .sw-opt{width:30px; height:30px; border-radius:9px; border:2px solid transparent; transition:transform .14s var(--ease)}
@@ -745,7 +762,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v18';
+const APP_VERSION='v20';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -1028,12 +1045,10 @@ function renderBoard(){
              style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
         : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
       return `<div class="slot ${s.bento?'bento':''}" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
-        <div class="slot-grip" aria-hidden="true" title="按住拖曳排序"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg></div>
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
           ${r&&r.buff?`<span class="slot-buff">${esc(r.buff)}</span>`:''}
         </div>${pill}
-        <button class="slot-bento" data-act="toggleBento" data-pt="${pt.id}" data-i="${si}" aria-label="標記便當（只領材料）" title="便當：只領材料">便當</button>
         <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
       </div>`;
     }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
@@ -1059,6 +1074,7 @@ function renderBoard(){
       </div>
       <div class="pt-foot">
         <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
+        <button class="gbtn" data-act="orderPt" data-pt="${pt.id}" ${n?'':'disabled'}>排序 / 便當</button>
         <button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>
         <button class="gbtn warn" data-act="delPt" data-pt="${pt.id}" style="margin-left:auto">刪除</button>
       </div>
@@ -1443,31 +1459,16 @@ document.addEventListener('pointermove',e=>{
   }
   drag.ghost.style.left=e.clientX+'px'; drag.ghost.style.top=e.clientY+'px';
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
-  document.querySelectorAll('.slot.drop-before,.slot.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
-  drag.reorder=null;
-  /* 拖曳的是已排班的人員時，先看看是不是懸停在「同一個 RUN」的另一個位子上 ——
-     是的話就顯示插入線，放開後直接插到那個位子，任意位置都能放，不再只能一步一步移 */
-  const hoverSlot=(drag.from&&drag.from!=='bench') ? document.elementFromPoint(e.clientX,e.clientY)?.closest('.slot') : null;
-  const hoverCard=hoverSlot ? hoverSlot.closest('[data-drop="pt"]') : null;
-  if(hoverSlot && hoverSlot!==drag.el && hoverCard && hoverCard.dataset.pt===drag.from){
-    const rect=hoverSlot.getBoundingClientRect();
-    const before=e.clientY<rect.top+rect.height/2;
-    hoverSlot.classList.add(before?'drop-before':'drop-after');
-    drag.reorder={ptId:hoverCard.dataset.pt, hoverSi:+hoverSlot.dataset.si, before};
-  } else {
-    const t=dropTargetAt(e.clientX,e.clientY);
-    if(t) t.classList.add('drop-on');
-  }
+  const t=dropTargetAt(e.clientX,e.clientY);
+  if(t) t.classList.add('drop-on');
 });
 document.addEventListener('pointerup',e=>{
   if(!drag) return;
   const d=drag; drag=null;
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
-  document.querySelectorAll('.slot.drop-before,.slot.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
   d.el.classList.remove('dragging');
   if(d.ghost) d.ghost.remove();
   if(!d.moved){ tapChip(d.id); return; }
-  if(d.reorder){ reorderSlot(d.reorder.ptId, +d.si, d.reorder.hoverSi, d.reorder.before); return; }
   const t=dropTargetAt(e.clientX,e.clientY);
   if(!t) return;
   if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.from,d.si); }
@@ -1477,10 +1478,9 @@ document.addEventListener('pointercancel',()=>{
   if(!drag) return;
   drag.el.classList.remove('dragging'); if(drag.ghost) drag.ghost.remove();
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
-  document.querySelectorAll('.slot.drop-before,.slot.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
   drag=null;
 });
-/* 把某個 RUN 裡的 slot 從 fromIndex 移到「hoverIndex 那格的前面/後面」，可以一次拖到任意位置 */
+/* 把某個 RUN 裡的 slot 從 fromIndex 移到「hoverIndex 那格的前面/後面」——供下面的全螢幕排序編輯器使用 */
 function reorderSlot(ptId, fromIndex, hoverIndex, before){
   commit(()=>{
     const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
@@ -1491,6 +1491,84 @@ function reorderSlot(ptId, fromIndex, hoverIndex, before){
     p.slots.splice(insertBefore,0,s);
   });
 }
+
+/* ══════════════════════════════════════════════════════════
+   全螢幕排序編輯器 —— 陣容分配清單裡的把手太小不好按，
+   改成獨立的全螢幕畫面，大按鈕、按住直接拖到任意位子；
+   便當也只有在這裡才能切換，平時清單不會一排都寫著「便當」。
+   ══════════════════════════════════════════════════════════ */
+function orderSheet(ptId){
+  sheet('編輯順序', `<div class="order-hint">按住左邊的把手拖曳排序；按「便當」可標記只領材料的人員。</div><div class="order-list" id="orderList"></div>`, s=>{
+    s.classList.add('sheet-full');
+    const t=s.querySelector('.sheet-t');
+    t.style.cssText='display:flex; align-items:center; justify-content:space-between';
+    t.insertAdjacentHTML('beforeend','<button class="gbtn accent" style="padding:7px 16px;font-size:13.5px;flex:0 0 auto" id="orderDoneBtn">完成</button>');
+    t.querySelector('#orderDoneBtn').onclick=closeSheet;
+    renderOrderList(ptId);
+  });
+}
+function renderOrderList(ptId){
+  const host=document.getElementById('orderList'); if(!host) return;
+  const pt=ptsOf(curDate).find(x=>x.id===ptId);
+  if(!pt||!pt.slots.length){ closeSheet(); return; }
+  host.innerHTML=pt.slots.map((s,si)=>{
+    const m=memberById(s.memberId); if(!m) return '';
+    return `<div class="order-row ${s.bento?'bento':''}" data-si="${si}">
+      <div class="order-grip" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg></div>
+      <span class="order-name">${esc(m.name)}</span>
+      <button class="order-bento" data-oact="bento" data-i="${si}">便當</button>
+    </div>`;
+  }).join('');
+  bindOrderDrag(ptId);
+}
+let orderDrag=null;
+function bindOrderDrag(ptId){
+  const host=document.getElementById('orderList'); if(!host) return;
+  host.onclick=e=>{
+    const b=e.target.closest('[data-oact="bento"]'); if(!b) return;
+    const i=+b.dataset.i;
+    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p&&p.slots[i]) p.slots[i].bento=!p.slots[i].bento; });
+    renderOrderList(ptId);
+  };
+  host.querySelectorAll('.order-grip').forEach(grip=>{
+    grip.onpointerdown=e=>{
+      e.preventDefault();
+      const row=grip.closest('.order-row');
+      orderDrag={ptId, fromSi:+row.dataset.si, row, hoverSi:null, before:false, startY:e.clientY};
+      row.classList.add('dragging');
+    };
+  });
+}
+document.addEventListener('pointermove',e=>{
+  if(!orderDrag) return;
+  const host=document.getElementById('orderList'); if(!host){ orderDrag=null; return; }
+  orderDrag.row.style.transform=`translateY(${e.clientY-orderDrag.startY}px)`;
+  host.querySelectorAll('.order-row.drop-before,.order-row.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('.order-row');
+  if(el && el!==orderDrag.row && el.closest('#orderList')===host){
+    const rect=el.getBoundingClientRect();
+    const before=e.clientY<rect.top+rect.height/2;
+    el.classList.add(before?'drop-before':'drop-after');
+    orderDrag.hoverSi=+el.dataset.si; orderDrag.before=before;
+  } else { orderDrag.hoverSi=null; }
+});
+document.addEventListener('pointerup',()=>{
+  if(!orderDrag) return;
+  const d=orderDrag; orderDrag=null;
+  d.row.classList.remove('dragging');
+  d.row.style.transform='';
+  document.querySelectorAll('.order-row.drop-before,.order-row.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  if(d.hoverSi!=null && d.hoverSi!==d.fromSi) reorderSlot(d.ptId, d.fromSi, d.hoverSi, d.before);
+  renderOrderList(d.ptId);
+});
+document.addEventListener('pointercancel',()=>{
+  if(!orderDrag) return;
+  orderDrag.row.classList.remove('dragging');
+  orderDrag.row.style.transform='';
+  document.querySelectorAll('.order-row.drop-before,.order-row.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  orderDrag=null;
+});
+
 function dropTargetAt(x,y){
   const el=document.elementFromPoint(x,y);
   return el?el.closest('[data-drop]'):null;
@@ -2123,6 +2201,7 @@ document.addEventListener('click',e=>{
   if(a==='role')      rolePickSheet(ptId,i);
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
   if(a==='toggleBento') commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); const s=p.slots[i]; s.bento=!s.bento; });
+  if(a==='orderPt')   orderSheet(ptId);
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
   if(a==='delSale')   confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
