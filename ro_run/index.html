@@ -38,7 +38,11 @@
   --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
   --ease:cubic-bezier(.32,.72,0,1);
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 整個 App 都是用「按住拖曳」操作的（陣容分配、成員列表…），
+   手機上長按預設會跳出選字/複製或 iOS 的操作選單，跟拖曳搶手勢，容易誤觸 —— 全面關掉。
+   輸入框、文字區塊、下拉選單仍要能選字/貼上，所以另外還原。 */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none}
+input,textarea,select{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default}
 html,body{margin:0;padding:0}
 body{
   background:var(--bg); color:var(--ink); min-height:100vh;
@@ -762,7 +766,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v20';
+const APP_VERSION='v21';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
