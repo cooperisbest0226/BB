@@ -4,10 +4,11 @@
    - 導覽請求（開啟 App）：network-first，連線時抓最新版本，離線時退回快取
    - 其他（如 Google Fonts、html2canvas CDN）：stale-while-revalidate
 */
-const CACHE_NAME = 'star-tower-team-v23';
+const CACHE_NAME = 'star-tower-team-v24';
 const APP_SHELL = [
   './',
   './index.html',
+  './styles.css',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

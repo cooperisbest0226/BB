@@ -17,565 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --vvh:100vh; --vvtop:0px; /* JS 依 visualViewport 動態更新，讓鍵盤彈出時 sheet 仍貼齊可視範圍，不被鍵盤蓋住或跑版 */
-  --bg:#eef1f7;
-  --ink:#15171c;
-  --ink-2:#3d434f;
-  --muted:#7b8194;
-  --faint:#a8aec0;
-  --line:rgba(21,23,28,.09);
-  --line-2:rgba(21,23,28,.055);
-  --glass:rgba(255,255,255,.72);
-  --glass-2:rgba(255,255,255,.55);
-  --accent:#4f46e5;
-  --accent-soft:rgba(79,70,229,.1);
-  --danger:#dc2626;
-  --ok:#0f9d76;
-  --r-lg:20px; --r-md:14px; --r-sm:9px;
-  --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
-  --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
-  --ease:cubic-bezier(.32,.72,0,1);
-}
-/* 整個 App 都是用「按住拖曳」操作的（陣容分配、成員列表…），
-   手機上長按預設會跳出選字/複製或 iOS 的操作選單，跟拖曳搶手勢，容易誤觸 —— 全面關掉。
-   輸入框、文字區塊、下拉選單仍要能選字/貼上，所以另外還原。 */
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none}
-input,textarea,select{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default}
-html,body{margin:0;padding:0}
-body{
-  background:var(--bg); color:var(--ink); min-height:100vh;
-  font-family:'Inter','Noto Sans TC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
-  overscroll-behavior-y:none;
-}
-/* ambient night-sky wash */
-body::before{
-  content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:
-    radial-gradient(60vw 50vh at 12% -8%, rgba(99,102,241,.20), transparent 62%),
-    radial-gradient(55vw 45vh at 92% 4%, rgba(139,92,246,.16), transparent 60%),
-    radial-gradient(70vw 55vh at 50% 108%, rgba(34,211,238,.13), transparent 62%);
-}
-button,input,select,textarea{font:inherit;color:inherit}
-button{border:none;background:none;cursor:pointer;padding:0}
-input,textarea,select{
-  width:100%; background:rgba(255,255,255,.8); border:1px solid var(--line);
-  border-radius:var(--r-sm); padding:9px 11px; outline:none; transition:border-color .16s, box-shadow .16s;
-  font-size:16px; /* iOS Safari 對 <16px 欄位 focus 時會自動放大頁面，standalone PWA 下會造成版面跑掉、鍵盤位置跟著跑掉 */
-}
-input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
-:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-.num{font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1}
-
-/* ── layout ─────────────────────────────────────────────── */
-.app{max-width:1180px; margin:0 auto; padding:0 16px calc(120px + env(safe-area-inset-bottom)); transition:padding-bottom .3s var(--ease)}
-.app.nobench{padding-bottom:calc(32px + env(safe-area-inset-bottom))}
-.topbar{
-  position:sticky; top:0; z-index:30; margin:0 -16px; padding:10px 16px 10px;
-  background:rgba(238,241,247,.82); backdrop-filter:blur(20px) saturate(1.6);
-  -webkit-backdrop-filter:blur(20px) saturate(1.6); border-bottom:1px solid var(--line-2);
-}
-.topbar-row{display:flex; align-items:center; gap:10px}
-.brand{display:flex; align-items:baseline; gap:8px; margin-right:auto; min-width:0}
-.brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
-.brand-sub{font-size:11px; color:var(--faint); letter-spacing:.4px; white-space:nowrap}
-.icon-btn{
-  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
-  color:var(--ink-2); background:var(--glass-2); border:1px solid var(--line-2);
-  transition:background .16s, color .16s, transform .12s var(--ease);
-}
-.icon-btn:hover{background:#fff; color:var(--ink)}
-.icon-btn:active{transform:scale(.94)}
-.icon-btn:disabled{opacity:.32; cursor:default}
-.icon-btn svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
-
-/* tabs */
-.tabbar{display:flex; gap:2px; margin-top:9px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px}
-.tab{
-  flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
-  color:var(--muted); transition:color .18s, background .18s, box-shadow .18s; white-space:nowrap;
-}
-.tab[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
-.view{display:none; animation:rise .34s var(--ease) both}
-.view.active{display:block}
-@keyframes rise{from{opacity:0; transform:translateY(7px)} to{opacity:1; transform:none}}
-
-/* section heading */
-.sec{display:flex; align-items:center; gap:10px; margin:26px 0 12px}
-.sec-t{font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
-.sec-line{flex:1; height:1px; background:var(--line-2)}
-
-/* ── date rail ──────────────────────────────────────────── */
-.daterail{display:flex; align-items:center; gap:6px; margin-top:14px}
-.dates{
-  display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity;
-  flex:1; min-width:0; padding:2px 0; scrollbar-width:none;
-  -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
-}
-.dates::-webkit-scrollbar{display:none}
-.datechip{
-  /* 固定寬度，讓 390px 手機一次剛好看得到 4~5 天，其餘左右滑動 */
-  scroll-snap-align:center; flex:0 0 auto; width:64px; padding:8px 4px 9px;
-  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
-  text-align:center; transition:transform .18s var(--ease), box-shadow .18s, border-color .18s;
-  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-}
-.datechip:active{transform:scale(.96)}
-.datechip .dc-dow{font-size:9.5px; color:var(--faint); letter-spacing:.04em; font-weight:500}
-.datechip .dc-md{font-size:15px; font-weight:600; letter-spacing:-.3px; margin-top:1px}
-.datechip .dc-meta{font-size:9px; color:var(--faint); margin-top:2px; white-space:nowrap}
-.datechip.today .dc-dow{color:var(--accent); font-weight:700}
-.date-actions{display:flex; align-items:center; gap:7px; margin-top:9px; flex-wrap:wrap}
-.date-actions-gap{flex:1}
-.date-actions .gbtn{padding:6px 11px; font-size:12px}
-.icon-btn.sm{width:30px; height:30px; flex:0 0 auto}
-.icon-btn.sm svg{width:15px; height:15px}
-.datechip[aria-current="true"]{
-  background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.35);
-}
-.datechip[aria-current="true"] .dc-dow,
-.datechip[aria-current="true"] .dc-meta{color:rgba(255,255,255,.62)}
-
-/* ── PT cards ───────────────────────────────────────────── */
-.ptgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:13px; margin-top:6px}
-.ptcard{
-  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
-  backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
-  box-shadow:var(--shadow); overflow:hidden; transition:box-shadow .22s, border-color .18s, transform .18s var(--ease);
-  animation:rise .4s var(--ease) both;
-}
-.ptcard.drop-on{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft), var(--shadow-lift)}
-.pt-head{display:flex; align-items:flex-start; gap:10px; padding:14px 15px 0}
-.pt-id{min-width:0; flex:1}
-.pt-name{font-size:15.5px; font-weight:650; letter-spacing:-.2px; display:flex; align-items:center; gap:7px}
-.pt-time{font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px}
-.pt-count{text-align:right; line-height:1; white-space:nowrap}
-.pt-count b{font-size:21px; font-weight:680; letter-spacing:-.8px}
-.pt-count span{font-size:12px; color:var(--faint); font-weight:500}
-.pt-count.full b{color:var(--ok)}
-
-/* signature: segmented capacity meter */
-.meter{display:flex; gap:2.5px; padding:11px 15px 12px}
-.pip{flex:1; height:4px; border-radius:2px; background:rgba(21,23,28,.09); transition:background .3s var(--ease)}
-.pip.on{background:var(--accent)}
-.pip.full{background:var(--ok)}
-
-.slots{display:flex; flex-direction:column; gap:1px; background:var(--line-2); border-top:1px solid var(--line-2)}
-.slot{
-  display:flex; align-items:center; gap:9px; padding:9px 15px; background:rgba(255,255,255,.62);
-  transition:background .16s;
-}
-.slot:hover{background:rgba(255,255,255,.9)}
-/* 便當：塞進來只領材料的人員，整列標成淺綠色方便一眼看出 */
-.slot.bento{background:rgba(34,197,94,.13)}
-.slot.bento:hover{background:rgba(34,197,94,.19)}
-/* 拖曳中的整列（跨 RUN 指派 / 移到成員列表）稍微淡出，提示正在拖曳 */
-.slot.dragging{opacity:.4}
-.slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
-.slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
-.rolepill{
-  font-size:11.5px; font-weight:600; padding:3.5px 9px; border-radius:99px; white-space:nowrap;
-  border:1px solid; transition:transform .12s var(--ease);
-}
-.rolepill:active{transform:scale(.93)}
-.rolepill.empty{color:var(--faint); border-color:var(--line); background:transparent; font-weight:500}
-.slot-x{color:var(--faint); font-size:15px; line-height:1; padding:2px 3px; border-radius:5px; transition:color .16s, background .16s}
-.slot-x:hover{color:var(--danger); background:rgba(220,38,38,.08)}
-.slot-empty{
-  padding:10px 15px; font-size:12.5px; color:var(--faint); background:rgba(255,255,255,.42);
-  text-align:center;
-}
-.pt-foot{display:flex; gap:7px; padding:10px 13px; border-top:1px solid var(--line-2); background:rgba(255,255,255,.45)}
-
-/* small ghost button */
-.gbtn{
-  font-size:12px; font-weight:500; color:var(--ink-2); padding:6px 11px; border-radius:8px;
-  border:1px solid var(--line); background:rgba(255,255,255,.7); transition:background .16s, border-color .16s, transform .12s var(--ease);
-}
-.gbtn:hover{background:#fff; border-color:var(--line)}
-.gbtn:active{transform:scale(.96)}
-.gbtn.accent{color:#fff; background:var(--ink); border-color:var(--ink)}
-.gbtn.accent:hover{background:#000}
-.gbtn.warn:hover{color:var(--danger); border-color:rgba(220,38,38,.3); background:rgba(220,38,38,.05)}
-
-/* ── bench (unassigned pool) ────────────────────────────── */
-.bench{
-  position:fixed; left:0; right:0; bottom:0; z-index:25;
-  background:rgba(238,241,247,.9); backdrop-filter:blur(22px) saturate(1.6);
-  -webkit-backdrop-filter:blur(22px) saturate(1.6); border-top:1px solid var(--line);
-  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-  transition:transform .3s var(--ease);
-}
-.bench.drop-on{box-shadow:inset 0 3px 0 var(--accent)}
-.bench.hidden{transform:translateY(105%); pointer-events:none}
-.bench-top{display:flex; align-items:center; gap:9px; margin-bottom:8px}
-.bench-t{font-size:11.5px; font-weight:600; color:var(--muted); letter-spacing:.03em}
-.bench-list{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; min-height:34px}
-.bench-list::-webkit-scrollbar{display:none}
-.chip{
-  flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:7px 12px;
-  background:#fff; border:1px solid var(--line-2); border-radius:99px; font-size:13px; font-weight:500;
-  box-shadow:0 1px 2px rgba(21,23,28,.05); touch-action:pan-x; cursor:grab;
-  transition:transform .14s var(--ease), box-shadow .16s, opacity .16s;
-}
-.chip:active{cursor:grabbing}
-.chip.picked{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
-.chip.dragging{opacity:.32}
-.chip-dot{width:7px; height:7px; border-radius:99px; flex:0 0 auto}
-.chip-n{
-  font-size:10px; font-weight:700; color:#fff; background:var(--accent); border-radius:99px;
-  min-width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; padding:0 4px;
-}
-.bench-empty{font-size:12.5px; color:var(--faint); padding:8px 2px}
-.drag-ghost{
-  position:fixed; z-index:999; pointer-events:none; padding:7px 12px; background:#fff;
-  border-radius:99px; font-size:13px; font-weight:600; box-shadow:var(--shadow-lift);
-  border:1px solid var(--accent); transform:translate(-50%,-50%) scale(1.04);
-}
-
-/* ── rows (members / roles) ─────────────────────────────── */
-.list{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow)}
-.row{display:flex; align-items:center; gap:11px; padding:12px 15px; border-bottom:1px solid var(--line-2); transition:background .16s}
-.row:last-child{border-bottom:none}
-.row:hover{background:rgba(255,255,255,.72)}
-.row-main{flex:1; min-width:0}
-.row-t{font-size:14px; font-weight:550; display:flex; align-items:center; gap:7px}
-.row-s{font-size:11.5px; color:var(--muted); margin-top:1px; overflow-wrap:anywhere; line-height:1.4}
-.swatch{width:22px; height:22px; border-radius:7px; flex:0 0 auto; border:1px solid rgba(21,23,28,.1)}
-.checkbox{
-  width:21px; height:21px; border-radius:7px; flex:0 0 auto; border:1.5px solid var(--line);
-  background:#fff; position:relative; transition:background .16s, border-color .16s;
-}
-.checkbox.on{background:var(--accent); border-color:var(--accent)}
-.checkbox.on::after{
-  content:''; position:absolute; left:6px; top:2.5px; width:5px; height:10px;
-  border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
-}
-.row-selectable{cursor:pointer}
-.row-selectable:active{background:rgba(79,70,229,.06)}
-.badge{font-size:10px; font-weight:600; padding:2px 7px; border-radius:99px; background:rgba(21,23,28,.06); color:var(--muted)}
-.badge.off{background:rgba(220,38,38,.09); color:var(--danger)}
-.emptystate{
-  text-align:center; padding:38px 20px; color:var(--muted); font-size:13.5px;
-  background:var(--glass); border:1px dashed var(--line); border-radius:var(--r-lg);
-}
-.emptystate b{display:block; font-size:15px; color:var(--ink); font-weight:600; margin-bottom:5px}
-
-/* ── stats ──────────────────────────────────────────────── */
-.statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:11px}
-.stat{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px; box-shadow:var(--shadow)}
-.stat-k{font-size:11px; color:var(--muted); font-weight:500; letter-spacing:.03em}
-.stat-v{font-size:27px; font-weight:680; letter-spacing:-1px; margin-top:3px; line-height:1}
-.stat-v small{font-size:13px; color:var(--faint); font-weight:500; letter-spacing:0}
-.bars{display:flex; flex-direction:column; gap:9px; margin-top:4px}
-.bar-row{display:flex; align-items:center; gap:10px}
-.bar-l{font-size:12px; font-weight:500; width:112px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.bar-track{flex:1; height:7px; background:rgba(21,23,28,.07); border-radius:99px; overflow:hidden}
-.bar-fill{height:100%; border-radius:99px; transition:width .5s var(--ease)}
-.bar-n{font-size:12px; color:var(--muted); width:22px; text-align:right; flex:0 0 auto}
-
-/* ── 材料統計：篩選收合 + 子分頁 + 系列分色 ─────────────── */
-/* 材料分三個系列：碎片(紅) / 浮塵(藍) / 其餘(綠)。同一套顏色也用在掉落標籤與匯出圖片上。 */
-.matfilt{
-  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
-  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
-  padding:11px 13px; box-shadow:var(--shadow); margin-bottom:12px;
-}
-.matfilt-l{font-size:11px; font-weight:600; letter-spacing:.05em; color:var(--muted); flex:0 0 auto}
-.matfilt-v{font-size:13px; font-weight:550; color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.matfilt-c{width:15px; height:15px; margin-left:auto; flex:0 0 auto; stroke:var(--faint); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .22s var(--ease)}
-.matfilt[aria-expanded="true"] .matfilt-c{transform:rotate(180deg)}
-.matfilt-body{margin:-4px 0 14px; animation:rise .26s var(--ease) both}
-.matfilt-body[hidden]{display:none}
-
-.subseg{display:flex; gap:2px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px; margin:0 0 16px}
-.subseg button{
-  flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
-  color:var(--muted); white-space:nowrap; transition:color .18s, background .18s, box-shadow .18s;
-}
-.subseg button[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
-.subview{display:none}
-.subview.active{display:block; animation:rise .3s var(--ease) both}
-
-.matgrp{
-  background:var(--glass); border:1px solid var(--line-2); border-left:3px solid var(--ms);
-  border-radius:var(--r-md); padding:12px 14px 14px; margin-bottom:10px; box-shadow:var(--shadow);
-}
-.matgrp-h{display:flex; align-items:baseline; gap:8px; margin-bottom:11px}
-.matgrp-t{font-size:12.5px; font-weight:650; color:var(--ms)}
-.matgrp-k{font-size:11px; color:var(--faint)}
-.matgrp-v{margin-left:auto; font-size:16px; font-weight:680; color:var(--ink); letter-spacing:-.4px}
-.matgrp .bar-fill{background:var(--ms)}
-.matgrp .setrow.short .setrow-n,.matgrp .setrow.short .setrow-v b{color:#b45309}
-
-/* ── 售出計算 ──────────────────────────────────────────── */
-.salebox{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px 15px; box-shadow:var(--shadow)}
-.salebox .field label{display:flex; align-items:center; gap:8px}
-.minibtn{
-  margin-left:auto; font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:99px;
-  border:1px solid var(--line-2); background:var(--surface); color:var(--ink-2);
-}
-.minibtn:active{transform:scale(.95)}
-.calcout{margin-top:4px; border-top:1px dashed var(--line-2); padding-top:11px}
-.calcline{display:flex; align-items:baseline; gap:8px; padding:5px 0; font-size:12px; color:var(--muted)}
-.calcline b{margin-left:auto; font-size:17px; font-weight:700; color:var(--ink); letter-spacing:-.4px}
-.calcline.r b{color:#7c3aed}
-.calcline em{font-style:normal; color:var(--faint); font-size:11.5px}
-
-.salerow{
-  display:flex; align-items:center; gap:11px; background:var(--glass);
-  border:1px solid var(--line-2); border-radius:var(--r-md); padding:11px 13px;
-  margin-bottom:8px; box-shadow:var(--shadow);
-}
-.salerow-i{
-  flex:0 0 auto; width:26px; height:26px; border-radius:8px; background:var(--ink); color:#fff;
-  display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700;
-}
-.salerow-m{flex:1; min-width:0}
-.salerow-t{font-size:15px; font-weight:680; letter-spacing:-.3px}
-.salerow-t span{color:#7c3aed}
-.salerow-s{font-size:11.5px; color:var(--faint); margin-top:2px}
-.salerow-edit{flex:0 0 auto; width:26px; height:26px; border-radius:8px; color:var(--faint); display:flex; align-items:center; justify-content:center}
-.salerow-edit svg{width:14px; height:14px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round}
-.salerow-edit:hover{color:var(--accent); background:var(--accent-soft)}
-.salerow-x{flex:0 0 auto; width:26px; height:26px; border-radius:8px; color:var(--faint); font-size:16px; line-height:1}
-.salerow-x:hover{color:var(--danger); background:rgba(220,38,38,.07)}
-
-/* ── PT 計算 ────────────────────────────────────────────── */
-.attrcard{
-  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
-  padding:13px 15px 14px; margin-bottom:9px; box-shadow:var(--shadow);
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  border-left:3px solid var(--ac); animation:rise .4s var(--ease) both;
-}
-.attr-top{display:flex; align-items:center; gap:8px; margin-bottom:9px}
-.attr-nm{font-size:14.5px; font-weight:600; letter-spacing:-.2px}
-.attr-en{font-size:10.5px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase}
-.attr-pt{
-  margin-left:auto; font-size:12px; font-weight:650; padding:3px 9px; border-radius:99px;
-  color:var(--ac); background:var(--ac-soft); border:1px solid var(--ac-line);
-}
-.stars{display:flex; align-items:center; gap:3px}
-.star{
-  width:30px; height:30px; display:grid; place-items:center; border-radius:8px; font-size:18px;
-  color:rgba(21,23,28,.13); transition:color .18s var(--ease), transform .14s var(--ease), background .16s;
-}
-.star:hover{background:rgba(21,23,28,.04)}
-.star:active{transform:scale(.88)}
-.star.on{color:var(--ac)}
-.star-lb{margin-left:7px; font-size:11px; color:var(--faint); font-weight:500}
-
-.totalcard{
-  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
-  padding:19px 18px 17px; box-shadow:var(--shadow); text-align:center;
-  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-}
-.total-k{font-size:11px; font-weight:550; color:var(--muted); letter-spacing:.07em; text-transform:uppercase}
-.total-v{font-size:52px; font-weight:700; letter-spacing:-2.5px; line-height:1.05; margin:5px 0 3px}
-.total-v small{font-size:16px; font-weight:550; color:var(--faint); letter-spacing:-.2px; margin-left:2px}
-.total-meter{display:flex; gap:2.5px; margin:13px 0 12px}
-.tier{
-  display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600;
-  padding:6px 14px; border-radius:99px; background:var(--accent-soft); color:var(--accent);
-  border:1px solid rgba(79,70,229,.2);
-}
-.tier.hi{background:rgba(15,157,118,.1); color:var(--ok); border-color:rgba(15,157,118,.25)}
-.tier-dot{width:6px; height:6px; border-radius:99px; background:currentColor}
-.presets{display:flex; gap:5px; margin-top:13px}
-.presets .gbtn{flex:1; min-width:0; text-align:center; padding:9px 4px; font-weight:550; font-size:11.5px; letter-spacing:-.2px}
-.bd{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); overflow:hidden; box-shadow:var(--shadow)}
-.bd-row{display:flex; align-items:center; gap:11px; padding:10px 15px; border-bottom:1px solid var(--line-2); font-size:13px}
-.bd-row:last-child{border-bottom:none}
-.bd-nm{font-weight:500; width:44px; flex:0 0 auto}
-.bd-st{color:var(--faint); font-size:12px; letter-spacing:1px; flex:1}
-.bd-pt{font-weight:600; color:var(--ac)}
-
-/* ── sheet / modal ──────────────────────────────────────── */
-.scrim{
-  position:fixed; left:0; right:0; top:0; height:calc(var(--vvh, 100vh)); z-index:100; background:rgba(21,23,28,.34);
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-  display:flex; align-items:flex-end; justify-content:center; animation:fade .2s ease both;
-  transform:translateY(var(--vvtop,0px));
-}
-@keyframes fade{from{opacity:0}to{opacity:1}}
-.sheet{
-  width:100%; max-width:480px; background:#fff; border-radius:22px 22px 0 0;
-  padding:8px 18px calc(20px + env(safe-area-inset-bottom)); max-height:calc(var(--vvh, 100vh) * .88); overflow-y:auto;
-  animation:slide .34s var(--ease) both; box-shadow:0 -8px 40px rgba(21,23,28,.2);
-}
-@keyframes slide{from{transform:translateY(100%)}to{transform:none}}
-.grip{width:34px; height:4px; background:rgba(21,23,28,.14); border-radius:99px; margin:6px auto 12px}
-.sheet-t{font-size:16.5px; font-weight:650; letter-spacing:-.2px; margin-bottom:14px}
-.field{margin-bottom:12px}
-.field label{display:block; font-size:11.5px; font-weight:550; color:var(--muted); margin-bottom:5px}
-.field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-.field-2 > .field{min-width:0}
-.field input,.field select,.field textarea{min-width:0}
-/* iOS Safari 的原生 date 欄位有較大的固有寬度（16px 字級 + 日曆圖示），
-   兩欄並排在窄螢幕會撐破容器，所以窄螢幕改成上下堆疊 */
-@media (max-width:460px){ .mat-range{grid-template-columns:1fr} }
-.sheet-foot{display:flex; gap:9px; margin-top:16px}
-.preset-row{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 16px}
-.setcfg{display:flex; align-items:center; gap:8px; margin:2px 0 14px; font-size:13px; color:var(--ink-2)}
-.setcfg label{flex:0 0 auto; font-weight:500}
-.setcfg input{width:76px !important; text-align:center; font-weight:650}
-.setrow{display:flex; align-items:center; gap:10px}
-.setrow-n{font-size:12px; font-weight:500; width:112px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.setrow.short .setrow-n{color:#b45309; font-weight:650}
-.setrow-v{font-size:12px; color:var(--muted); margin-left:auto; flex:0 0 auto; white-space:nowrap}
-.setrow-v b{color:var(--ink-2); font-weight:650}
-.setrow.short .setrow-v b{color:#b45309}
-.sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
-
-/* ── 全螢幕排序編輯器：把「陣容分配」拖曳排序獨立成大按鈕的專屬畫面，比清單裡的小把手好按 ── */
-.sheet.sheet-full{
-  max-width:100%; width:100%; height:var(--vvh,100vh); max-height:var(--vvh,100vh);
-  border-radius:0; display:flex; flex-direction:column; padding:calc(10px + env(safe-area-inset-top)) 0 0;
-}
-.sheet.sheet-full .grip{display:none}
-.sheet.sheet-full .sheet-t{padding:0 18px; margin-bottom:2px}
-.order-hint{font-size:12px; color:var(--muted); padding:0 18px 12px; line-height:1.5}
-.order-list{flex:1; overflow-y:auto; padding:2px 18px 18px; display:flex; flex-direction:column; gap:8px}
-.order-row{
-  display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:14px;
-  background:rgba(255,255,255,.85); border:1px solid var(--line-2); box-shadow:0 1px 2px rgba(21,23,28,.04);
-  transition:background .16s;
-}
-.order-row.bento{background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.35)}
-.order-row.dragging{opacity:.5; box-shadow:var(--shadow-lift); z-index:5; position:relative; pointer-events:none}
-.order-row.drop-before{box-shadow:inset 0 3px 0 0 var(--accent)}
-.order-row.drop-after{box-shadow:inset 0 -3px 0 0 var(--accent)}
-.order-grip{
-  flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
-  color:var(--faint); border-radius:9px; cursor:grab; touch-action:none;
-}
-.order-grip svg{width:19px; height:19px; fill:currentColor}
-.order-row:active .order-grip, .order-row.dragging .order-grip{color:var(--accent); background:var(--accent-soft); cursor:grabbing}
-.order-name{flex:1; min-width:0; font-size:15px; font-weight:550; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.order-bento{
-  flex:0 0 auto; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:650; line-height:1;
-  color:var(--faint); border:1px solid var(--line-2); background:transparent; transition:all .14s;
-}
-.order-row.bento .order-bento{color:#16a34a; border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.16)}
-.order-bento:active{transform:scale(.94)}
-.rolegrid{display:flex; flex-wrap:wrap; gap:7px}
-.swatches{display:flex; flex-wrap:wrap; gap:7px}
-.sw-opt{width:30px; height:30px; border-radius:9px; border:2px solid transparent; transition:transform .14s var(--ease)}
-.sw-opt[aria-pressed="true"]{border-color:var(--ink); transform:scale(1.1)}
-.toggle{display:flex; align-items:center; gap:9px; font-size:13.5px; padding:9px 0}
-.toggle input{width:auto; margin:0}
-
-/* BUFF 技能選擇器 */
-.skillgrp{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em; margin:13px 0 6px}
-.skillgrid{display:flex; flex-wrap:wrap; gap:7px}
-.skillpill{
-  padding:7px 12px; border-radius:99px; border:1px solid var(--line); background:#fff;
-  font-size:12.5px; font-weight:500; transition:background .14s, color .14s, border-color .14s;
-}
-.skillpill[aria-pressed="true"]{color:#fff; background:var(--accent); border-color:var(--accent)}
-
-/* 掉落物 */
-.dropsec{margin-top:12px; padding-top:12px; border-top:1px solid var(--line-2)}
-.dropsec-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px}
-.dropsec-t{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em}
-.dropgrid{display:flex; flex-wrap:wrap; gap:7px}
-/* 掉落標籤跟著材料系列上色（碎片紅／浮塵藍／其餘綠），未指定系列時退回琥珀色 */
-.droppill{
-  display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:99px;
-  border:1px solid var(--ms-line,rgba(180,83,9,.28)); background:var(--ms-soft,rgba(180,83,9,.08));
-  color:var(--ms-ink,#92400e); font-size:12.5px; font-weight:500;
-}
-.droppill .drop-qty{font-weight:700; color:var(--ms,#b45309)}
-
-/* 掉落物批次編輯 */
-.droprow{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line-2)}
-.droprow:last-child{border-bottom:none}
-.droprow-n{flex:1; min-width:0; font-size:13.5px; font-weight:500; overflow-wrap:anywhere}
-.droprow.on .droprow-n{color:var(--ms,#92400e); font-weight:650}
-.dropgrp{
-  display:flex; align-items:center; gap:7px; margin:16px 0 3px;
-  font-size:11px; font-weight:650; letter-spacing:.05em; color:var(--ms,var(--muted));
-}
-.dropgrp:first-child{margin-top:2px}
-.dropgrp::after{content:''; flex:1; height:1px; background:var(--ms-line,var(--line-2))}
-.stepper{display:flex; align-items:center; gap:4px; flex:0 0 auto}
-.stepbtn{
-  width:32px; height:32px; border-radius:9px; border:1px solid var(--line);
-  background:#fff; font-size:17px; font-weight:600; line-height:1; color:var(--ink-2);
-}
-.stepbtn:disabled{opacity:.3}
-.stepbtn.plus{background:var(--accent-soft); border-color:rgba(79,70,229,.25); color:var(--accent)}
-.stepqty{
-  width:44px !important; text-align:center; font-size:15px !important; font-weight:650;
-  padding:6px 2px !important; border:1px solid var(--line-2) !important; background:#fff;
-}
-.dropsum{
-  font-size:12.5px; color:#92400e; background:rgba(180,83,9,.08);
-  border-radius:10px; padding:9px 11px; margin-top:13px; line-height:1.5;
-}
-.dropsum .none{color:var(--faint)}
-.dropadd{display:flex; gap:7px; align-items:flex-end}
-.dropadd .field{flex:1; margin-bottom:0}
-.buffprev{
-  font-size:12.5px; color:var(--ink-2); background:var(--accent-soft);
-  border-radius:10px; padding:9px 11px; margin-top:14px; line-height:1.5;
-}
-.buffprev b{font-weight:600}
-.buffprev .none{color:var(--faint); font-weight:400}
-
-/* toast */
-.toast{
-  position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:200;
-  transform:translateX(-50%); background:var(--ink); color:#fff; font-size:13px; font-weight:500;
-  padding:10px 17px; border-radius:99px; box-shadow:var(--shadow-lift); animation:toastIn .3s var(--ease) both;
-}
-@keyframes toastIn{from{opacity:0; transform:translate(-50%,10px)}to{opacity:1; transform:translate(-50%,0)}}
-
-/* export canvas surface (built fresh, no buttons/animations) */
-.exportwrap{position:fixed; left:-99999px; top:0; background:#fff; padding:28px 30px; width:auto}
-.ex-h{font-size:21px; font-weight:700; letter-spacing:-.4px; color:#15171c}
-.ex-sub{font-size:12px; color:#7b8194; margin-top:3px}
-/* 各欄固定同寬，掉落物標籤才會整齊分段換行，不會有的欄寬有的欄窄 */
-.ex-pt{margin-top:20px; border:1px solid #e6e8ef; border-radius:14px; overflow:hidden; flex:0 0 300px; width:300px}
-.ex-pt-h{display:flex; align-items:baseline; gap:9px; padding:11px 14px; background:#f6f7fb; border-bottom:1px solid #e6e8ef}
-.ex-pt-n{font-size:15px; font-weight:650; color:#15171c}
-.ex-pt-t{font-size:11.5px; color:#7b8194}
-.ex-pt-c{margin-left:auto; font-size:13px; font-weight:600; color:#3d434f}
-.ex-row{display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid #f0f1f6}
-.ex-row.bento{background:rgba(34,197,94,.13)}
-.ex-row:last-child{border-bottom:none}
-.ex-nm{font-size:13.5px; color:#15171c; font-weight:500; min-width:88px; display:flex; flex-direction:column; gap:1px}
-.ex-buff{font-size:10.5px; color:#4f46e5; font-weight:500}
-/* 匯出圖片的掉落物：依系列分段（碎片紅／浮塵藍／其餘綠），每段的標籤自成一欄、材料自動換行，
-   避免以前一整排文字串在同一行、名單一長就看不完 */
-.ex-drops{padding:9px 14px 10px; border-top:1px solid #f0f1f6; background:#fbfbfd}
-.ex-dtop{font-size:10.5px; font-weight:600; color:#7b8194; letter-spacing:.04em; margin-bottom:7px}
-.ex-dgrp{display:flex; align-items:flex-start; gap:8px; margin-top:6px}
-.ex-dgrp:first-of-type{margin-top:0}
-.ex-dlb{
-  flex:0 0 auto; width:34px; text-align:center; font-size:10.5px; font-weight:700; line-height:1.5;
-  padding:3px 0; border-radius:6px; color:#fff; margin-top:1px;
-}
-.ex-dp{display:flex; flex-wrap:wrap; gap:5px; min-width:0}
-.ex-dpill{
-  font-size:11px; font-weight:500; padding:3px 8px; border-radius:99px;
-  border:1px solid; line-height:1.35; white-space:nowrap;
-}
-.ex-dpill b{font-weight:750; margin-left:3px}
-.ex-rl{font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; border:1px solid}
-.ex-cols{display:flex; gap:16px; align-items:flex-start}
-
-@media (max-width:560px){
-  .pt-count b{font-size:19px}
-  .ptgrid{grid-template-columns:1fr}
-}
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
-}
-</style>
+<link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 
@@ -769,7 +211,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v23';
+const APP_VERSION='v24';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -896,7 +338,7 @@ function roJobIdByName(name){
 // 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
 function seed(){
   const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
-  return {members:[],roles,schedule:{},sales:[]};
+  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[]};
 }
 
 function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[]}; }
@@ -916,6 +358,40 @@ function fmtNow(){
 }
 function shiftDate(k,n){ const d=parseYmd(k); d.setDate(d.getDate()+n); return ymd(d); }
 
+/* ── 資料結構版本遷移 ─────────────────────────────────────
+   以前是靠「某個欄位在不在」反推資料是哪一版，每加一個欄位就要多一段猜測邏輯。
+   改成明確的 schemaVersion：舊資料沒有這個欄位就當成第 0 版，
+   然後照順序把 0→1、1→2 … 的轉換一步步套上去，之後要再加版本只要往 MIGRATIONS 後面接一段。 */
+const MIGRATIONS=[
+  /* 0 → 1：舊命名 PT 1 / PT1 改成 RUN 1；補上 drops 陣列；
+            技能 BUFF 從「成員」搬到「職業」（同職業的人 BUFF 才會一致）；補上 sales 欄位 */
+  p=>{
+    Object.values(p.schedule||{}).forEach(pts=>pts.forEach(pt=>{
+      const m=/^PT\s*(\d+)$/i.exec((pt.name||'').trim());
+      if(m) pt.name='RUN '+m[1];
+      if(!Array.isArray(pt.drops)) pt.drops=[];
+    }));
+    (p.members||[]).forEach(m=>{
+      if(m.buff&&m.defaultRoleId){
+        const r=(p.roles||[]).find(x=>x.id===m.defaultRoleId);
+        if(r&&!r.buff) r.buff=m.buff;
+      }
+      delete m.buff;
+    });
+    if(!Array.isArray(p.sales)) p.sales=[];
+  },
+];
+const SCHEMA_VERSION=MIGRATIONS.length;
+
+function migrate(p){
+  let from=Number.isInteger(p.schemaVersion)?p.schemaVersion:0;
+  /* 資料比程式還新（例如從新版匯出的 JSON 匯進舊版 App）就不硬轉，原樣留著避免弄壞資料 */
+  if(from>SCHEMA_VERSION) return p;
+  for(let v=from; v<SCHEMA_VERSION; v++) MIGRATIONS[v](p);
+  p.schemaVersion=SCHEMA_VERSION;
+  return p;
+}
+
 let state=load(), curDate=null, undoStack=[], redoStack=[], picked=null, roleFilter=null, dateRailReady=false;
 
 function load(){
@@ -924,25 +400,6 @@ function load(){
     if(r){ const p=JSON.parse(r); if(p&&p.members&&p.roles&&p.schedule) return migrate(p); }
   }catch(e){}
   return seed();
-}
-// 舊資料相容：把 PT 1 / PT1 這類舊命名轉成 RUN 1 / RUN1
-function migrate(p){
-  Object.values(p.schedule).forEach(pts=>pts.forEach(pt=>{
-    const m=/^PT\s*(\d+)$/i.exec((pt.name||'').trim());
-    if(m) pt.name='RUN '+m[1];
-    if(!Array.isArray(pt.drops)) pt.drops=[];
-  }));
-  /* 技能 BUFF 從「成員」搬到「職業」：把成員身上舊的 buff 文字，搬到他預設職業的 buff 上（該職業還沒設定過的話），
-     這樣同職業的人 BUFF 才會一致，也才能跟著指派的職業正確標記，不用每個成員手動輸入一次 */
-  (p.members||[]).forEach(m=>{
-    if(m.buff&&m.defaultRoleId){
-      const r=(p.roles||[]).find(x=>x.id===m.defaultRoleId);
-      if(r&&!r.buff) r.buff=m.buff;
-    }
-    delete m.buff;
-  });
-  if(!Array.isArray(p.sales)) p.sales=[];   // 舊備份沒有售出紀錄欄位
-  return p;
 }
 function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){ toast('儲存失敗，裝置空間可能已滿'); } }
 function snap(){ return JSON.stringify(state); }
@@ -1008,11 +465,20 @@ function defaultDate(){
     return ad!==0?ad:(db-da);
   })[0];
 }
+/* 材料統計會掃過「所有日期」的排班歷史，成本隨資料量線性成長。
+   在陣容分配裡拖一個人也會觸發 render()，沒必要每次都重算整段歷史 ——
+   看不到統計分頁時只標記「資料髒了」，等真的切過去再算。 */
+let matDirty=true;
+function statsVisible(){ return document.getElementById('view-stats').classList.contains('active'); }
+function renderMaterialsIfVisible(){
+  if(statsVisible()){ matDirty=false; renderMaterials(); }
+  else matDirty=true;
+}
 function render(){
   const ks=dates();
   if(!ks.length){ ensureDate(todayKey()); persist(); }
   if(!curDate||!state.schedule[curDate]) curDate=defaultDate();
-  renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderMaterials();
+  renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderMaterialsIfVisible();
   document.getElementById('btnUndo').disabled=!undoStack.length;
   document.getElementById('btnRedo').disabled=!redoStack.length;
   document.getElementById('brandSub').textContent=fmtDate(curDate)+' '+fmtDow(curDate);
@@ -1677,12 +1143,12 @@ const val=(s,n)=>s.querySelector(`[name="${n}"]`).value.trim();
 
 
 /* 原生 confirm() 在 PWA 獨立模式下不一定會顯示，改用畫面內的確認卡片 */
-function confirmSheet(message, onConfirm){
+function confirmSheet(message, onConfirm, confirmLabel){
   sheet('請確認',`
-    <p style="font-size:13.5px; color:var(--ink-2); line-height:1.6; margin:0 0 16px">${esc(message)}</p>
+    <p style="font-size:13.5px; color:var(--ink-2); line-height:1.6; margin:0 0 16px; white-space:pre-line">${esc(message)}</p>
     <div class="sheet-foot">
       <button class="gbtn" data-s="no">取消</button>
-      <button class="gbtn warn" data-s="yes" style="background:var(--danger);color:#fff;border-color:var(--danger)">確定刪除</button>
+      <button class="gbtn warn" data-s="yes" style="background:var(--danger);color:#fff;border-color:var(--danger)">${esc(confirmLabel||'確定刪除')}</button>
     </div>`,s=>{
     s.querySelector('[data-s="no"]').onclick=closeSheet;
     s.querySelector('[data-s="yes"]').onclick=()=>{ closeSheet(); onConfirm(); };
@@ -2110,8 +1576,8 @@ function moreSheet(){
     </div>
     <input type="file" name="jsonFile" accept="application/json,.json" style="display:none">`,s=>{
     s.querySelector('[name="rf"]').onchange=e=>{ roleFilter=e.target.value||null; renderBench(); };
-    s.querySelector('[data-s="img"]').onclick=()=>{ closeSheet(); exportImage(); };
-    s.querySelector('[data-s="csv"]').onclick=()=>{ closeSheet(); exportCsv(); };
+    s.querySelector('[data-s="img"]').onclick=()=>{ closeSheet(); exportRangeSheet('img'); };
+    s.querySelector('[data-s="csv"]').onclick=()=>{ closeSheet(); exportRangeSheet('csv'); };
     s.querySelector('[data-s="exportJson"]').onclick=()=>{ exportJson(); };
     const fileInput=s.querySelector('[name="jsonFile"]');
     s.querySelector('[data-s="importJson"]').onclick=()=>{ fileInput.click(); };
@@ -2126,13 +1592,74 @@ function moreSheet(){
           toast('檔案格式不正確'); return;
         }
         closeSheet();
-        confirmSheet('匯入將覆蓋目前所有成員、職業與排班資料，確定要匯入嗎？',()=>{
+        confirmSheet('匯入將覆蓋目前所有成員、職業與排班資料。\n按下確定後會先自動下載一份目前資料的備份，再進行匯入。',()=>{
+          /* 匯入是整包覆蓋且重新整理後就無法用復原救回，所以先把現況存成備份檔再蓋 */
+          backupJson();
           curDate=null;
           commit(()=>{ state=migrate(data); });
-          toast('已匯入設定');
-        });
+          toast('已匯入設定（原資料已備份下載）');
+        },'備份並匯入');
       };
       reader.readAsText(file);
+    };
+  });
+}
+
+/* 匯出範圍選擇：圖片與 CSV 共用。預設是「只有目前這天」，維持原本一鍵匯出的習慣；
+   要多天再切到「日期區間」，快捷鍵沿用材料統計那邊的本週／本月語彙。 */
+function exportRangeSheet(kind){
+  const isImg=kind==='img';
+  const t=todayKey(), d=parseYmd(t), dow=(d.getDay()+6)%7;
+  const weekFrom=shiftDate(t,-dow), weekTo=shiftDate(t,6-dow);
+  const monthFrom=t.slice(0,8)+'01';
+  const monthTo=shiftDate(monthFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1);
+  const all=dates();
+  sheet(isImg?'產出圖片':'匯出 CSV',`
+    <label class="toggle"><input type="radio" name="mode" value="cur" checked> 只匯出目前這天（${fmtDate(curDate)} ${fmtDow(curDate)}）</label>
+    <label class="toggle"><input type="radio" name="mode" value="range"> 匯出日期區間</label>
+    <div id="expRange" style="display:none">
+      <div class="preset-row">
+        <button class="gbtn" data-p="week">本週</button>
+        <button class="gbtn" data-p="month">本月</button>
+        <button class="gbtn" data-p="all">全部</button>
+      </div>
+      <div class="field-2">
+        <div class="field"><label>從</label><input name="from" type="date" value="${all[0]||t}"></div>
+        <div class="field"><label>到</label><input name="to" type="date" value="${all[all.length-1]||t}"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin:-4px 0 4px" id="expCount"></div>
+    </div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="go">${isImg?'產出':'匯出'}</button>
+    </div>`, s=>{
+    const box=s.querySelector('#expRange'), cnt=s.querySelector('#expCount');
+    const fromEl=s.querySelector('[name="from"]'), toEl=s.querySelector('[name="to"]');
+    const isRange=()=>s.querySelector('[name="mode"]:checked').value==='range';
+    const picked=()=>isRange()?exportDates(fromEl.value,toEl.value):[curDate];
+    const sync=()=>{
+      box.style.display=isRange()?'':'none';
+      if(isRange()){
+        const ks=picked();
+        cnt.textContent=ks.length?`這個區間有 ${ks.length} 天有排班資料`:'這個區間沒有任何排班資料';
+      }
+    };
+    s.querySelectorAll('[name="mode"]').forEach(r=>r.onchange=sync);
+    fromEl.onchange=sync; toEl.onchange=sync;
+    s.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
+      const p=b.dataset.p;
+      if(p==='week'){ fromEl.value=weekFrom; toEl.value=weekTo; }
+      else if(p==='month'){ fromEl.value=monthFrom; toEl.value=monthTo; }
+      else { fromEl.value=all[0]||t; toEl.value=all[all.length-1]||t; }
+      sync();
+    });
+    sync();
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    s.querySelector('[data-s="go"]').onclick=()=>{
+      const ks=picked();
+      if(!ks.length) return toast('這個區間沒有任何排班資料');
+      closeSheet();
+      isImg?exportImage(ks):exportCsv(ks);
     };
   });
 }
@@ -2141,6 +1668,13 @@ function exportJson(){
   const json=JSON.stringify(state,null,2);
   download(new Blob([json],{type:'application/json'}),`星座塔團隊_設定_${APP_VERSION}_${todayKey()}.json`);
   toast('已匯出設定 JSON');
+}
+
+/* 匯入前的自動備份：檔名帶到「時分秒」，才不會跟當天手動匯出的檔案同名互相蓋掉 */
+function backupJson(){
+  const stamp=fmtNow().replace(/[/:]/g,'').replace(' ','_');
+  download(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),
+    `星座塔團隊_匯入前備份_${stamp}.json`);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2167,41 +1701,69 @@ function exDrops(pt){
     <div class="ex-dtop">掉落物 · ${new Set(names).size} 種 · 共 ${total} 個</div>${segs}</div>`;
 }
 
-function buildExportNode(){
-  const pts=ptsOf(curDate);
-  const cols=pts.map(pt=>{
-    const rows=pt.slots.length ? pt.slots.map(s=>{
-      const m=memberById(s.memberId), r=roleById(s.roleId);
-      if(!m) return '';
-      return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">便當</span>':''}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
-        (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
-           :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
-    }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
-    return `<div class="ex-pt">
-      <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
-        <span class="ex-pt-t">${esc(pt.time||'')}</span>
-        <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
-      ${rows}
-      ${exDrops(pt)}
-      </div>`;
+/* 匯出範圍：預設就是目前這天；選了區間才會是多天。
+   回傳的是「這個範圍內真的有排班的日期」，空日期不會產生空白區塊。 */
+function exportDates(from,to){
+  if(!from&&!to) return [curDate];
+  return dates().filter(k=>(!from||k>=from)&&(!to||k<=to));
+}
+function rangeLabel(ks){
+  if(ks.length===1) return `${fmtDate(ks[0])}（${fmtDow(ks[0]).slice(1)}）`;
+  return `${fmtDate(ks[0])} – ${fmtDate(ks[ks.length-1])}`;
+}
+function fileStamp(ks){
+  return ks.length===1 ? fmtDate(ks[0]).replace('/','')
+                       : `${fmtDate(ks[0]).replace('/','')}-${fmtDate(ks[ks.length-1]).replace('/','')}`;
+}
+
+function ptExportBlock(pt){
+  const rows=pt.slots.length ? pt.slots.map(s=>{
+    const m=memberById(s.memberId), r=roleById(s.roleId);
+    if(!m) return '';
+    return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">便當</span>':''}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
+      (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
+         :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
+  }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
+  return `<div class="ex-pt">
+    <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
+      <span class="ex-pt-t">${esc(pt.time||'')}</span>
+      <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
+    ${rows}
+    ${exDrops(pt)}
+    </div>`;
+}
+
+function buildExportNode(ks){
+  ks=ks&&ks.length?ks:[curDate];
+  const totalPts=ks.reduce((a,k)=>a+ptsOf(k).length,0);
+  const totalSlots=ks.reduce((a,k)=>a+ptsOf(k).reduce((b,p)=>b+p.slots.length,0),0);
+  /* 多天時每天各自一個標題段落，單天則維持原本沒有日期小標的乾淨版面 */
+  const body=ks.map(k=>{
+    const pts=ptsOf(k);
+    const cols=pts.map(ptExportBlock).join('');
+    const dayHead=ks.length>1
+      ? `<div class="ex-day">${fmtDate(k)}（${DOW[parseYmd(k).getDay()]}） · ${pts.length} RUN · ${pts.reduce((a,p)=>a+p.slots.length,0)} 人</div>`
+      : '';
+    return dayHead+`<div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>`;
   }).join('');
   const host=document.getElementById('exportHost');
   host.innerHTML=`<div class="exportwrap" id="exportWrap">
-    <div class="ex-h">${fmtDate(curDate)}（${DOW[parseYmd(curDate).getDay()]}） 陣容分配</div>
-    <div class="ex-sub">${pts.length} RUN · 出席 ${pts.reduce((a,p)=>a+p.slots.length,0)} 人 · 產出於 ${fmtNow()}</div>
-    <div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>
+    <div class="ex-h">${rangeLabel(ks)} 陣容分配</div>
+    <div class="ex-sub">${ks.length>1?`${ks.length} 天 · `:''}${totalPts} RUN · 出席 ${totalSlots} 人 · 產出於 ${fmtNow()}</div>
+    ${body}
   </div>`;
   return document.getElementById('exportWrap');
 }
 
-async function exportImage(){
+async function exportImage(ks){
+  ks=ks&&ks.length?ks:[curDate];
   if(typeof html2canvas==='undefined') return toast('圖片功能需要連線載入元件，請連上網路再試');
   toast('產出中⋯');
-  const node=buildExportNode();
+  const node=buildExportNode(ks);
   try{
     const canvas=await html2canvas(node,{backgroundColor:'#ffffff',scale:2,useCORS:true});
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
-    const file=new File([blob],`陣容分配_${fmtDate(curDate).replace('/','')}.png`,{type:'image/png'});
+    const file=new File([blob],`陣容分配_${fileStamp(ks)}.png`,{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       try{ await navigator.share({files:[file],title:'陣容分配'}); }
       catch(err){ if(err.name!=='AbortError') download(blob,file.name); }
@@ -2210,22 +1772,25 @@ async function exportImage(){
   finally{ document.getElementById('exportHost').innerHTML=''; }
 }
 
-function exportCsv(){
-  const rows=[['日期','RUN','時間','成員','職業','BUFF','掉落物']];
-  ptsOf(curDate).forEach(pt=>{
-    pt.slots.forEach(s=>{
-      const m=memberById(s.memberId), r=roleById(s.roleId);
-      if(m) rows.push([fmtDate(curDate),pt.name,pt.time||'',m.name,r?r.name:'',r&&r.buff||'','']);
+function exportCsv(ks){
+  ks=ks&&ks.length?ks:[curDate];
+  const rows=[['日期','星期','RUN','時間','成員','職業','BUFF','便當','掉落物']];
+  ks.forEach(k=>{
+    ptsOf(k).forEach(pt=>{
+      pt.slots.forEach(s=>{
+        const m=memberById(s.memberId), r=roleById(s.roleId);
+        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'',m.name,r?r.name:'',r&&r.buff||'',s.bento?'是':'','']);
+      });
+      if(pt.drops&&pt.drops.length){
+        rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'','','','','',
+          pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
+      }
     });
-    if(pt.drops&&pt.drops.length){
-      rows.push([fmtDate(curDate),pt.name,pt.time||'','','',
-        '',pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
-    }
   });
-  if(rows.length===1) return toast('這天還沒有排班資料');
+  if(rows.length===1) return toast(ks.length>1?'這個範圍還沒有排班資料':'這天還沒有排班資料');
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),`陣容分配_${fmtDate(curDate).replace('/','')}.csv`);
-  toast('已匯出 CSV');
+  download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),`陣容分配_${fileStamp(ks)}.csv`);
+  toast(`已匯出 CSV（${ks.length} 天）`);
 }
 function download(blob,name){
   const url=URL.createObjectURL(blob), a=document.createElement('a');
@@ -2246,6 +1811,8 @@ document.addEventListener('click',e=>{
     const onBoard=t.dataset.view==='board';
     document.getElementById('bench').classList.toggle('hidden',!onBoard);
     document.querySelector('.app').classList.toggle('nobench',!onBoard);
+    /* 切到材料統計時，如果期間有改過排班就補算一次（平常不算，見 renderMaterialsIfVisible） */
+    if(matDirty) renderMaterialsIfVisible();
     return;
   }
   const btn=e.target.closest('[data-act]'); if(!btn) return;
@@ -2302,10 +1869,18 @@ document.getElementById('btnToday').onclick=()=>{
 document.getElementById('btnDelDate').onclick=()=>{
   if(dates().length<=1) return toast('至少要保留一天');
   const target=curDate;
-  confirmSheet(`刪除 ${fmtDate(target)}（${fmtDow(target)}）這天的所有 RUN 與排班？`,()=>{
-    commit(()=>{ delete state.schedule[target]; });
-    curDate=null; render();
-  });
+  const pts=ptsOf(target);
+  const slotCount=pts.reduce((a,p)=>a+p.slots.length,0);
+  const dropCount=pts.reduce((a,p)=>a+((p.drops&&p.drops.length)||0),0);
+  confirmSheet(
+    `刪除 ${fmtDate(target)}（${fmtDow(target)}）這天的所有資料？\n`+
+    `含 ${pts.length} 個 RUN、${slotCount} 個排班位子${dropCount?`、${dropCount} 筆掉落紀錄`:''}。\n`+
+    `刪除後材料統計也會少掉這天的數據。`,
+    ()=>{
+      commit(()=>{ delete state.schedule[target]; });
+      curDate=null; render();
+      toast(`已刪除 ${fmtDate(target)}`);
+    });
 };
 document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
 document.getElementById('btnAddMember').onclick=()=>memberSheet(null);
