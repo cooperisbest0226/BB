@@ -167,20 +167,23 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 /* 便當：塞進來只領材料的人員，整列標成淺綠色方便一眼看出 */
 .slot.bento{background:rgba(34,197,94,.13)}
 .slot.bento:hover{background:rgba(34,197,94,.19)}
-.slot-mv{display:flex; flex-direction:column; gap:1px; flex:0 0 auto}
-.slot-mv button{
-  width:18px; height:14px; display:flex; align-items:center; justify-content:center;
-  color:var(--faint); border-radius:3px; line-height:1;
+/* 拖曳把手：按住即可把人員直接拖到這個 RUN 裡的任何位子，取代原本一次只能移一格的上下箭頭 */
+.slot-grip{
+  flex:0 0 auto; width:20px; height:28px; display:flex; align-items:center; justify-content:center;
+  color:var(--faint); cursor:grab; touch-action:none; border-radius:5px; transition:color .14s, background .14s;
 }
-.slot-mv button:active{transform:scale(.9)}
-.slot-mv button:disabled{opacity:.28; pointer-events:none}
-.slot-mv svg{width:11px; height:11px; stroke:currentColor; stroke-width:2.4; fill:none; stroke-linecap:round; stroke-linejoin:round}
+.slot-grip svg{width:14px; height:14px; fill:currentColor}
+.slot:active .slot-grip, .slot.dragging .slot-grip{color:var(--accent); background:var(--accent-soft); cursor:grabbing}
+.slot.dragging{opacity:.4}
+/* 拖曳懸停在某一列時，用一條線指出「會插進這列的上面/下面」 */
+.slot.drop-before{box-shadow:inset 0 2px 0 0 var(--accent)}
+.slot.drop-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
 .slot-bento{
-  flex:0 0 auto; width:24px; height:24px; border-radius:7px; font-size:13px; line-height:1;
-  color:var(--faint); border:1px solid var(--line-2); background:transparent; transition:all .14s;
+  flex:0 0 auto; padding:0 8px; height:24px; border-radius:7px; font-size:11.5px; font-weight:600; line-height:1;
+  color:var(--faint); border:1px solid var(--line-2); background:transparent; transition:all .14s; white-space:nowrap;
 }
 .slot.bento .slot-bento{color:#16a34a; border-color:rgba(34,197,94,.4); background:rgba(34,197,94,.14)}
-.slot-bento:active{transform:scale(.9)}
+.slot-bento:active{transform:scale(.94)}
 .slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
 .slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
@@ -1025,15 +1028,12 @@ function renderBoard(){
              style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
         : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
       return `<div class="slot ${s.bento?'bento':''}" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
-        <div class="slot-mv">
-          <button data-act="moveUp" data-pt="${pt.id}" data-i="${si}" ${si===0?'disabled':''} aria-label="上移" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
-          <button data-act="moveDown" data-pt="${pt.id}" data-i="${si}" ${si===n-1?'disabled':''} aria-label="下移" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-        </div>
+        <div class="slot-grip" aria-hidden="true" title="按住拖曳排序"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg></div>
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
           ${r&&r.buff?`<span class="slot-buff">${esc(r.buff)}</span>`:''}
         </div>${pill}
-        <button class="slot-bento" data-act="toggleBento" data-pt="${pt.id}" data-i="${si}" aria-label="標記便當（只領材料）" title="便當：只領材料">🍱</button>
+        <button class="slot-bento" data-act="toggleBento" data-pt="${pt.id}" data-i="${si}" aria-label="標記便當（只領材料）" title="便當：只領材料">便當</button>
         <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
       </div>`;
     }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
@@ -1443,16 +1443,31 @@ document.addEventListener('pointermove',e=>{
   }
   drag.ghost.style.left=e.clientX+'px'; drag.ghost.style.top=e.clientY+'px';
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
-  const t=dropTargetAt(e.clientX,e.clientY);
-  if(t) t.classList.add('drop-on');
+  document.querySelectorAll('.slot.drop-before,.slot.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  drag.reorder=null;
+  /* 拖曳的是已排班的人員時，先看看是不是懸停在「同一個 RUN」的另一個位子上 ——
+     是的話就顯示插入線，放開後直接插到那個位子，任意位置都能放，不再只能一步一步移 */
+  const hoverSlot=(drag.from&&drag.from!=='bench') ? document.elementFromPoint(e.clientX,e.clientY)?.closest('.slot') : null;
+  const hoverCard=hoverSlot ? hoverSlot.closest('[data-drop="pt"]') : null;
+  if(hoverSlot && hoverSlot!==drag.el && hoverCard && hoverCard.dataset.pt===drag.from){
+    const rect=hoverSlot.getBoundingClientRect();
+    const before=e.clientY<rect.top+rect.height/2;
+    hoverSlot.classList.add(before?'drop-before':'drop-after');
+    drag.reorder={ptId:hoverCard.dataset.pt, hoverSi:+hoverSlot.dataset.si, before};
+  } else {
+    const t=dropTargetAt(e.clientX,e.clientY);
+    if(t) t.classList.add('drop-on');
+  }
 });
 document.addEventListener('pointerup',e=>{
   if(!drag) return;
   const d=drag; drag=null;
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  document.querySelectorAll('.slot.drop-before,.slot.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
   d.el.classList.remove('dragging');
   if(d.ghost) d.ghost.remove();
   if(!d.moved){ tapChip(d.id); return; }
+  if(d.reorder){ reorderSlot(d.reorder.ptId, +d.si, d.reorder.hoverSi, d.reorder.before); return; }
   const t=dropTargetAt(e.clientX,e.clientY);
   if(!t) return;
   if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.from,d.si); }
@@ -1462,8 +1477,20 @@ document.addEventListener('pointercancel',()=>{
   if(!drag) return;
   drag.el.classList.remove('dragging'); if(drag.ghost) drag.ghost.remove();
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  document.querySelectorAll('.slot.drop-before,.slot.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
   drag=null;
 });
+/* 把某個 RUN 裡的 slot 從 fromIndex 移到「hoverIndex 那格的前面/後面」，可以一次拖到任意位置 */
+function reorderSlot(ptId, fromIndex, hoverIndex, before){
+  commit(()=>{
+    const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
+    if(!Number.isInteger(fromIndex)||!p.slots[fromIndex]) return;
+    let insertBefore=before?hoverIndex:hoverIndex+1;
+    if(insertBefore>fromIndex) insertBefore--;
+    const [s]=p.slots.splice(fromIndex,1);
+    p.slots.splice(insertBefore,0,s);
+  });
+}
 function dropTargetAt(x,y){
   const el=document.elementFromPoint(x,y);
   return el?el.closest('[data-drop]'):null;
@@ -2016,7 +2043,7 @@ function buildExportNode(){
     const rows=pt.slots.length ? pt.slots.map(s=>{
       const m=memberById(s.memberId), r=roleById(s.roleId);
       if(!m) return '';
-      return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">🍱 便當</span>':''}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
+      return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">便當</span>':''}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
         (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
            :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
     }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
@@ -2095,8 +2122,6 @@ document.addEventListener('click',e=>{
   const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
   if(a==='role')      rolePickSheet(ptId,i);
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
-  if(a==='moveUp')    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(i>0){ const [s]=p.slots.splice(i,1); p.slots.splice(i-1,0,s); } });
-  if(a==='moveDown')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(i<p.slots.length-1){ const [s]=p.slots.splice(i,1); p.slots.splice(i+1,0,s); } });
   if(a==='toggleBento') commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); const s=p.slots[i]; s.bento=!s.bento; });
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
