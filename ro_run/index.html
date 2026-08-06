@@ -263,7 +263,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .stat-v small{font-size:13px; color:var(--faint); font-weight:500; letter-spacing:0}
 .bars{display:flex; flex-direction:column; gap:9px; margin-top:4px}
 .bar-row{display:flex; align-items:center; gap:10px}
-.bar-l{font-size:12.5px; font-weight:500; width:74px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bar-l{font-size:12px; font-weight:500; width:112px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .bar-track{flex:1; height:7px; background:rgba(21,23,28,.07); border-radius:99px; overflow:hidden}
 .bar-fill{height:100%; border-radius:99px; transition:width .5s var(--ease)}
 .bar-n{font-size:12px; color:var(--muted); width:22px; text-align:right; flex:0 0 auto}
@@ -337,8 +337,22 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .field{margin-bottom:12px}
 .field label{display:block; font-size:11.5px; font-weight:550; color:var(--muted); margin-bottom:5px}
 .field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.field-2 > .field{min-width:0}
+.field input,.field select,.field textarea{min-width:0}
+/* iOS Safari 的原生 date 欄位有較大的固有寬度（16px 字級 + 日曆圖示），
+   兩欄並排在窄螢幕會撐破容器，所以窄螢幕改成上下堆疊 */
+@media (max-width:460px){ .mat-range{grid-template-columns:1fr} }
 .sheet-foot{display:flex; gap:9px; margin-top:16px}
 .preset-row{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 16px}
+.setcfg{display:flex; align-items:center; gap:8px; margin:2px 0 14px; font-size:13px; color:var(--ink-2)}
+.setcfg label{flex:0 0 auto; font-weight:500}
+.setcfg input{width:76px !important; text-align:center; font-weight:650}
+.setrow{display:flex; align-items:center; gap:10px}
+.setrow-n{font-size:12px; font-weight:500; width:112px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.setrow.short .setrow-n{color:#b45309; font-weight:650}
+.setrow-v{font-size:12px; color:var(--muted); margin-left:auto; flex:0 0 auto; white-space:nowrap}
+.setrow-v b{color:var(--ink-2); font-weight:650}
+.setrow.short .setrow-v b{color:#b45309}
 .sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
 .rolegrid{display:flex; flex-wrap:wrap; gap:7px}
 .swatches{display:flex; flex-wrap:wrap; gap:7px}
@@ -367,6 +381,30 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   font-size:12.5px; font-weight:500;
 }
 .droppill .drop-qty{font-weight:700; color:#b45309}
+
+/* 掉落物批次編輯 */
+.droprow{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line-2)}
+.droprow:last-child{border-bottom:none}
+.droprow-n{flex:1; min-width:0; font-size:13.5px; font-weight:500; overflow-wrap:anywhere}
+.droprow.on .droprow-n{color:#92400e; font-weight:650}
+.stepper{display:flex; align-items:center; gap:4px; flex:0 0 auto}
+.stepbtn{
+  width:32px; height:32px; border-radius:9px; border:1px solid var(--line);
+  background:#fff; font-size:17px; font-weight:600; line-height:1; color:var(--ink-2);
+}
+.stepbtn:disabled{opacity:.3}
+.stepbtn.plus{background:var(--accent-soft); border-color:rgba(79,70,229,.25); color:var(--accent)}
+.stepqty{
+  width:44px !important; text-align:center; font-size:15px !important; font-weight:650;
+  padding:6px 2px !important; border:1px solid var(--line-2) !important; background:#fff;
+}
+.dropsum{
+  font-size:12.5px; color:#92400e; background:rgba(180,83,9,.08);
+  border-radius:10px; padding:9px 11px; margin-top:13px; line-height:1.5;
+}
+.dropsum .none{color:var(--faint)}
+.dropadd{display:flex; gap:7px; align-items:flex-end}
+.dropadd .field{flex:1; margin-bottom:0}
 .buffprev{
   font-size:12.5px; color:var(--ink-2); background:var(--accent-soft);
   border-radius:10px; padding:9px 11px; margin-top:14px; line-height:1.5;
@@ -505,7 +543,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   <!-- 材料統計 -->
   <section class="view" id="view-stats">
     <div class="sec"><span class="sec-t">材料統計</span><div class="sec-line"></div></div>
-    <div class="field-2">
+    <div class="field-2 mat-range">
       <div class="field"><label>從</label><input type="date" id="matFrom"></div>
       <div class="field"><label>到</label><input type="date" id="matTo"></div>
     </div>
@@ -519,6 +557,14 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
     <div class="statgrid" id="matCards"></div>
     <div class="sec"><span class="sec-t">材料總計</span><div class="sec-line"></div></div>
     <div class="bars" id="matBars"></div>
+    <div class="sec"><span class="sec-t">組數試算</span><div class="sec-line"></div></div>
+    <div class="setcfg">
+      <label for="matPerSet">每種材料</label>
+      <input type="number" id="matPerSet" min="1" value="5">
+      <label for="matPerSet">個 = 1 組</label>
+    </div>
+    <div class="statgrid" id="setCards"></div>
+    <div class="bars" id="setDetail"></div>
     <div class="sec"><span class="sec-t">場次明細</span><div class="sec-line"></div></div>
     <div id="matDetail"></div>
   </section>
@@ -545,7 +591,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v11';
+const APP_VERSION='v13';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -847,7 +893,7 @@ function renderBoard(){
       <div class="dropsec">
         <div class="dropsec-head">
           <span class="dropsec-t">掉落物</span>
-          <button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">＋ 記錄掉落</button>
+          <button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">${(pt.drops&&pt.drops.length)?'編輯掉落':'＋ 記錄掉落'}</button>
         </div>
         <div class="dropgrid">${(pt.drops&&pt.drops.length) ? pt.drops.map(d=>
           `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`).join('')
@@ -965,6 +1011,14 @@ function matMatches(k,pt){
   if(matRunName && pt.name!==matRunName) return false;
   return true;
 }
+/* 組數試算：以下 12 種材料「每種各 N 個」算 1 組（預設 N=5）。
+   未知的隕石碎片、稀微魔力符文石不算在組合裡。組數取決於最少的那一種（木桶效應）。 */
+const SET_RECIPE=[
+  '威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
+  '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片',
+];
+let matPerSet=5;
+
 function renderMaterials(){
   const runSel=document.getElementById('matRun');
   runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
@@ -1000,6 +1054,31 @@ function renderMaterials(){
         <span class="bar-n num">${totals[n]}</span></div>`).join('')
     : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 
+  /* ── 組數試算 ───────────────────────────────────────── */
+  const per=Math.max(1,matPerSet);
+  document.getElementById('matPerSet').value=per;
+  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
+  const nextNeed=(sets+1)*per;                      // 要湊到下一組，每種材料需累積到的量
+  const shortTotal=SET_RECIPE.reduce((a,n)=>a+Math.max(0,nextNeed-(totals[n]||0)),0);
+  const leftover=SET_RECIPE.reduce((a,n)=>a+Math.max(0,(totals[n]||0)-sets*per),0);
+
+  document.getElementById('setCards').innerHTML=[
+    ['可組成組數', sets],
+    ['湊下一組還缺', shortTotal],
+    ['已用於成組', sets*per*SET_RECIPE.length],
+    ['多餘零散', leftover],
+  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
+
+  document.getElementById('setDetail').innerHTML=SET_RECIPE.map(n=>{
+    const q=totals[n]||0, own=Math.floor(q/per), lack=Math.max(0,nextNeed-q);
+    /* 卡住整體組數的那幾種（木桶效應的短板）標成琥珀色，一眼看出瓶頸 */
+    return `<div class="setrow ${own===sets?'short':''}">
+      <span class="setrow-n">${esc(n)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,q/nextNeed*100)}%;background:${own===sets?'#b45309':'var(--accent)'}"></div></div>
+      <span class="setrow-v"><b>${q}</b> · ${lack?`缺 ${lack}`:'已足'}</span>
+    </div>`;
+  }).join('');
+
   const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length).sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('matDetail').innerHTML = withDrops.length
     ? withDrops.map(({date,pt})=>`<div class="ex-pt">
@@ -1018,9 +1097,9 @@ function applyMatPreset(p){
   else { matFrom=''; matTo=''; }
   renderMaterials();
 }
-document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderMaterials(); };
-document.getElementById('matTo').onchange=e=>{ matTo=e.target.value; renderMaterials(); };
+document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderMaterials(); };document.getElementById('matTo').onchange=e=>{ matTo=e.target.value; renderMaterials(); };
 document.getElementById('matRun').onchange=e=>{ matRunName=e.target.value; renderMaterials(); };
+document.getElementById('matPerSet').oninput=e=>{ matPerSet=Math.max(1,parseInt(e.target.value)||1); renderMaterials(); };
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>applyMatPreset(b.dataset.preset));
 
 
@@ -1390,49 +1469,90 @@ function allMaterialNames(){
   return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
 }
 
-/* 掉落物：新增或編輯一筆。同一場 RUN 裡輸入同名材料會自動累加數量，不會變成兩筆。 */
-function dropSheet(ptId,dropId){
+/* 掉落物批次編輯：一次調整整場 RUN 的所有材料數量（新增／修改／刪除都在這裡完成）。
+   數量歸 0 就等於把那筆刪掉，不用一個一個開來刪。 */
+function dropsSheet(ptId){
   const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
-  const editing=dropId?(pt.drops||[]).find(d=>d.id===dropId):null;
+  const work=new Map((pt.drops||[]).map(d=>[d.name,d.qty]));
+  /* 預設 14 種常用材料 + 其他場次用過的自訂材料（自訂一次之後每場都選得到） */
+  const names=allMaterialNames();
+  (pt.drops||[]).forEach(d=>{ if(!names.includes(d.name)) names.push(d.name); });
 
-  sheet(editing?'編輯掉落物':'記錄掉落物',`
-    <div class="field"><label>材料名稱</label>
-      <input name="name" value="${esc(editing?editing.name:'')}" placeholder="點下方選擇，或直接輸入"></div>
-    <div class="skillgrp">常用材料</div>
-    <div class="skillgrid" id="matPick">${allMaterialNames().map(n=>
-      `<button class="skillpill" data-m="${esc(n)}" aria-pressed="${editing&&editing.name===n}">${esc(n)}</button>`).join('')}</div>
-    <div class="field" style="margin-top:14px"><label>數量</label><input name="qty" type="number" min="1" value="${editing?editing.qty:1}"></div>
+  const rowHtml=n=>`<div class="droprow ${(work.get(n)||0)>0?'on':''}" data-row="${esc(n)}">
+      <span class="droprow-n">${esc(n)}</span>
+      <div class="stepper">
+        <button class="stepbtn" data-step="-1" data-m="${esc(n)}" ${(work.get(n)||0)<=0?'disabled':''}>−</button>
+        <input class="stepqty" type="number" min="0" data-qty="${esc(n)}" value="${work.get(n)||0}">
+        <button class="stepbtn plus" data-step="1" data-m="${esc(n)}">＋</button>
+      </div>
+    </div>`;
+
+  sheet(`${pt.name} 的掉落物`,`
+    <div id="dropRows">${names.map(rowHtml).join('')}</div>
+    <div class="skillgrp">新增自訂材料</div>
+    <div class="dropadd">
+      <div class="field"><input name="newName" placeholder="清單裡沒有的材料名稱"></div>
+      <button class="gbtn" data-s="addName" style="padding:10px 14px">新增</button>
+    </div>
+    <div class="dropsum" id="dropSum"></div>
     <div class="sheet-foot">
-      ${editing?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn warn" data-s="clear">全部清空</button>
       <button class="gbtn" data-s="cancel">取消</button>
-      <button class="gbtn accent" data-s="save">${editing?'儲存':'新增'}</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
     </div>`,s=>{
-    const nameInput=s.querySelector('[name="name"]');
-    const paintPick=()=>s.querySelectorAll('[data-m]').forEach(b=>
-      b.setAttribute('aria-pressed', b.dataset.m===nameInput.value.trim()));
-    s.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ nameInput.value=b.dataset.m; paintPick(); });
-    nameInput.oninput=paintPick;
+    const host=s.querySelector('#dropRows'), sum=s.querySelector('#dropSum');
+
+    function paintSum(){
+      const picked=[...work.entries()].filter(([,q])=>q>0);
+      const total=picked.reduce((a,[,q])=>a+q,0);
+      sum.innerHTML=picked.length
+        ? `<b>${picked.length} 種 · 共 ${total} 個</b><br>${esc(picked.map(([n,q])=>`${n}×${q}`).join('、'))}`
+        : `<span class="none">還沒記錄任何材料</span>`;
+    }
+    function paintRow(n){
+      const row=host.querySelector(`[data-row="${CSS.escape(n)}"]`); if(!row) return;
+      const q=work.get(n)||0;
+      row.classList.toggle('on',q>0);
+      row.querySelector('[data-qty]').value=q;
+      row.querySelector('[data-step="-1"]').disabled=q<=0;
+    }
+    function bindRow(row){
+      const n=row.dataset.row;
+      row.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{
+        const q=Math.max(0,(work.get(n)||0)+(+b.dataset.step));
+        work.set(n,q); paintRow(n); paintSum();
+      });
+      row.querySelector('[data-qty]').oninput=e=>{
+        work.set(n,Math.max(0,parseInt(e.target.value)||0));
+        row.classList.toggle('on',(work.get(n)||0)>0);
+        row.querySelector('[data-step="-1"]').disabled=(work.get(n)||0)<=0;
+        paintSum();
+      };
+    }
+    host.querySelectorAll('.droprow').forEach(bindRow);
+    paintSum();
+
+    s.querySelector('[data-s="addName"]').onclick=()=>{
+      const nm=val(s,'newName').trim(); if(!nm) return toast('請輸入材料名稱');
+      if(names.includes(nm)){ toast('清單裡已經有這個材料了'); }
+      else{ names.push(nm); host.insertAdjacentHTML('beforeend',rowHtml(nm)); bindRow(host.lastElementChild); }
+      work.set(nm,Math.max(1,work.get(nm)||0));
+      paintRow(nm); paintSum();
+      s.querySelector('[name="newName"]').value='';
+    };
+    s.querySelector('[data-s="clear"]').onclick=()=>{
+      names.forEach(n=>{ work.set(n,0); paintRow(n); });
+      paintSum();
+    };
     s.querySelector('[data-s="save"]').onclick=()=>{
-      const name=val(s,'name').trim(); if(!name) return toast('請輸入材料名稱');
-      const qty=Math.max(1,parseInt(val(s,'qty'))||1);
       commit(()=>{
         const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
-        if(!Array.isArray(p.drops)) p.drops=[];
-        if(editing){
-          const d=p.drops.find(x=>x.id===dropId); if(!d) return;
-          const dup=p.drops.find(x=>x.id!==dropId&&x.name===name);
-          if(dup){ dup.qty+=qty; p.drops=p.drops.filter(x=>x.id!==dropId); }
-          else { d.name=name; d.qty=qty; }
-        }else{
-          const dup=p.drops.find(x=>x.name===name);
-          if(dup) dup.qty+=qty;
-          else p.drops.push({id:uid(),name,qty});
-        }
+        const old=new Map((p.drops||[]).map(d=>[d.name,d]));
+        p.drops=names.filter(n=>(work.get(n)||0)>0).map(n=>{
+          const ex=old.get(n);
+          return ex?{...ex,qty:work.get(n)}:{id:uid(),name:n,qty:work.get(n)};
+        });
       });
-      closeSheet();
-    };
-    if(editing) s.querySelector('[data-s="del"]').onclick=()=>{
-      commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) p.drops=p.drops.filter(x=>x.id!==dropId); });
       closeSheet();
     };
     s.querySelector('[data-s="cancel"]').onclick=closeSheet;
@@ -1651,8 +1771,8 @@ document.addEventListener('click',e=>{
   const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
   if(a==='role')      rolePickSheet(ptId,i);
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
-  if(a==='addDrop')   dropSheet(ptId,null);
-  if(a==='editDrop')  dropSheet(ptId,btn.dataset.d);
+  if(a==='addDrop')   dropsSheet(ptId);
+  if(a==='editDrop')  dropsSheet(ptId);
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
     commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
