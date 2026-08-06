@@ -164,6 +164,23 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   transition:background .16s;
 }
 .slot:hover{background:rgba(255,255,255,.9)}
+/* 便當：塞進來只領材料的人員，整列標成淺綠色方便一眼看出 */
+.slot.bento{background:rgba(34,197,94,.13)}
+.slot.bento:hover{background:rgba(34,197,94,.19)}
+.slot-mv{display:flex; flex-direction:column; gap:1px; flex:0 0 auto}
+.slot-mv button{
+  width:18px; height:14px; display:flex; align-items:center; justify-content:center;
+  color:var(--faint); border-radius:3px; line-height:1;
+}
+.slot-mv button:active{transform:scale(.9)}
+.slot-mv button:disabled{opacity:.28; pointer-events:none}
+.slot-mv svg{width:11px; height:11px; stroke:currentColor; stroke-width:2.4; fill:none; stroke-linecap:round; stroke-linejoin:round}
+.slot-bento{
+  flex:0 0 auto; width:24px; height:24px; border-radius:7px; font-size:13px; line-height:1;
+  color:var(--faint); border:1px solid var(--line-2); background:transparent; transition:all .14s;
+}
+.slot.bento .slot-bento{color:#16a34a; border-color:rgba(34,197,94,.4); background:rgba(34,197,94,.14)}
+.slot-bento:active{transform:scale(.9)}
 .slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
 .slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
@@ -301,6 +318,36 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .matgrp-v{margin-left:auto; font-size:16px; font-weight:680; color:var(--ink); letter-spacing:-.4px}
 .matgrp .bar-fill{background:var(--ms)}
 .matgrp .setrow.short .setrow-n,.matgrp .setrow.short .setrow-v b{color:#b45309}
+
+/* ── 售出計算 ──────────────────────────────────────────── */
+.salebox{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px 15px; box-shadow:var(--shadow)}
+.salebox .field label{display:flex; align-items:center; gap:8px}
+.minibtn{
+  margin-left:auto; font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:99px;
+  border:1px solid var(--line-2); background:var(--surface); color:var(--ink-2);
+}
+.minibtn:active{transform:scale(.95)}
+.calcout{margin-top:4px; border-top:1px dashed var(--line-2); padding-top:11px}
+.calcline{display:flex; align-items:baseline; gap:8px; padding:5px 0; font-size:12px; color:var(--muted)}
+.calcline b{margin-left:auto; font-size:17px; font-weight:700; color:var(--ink); letter-spacing:-.4px}
+.calcline.r b{color:#7c3aed}
+.calcline em{font-style:normal; color:var(--faint); font-size:11.5px}
+
+.salerow{
+  display:flex; align-items:center; gap:11px; background:var(--glass);
+  border:1px solid var(--line-2); border-radius:var(--r-md); padding:11px 13px;
+  margin-bottom:8px; box-shadow:var(--shadow);
+}
+.salerow-i{
+  flex:0 0 auto; width:26px; height:26px; border-radius:8px; background:var(--ink); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700;
+}
+.salerow-m{flex:1; min-width:0}
+.salerow-t{font-size:15px; font-weight:680; letter-spacing:-.3px}
+.salerow-t span{color:#7c3aed}
+.salerow-s{font-size:11.5px; color:var(--faint); margin-top:2px}
+.salerow-x{flex:0 0 auto; width:26px; height:26px; border-radius:8px; color:var(--faint); font-size:16px; line-height:1}
+.salerow-x:hover{color:var(--danger); background:rgba(220,38,38,.07)}
 
 /* ── PT 計算 ────────────────────────────────────────────── */
 .attrcard{
@@ -471,6 +518,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .ex-pt-t{font-size:11.5px; color:#7b8194}
 .ex-pt-c{margin-left:auto; font-size:13px; font-weight:600; color:#3d434f}
 .ex-row{display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid #f0f1f6}
+.ex-row.bento{background:rgba(34,197,94,.13)}
 .ex-row:last-child{border-bottom:none}
 .ex-nm{font-size:13.5px; color:#15171c; font-weight:500; min-width:88px; display:flex; flex-direction:column; gap:1px}
 .ex-buff{font-size:10.5px; color:#4f46e5; font-weight:500}
@@ -626,6 +674,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
     <div class="subseg" role="tablist" id="matSeg">
       <button role="tab" aria-selected="true"  data-sub="totals">材料總計</button>
       <button role="tab" aria-selected="false" data-sub="sets">組數試算</button>
+      <button role="tab" aria-selected="false" data-sub="sales">售出計算</button>
       <button role="tab" aria-selected="false" data-sub="detail">場次明細</button>
     </div>
 
@@ -641,6 +690,29 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
       </div>
       <div class="statgrid" id="setCards" style="margin-bottom:16px"></div>
       <div id="setDetail"></div>
+    </div>
+
+    <div class="subview" id="sub-sales">
+      <div class="salebox">
+        <div class="field">
+          <label>組數
+            <button class="minibtn" id="saleLoad" type="button">帶入目前組數</button>
+          </label>
+          <input type="number" id="saleSets" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="field-2">
+          <div class="field"><label>台幣（每組）</label>
+            <input type="number" id="saleTwd" min="0" step="any" inputmode="decimal"></div>
+          <div class="field"><label>遊戲 R 幣值（1 台幣 = ? R）</label>
+            <input type="number" id="saleRate" min="0" step="any" inputmode="decimal"></div>
+        </div>
+        <div class="calcout" id="saleOut"></div>
+        <button class="gbtn accent" id="saleAdd" style="width:100%; margin-top:12px">記錄這筆交易</button>
+      </div>
+
+      <div class="statgrid" id="saleCards" style="margin:16px 0"></div>
+      <div class="sec"><span class="sec-t">交易明細</span><div class="sec-line"></div></div>
+      <div id="saleList"></div>
     </div>
 
     <div class="subview" id="sub-detail">
@@ -670,7 +742,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v15';
+const APP_VERSION='v18';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -797,7 +869,7 @@ function roJobIdByName(name){
 // 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
 function seed(){
   const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
-  return {members:[],roles,schedule:{}};
+  return {members:[],roles,schedule:{},sales:[]};
 }
 
 function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[]}; }
@@ -842,6 +914,7 @@ function migrate(p){
     }
     delete m.buff;
   });
+  if(!Array.isArray(p.sales)) p.sales=[];   // 舊備份沒有售出紀錄欄位
   return p;
 }
 function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){ toast('儲存失敗，裝置空間可能已滿'); } }
@@ -951,11 +1024,16 @@ function renderBoard(){
         ? `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
              style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
         : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
-      return `<div class="slot" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
+      return `<div class="slot ${s.bento?'bento':''}" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
+        <div class="slot-mv">
+          <button data-act="moveUp" data-pt="${pt.id}" data-i="${si}" ${si===0?'disabled':''} aria-label="上移" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button data-act="moveDown" data-pt="${pt.id}" data-i="${si}" ${si===n-1?'disabled':''} aria-label="下移" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        </div>
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
           ${r&&r.buff?`<span class="slot-buff">${esc(r.buff)}</span>`:''}
         </div>${pill}
+        <button class="slot-bento" data-act="toggleBento" data-pt="${pt.id}" data-i="${si}" aria-label="標記便當（只領材料）" title="便當：只領材料">🍱</button>
         <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
       </div>`;
     }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
@@ -1079,14 +1157,20 @@ function renderRoles(){
    材料統計
    ══════════════════════════════════════════════════════════ */
 let matFrom='', matTo='', matRunName='';
+/* 售出計算：curSets 由組數試算算出，用來「帶入目前組數」；台幣與 R 幣值記住上次輸入省得每次重打 */
+let curSets=0, saleSets=null, saleTwd=null, saleRate=null;
+/* 千分位；小數最多兩位，整數就不補小數點 */
+const nf=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
 
 /* ── 材料系列分色 ─────────────────────────────────────────
-   碎片系列＝紅、浮塵系列＝藍、其餘（符文石之類）＝綠。
+   碎片系列＝紅、浮塵系列＝藍、其餘（未知的隕石碎片、符文石之類）＝綠。
    同一套顏色貫穿：統計頁長條圖、掉落標籤、批次編輯面板、匯出圖片。 */
+/* 名字裡雖然有「碎片／浮塵」，但不屬於六屬性系列的材料，一律歸到「其餘」 */
+const SERIES_EXCEPT=['未知的隕石碎片'];
 const MAT_SERIES=[
-  {key:'shard',label:'碎片',test:n=>n.includes('碎片'),
+  {key:'shard',label:'碎片',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('碎片'),
    color:'#dc2626', ink:'#991b1b', soft:'rgba(220,38,38,.09)', line:'rgba(220,38,38,.26)'},
-  {key:'dust', label:'浮塵',test:n=>n.includes('浮塵'),
+  {key:'dust', label:'浮塵',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('浮塵'),
    color:'#1d4ed8', ink:'#1e3a8a', soft:'rgba(29,78,216,.09)', line:'rgba(29,78,216,.26)'},
   {key:'other',label:'其餘',test:()=>true,
    color:'#0f9d76', ink:'#065f46', soft:'rgba(15,157,118,.10)', line:'rgba(15,157,118,.28)'},
@@ -1182,13 +1266,11 @@ function renderMaterials(){
   const sets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
   const nextNeed=(sets+1)*per;                      // 要湊到下一組，每種材料需累積到的量
   const shortTotal=SET_RECIPE.reduce((a,n)=>a+Math.max(0,nextNeed-(totals[n]||0)),0);
-  const leftover=SET_RECIPE.reduce((a,n)=>a+Math.max(0,(totals[n]||0)-sets*per),0);
+  curSets=sets;                                     // 給售出計算「帶入目前組數」用
 
   document.getElementById('setCards').innerHTML=[
     ['可組成組數', sets],
     ['湊下一組還缺', shortTotal],
-    ['已用於成組', sets*per*SET_RECIPE.length],
-    ['多餘零散', leftover],
   ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
 
   document.getElementById('setDetail').innerHTML=groupBySeries(SET_RECIPE).map(({s,names})=>
@@ -1216,6 +1298,63 @@ function renderMaterials(){
           `<span class="droppill" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
       </div>`).join('')
     : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
+
+  renderSales();
+}
+
+/* ── 售出計算 ─────────────────────────────────────────────
+   組數 × 台幣 = 總台幣；總台幣 × 遊戲 R 幣值 = 總遊戲 R 幣。
+   每按一次「記錄這筆交易」就存成一筆，交易明細照次數由新到舊列出，上方是累計。 */
+function saleAmounts(s){
+  const twd=(Number(s.sets)||0)*(Number(s.twd)||0);
+  return {twd, r:twd*(Number(s.rate)||0)};
+}
+
+function renderSales(){
+  const sales=state.sales||[];
+  const last=sales[sales.length-1];
+  /* 沒動過的欄位：組數跟著目前可組成的組數走，台幣／R 幣值沿用上一筆 */
+  if(saleSets===null) saleSets=curSets;
+  if(saleTwd===null)  saleTwd = last ? last.twd : '';
+  if(saleRate===null) saleRate= last ? last.rate : '';
+
+  const setsEl=document.getElementById('saleSets');
+  const twdEl=document.getElementById('saleTwd');
+  const rateEl=document.getElementById('saleRate');
+  if(document.activeElement!==setsEl) setsEl.value=saleSets;
+  if(document.activeElement!==twdEl)  twdEl.value=saleTwd;
+  if(document.activeElement!==rateEl) rateEl.value=saleRate;
+  document.getElementById('saleLoad').textContent=`帶入目前組數 ${curSets}`;
+
+  const cur={sets:saleSets,twd:saleTwd,rate:saleRate};
+  const a=saleAmounts(cur);
+  document.getElementById('saleOut').innerHTML=`
+    <div class="calcline">總台幣 <em>${nf(cur.sets)} 組 × ${nf(cur.twd)}</em><b>${nf(a.twd)}</b></div>
+    <div class="calcline r">總遊戲 R 幣 <em>${nf(a.twd)} × ${nf(cur.rate)}</em><b>${nf(a.r)}</b></div>`;
+
+  /* 累計 */
+  const sum=sales.reduce((o,s)=>{ const x=saleAmounts(s);
+    o.sets+=Number(s.sets)||0; o.twd+=x.twd; o.r+=x.r; return o; },{sets:0,twd:0,r:0});
+  document.getElementById('saleCards').innerHTML=[
+    ['交易次數', nf(sales.length)],
+    ['累計售出組數', nf(sum.sets)],
+    ['累計總台幣', nf(sum.twd)],
+    ['累計總 R 幣', nf(sum.r)],
+  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
+
+  document.getElementById('saleList').innerHTML = sales.length
+    ? sales.map((s,i)=>({s,i})).reverse().map(({s,i})=>{
+        const x=saleAmounts(s);
+        return `<div class="salerow">
+          <span class="salerow-i num">${i+1}</span>
+          <div class="salerow-m">
+            <div class="salerow-t num">${nf(x.twd)} <span>· ${nf(x.r)} R</span></div>
+            <div class="salerow-s">${fmtDate(s.date)} ${fmtDow(s.date)} · ${nf(s.sets)} 組 × ${nf(s.twd)} 台幣 · R 幣值 ${nf(s.rate)}</div>
+          </div>
+          <button class="salerow-x" data-act="delSale" data-id="${s.id}" aria-label="刪除這筆交易">×</button>
+        </div>`;
+      }).join('')
+    : `<div class="bench-empty">還沒有交易紀錄，填好上面的欄位後按「記錄這筆交易」</div>`;
 }
 function applyMatPreset(p){
   const t=todayKey();
@@ -1237,7 +1376,21 @@ matFiltBtn.onclick=()=>{
   matFiltBtn.setAttribute('aria-expanded',String(!open));
   matFiltBody.hidden=open;
 };
-/* 材料總計 / 組數試算 / 場次明細 子分頁 */
+/* 售出計算：欄位即時重算，不進 undo 堆疊（還沒按記錄的都只是試算） */
+const saleLive=(id,set)=>document.getElementById(id).oninput=e=>{ set(e.target.value); renderSales(); };
+saleLive('saleSets', v=>saleSets=v);
+saleLive('saleTwd',  v=>saleTwd=v);
+saleLive('saleRate', v=>saleRate=v);
+document.getElementById('saleLoad').onclick=()=>{ saleSets=curSets; renderSales(); };
+document.getElementById('saleAdd').onclick=()=>{
+  const sets=Number(saleSets)||0, twd=Number(saleTwd)||0, rate=Number(saleRate)||0;
+  if(sets<=0)  return toast('請先填組數');
+  if(twd<=0)   return toast('請先填每組台幣');
+  commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),sets,twd,rate}); });
+  toast('已記錄這筆交易');
+};
+
+/* 材料總計 / 組數試算 / 售出計算 / 場次明細 子分頁 */
 document.querySelectorAll('#matSeg [data-sub]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#matSeg [data-sub]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
   document.querySelectorAll('.subview').forEach(v=>v.classList.toggle('active',v.id==='sub-'+b.dataset.sub));
@@ -1863,7 +2016,7 @@ function buildExportNode(){
     const rows=pt.slots.length ? pt.slots.map(s=>{
       const m=memberById(s.memberId), r=roleById(s.roleId);
       if(!m) return '';
-      return `<div class="ex-row"><span class="ex-nm">${esc(m.name)}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
+      return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">🍱 便當</span>':''}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
         (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
            :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
     }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
@@ -1942,8 +2095,15 @@ document.addEventListener('click',e=>{
   const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
   if(a==='role')      rolePickSheet(ptId,i);
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
+  if(a==='moveUp')    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(i>0){ const [s]=p.slots.splice(i,1); p.slots.splice(i-1,0,s); } });
+  if(a==='moveDown')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(i<p.slots.length-1){ const [s]=p.slots.splice(i,1); p.slots.splice(i+1,0,s); } });
+  if(a==='toggleBento') commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); const s=p.slots[i]; s.bento=!s.bento; });
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
+  if(a==='delSale')   confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
+    commit(()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
+    toast('已刪除交易紀錄');
+  });
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
     commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
