@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<!-- 星座塔團隊 · 作者：BB -->
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef1f7">
+<title>星座塔團隊</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="./icons/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="星座塔團隊">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --vvh:100vh; --vvtop:0px; /* JS 依 visualViewport 動態更新，讓鍵盤彈出時 sheet 仍貼齊可視範圍，不被鍵盤蓋住或跑版 */
+  --bg:#eef1f7;
+  --ink:#15171c;
+  --ink-2:#3d434f;
+  --muted:#7b8194;
+  --faint:#a8aec0;
+  --line:rgba(21,23,28,.09);
+  --line-2:rgba(21,23,28,.055);
+  --glass:rgba(255,255,255,.72);
+  --glass-2:rgba(255,255,255,.55);
+  --accent:#4f46e5;
+  --accent-soft:rgba(79,70,229,.1);
+  --danger:#dc2626;
+  --ok:#0f9d76;
+  --r-lg:20px; --r-md:14px; --r-sm:9px;
+  --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
+  --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
+  --ease:cubic-bezier(.32,.72,0,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); min-height:100vh;
+  font-family:'Inter','Noto Sans TC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:none;
+}
+/* ambient night-sky wash */
+body::before{
+  content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(60vw 50vh at 12% -8%, rgba(99,102,241,.20), transparent 62%),
+    radial-gradient(55vw 45vh at 92% 4%, rgba(139,92,246,.16), transparent 60%),
+    radial-gradient(70vw 55vh at 50% 108%, rgba(34,211,238,.13), transparent 62%);
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:none;background:none;cursor:pointer;padding:0}
+input,textarea,select{
+  width:100%; background:rgba(255,255,255,.8); border:1px solid var(--line);
+  border-radius:var(--r-sm); padding:9px 11px; outline:none; transition:border-color .16s, box-shadow .16s;
+  font-size:16px; /* iOS Safari 對 <16px 欄位 focus 時會自動放大頁面，standalone PWA 下會造成版面跑掉、鍵盤位置跟著跑掉 */
+}
+input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1}
+
+/* ── layout ─────────────────────────────────────────────── */
+.app{max-width:1180px; margin:0 auto; padding:0 16px calc(120px + env(safe-area-inset-bottom)); transition:padding-bottom .3s var(--ease)}
+.app.nobench{padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+.topbar{
+  position:sticky; top:0; z-index:30; margin:0 -16px; padding:10px 16px 10px;
+  background:rgba(238,241,247,.82); backdrop-filter:blur(20px) saturate(1.6);
+  -webkit-backdrop-filter:blur(20px) saturate(1.6); border-bottom:1px solid var(--line-2);
+}
+.topbar-row{display:flex; align-items:center; gap:10px}
+.brand{display:flex; align-items:baseline; gap:8px; margin-right:auto; min-width:0}
+.brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
+.brand-sub{font-size:11px; color:var(--faint); letter-spacing:.4px; white-space:nowrap}
+.icon-btn{
+  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+  color:var(--ink-2); background:var(--glass-2); border:1px solid var(--line-2);
+  transition:background .16s, color .16s, transform .12s var(--ease);
+}
+.icon-btn:hover{background:#fff; color:var(--ink)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn:disabled{opacity:.32; cursor:default}
+.icon-btn svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+
+/* tabs */
+.tabbar{display:flex; gap:2px; margin-top:9px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px}
+.tab{
+  flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
+  color:var(--muted); transition:color .18s, background .18s, box-shadow .18s; white-space:nowrap;
+}
+.tab[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
+.view{display:none; animation:rise .34s var(--ease) both}
+.view.active{display:block}
+@keyframes rise{from{opacity:0; transform:translateY(7px)} to{opacity:1; transform:none}}
+
+/* section heading */
+.sec{display:flex; align-items:center; gap:10px; margin:26px 0 12px}
+.sec-t{font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.sec-line{flex:1; height:1px; background:var(--line-2)}
+
+/* ── date rail ──────────────────────────────────────────── */
+.daterail{display:flex; align-items:center; gap:6px; margin-top:14px}
+.dates{
+  display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity;
+  flex:1; min-width:0; padding:2px 0; scrollbar-width:none;
+  -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+}
+.dates::-webkit-scrollbar{display:none}
+.datechip{
+  /* 固定寬度，讓 390px 手機一次剛好看得到 4~5 天，其餘左右滑動 */
+  scroll-snap-align:center; flex:0 0 auto; width:64px; padding:8px 4px 9px;
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
+  text-align:center; transition:transform .18s var(--ease), box-shadow .18s, border-color .18s;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.datechip:active{transform:scale(.96)}
+.datechip .dc-dow{font-size:9.5px; color:var(--faint); letter-spacing:.04em; font-weight:500}
+.datechip .dc-md{font-size:15px; font-weight:600; letter-spacing:-.3px; margin-top:1px}
+.datechip .dc-meta{font-size:9px; color:var(--faint); margin-top:2px; white-space:nowrap}
+.datechip.today .dc-dow{color:var(--accent); font-weight:700}
+.date-actions{display:flex; align-items:center; gap:7px; margin-top:9px; flex-wrap:wrap}
+.date-actions-gap{flex:1}
+.date-actions .gbtn{padding:6px 11px; font-size:12px}
+.icon-btn.sm{width:30px; height:30px; flex:0 0 auto}
+.icon-btn.sm svg{width:15px; height:15px}
+.datechip[aria-current="true"]{
+  background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.35);
+}
+.datechip[aria-current="true"] .dc-dow,
+.datechip[aria-current="true"] .dc-meta{color:rgba(255,255,255,.62)}
+
+/* ── PT cards ───────────────────────────────────────────── */
+.ptgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:13px; margin-top:6px}
+.ptcard{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
+  backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  box-shadow:var(--shadow); overflow:hidden; transition:box-shadow .22s, border-color .18s, transform .18s var(--ease);
+  animation:rise .4s var(--ease) both;
+}
+.ptcard.drop-on{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft), var(--shadow-lift)}
+.pt-head{display:flex; align-items:flex-start; gap:10px; padding:14px 15px 0}
+.pt-id{min-width:0; flex:1}
+.pt-name{font-size:15.5px; font-weight:650; letter-spacing:-.2px; display:flex; align-items:center; gap:7px}
+.pt-time{font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px}
+.pt-count{text-align:right; line-height:1; white-space:nowrap}
+.pt-count b{font-size:21px; font-weight:680; letter-spacing:-.8px}
+.pt-count span{font-size:12px; color:var(--faint); font-weight:500}
+.pt-count.full b{color:var(--ok)}
+
+/* signature: segmented capacity meter */
+.meter{display:flex; gap:2.5px; padding:11px 15px 12px}
+.pip{flex:1; height:4px; border-radius:2px; background:rgba(21,23,28,.09); transition:background .3s var(--ease)}
+.pip.on{background:var(--accent)}
+.pip.full{background:var(--ok)}
+
+.slots{display:flex; flex-direction:column; gap:1px; background:var(--line-2); border-top:1px solid var(--line-2)}
+.slot{
+  display:flex; align-items:center; gap:9px; padding:9px 15px; background:rgba(255,255,255,.62);
+  transition:background .16s;
+}
+.slot:hover{background:rgba(255,255,255,.9)}
+.slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
+.slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
+.rolepill{
+  font-size:11.5px; font-weight:600; padding:3.5px 9px; border-radius:99px; white-space:nowrap;
+  border:1px solid; transition:transform .12s var(--ease);
+}
+.rolepill:active{transform:scale(.93)}
+.rolepill.empty{color:var(--faint); border-color:var(--line); background:transparent; font-weight:500}
+.slot-x{color:var(--faint); font-size:15px; line-height:1; padding:2px 3px; border-radius:5px; transition:color .16s, background .16s}
+.slot-x:hover{color:var(--danger); background:rgba(220,38,38,.08)}
+.slot-empty{
+  padding:10px 15px; font-size:12.5px; color:var(--faint); background:rgba(255,255,255,.42);
+  text-align:center;
+}
+.pt-foot{display:flex; gap:7px; padding:10px 13px; border-top:1px solid var(--line-2); background:rgba(255,255,255,.45)}
+
+/* small ghost button */
+.gbtn{
+  font-size:12px; font-weight:500; color:var(--ink-2); padding:6px 11px; border-radius:8px;
+  border:1px solid var(--line); background:rgba(255,255,255,.7); transition:background .16s, border-color .16s, transform .12s var(--ease);
+}
+.gbtn:hover{background:#fff; border-color:var(--line)}
+.gbtn:active{transform:scale(.96)}
+.gbtn.accent{color:#fff; background:var(--ink); border-color:var(--ink)}
+.gbtn.accent:hover{background:#000}
+.gbtn.warn:hover{color:var(--danger); border-color:rgba(220,38,38,.3); background:rgba(220,38,38,.05)}
+
+/* ── bench (unassigned pool) ────────────────────────────── */
+.bench{
+  position:fixed; left:0; right:0; bottom:0; z-index:25;
+  background:rgba(238,241,247,.9); backdrop-filter:blur(22px) saturate(1.6);
+  -webkit-backdrop-filter:blur(22px) saturate(1.6); border-top:1px solid var(--line);
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  transition:transform .3s var(--ease);
+}
+.bench.drop-on{box-shadow:inset 0 3px 0 var(--accent)}
+.bench.hidden{transform:translateY(105%); pointer-events:none}
+.bench-top{display:flex; align-items:center; gap:9px; margin-bottom:8px}
+.bench-t{font-size:11.5px; font-weight:600; color:var(--muted); letter-spacing:.03em}
+.bench-list{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; min-height:34px}
+.bench-list::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:7px 12px;
+  background:#fff; border:1px solid var(--line-2); border-radius:99px; font-size:13px; font-weight:500;
+  box-shadow:0 1px 2px rgba(21,23,28,.05); touch-action:pan-x; cursor:grab;
+  transition:transform .14s var(--ease), box-shadow .16s, opacity .16s;
+}
+.chip:active{cursor:grabbing}
+.chip.picked{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.chip.dragging{opacity:.32}
+.chip-dot{width:7px; height:7px; border-radius:99px; flex:0 0 auto}
+.chip-n{
+  font-size:10px; font-weight:700; color:#fff; background:var(--accent); border-radius:99px;
+  min-width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; padding:0 4px;
+}
+.bench-empty{font-size:12.5px; color:var(--faint); padding:8px 2px}
+.drag-ghost{
+  position:fixed; z-index:999; pointer-events:none; padding:7px 12px; background:#fff;
+  border-radius:99px; font-size:13px; font-weight:600; box-shadow:var(--shadow-lift);
+  border:1px solid var(--accent); transform:translate(-50%,-50%) scale(1.04);
+}
+
+/* ── rows (members / roles) ─────────────────────────────── */
+.list{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow)}
+.row{display:flex; align-items:center; gap:11px; padding:12px 15px; border-bottom:1px solid var(--line-2); transition:background .16s}
+.row:last-child{border-bottom:none}
+.row:hover{background:rgba(255,255,255,.72)}
+.row-main{flex:1; min-width:0}
+.row-t{font-size:14px; font-weight:550; display:flex; align-items:center; gap:7px}
+.row-s{font-size:11.5px; color:var(--muted); margin-top:1px; overflow-wrap:anywhere; line-height:1.4}
+.swatch{width:22px; height:22px; border-radius:7px; flex:0 0 auto; border:1px solid rgba(21,23,28,.1)}
+.checkbox{
+  width:21px; height:21px; border-radius:7px; flex:0 0 auto; border:1.5px solid var(--line);
+  background:#fff; position:relative; transition:background .16s, border-color .16s;
+}
+.checkbox.on{background:var(--accent); border-color:var(--accent)}
+.checkbox.on::after{
+  content:''; position:absolute; left:6px; top:2.5px; width:5px; height:10px;
+  border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+.row-selectable{cursor:pointer}
+.row-selectable:active{background:rgba(79,70,229,.06)}
+.badge{font-size:10px; font-weight:600; padding:2px 7px; border-radius:99px; background:rgba(21,23,28,.06); color:var(--muted)}
+.badge.off{background:rgba(220,38,38,.09); color:var(--danger)}
+.emptystate{
+  text-align:center; padding:38px 20px; color:var(--muted); font-size:13.5px;
+  background:var(--glass); border:1px dashed var(--line); border-radius:var(--r-lg);
+}
+.emptystate b{display:block; font-size:15px; color:var(--ink); font-weight:600; margin-bottom:5px}
+
+/* ── stats ──────────────────────────────────────────────── */
+.statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:11px}
+.stat{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px; box-shadow:var(--shadow)}
+.stat-k{font-size:11px; color:var(--muted); font-weight:500; letter-spacing:.03em}
+.stat-v{font-size:27px; font-weight:680; letter-spacing:-1px; margin-top:3px; line-height:1}
+.stat-v small{font-size:13px; color:var(--faint); font-weight:500; letter-spacing:0}
+.bars{display:flex; flex-direction:column; gap:9px; margin-top:4px}
+.bar-row{display:flex; align-items:center; gap:10px}
+.bar-l{font-size:12.5px; font-weight:500; width:74px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bar-track{flex:1; height:7px; background:rgba(21,23,28,.07); border-radius:99px; overflow:hidden}
+.bar-fill{height:100%; border-radius:99px; transition:width .5s var(--ease)}
+.bar-n{font-size:12px; color:var(--muted); width:22px; text-align:right; flex:0 0 auto}
+
+
+/* ── PT 計算 ────────────────────────────────────────────── */
+.attrcard{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
+  padding:13px 15px 14px; margin-bottom:9px; box-shadow:var(--shadow);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-left:3px solid var(--ac); animation:rise .4s var(--ease) both;
+}
+.attr-top{display:flex; align-items:center; gap:8px; margin-bottom:9px}
+.attr-nm{font-size:14.5px; font-weight:600; letter-spacing:-.2px}
+.attr-en{font-size:10.5px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase}
+.attr-pt{
+  margin-left:auto; font-size:12px; font-weight:650; padding:3px 9px; border-radius:99px;
+  color:var(--ac); background:var(--ac-soft); border:1px solid var(--ac-line);
+}
+.stars{display:flex; align-items:center; gap:3px}
+.star{
+  width:30px; height:30px; display:grid; place-items:center; border-radius:8px; font-size:18px;
+  color:rgba(21,23,28,.13); transition:color .18s var(--ease), transform .14s var(--ease), background .16s;
+}
+.star:hover{background:rgba(21,23,28,.04)}
+.star:active{transform:scale(.88)}
+.star.on{color:var(--ac)}
+.star-lb{margin-left:7px; font-size:11px; color:var(--faint); font-weight:500}
+
+.totalcard{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
+  padding:19px 18px 17px; box-shadow:var(--shadow); text-align:center;
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+}
+.total-k{font-size:11px; font-weight:550; color:var(--muted); letter-spacing:.07em; text-transform:uppercase}
+.total-v{font-size:52px; font-weight:700; letter-spacing:-2.5px; line-height:1.05; margin:5px 0 3px}
+.total-v small{font-size:16px; font-weight:550; color:var(--faint); letter-spacing:-.2px; margin-left:2px}
+.total-meter{display:flex; gap:2.5px; margin:13px 0 12px}
+.tier{
+  display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600;
+  padding:6px 14px; border-radius:99px; background:var(--accent-soft); color:var(--accent);
+  border:1px solid rgba(79,70,229,.2);
+}
+.tier.hi{background:rgba(15,157,118,.1); color:var(--ok); border-color:rgba(15,157,118,.25)}
+.tier-dot{width:6px; height:6px; border-radius:99px; background:currentColor}
+.presets{display:flex; gap:5px; margin-top:13px}
+.presets .gbtn{flex:1; min-width:0; text-align:center; padding:9px 4px; font-weight:550; font-size:11.5px; letter-spacing:-.2px}
+.bd{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); overflow:hidden; box-shadow:var(--shadow)}
+.bd-row{display:flex; align-items:center; gap:11px; padding:10px 15px; border-bottom:1px solid var(--line-2); font-size:13px}
+.bd-row:last-child{border-bottom:none}
+.bd-nm{font-weight:500; width:44px; flex:0 0 auto}
+.bd-st{color:var(--faint); font-size:12px; letter-spacing:1px; flex:1}
+.bd-pt{font-weight:600; color:var(--ac)}
+
+/* ── sheet / modal ──────────────────────────────────────── */
+.scrim{
+  position:fixed; left:0; right:0; top:0; height:calc(var(--vvh, 100vh)); z-index:100; background:rgba(21,23,28,.34);
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  display:flex; align-items:flex-end; justify-content:center; animation:fade .2s ease both;
+  transform:translateY(var(--vvtop,0px));
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{
+  width:100%; max-width:480px; background:#fff; border-radius:22px 22px 0 0;
+  padding:8px 18px calc(20px + env(safe-area-inset-bottom)); max-height:calc(var(--vvh, 100vh) * .88); overflow-y:auto;
+  animation:slide .34s var(--ease) both; box-shadow:0 -8px 40px rgba(21,23,28,.2);
+}
+@keyframes slide{from{transform:translateY(100%)}to{transform:none}}
+.grip{width:34px; height:4px; background:rgba(21,23,28,.14); border-radius:99px; margin:6px auto 12px}
+.sheet-t{font-size:16.5px; font-weight:650; letter-spacing:-.2px; margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block; font-size:11.5px; font-weight:550; color:var(--muted); margin-bottom:5px}
+.field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.sheet-foot{display:flex; gap:9px; margin-top:16px}
+.preset-row{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 16px}
+.sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
+.rolegrid{display:flex; flex-wrap:wrap; gap:7px}
+.swatches{display:flex; flex-wrap:wrap; gap:7px}
+.sw-opt{width:30px; height:30px; border-radius:9px; border:2px solid transparent; transition:transform .14s var(--ease)}
+.sw-opt[aria-pressed="true"]{border-color:var(--ink); transform:scale(1.1)}
+.toggle{display:flex; align-items:center; gap:9px; font-size:13.5px; padding:9px 0}
+.toggle input{width:auto; margin:0}
+
+/* BUFF 技能選擇器 */
+.skillgrp{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em; margin:13px 0 6px}
+.skillgrid{display:flex; flex-wrap:wrap; gap:7px}
+.skillpill{
+  padding:7px 12px; border-radius:99px; border:1px solid var(--line); background:#fff;
+  font-size:12.5px; font-weight:500; transition:background .14s, color .14s, border-color .14s;
+}
+.skillpill[aria-pressed="true"]{color:#fff; background:var(--accent); border-color:var(--accent)}
+
+/* 掉落物 */
+.dropsec{margin-top:12px; padding-top:12px; border-top:1px solid var(--line-2)}
+.dropsec-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px}
+.dropsec-t{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em}
+.dropgrid{display:flex; flex-wrap:wrap; gap:7px}
+.droppill{
+  display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:99px;
+  border:1px solid rgba(180,83,9,.28); background:rgba(180,83,9,.08); color:#92400e;
+  font-size:12.5px; font-weight:500;
+}
+.droppill .drop-qty{font-weight:700; color:#b45309}
+.buffprev{
+  font-size:12.5px; color:var(--ink-2); background:var(--accent-soft);
+  border-radius:10px; padding:9px 11px; margin-top:14px; line-height:1.5;
+}
+.buffprev b{font-weight:600}
+.buffprev .none{color:var(--faint); font-weight:400}
+
+/* toast */
+.toast{
+  position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:200;
+  transform:translateX(-50%); background:var(--ink); color:#fff; font-size:13px; font-weight:500;
+  padding:10px 17px; border-radius:99px; box-shadow:var(--shadow-lift); animation:toastIn .3s var(--ease) both;
+}
+@keyframes toastIn{from{opacity:0; transform:translate(-50%,10px)}to{opacity:1; transform:translate(-50%,0)}}
+
+/* export canvas surface (built fresh, no buttons/animations) */
+.exportwrap{position:fixed; left:-99999px; top:0; background:#fff; padding:28px 30px; width:auto}
+.ex-h{font-size:21px; font-weight:700; letter-spacing:-.4px; color:#15171c}
+.ex-sub{font-size:12px; color:#7b8194; margin-top:3px}
+.ex-pt{margin-top:20px; border:1px solid #e6e8ef; border-radius:14px; overflow:hidden; min-width:250px}
+.ex-pt-h{display:flex; align-items:baseline; gap:9px; padding:11px 14px; background:#f6f7fb; border-bottom:1px solid #e6e8ef}
+.ex-pt-n{font-size:15px; font-weight:650; color:#15171c}
+.ex-pt-t{font-size:11.5px; color:#7b8194}
+.ex-pt-c{margin-left:auto; font-size:13px; font-weight:600; color:#3d434f}
+.ex-row{display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid #f0f1f6}
+.ex-row:last-child{border-bottom:none}
+.ex-nm{font-size:13.5px; color:#15171c; font-weight:500; min-width:88px; display:flex; flex-direction:column; gap:1px}
+.ex-buff{font-size:10.5px; color:#4f46e5; font-weight:500}
+.ex-drops{font-size:11px; color:#92400e; background:rgba(180,83,9,.08); padding:7px 14px; border-top:1px solid #f0f1f6}
+.ex-rl{font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; border:1px solid}
+.ex-cols{display:flex; gap:16px; align-items:flex-start}
+
+@media (max-width:560px){
+  .pt-count b{font-size:19px}
+  .ptgrid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <span class="brand-mark">星座塔團隊</span>
+        <span class="brand-sub" id="brandSub"></span>
+      </div>
+      <button class="icon-btn" id="btnUndo" title="復原" aria-label="復原">
+        <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
+      </button>
+      <button class="icon-btn" id="btnRedo" title="重做" aria-label="重做">
+        <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>
+      </button>
+      <button class="icon-btn" id="btnMore" title="更多" aria-label="更多">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+      </button>
+    </div>
+    <div class="tabbar" role="tablist">
+      <button class="tab" role="tab" aria-selected="true"  data-view="board">陣容分配</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="calc">PT 計算</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="members">成員</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="roles">職業</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="stats">材料統計</button>
+    </div>
+  </div>
+
+  <!-- 排班 -->
+  <section class="view active" id="view-board">
+    <div class="daterail">
+      <div class="dates" id="dateRail"></div>
+    </div>
+    <div class="date-actions">
+      <button class="icon-btn sm" id="btnPrevDate" aria-label="前一天">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button class="icon-btn sm" id="btnNextDate" aria-label="後一天">
+        <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <button class="gbtn" id="btnToday">今天</button>
+      <span class="date-actions-gap"></span>
+      <button class="gbtn" id="btnAddDate">＋ 新增</button>
+      <button class="gbtn" id="btnEditDate">修改</button>
+      <button class="gbtn warn" id="btnDelDate">刪除</button>
+    </div>
+    <div class="sec"><span class="sec-t" id="boardLabel">RUN</span><div class="sec-line"></div>
+      <button class="gbtn" id="btnAddPt">＋ 新增 RUN</button>
+    </div>
+    <div class="ptgrid" id="ptGrid"></div>
+  </section>
+
+
+  <!-- PT 計算 -->
+  <section class="view" id="view-calc">
+    <div class="sec"><span class="sec-t">屬性配置</span><div class="sec-line"></div></div>
+    <div id="attrCards"></div>
+
+    <div class="sec"><span class="sec-t">合計</span><div class="sec-line"></div></div>
+    <div class="totalcard">
+      <div class="total-k">總 PT 等級</div>
+      <div class="total-v num" id="calcTotal">0<small>pt</small></div>
+      <div class="total-meter" id="calcMeter"></div>
+      <span class="tier" id="calcTier"><span class="tier-dot"></span><span id="calcTierText">50 層挑戰範圍</span></span>
+      <div class="presets">
+        <button class="gbtn" data-preset="0,0,0,0,0">重置</button>
+        <button class="gbtn" data-preset="0,5,5,3,5">825PT</button>
+        <button class="gbtn" data-preset="0,5,5,5,5">925PT</button>
+        <button class="gbtn" data-preset="3,5,5,5,5">970PT</button>
+        <button class="gbtn" data-preset="5,5,5,5,5">1000PT</button>
+      </div>
+    </div>
+
+    <div class="sec"><span class="sec-t">屬性明細</span><div class="sec-line"></div></div>
+    <div class="bd" id="calcBreak"></div>
+  </section>
+
+  <!-- 成員 -->
+  <section class="view" id="view-members">
+    <div class="sec"><span class="sec-t">成員</span><div class="sec-line"></div>
+      <button class="gbtn accent" id="btnAddMember">＋ 新增成員</button>
+    </div>
+    <div class="field"><input id="memberSearch" placeholder="搜尋名字或暱稱⋯"></div>
+    <div id="memberList"></div>
+  </section>
+
+  <!-- 職業 -->
+  <section class="view" id="view-roles">
+    <div class="sec"><span class="sec-t">職業</span><div class="sec-line"></div>
+      <div id="roleHeaderActions"></div>
+    </div>
+    <div id="roleList"></div>
+  </section>
+
+  <!-- 材料統計 -->
+  <section class="view" id="view-stats">
+    <div class="sec"><span class="sec-t">材料統計</span><div class="sec-line"></div></div>
+    <div class="field-2">
+      <div class="field"><label>從</label><input type="date" id="matFrom"></div>
+      <div class="field"><label>到</label><input type="date" id="matTo"></div>
+    </div>
+    <div class="field"><label>場次（選填，只看特定 RUN 名稱）</label><select id="matRun"><option value="">全部</option></select></div>
+    <div class="preset-row">
+      <button class="gbtn" data-preset="today">今天</button>
+      <button class="gbtn" data-preset="week">本週</button>
+      <button class="gbtn" data-preset="month">本月</button>
+      <button class="gbtn" data-preset="all">全部</button>
+    </div>
+    <div class="statgrid" id="matCards"></div>
+    <div class="sec"><span class="sec-t">材料總計</span><div class="sec-line"></div></div>
+    <div class="bars" id="matBars"></div>
+    <div class="sec"><span class="sec-t">場次明細</span><div class="sec-line"></div></div>
+    <div id="matDetail"></div>
+  </section>
+</div>
+
+<!-- 待分配成員 -->
+<div class="bench" id="bench" data-drop="bench">
+  <div class="bench-top">
+    <span class="bench-t" id="benchTitle">待分配</span>
+    <div class="sec-line"></div>
+    <button class="gbtn" id="btnClearDay">清空本日</button>
+  </div>
+  <div class="bench-list" id="benchList"></div>
+</div>
+
+<div id="sheetHost"></div>
+<div id="exportHost"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   星座塔團隊 — 資料模型
+   state = { members, roles, schedule:{ 'YYYY-MM-DD': [pt,...] } }
+   pt    = { id, name, time, capacity, slots:[{memberId, roleId}] }
+   ══════════════════════════════════════════════════════════ */
+const KEY='pt-manager-v1';
+/* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
+const APP_VERSION='v11';
+const APP_AUTHOR='BB';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
+
+// 四轉職業（基本職業／四轉欄）——新安裝的預設職業清單
+const FOURTH_JOBS=[
+  {name:'盧恩龍爵',icon:'🐉'},   // Dragon Knight
+  {name:'帝國聖衛軍',icon:'🛡'}, // Imperial Guard
+  {name:'深淵追跡者',icon:'🔪'}, // Abyss Chaser
+  {name:'十字影武',icon:'🗡'},   // Shadow Cross
+  {name:'機甲神匠',icon:'🔧'},   // Meister
+  {name:'生命締造者',icon:'🧪'}, // Biolo
+  {name:'風鷹狩獵者',icon:'🏹'}, // Wind Hawk
+  {name:'天籟頌者',icon:'🎵'},   // Troubadour
+  {name:'樂之舞靈',icon:'💃'},   // Trouvere
+  {name:'禁咒魔導士',icon:'🔮'}, // Arch Mage
+  {name:'元素支配者',icon:'✨'}, // Elemental Master
+  {name:'樞機主教',icon:'⛪'},   // Cardinal
+  {name:'聖裁者',icon:'🔥'},     // Inquisitor
+];
+
+/* RO 支援／BUFF 技能庫（資料來源：仙境全書 ro.ntome.com/skill）
+   只收錄增益／支援類技能，不含攻擊、被動精熟等。
+   p = 前一轉職業，用來把整條轉職鏈（一轉～四轉）的支援技能一起列出來。 */
+const RO_JOBS={
+  novice:{n:"初心者",c:"初心者",s:[]},
+  acolyte:{n:"服事",c:"一轉",s:["光之障壁","加速術","天使之護","天使之賜福","天使之障壁","治療術","治癒術"]},
+  archer:{n:"弓箭手",c:"一轉",s:[]},
+  magician:{n:"魔法師",c:"一轉",s:[]},
+  merchant:{n:"商人",c:"一轉",s:[]},
+  swordman:{n:"劍士",c:"一轉",s:[]},
+  thief:{n:"盜賊",c:"一轉",s:[]},
+  alchemist:{n:"鍊金術師",c:"二轉",p:"merchant",s:["化學武器保護","化學盾牌保護","化學鎧甲保護","化學頭盔保護"]},
+  assassin:{n:"刺客",c:"二轉",p:"thief",s:[]},
+  bard:{n:"吟遊詩人",c:"二轉",p:"archer",s:["伊登的蘋果","尼貝隆根之戒指","布萊奇之詩","經驗值倍增"]},
+  blacksmith:{n:"鐵匠",c:"二轉",p:"merchant",s:["強化火屬性","所有速度激發"]},
+  crusader:{n:"十字軍",c:"二轉",p:"swordman",s:["天使之護","治療術","治癒術","神祐之光"]},
+  dancer:{n:"舞孃",c:"二轉",p:"archer",s:["尼貝隆根之戒指","經驗值倍增"]},
+  hunter:{n:"獵人",c:"二轉",p:"archer",s:[]},
+  knight:{n:"騎士",c:"二轉",p:"swordman",s:[]},
+  monk:{n:"武道家",c:"二轉",p:"acolyte",s:[]},
+  priest:{n:"祭司",c:"二轉",p:"acolyte",s:["光耀之堂","幸運之頌歌","復活術","撒水祈福","犧牲祈福","痊癒術","神威祈福","聖之祈福","聖母之頌歌","轉生術"]},
+  rogue:{n:"流氓",c:"二轉",p:"thief",s:[]},
+  sage:{n:"賢者",c:"二轉",p:"magician",s:["地元素領域","地屬性附加","水元素領域","水屬性附加","火元素領域","火屬性附加","風元素領域","風屬性附加"]},
+  wizard:{n:"巫師",c:"二轉",p:"magician",s:[]},
+  assassin_cross:{n:"十字刺客",c:"轉生二轉",p:"assassin",s:[]},
+  champion:{n:"武術宗師",c:"轉生二轉",p:"monk",s:[]},
+  clown:{n:"搞笑藝人",c:"轉生二轉",p:"bard",s:[]},
+  creator:{n:"創造者",c:"轉生二轉",p:"alchemist",s:["所有化學武器保護"]},
+  gypsy:{n:"冷豔舞姬",c:"轉生二轉",p:"dancer",s:[]},
+  high_priest:{n:"神官",c:"轉生二轉",p:"priest",s:["聖母之祈福"]},
+  high_wizard:{n:"超魔導師",c:"轉生二轉",p:"wizard",s:[]},
+  lord_knight:{n:"騎士領主",c:"轉生二轉",p:"knight",s:[]},
+  paladin:{n:"聖殿十字軍",c:"轉生二轉",p:"crusader",s:["聖音"]},
+  professor:{n:"智者",c:"轉生二轉",p:"sage",s:[]},
+  sniper:{n:"神射手",c:"轉生二轉",p:"hunter",s:[]},
+  stalker:{n:"神行太保",c:"轉生二轉",p:"rogue",s:[]},
+  whitesmith:{n:"神工匠",c:"轉生二轉",p:"blacksmith",s:[]},
+  archbishop:{n:"大主教",c:"三轉",p:"high_priest",s:["奉獻頌","感恩歌","感恩祈禱","慈悲術","折枝讚頌","淨化","祈禱文","純白百合花","羔羊歌頌","聖靈降臨祈禱","解除","贖罪","集結","高階治癒術"]},
+  genetic:{n:"基因學者",c:"三轉",p:"creator",s:["爆炸孢子","調配料理"]},
+  guillotine_cross:{n:"十字斬首者",c:"三轉",p:"assassin_cross",s:["解毒劑"]},
+  mechanic:{n:"機械工匠",c:"三轉",p:"whitesmith",s:[]},
+  minstrel:{n:"宮廷樂師",c:"三轉",p:"clown",s:["和聲演奏","課程","豐年頌","魔力之歌"]},
+  ranger:{n:"遊俠",c:"三轉",p:"sniper",s:[]},
+  royal_guard:{n:"皇家禁衛隊",c:"三轉",p:"paladin",s:["先鋒部隊","威信","王的恩典","聖冕加護","聚集","虔誠"]},
+  rune_knight:{n:"盧恩騎士",c:"三轉",p:"lord_knight",s:[]},
+  shadow_chaser:{n:"魅影追蹤者",c:"三轉",p:"stalker",s:[]},
+  sorcerer:{n:"妖術師",c:"三轉",p:"professor",s:["加熱術","地之紋章","打擊強化","水之紋章","火之紋章","精靈治癒","精靈激發","精靈結界","風之紋章"]},
+  sura:{n:"修羅",c:"三轉",p:"champion",s:[]},
+  wanderer:{n:"浪姬舞者",c:"三轉",p:"gypsy",s:["戀人交響樂","課程","豐年頌","魔力之歌"]},
+  warlock:{n:"咒術士",c:"三轉",p:"high_wizard",s:[]},
+  abyss_chaser:{n:"深淵追跡者",c:"四轉",p:"shadow_chaser",s:[]},
+  arch_mage:{n:"禁咒魔導士",c:"四轉",p:"warlock",s:["毀滅颶風","萬紫千紅"]},
+  biolo:{n:"生命締造者",c:"四轉",p:"genetic",s:["全影化學保護","全體化學保護"]},
+  cardinal:{n:"樞機主教",c:"四轉",p:"archbishop",s:["光耀天命","全心奉獻","博愛治癒","治癒誓言","祝福讚歌","神聖權能","神聖花雨","神聖防護","聖光治癒","靈魂忠誠"]},
+  dragon_knight:{n:"盧恩龍爵",c:"四轉",p:"rune_knight",s:["天龍光環","活力之源"]},
+  elemental_master:{n:"元素支配者",c:"四轉",p:"sorcerer",s:["元素天幕","咒力賦予"]},
+  imperial_guard:{n:"帝國聖衛軍",c:"四轉",p:"royal_guard",s:["守護神盾","抗性聖盾","霸權震域"]},
+  inquisitor:{n:"聖裁者",c:"四轉",p:"sura",s:["聖油洗禮"]},
+  meister:{n:"機甲神匠",c:"四轉",p:"mechanic",s:["衝擊撼動"]},
+  shadow_cross:{n:"十字影武",c:"四轉",p:"guillotine_cross",s:[]},
+  troubadour:{n:"天籟頌者",c:"四轉",p:"minstrel",s:["普隆德拉進行曲","神秘交響曲","舞台禮儀"]},
+  wind_hawk:{n:"風鷹狩獵者",c:"四轉",p:"ranger",s:["熱愛自然"]},
+  windsinger:{n:"樂之舞靈",c:"四轉",p:"wanderer",s:["普隆德拉進行曲","神秘交響曲","舞台禮儀"]},
+  alicia:{n:"阿利提亞",c:"擴充職業",p:"kanoss",s:["同步飛翔","大地豐收","自然助力","自然調和"]},
+  druid:{n:"德魯伊",c:"擴充職業",s:["土地之花","繁花盛放","自然盾牌"]},
+  extended_super_novice:{n:"終極初學者",c:"擴充職業",p:"super_novice",s:[]},
+  gunslinger:{n:"神槍手",c:"擴充職業",s:[]},
+  kagerou:{n:"日影忍者",c:"擴充職業",p:"ninja",s:["明鏡止水","靈魂阻隔"]},
+  kagerou_upper:{n:"流浪忍者",c:"擴充職業",p:"kagerou",s:[]},
+  kanoss:{n:"卡諾斯",c:"擴充職業",p:"druid",s:["自然保護","自然活力","風之帳幕"]},
+  night_watch:{n:"夜行使",c:"擴充職業",p:"rebellion",s:[]},
+  ninja:{n:"忍者",c:"擴充職業",s:[]},
+  oboro:{n:"月影忍者",c:"擴充職業",p:"ninja",s:["明鏡止水","靈魂阻隔"]},
+  oboro_upper:{n:"疾風忍者",c:"擴充職業",p:"oboro",s:[]},
+  rebellion:{n:"反叛者",c:"擴充職業",p:"gunslinger",s:[]},
+  sky:{n:"獵靈士",c:"擴充職業",p:"soul_linker",s:["凱渥特","巨人靈魂","影子靈魂","精靈靈魂","艾斯哈","艾斯帕","艾斯核","隼鷹靈魂","靈魂集結"]},
+  soul_emperor:{n:"天帝",c:"擴充職業",p:"star_emperor",s:[]},
+  soul_linker:{n:"悟靈士",c:"擴充職業",p:"taekwon",s:["一轉上等職業的靈魂","凱易哲","凱易娜","凱易特","凱誣僕","凱阿希","刺客的靈魂","十字軍的靈魂","吟遊詩人和舞孃的靈魂","巫師的靈魂","悟靈士的靈魂","拳聖的靈魂","武道家的靈魂","流氓的靈魂","獵人的靈魂","祭司的靈魂","艾斯克","艾斯卡","艾斯提","艾斯敦","艾斯誣","艾斯麻","賢者的靈魂","超級初學者的靈魂","鍊金術師的靈魂","鐵匠的靈魂","騎士的靈魂"]},
+  spirit_handler:{n:"魂靈師",c:"擴充職業",p:"summoner",s:["急速交流","神龜海洋慶典","靈物祝福"]},
+  spirit_shaman:{n:"契靈士",c:"擴充職業",p:"sky",s:["五行符","四方五行陣","四方神符","天地神靈","朱雀符","武士符","法師符","玄武符","白虎符","護身符","靈魂聚集","青龍符"]},
+  star_emperor:{n:"拳皇",c:"擴充職業",p:"star_gladiator",s:[]},
+  star_gladiator:{n:"拳聖",c:"擴充職業",p:"taekwon",s:["太陽和月亮和星星的朋友","太陽的平安感","太陽的祝福","星星的平安感","星星的祝福","月亮的平安感","月亮的祝福"]},
+  summoner:{n:"召喚師",c:"擴充職業",s:["大地之魂","大地力量","海洋之魂","海洋力量","生命之魂","生命力量","舔毛"]},
+  super_novice:{n:"超級初學者",c:"擴充職業",s:[]},
+  taekwon:{n:"跆拳少年",c:"擴充職業",s:["加油","溫暖的風"]}
+};
+/* 取得某職業的整條轉職鏈（一轉 → 該職業） */
+function roJobChain(jid){
+  const out=[]; let cur=jid;
+  while(cur&&RO_JOBS[cur]){ out.unshift(cur); cur=RO_JOBS[cur].p; }
+  return out;
+}
+/* 鏈上有支援技能的職業才列進選單，避免選了卻沒東西可挑 */
+function roPickableJobs(){
+  return Object.keys(RO_JOBS).filter(jid=>roJobChain(jid).some(c=>RO_JOBS[c].s.length));
+}
+/* 用職業名稱回頭找 RO 職業 id（App 預設職業就是四轉職業名，所以多半對得上） */
+function roJobIdByName(name){
+  const n=(name||'').trim();
+  return Object.keys(RO_JOBS).find(jid=>RO_JOBS[jid].n===n)||null;
+}
+
+// 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
+function seed(){
+  const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
+  return {members:[],roles,schedule:{}};
+}
+
+function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[]}; }
+function todayKey(){ const d=new Date(); return ymd(d); }
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
+const DOW=['日','一','二','三','四','五','六'];
+function fmtDate(k){ const d=parseYmd(k); return String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0'); }
+function fmtDow(k){ return '週'+DOW[parseYmd(k).getDay()]; }
+/* 手動組時間字串，不用 toLocaleString —— zh-TW 這個 locale 在部分瀏覽器上 hour12:false 不會正確生效，
+   半夜容易跑出「24:xx」或又跳回 12 小時制帶「上午/下午」的錯誤格式，自己組才會保證是正確的 24 小時制在地時間 */
+function fmtNow(){
+  const d=new Date();
+  const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
+  const h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'), se=String(d.getSeconds()).padStart(2,'0');
+  return `${y}/${mo}/${da} ${h}:${mi}:${se}`;
+}
+function shiftDate(k,n){ const d=parseYmd(k); d.setDate(d.getDate()+n); return ymd(d); }
+
+let state=load(), curDate=null, undoStack=[], redoStack=[], picked=null, roleFilter=null, dateRailReady=false;
+
+function load(){
+  try{
+    const r=localStorage.getItem(KEY);
+    if(r){ const p=JSON.parse(r); if(p&&p.members&&p.roles&&p.schedule) return migrate(p); }
+  }catch(e){}
+  return seed();
+}
+// 舊資料相容：把 PT 1 / PT1 這類舊命名轉成 RUN 1 / RUN1
+function migrate(p){
+  Object.values(p.schedule).forEach(pts=>pts.forEach(pt=>{
+    const m=/^PT\s*(\d+)$/i.exec((pt.name||'').trim());
+    if(m) pt.name='RUN '+m[1];
+    if(!Array.isArray(pt.drops)) pt.drops=[];
+  }));
+  /* 技能 BUFF 從「成員」搬到「職業」：把成員身上舊的 buff 文字，搬到他預設職業的 buff 上（該職業還沒設定過的話），
+     這樣同職業的人 BUFF 才會一致，也才能跟著指派的職業正確標記，不用每個成員手動輸入一次 */
+  (p.members||[]).forEach(m=>{
+    if(m.buff&&m.defaultRoleId){
+      const r=(p.roles||[]).find(x=>x.id===m.defaultRoleId);
+      if(r&&!r.buff) r.buff=m.buff;
+    }
+    delete m.buff;
+  });
+  return p;
+}
+function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){ toast('儲存失敗，裝置空間可能已滿'); } }
+function snap(){ return JSON.stringify(state); }
+
+/* 每次改動前呼叫，寫入復原點 */
+function commit(fn){
+  const before=snap();
+  fn();
+  if(snap()===before) return;
+  undoStack.push(before); if(undoStack.length>60) undoStack.shift();
+  redoStack.length=0;
+  persist(); render();
+}
+function undo(){
+  if(!undoStack.length) return;
+  redoStack.push(snap());
+  state=JSON.parse(undoStack.pop());
+  persist(); render(); toast('已復原');
+}
+function redo(){
+  if(!redoStack.length) return;
+  undoStack.push(snap());
+  state=JSON.parse(redoStack.pop());
+  persist(); render(); toast('已重做');
+}
+
+/* ── 查詢輔助 ─────────────────────────────────────────── */
+const dates=()=>Object.keys(state.schedule).sort();
+const ptsOf=k=>state.schedule[k]||[];
+const memberById=id=>state.members.find(m=>m.id===id);
+const roleById=id=>state.roles.find(r=>r.id===id);
+const sortedRoles=()=>[...state.roles].sort((a,b)=>a.order-b.order);
+function assignedIds(k){ const s=new Set(); ptsOf(k).forEach(p=>p.slots.forEach(x=>s.add(x.memberId))); return s; }
+/* 同一天可以把同一個人加進多個 RUN，所以「成員名單」永遠列出全部啟用中的成員，
+   不會因為已經加過就消失 —— 這樣才能重複拖曳/點選加入不同場次。 */
+function countRuns(k,memberId){ return ptsOf(k).reduce((n,p)=>n+(p.slots.some(s=>s.memberId===memberId)?1:0),0); }
+function benchMembers(k){ return state.members.filter(m=>m.active); }
+/* 純粹「今天一場都還沒排到」的人 —— 給統計卡片用 */
+function unassignedMembers(k){ const a=assignedIds(k); return state.members.filter(m=>m.active&&!a.has(m.id)); }
+function ensureDate(k){ if(!state.schedule[k]) state.schedule[k]=[]; }
+
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const el=document.createElement('div'); el.className='toast'; el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); },1900);
+}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
+
+/* ══════════════════════════════════════════════════════════
+   繪製
+   ══════════════════════════════════════════════════════════ */
+/* 開啟 App 預設停在「今天」；今天還沒建立排班時，退而求其次選離今天最近的一天（同距離優先選未來） */
+function defaultDate(){
+  const ks=dates(), tk=todayKey();
+  if(!ks.length) return tk;
+  if(ks.includes(tk)) return tk;
+  const t=parseYmd(tk).getTime();
+  return ks.slice().sort((a,b)=>{
+    const da=parseYmd(a).getTime()-t, db=parseYmd(b).getTime()-t;
+    const ad=Math.abs(da)-Math.abs(db);
+    return ad!==0?ad:(db-da);
+  })[0];
+}
+function render(){
+  const ks=dates();
+  if(!ks.length){ ensureDate(todayKey()); persist(); }
+  if(!curDate||!state.schedule[curDate]) curDate=defaultDate();
+  renderDates(); renderBoard(); renderBench(); renderMembers(); renderRoles(); renderMaterials();
+  document.getElementById('btnUndo').disabled=!undoStack.length;
+  document.getElementById('btnRedo').disabled=!redoStack.length;
+  document.getElementById('brandSub').textContent=fmtDate(curDate)+' '+fmtDow(curDate);
+}
+
+function renderDates(){
+  const rail=document.getElementById('dateRail'), tk=todayKey();
+  rail.innerHTML=dates().map(k=>{
+    const pts=ptsOf(k), used=assignedIds(k).size;
+    return `<button class="datechip ${k===tk?'today':''}" data-date="${k}" aria-current="${k===curDate}">
+      <div class="dc-dow">${k===tk?'今天':fmtDow(k)}</div>
+      <div class="dc-md num">${fmtDate(k)}</div>
+      <div class="dc-meta num">${pts.length}R · ${used}人</div>
+    </button>`;
+  }).join('');
+  const cur=rail.querySelector('[aria-current="true"]');
+  if(cur) cur.scrollIntoView({block:'nearest',inline:'center',behavior:dateRailReady?'smooth':'auto'});
+  dateRailReady=true;
+}
+
+function renderBoard(){
+  const grid=document.getElementById('ptGrid'), pts=ptsOf(curDate);
+  document.getElementById('boardLabel').textContent=`${fmtDate(curDate)} ${fmtDow(curDate)} · ${pts.length} RUN`;
+  if(!pts.length){
+    grid.innerHTML=`<div class="emptystate"><b>這天還沒有 RUN</b>先建一個 RUN，再把待分配的成員拖進來。</div>`;
+    return;
+  }
+  grid.innerHTML=pts.map((pt,i)=>{
+    const n=pt.slots.length, full=n>=pt.capacity;
+    const pips=Array.from({length:pt.capacity},(_,j)=>
+      `<div class="pip ${j<n?(full?'full':'on'):''}"></div>`).join('');
+    const rows=pt.slots.length ? pt.slots.map((s,si)=>{
+      const m=memberById(s.memberId), r=roleById(s.roleId);
+      if(!m) return '';
+      const pill=r
+        ? `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
+             style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
+        : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
+      return `<div class="slot" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
+        <div class="slot-nm">
+          <span class="slot-name">${esc(m.name)}</span>
+          ${r&&r.buff?`<span class="slot-buff">${esc(r.buff)}</span>`:''}
+        </div>${pill}
+        <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
+      </div>`;
+    }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
+    return `<div class="ptcard" data-drop="pt" data-pt="${pt.id}" style="animation-delay:${i*45}ms">
+      <div class="pt-head">
+        <div class="pt-id">
+          <div class="pt-name">${esc(pt.name)}</div>
+          <div class="pt-time num">${esc(pt.time||'未設定時間')}</div>
+        </div>
+        <div class="pt-count num ${full?'full':''}"><b>${n}</b><span>/${pt.capacity}</span></div>
+      </div>
+      <div class="meter">${pips}</div>
+      <div class="slots">${rows}</div>
+      <div class="dropsec">
+        <div class="dropsec-head">
+          <span class="dropsec-t">掉落物</span>
+          <button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">＋ 記錄掉落</button>
+        </div>
+        <div class="dropgrid">${(pt.drops&&pt.drops.length) ? pt.drops.map(d=>
+          `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`).join('')
+          : `<span class="bench-empty" style="padding:0">還沒有記錄</span>`}</div>
+      </div>
+      <div class="pt-foot">
+        <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
+        <button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>
+        <button class="gbtn warn" data-act="delPt" data-pt="${pt.id}" style="margin-left:auto">刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBench(){
+  const host=document.getElementById('benchList');
+  let list=benchMembers(curDate);
+  if(roleFilter) list=list.filter(m=>m.defaultRoleId===roleFilter);
+  document.getElementById('benchTitle').textContent=`成員 ${list.length}`;
+  if(!list.length){
+    host.innerHTML=`<div class="bench-empty">${roleFilter?'這個職業沒有符合的成員':'還沒有啟用中的成員'}</div>`;
+    return;
+  }
+  host.innerHTML=list.map(m=>{
+    const r=roleById(m.defaultRoleId), n=countRuns(curDate,m.id);
+    return `<button class="chip ${picked===m.id?'picked':''}" data-chip="${m.id}" data-from="bench">
+      ${r?`<span class="chip-dot" style="background:${r.color}"></span>`:''}${esc(m.name)}${n?`<span class="chip-n">${n}</span>`:''}
+    </button>`;
+  }).join('');
+}
+
+function renderMembers(){
+  const q=(document.getElementById('memberSearch').value||'').trim().toLowerCase();
+  const host=document.getElementById('memberList');
+  const list=state.members.filter(m=>!q||m.name.toLowerCase().includes(q));
+  if(!list.length){
+    host.innerHTML=`<div class="emptystate"><b>${q?'找不到符合的成員':'還沒有成員'}</b>${q?'換個關鍵字試試。':'新增成員後就能開始排班。'}</div>`;
+    return;
+  }
+  host.innerHTML=`<div class="list">`+list.map(m=>{
+    const r=roleById(m.defaultRoleId);
+    const meta=[r?r.name:'', r&&r.buff, m.notes].filter(Boolean).join(' · ');
+    return `<div class="row" data-act="editMember" data-id="${m.id}">
+      <div class="row-main">
+        <div class="row-t">${esc(m.name)}${m.active?'':'<span class="badge off">停用</span>'}</div>
+        ${meta?`<div class="row-s">${esc(meta)}</div>`:''}
+      </div>
+      ${r?`<span class="rolepill" style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.name)}</span>`:''}
+    </div>`;
+  }).join('')+`</div>`;
+}
+
+let roleSelectMode=false, roleSelected=new Set();
+function renderRoles(){
+  const rs=sortedRoles();
+  document.getElementById('roleHeaderActions').innerHTML = roleSelectMode
+    ? `<button class="gbtn" id="roleSelCancel">取消</button>
+       <button class="gbtn warn" id="roleSelDelete" ${roleSelected.size?'':'disabled'}
+         style="${roleSelected.size?'color:#fff;background:var(--danger);border-color:var(--danger)':''}">刪除${roleSelected.size?` (${roleSelected.size})`:''}</button>`
+    : `<button class="gbtn" id="roleSelStart" ${rs.length?'':'disabled'}>勾選管理</button>
+       <button class="gbtn" data-act="addExpansionRole">＋ 擴充職業</button>
+       <button class="gbtn accent" data-act="addRole">＋ 新增職業</button>`;
+
+  const host=document.getElementById('roleList');
+  if(!rs.length){ host.innerHTML=`<div class="emptystate"><b>還沒有職業</b>先建立職業，排班時才能指定。</div>`; return; }
+  host.innerHTML=`<div class="list">`+rs.map((r,i)=>{
+    const checked=roleSelected.has(r.id);
+    return `
+    <div class="row ${roleSelectMode?'row-selectable':''}" ${roleSelectMode?`data-act="toggleRoleSel" data-id="${r.id}"`:''}>
+      ${roleSelectMode?`<span class="checkbox ${checked?'on':''}"></span>`:`<span class="swatch" style="background:${r.color}"></span>`}
+      <div class="row-main" ${roleSelectMode?'':`data-act="editRole" data-id="${r.id}"`}>
+        <div class="row-t">${esc(r.icon||'')}${esc(r.name)}</div>
+        <div class="row-s">${r.buff?esc(r.buff):`排序 ${i+1}`}</div>
+      </div>
+      ${roleSelectMode?'':`
+      <button class="icon-btn" data-act="roleUp" data-id="${r.id}" ${i===0?'disabled':''} aria-label="上移">
+        <svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></button>
+      <button class="icon-btn" data-act="roleDown" data-id="${r.id}" ${i===rs.length-1?'disabled':''} aria-label="下移">
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>`}
+    </div>`;
+  }).join('')+`</div>`;
+
+  const start=document.getElementById('roleSelStart');
+  if(start) start.onclick=()=>{ roleSelectMode=true; roleSelected=new Set(); renderRoles(); };
+  const cancel=document.getElementById('roleSelCancel');
+  if(cancel) cancel.onclick=()=>{ roleSelectMode=false; roleSelected=new Set(); renderRoles(); };
+  const del=document.getElementById('roleSelDelete');
+  if(del) del.onclick=()=>{
+    if(!roleSelected.size) return;
+    const ids=[...roleSelected], names=ids.map(id=>roleById(id)?.name).filter(Boolean).join('、');
+    confirmSheet(`刪除「${names}」共 ${ids.length} 個職業？已指定這些職業的人會變成未指定。`, ()=>{
+      commit(()=>{
+        state.roles=state.roles.filter(x=>!ids.includes(x.id));
+        Object.values(state.schedule).forEach(ps=>ps.forEach(p=>p.slots.forEach(sl=>{ if(ids.includes(sl.roleId)) sl.roleId=null; })));
+        state.members.forEach(m=>{ if(ids.includes(m.defaultRoleId)) m.defaultRoleId=null; });
+      });
+      roleSelectMode=false; roleSelected=new Set(); render();
+    });
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   材料統計
+   ══════════════════════════════════════════════════════════ */
+let matFrom='', matTo='', matRunName='';
+
+function allRunNames(){
+  const set=new Set();
+  Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>set.add(pt.name)));
+  return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function matMatches(k,pt){
+  if(matFrom && k<matFrom) return false;
+  if(matTo && k>matTo) return false;
+  if(matRunName && pt.name!==matRunName) return false;
+  return true;
+}
+function renderMaterials(){
+  const runSel=document.getElementById('matRun');
+  runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
+    `<option value="${esc(n)}" ${n===matRunName?'selected':''}>${esc(n)}</option>`).join('');
+  document.getElementById('matFrom').value=matFrom;
+  document.getElementById('matTo').value=matTo;
+
+  const entries=[];
+  Object.keys(state.schedule).sort().forEach(k=>{
+    ptsOf(k).forEach(pt=>{ if(matMatches(k,pt)) entries.push({date:k,pt}); });
+  });
+
+  const totals={}; let dropSum=0, runsWithDrops=0;
+  entries.forEach(({pt})=>{
+    if(pt.drops&&pt.drops.length){
+      runsWithDrops++;
+      pt.drops.forEach(d=>{ totals[d.name]=(totals[d.name]||0)+d.qty; dropSum+=d.qty; });
+    }
+  });
+  const matNames=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+
+  document.getElementById('matCards').innerHTML=[
+    ['符合場次', entries.length],
+    ['有掉落的場次', runsWithDrops],
+    ['材料種類', matNames.length],
+    ['掉落總數量', dropSum],
+  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
+
+  const max=Math.max(1,...matNames.map(n=>totals[n]));
+  document.getElementById('matBars').innerHTML = matNames.length
+    ? matNames.map(n=>`<div class="bar-row"><span class="bar-l">${esc(n)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${totals[n]/max*100}%;background:#b45309"></div></div>
+        <span class="bar-n num">${totals[n]}</span></div>`).join('')
+    : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
+
+  const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('matDetail').innerHTML = withDrops.length
+    ? withDrops.map(({date,pt})=>`<div class="ex-pt">
+        <div class="ex-pt-h"><span class="ex-pt-n">${fmtDate(date)} ${fmtDow(date)} · ${esc(pt.name)}</span>
+          <span class="ex-pt-t">${esc(pt.time||'')}</span></div>
+        <div class="dropgrid" style="padding:11px 14px">${pt.drops.map(d=>
+          `<span class="droppill">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
+      </div>`).join('')
+    : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
+}
+function applyMatPreset(p){
+  const t=todayKey();
+  if(p==='today'){ matFrom=t; matTo=t; }
+  else if(p==='week'){ const d=parseYmd(t); const dow=(d.getDay()+6)%7; matFrom=shiftDate(t,-dow); matTo=shiftDate(t,6-dow); }
+  else if(p==='month'){ matFrom=t.slice(0,8)+'01'; const d=parseYmd(t); matTo=shiftDate(matFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1); }
+  else { matFrom=''; matTo=''; }
+  renderMaterials();
+}
+document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderMaterials(); };
+document.getElementById('matTo').onchange=e=>{ matTo=e.target.value; renderMaterials(); };
+document.getElementById('matRun').onchange=e=>{ matRunName=e.target.value; renderMaterials(); };
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>applyMatPreset(b.dataset.preset));
+
+
+/* ══════════════════════════════════════════════════════════
+   指派 / 移動
+   ══════════════════════════════════════════════════════════ */
+function assign(memberId, ptId){
+  commit(()=>{
+    const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+    if(pt.slots.length>=pt.capacity){ toast(`${pt.name} 已滿`); return; }
+    const m=memberById(memberId);
+    pt.slots.push({memberId, roleId:m?.defaultRoleId||null});
+  });
+  picked=null;
+}
+/* 依「拖曳來源那一個 slot 的 index」移除，不是依 memberId —
+   同一人可以在同一場 RUN 裡重複出現（雙開/多開），用 index 才不會一次把全部重複的都移掉 */
+function unassign(ptId, si){
+  commit(()=>{
+    const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+    const i=+si;
+    if(Number.isInteger(i)&&pt.slots[i]!==undefined) pt.slots.splice(i,1);
+  });
+  picked=null;
+}
+
+/* ── 拖曳（滑鼠與觸控通用，用 pointer events） ─────────── */
+let drag=null;
+document.addEventListener('pointerdown',e=>{
+  const chip=e.target.closest('[data-chip]');
+  if(!chip||e.target.closest('button[data-act]')) return;
+  drag={id:chip.dataset.chip, from:chip.dataset.from, si:chip.dataset.si, x:e.clientX, y:e.clientY, el:chip, moved:false, ghost:null};
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  if(!drag.moved){
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(Math.hypot(dx,dy)<7) return;
+    /* 從 bench 橫向捲動列拿起的 chip：如果這一動主要是左右方向，
+       判斷成使用者只是想橫向捲動找人，不是要拖曳指派 —— 放手讓瀏覽器原生橫向捲動接手，
+       這樣成員一多、bench 要左右捲才能找到人時，捲動才不會被誤判成拖曳。 */
+    if(drag.from==='bench' && Math.abs(dx)>Math.abs(dy)*1.2){ drag=null; return; }
+    drag.moved=true; drag.el.classList.add('dragging');
+    const m=memberById(drag.id);
+    const g=document.createElement('div'); g.className='drag-ghost'; g.textContent=m?m.name:'';
+    document.body.appendChild(g); drag.ghost=g;
+  }
+  drag.ghost.style.left=e.clientX+'px'; drag.ghost.style.top=e.clientY+'px';
+  document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  const t=dropTargetAt(e.clientX,e.clientY);
+  if(t) t.classList.add('drop-on');
+});
+document.addEventListener('pointerup',e=>{
+  if(!drag) return;
+  const d=drag; drag=null;
+  document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  d.el.classList.remove('dragging');
+  if(d.ghost) d.ghost.remove();
+  if(!d.moved){ tapChip(d.id); return; }
+  const t=dropTargetAt(e.clientX,e.clientY);
+  if(!t) return;
+  if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.from,d.si); }
+  else if(t.dataset.pt!==d.from) assign(d.id,t.dataset.pt);
+});
+document.addEventListener('pointercancel',()=>{
+  if(!drag) return;
+  drag.el.classList.remove('dragging'); if(drag.ghost) drag.ghost.remove();
+  document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
+  drag=null;
+});
+function dropTargetAt(x,y){
+  const el=document.elementFromPoint(x,y);
+  return el?el.closest('[data-drop]'):null;
+}
+/* 點一下＝選取，再點隊伍卡片＝加入 */
+function tapChip(id){
+  if(picked===id){ picked=null; }
+  else if(picked===null){ picked=id; toast('已選取 — 點一下 RUN 加入'); }
+  else { picked=id; }
+  renderBench();
+}
+document.addEventListener('click',e=>{
+  if(!picked) return;
+  if(e.target.closest('[data-chip]')) return; // 這個點擊已經由 pointerup 的 tapChip() 處理過，不要再重複指派
+  const card=e.target.closest('[data-drop="pt"]');
+  if(card&&!e.target.closest('button[data-act]')) assign(picked,card.dataset.pt);
+});
+
+/* ══════════════════════════════════════════════════════════
+   Sheet（底部彈出面板）
+   ══════════════════════════════════════════════════════════ */
+/* iOS Safari 在 fixed 定位的彈窗裡點輸入框時，就算容器是 fixed，
+   還是會把「背後的頁面」往上捲動去對齊鍵盤，導致打字的地方被捲到看不見。
+   開彈窗時把 body 鎖成 fixed（等於背後頁面不能捲），Safari 就沒有頁面可以捲了。 */
+function lockBodyScroll(){
+  if(document.body.style.position==='fixed') return;
+  const y=window.scrollY||window.pageYOffset||0;
+  document.body.dataset.scrollY=y;
+  document.body.style.position='fixed';
+  document.body.style.top=(-y)+'px';
+  document.body.style.left='0';
+  document.body.style.right='0';
+  document.body.style.width='100%';
+  document.body.style.overflow='hidden';
+  document.documentElement.style.overflow='hidden';
+}
+function unlockBodyScroll(){
+  if(document.body.style.position!=='fixed') return;
+  const y=parseInt(document.body.dataset.scrollY||'0',10);
+  document.body.style.position='';
+  document.body.style.top='';
+  document.body.style.left='';
+  document.body.style.right='';
+  document.body.style.width='';
+  document.body.style.overflow='';
+  document.documentElement.style.overflow='';
+  delete document.body.dataset.scrollY;
+  window.scrollTo(0,y);
+}
+function sheet(title, bodyHtml, onMount){
+  const host=document.getElementById('sheetHost');
+  lockBodyScroll();
+  host.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-modal="true">
+    <div class="grip"></div><div class="sheet-t">${esc(title)}</div>${bodyHtml}</div></div>`;
+  const scrim=host.querySelector('.scrim');
+  scrim.addEventListener('click',ev=>{ if(ev.target===scrim) closeSheet(); });
+  document.addEventListener('keydown',escClose);
+  onMount&&onMount(host.querySelector('.sheet'));
+  const f=host.querySelector('input,textarea,select'); if(f&&window.innerWidth>760) f.focus();
+}
+function closeSheet(){ document.getElementById('sheetHost').innerHTML=''; document.removeEventListener('keydown',escClose); unlockBodyScroll(); }
+function escClose(e){ if(e.key==='Escape') closeSheet(); }
+const val=(s,n)=>s.querySelector(`[name="${n}"]`).value.trim();
+
+
+/* 原生 confirm() 在 PWA 獨立模式下不一定會顯示，改用畫面內的確認卡片 */
+function confirmSheet(message, onConfirm){
+  sheet('請確認',`
+    <p style="font-size:13.5px; color:var(--ink-2); line-height:1.6; margin:0 0 16px">${esc(message)}</p>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="no">取消</button>
+      <button class="gbtn warn" data-s="yes" style="background:var(--danger);color:#fff;border-color:var(--danger)">確定刪除</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="no"]').onclick=closeSheet;
+    s.querySelector('[data-s="yes"]').onclick=()=>{ closeSheet(); onConfirm(); };
+  });
+}
+
+function memberSheet(id){
+  const m=id?memberById(id):{name:'',active:true,notes:'',defaultRoleId:null};
+  const opts=`<option value="">不指定</option>`+sortedRoles().map(r=>
+    `<option value="${r.id}" ${m.defaultRoleId===r.id?'selected':''}>${esc(r.name)}</option>`).join('');
+  sheet(id?'編輯成員':'新增成員',`
+    <div class="field"><label>名字</label><input name="name" value="${esc(m.name)}" placeholder="遊戲角色名"></div>
+    <div class="field"><label>預設職業</label><select name="role">${opts}</select></div>
+    <div class="field"><label>備註</label><input name="notes" value="${esc(m.notes)}" placeholder="選填"></div>
+    <label class="toggle"><input type="checkbox" name="active" ${m.active?'checked':''}> 目前有在跑（停用後不會出現在成員名單）</label>
+    <div class="sheet-foot">
+      ${id?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name'); if(!name) return toast('請輸入名字');
+      commit(()=>{
+        const d={name,notes:val(s,'notes'),
+          defaultRoleId:s.querySelector('[name="role"]').value||null,
+          active:s.querySelector('[name="active"]').checked};
+        if(id) Object.assign(memberById(id),d); else state.members.push({id:uid(),...d});
+      });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    const del=s.querySelector('[data-s="del"]');
+    if(del) del.onclick=()=>{
+      confirmSheet(`刪除「${m.name}」？所有日期的排班紀錄也會一併移除。`, ()=>{
+        commit(()=>{
+          state.members=state.members.filter(x=>x.id!==id);
+          Object.values(state.schedule).forEach(ps=>ps.forEach(p=>{p.slots=p.slots.filter(x=>x.memberId!==id);}));
+        });
+      });
+    };
+  });
+}
+
+/* draft：從 BUFF 選擇器返回時帶回尚未儲存的欄位值，避免挑完技能後前面填的東西不見 */
+function roleSheet(id, draft){
+  const base=id?roleById(id):{name:'',color:PALETTE[state.roles.length%PALETTE.length],icon:'',buff:''};
+  const r=draft?{...base,...draft}:base;
+  sheet(id?'編輯職業':'新增職業',`
+    <div class="field-2">
+      <div class="field"><label>名稱</label><input name="name" value="${esc(r.name)}" placeholder="例：妖術"></div>
+      <div class="field"><label>圖示（選填）</label><input name="icon" value="${esc(r.icon)}" placeholder="🔮" maxlength="2"></div>
+    </div>
+    <div class="field"><label>顏色</label><div class="swatches">${PALETTE.map(c=>
+      `<button class="sw-opt" data-c="${c}" style="background:${c}" aria-pressed="${c===r.color}"></button>`).join('')}</div></div>
+    <div class="field">
+      <label>技能 BUFF（會顯示在陣容分配的 RUN 上）</label>
+      <input name="buff" value="${esc(r.buff||'')}" placeholder="例：攻擊 BUFF">
+      <button class="gbtn" data-s="pick" style="margin-top:7px;width:100%;padding:10px;font-size:13px">＋ 從 RO 技能庫選擇</button>
+    </div>
+    <div class="sheet-foot">
+      ${id?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    let color=r.color;
+    s.querySelectorAll('.sw-opt').forEach(b=>b.onclick=()=>{
+      color=b.dataset.c;
+      s.querySelectorAll('.sw-opt').forEach(x=>x.setAttribute('aria-pressed',x.dataset.c===color));
+    });
+    const snapshot=()=>({name:val(s,'name'),icon:val(s,'icon'),color,buff:val(s,'buff')});
+    s.querySelector('[data-s="pick"]').onclick=()=>{
+      const cur=snapshot();
+      buffPickerSheet(cur.buff, cur.name,
+        picked=>roleSheet(id,{...cur,buff:picked}),
+        ()=>roleSheet(id,cur));
+    };
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name'); if(!name) return toast('請輸入名稱');
+      commit(()=>{
+        const d={name,icon:val(s,'icon'),color,buff:val(s,'buff')};
+        if(id) Object.assign(roleById(id),d);
+        else state.roles.push({id:uid(),...d,order:state.roles.length});
+      });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    const del=s.querySelector('[data-s="del"]');
+    if(del) del.onclick=()=>{
+      confirmSheet(`刪除職業「${r.name}」？已指定這個職業的人會變成未指定。`, ()=>{
+        commit(()=>{
+          state.roles=state.roles.filter(x=>x.id!==id);
+          Object.values(state.schedule).forEach(ps=>ps.forEach(p=>p.slots.forEach(sl=>{ if(sl.roleId===id) sl.roleId=null; })));
+          state.members.forEach(m=>{ if(m.defaultRoleId===id) m.defaultRoleId=null; });
+        });
+      });
+    };
+  });
+}
+
+/* BUFF 技能選擇器：依職業列出整條轉職鏈的支援技能，可複選，結果用「、」串起來
+   current：目前的 BUFF 文字（沿用既有的自由輸入內容，不會被洗掉）
+   roleName：職業名稱，用來自動對應到 RO 職業 */
+function buffPickerSheet(current, roleName, onApply, onCancel){
+  const CATS=['初心者','一轉','二轉','轉生二轉','三轉','四轉','擴充職業'];
+  const picks=(current||'').split('、').map(x=>x.trim()).filter(Boolean);
+  const selected=new Set(picks);
+  const pickable=roPickableJobs();
+  let jobId=roJobIdByName(roleName);
+  if(!jobId||!RO_JOBS[jobId]){
+    const sameCat=jobId&&RO_JOBS[jobId]?pickable.find(j=>RO_JOBS[j].c===RO_JOBS[jobId].c):null;
+    jobId=sameCat||pickable[0]||Object.keys(RO_JOBS)[0];
+  }
+
+  /* 下拉選單列出「全部」職業（不只是有 BUFF 的），這樣自己的職業一定找得到、選得到，
+     就算這條轉職線目前沒收錄支援技能，也會清楚顯示原因，而不是整個從清單消失 */
+  const opts=CATS.map(c=>{
+    const list=Object.keys(RO_JOBS).filter(jid=>RO_JOBS[jid].c===c);
+    if(!list.length) return '';
+    return `<optgroup label="${c}">`+list.map(jid=>
+      `<option value="${jid}" ${jid===jobId?'selected':''}>${esc(RO_JOBS[jid].n)}</option>`).join('')+`</optgroup>`;
+  }).join('');
+
+  sheet('選擇技能 BUFF',`
+    <div class="field"><label>職業（會一併列出這條轉職線的支援技能）</label>
+      <select name="job">${opts}</select></div>
+    <div id="skillHost"></div>
+    <div class="buffprev" id="buffPrev"></div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="clear">清除</button>
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="apply">套用</button>
+    </div>`,s=>{
+    const host=s.querySelector('#skillHost'), prev=s.querySelector('#buffPrev');
+
+    function paintPrev(){
+      const arr=[...selected];
+      prev.innerHTML=arr.length
+        ? `<b>已選 ${arr.length} 個：</b>${esc(arr.join('、'))}`
+        : `<span class="none">還沒選任何技能 — 點下方技能加入</span>`;
+    }
+    function paintSkills(){
+      const chain=roJobChain(s.querySelector('[name="job"]').value);
+      const groups=chain.filter(c=>RO_JOBS[c].s.length).map(c=>
+        `<div class="skillgrp">${esc(RO_JOBS[c].n)}</div>
+         <div class="skillgrid">${RO_JOBS[c].s.map(sk=>
+           `<button class="skillpill" data-sk="${esc(sk)}" aria-pressed="${selected.has(sk)}">${esc(sk)}</button>`).join('')}</div>`).join('');
+      host.innerHTML=groups||`<div class="bench-empty">這個職業沒有收錄支援類技能</div>`;
+      host.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{
+        const sk=b.dataset.sk;
+        if(selected.has(sk)) selected.delete(sk); else selected.add(sk);
+        b.setAttribute('aria-pressed',selected.has(sk));
+        paintPrev();
+      });
+    }
+    s.querySelector('[name="job"]').onchange=paintSkills;
+    paintSkills(); paintPrev();
+
+    s.querySelector('[data-s="clear"]').onclick=()=>{
+      selected.clear(); paintSkills(); paintPrev();
+    };
+    s.querySelector('[data-s="apply"]').onclick=()=>onApply([...selected].join('、'));
+    s.querySelector('[data-s="cancel"]').onclick=()=>onCancel();
+  });
+}
+
+/* 從 RO「擴充職業」快速新增職業：點一個就直接建立職業卡，之後可再進去挑 BUFF */
+function expansionRoleSheet(){
+  const list=Object.keys(RO_JOBS).filter(jid=>RO_JOBS[jid].c==='擴充職業');
+  sheet('新增擴充職業',`
+    <div class="rolegrid">${list.map(jid=>
+      `<button class="rolepill" data-j="${jid}" style="padding:9px 15px;font-size:13.5px">${esc(RO_JOBS[jid].n)}</button>`).join('')}</div>
+    <div class="sheet-foot"><button class="gbtn" data-s="cancel">取消</button></div>`,s=>{
+    s.querySelectorAll('[data-j]').forEach(b=>b.onclick=()=>{
+      const jid=b.dataset.j, name=RO_JOBS[jid].n;
+      const dup=state.roles.find(x=>x.name===name);
+      if(dup){ closeSheet(); return roleSheet(dup.id); }
+      let newId;
+      commit(()=>{
+        newId=uid();
+        state.roles.push({id:newId,name,color:PALETTE[state.roles.length%PALETTE.length],icon:'',buff:'',order:state.roles.length});
+      });
+      closeSheet();
+      roleSheet(newId);
+    });
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function ptSheet(id){
+  const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,time:'20:00',capacity:12};
+  sheet(id?'編輯 RUN':'新增 RUN',`
+    <div class="field"><label>RUN 名稱</label><input name="name" value="${esc(pt.name)}"></div>
+    <div class="field-2">
+      <div class="field"><label>時間</label><input name="time" value="${esc(pt.time)}" placeholder="20:00"></div>
+      <div class="field"><label>人數上限</label><input name="cap" type="number" min="1" max="30" value="${pt.capacity}"></div>
+    </div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name')||'PT';
+      const cap=Math.max(1,Math.min(30,parseInt(val(s,'cap'))||12));
+      commit(()=>{
+        if(id){ const p=ptsOf(curDate).find(x=>x.id===id); Object.assign(p,{name,time:val(s,'time'),capacity:cap});
+          if(p.slots.length>cap) p.slots=p.slots.slice(0,cap); }
+        else { ensureDate(curDate); state.schedule[curDate].push({...mkPt(name,val(s,'time'),cap)}); }
+      });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+/* 預先知道的材料清單（星座之塔目前的掉落物項目），一開始就會出現在自動建議裡，不用等打過一次才有 */
+const KNOWN_MATERIALS=[
+  '未知的隕石碎片','稀微魔力符文石',
+  '威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
+  '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片',
+];
+/* 這個 App 目前用過的所有材料名稱（預設清單 + 跨全部日期、全部 RUN 實際打過的），給輸入自動建議用 */
+function allMaterialNames(){
+  const set=new Set(KNOWN_MATERIALS);
+  Object.values(state.schedule).forEach(pts=>pts.forEach(pt=>(pt.drops||[]).forEach(d=>set.add(d.name))));
+  return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+
+/* 掉落物：新增或編輯一筆。同一場 RUN 裡輸入同名材料會自動累加數量，不會變成兩筆。 */
+function dropSheet(ptId,dropId){
+  const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+  const editing=dropId?(pt.drops||[]).find(d=>d.id===dropId):null;
+
+  sheet(editing?'編輯掉落物':'記錄掉落物',`
+    <div class="field"><label>材料名稱</label>
+      <input name="name" value="${esc(editing?editing.name:'')}" placeholder="點下方選擇，或直接輸入"></div>
+    <div class="skillgrp">常用材料</div>
+    <div class="skillgrid" id="matPick">${allMaterialNames().map(n=>
+      `<button class="skillpill" data-m="${esc(n)}" aria-pressed="${editing&&editing.name===n}">${esc(n)}</button>`).join('')}</div>
+    <div class="field" style="margin-top:14px"><label>數量</label><input name="qty" type="number" min="1" value="${editing?editing.qty:1}"></div>
+    <div class="sheet-foot">
+      ${editing?'<button class="gbtn warn" data-s="del">刪除</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">${editing?'儲存':'新增'}</button>
+    </div>`,s=>{
+    const nameInput=s.querySelector('[name="name"]');
+    const paintPick=()=>s.querySelectorAll('[data-m]').forEach(b=>
+      b.setAttribute('aria-pressed', b.dataset.m===nameInput.value.trim()));
+    s.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ nameInput.value=b.dataset.m; paintPick(); });
+    nameInput.oninput=paintPick;
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const name=val(s,'name').trim(); if(!name) return toast('請輸入材料名稱');
+      const qty=Math.max(1,parseInt(val(s,'qty'))||1);
+      commit(()=>{
+        const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
+        if(!Array.isArray(p.drops)) p.drops=[];
+        if(editing){
+          const d=p.drops.find(x=>x.id===dropId); if(!d) return;
+          const dup=p.drops.find(x=>x.id!==dropId&&x.name===name);
+          if(dup){ dup.qty+=qty; p.drops=p.drops.filter(x=>x.id!==dropId); }
+          else { d.name=name; d.qty=qty; }
+        }else{
+          const dup=p.drops.find(x=>x.name===name);
+          if(dup) dup.qty+=qty;
+          else p.drops.push({id:uid(),name,qty});
+        }
+      });
+      closeSheet();
+    };
+    if(editing) s.querySelector('[data-s="del"]').onclick=()=>{
+      commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) p.drops=p.drops.filter(x=>x.id!==dropId); });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function rolePickSheet(ptId,i){
+  const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+  const slot=pt.slots[i], m=memberById(slot.memberId);
+  sheet(`${m?m.name:''} 的職業`,`
+    <div class="rolegrid">${sortedRoles().map(r=>
+      `<button class="rolepill" data-r="${r.id}"
+        style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)};padding:8px 14px;font-size:13px">
+        ${esc(r.icon||'')}${esc(r.name)}</button>`).join('')}</div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="clear">清除職業</button>
+      <button class="gbtn" data-s="cancel">取消</button>
+    </div>`,s=>{
+    s.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{
+      commit(()=>{ pt.slots[i].roleId=b.dataset.r; }); closeSheet();
+    });
+    s.querySelector('[data-s="clear"]').onclick=()=>{ commit(()=>{ pt.slots[i].roleId=null; }); closeSheet(); };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function dateSheet(){
+  const prev=dates().filter(k=>k<curDate).pop()||dates()[dates().length-1];
+  /* 今天還沒建立的話，預設就填今天（最常見的情境）；否則填目前這天的隔天 */
+  const def=state.schedule[todayKey()]?shiftDate(curDate,1):todayKey();
+  sheet('新增日期',`
+    <div class="field"><label>日期</label><input name="d" type="date" value="${def}"></div>
+    ${prev?`<label class="toggle"><input type="checkbox" name="copy" checked> 複製 ${fmtDate(prev)} 的 RUN 與職業配置</label>`:''}
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">建立</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const k=s.querySelector('[name="d"]').value; if(!k) return toast('請選擇日期');
+      if(state.schedule[k]){ curDate=k; closeSheet(); render(); return toast('這天已經有排班了'); }
+      const copy=s.querySelector('[name="copy"]')?.checked;
+      commit(()=>{
+        state.schedule[k]= copy&&prev
+          ? JSON.parse(JSON.stringify(ptsOf(prev))).map(p=>({...p,id:uid(),drops:[]}))
+          : [mkPt('RUN 1','20:00',12)];
+      });
+      curDate=k; closeSheet(); render();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+/* 修改目前這天的日期：把 state.schedule 底下的 RUN／排班資料整包搬到新的日期鍵上，內容不會不見 */
+function editDateSheet(){
+  const from=curDate;
+  sheet('修改日期',`
+    <div class="field"><label>把 ${fmtDate(from)}（${fmtDow(from)}）改成</label>
+      <input name="d" type="date" value="${from}"></div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const to=s.querySelector('[name="d"]').value; if(!to) return toast('請選擇日期');
+      if(to===from){ closeSheet(); return; }
+      if(state.schedule[to]){ return toast(`${fmtDate(to)} 已經有排班了，不能覆蓋`); }
+      commit(()=>{
+        state.schedule[to]=state.schedule[from];
+        delete state.schedule[from];
+      });
+      curDate=to; closeSheet(); render();
+      toast(`已改成 ${fmtDate(to)}`);
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+function moreSheet(){
+  sheet('更多',`
+    <div class="field"><label>職業篩選（只看某個預設職業的待分配成員）</label>
+      <select name="rf"><option value="">全部</option>${sortedRoles().map(r=>
+        `<option value="${r.id}" ${roleFilter===r.id?'selected':''}>${esc(r.name)}</option>`).join('')}</select></div>
+    <div class="sheet-foot" style="flex-wrap:wrap">
+      <button class="gbtn accent" data-s="img">產出圖片</button>
+      <button class="gbtn" data-s="csv">匯出 CSV</button>
+    </div>
+    <div class="sheet-foot" style="flex-wrap:wrap">
+      <button class="gbtn" data-s="exportJson">匯出設定 JSON</button>
+      <button class="gbtn" data-s="importJson">匯入設定 JSON</button>
+    </div>
+    <div style="text-align:center;color:var(--faint);font-size:11px;margin-top:14px">
+      作者：${esc(APP_AUTHOR)} · 版本 ${esc(APP_VERSION)}
+    </div>
+    <input type="file" name="jsonFile" accept="application/json,.json" style="display:none">`,s=>{
+    s.querySelector('[name="rf"]').onchange=e=>{ roleFilter=e.target.value||null; renderBench(); };
+    s.querySelector('[data-s="img"]').onclick=()=>{ closeSheet(); exportImage(); };
+    s.querySelector('[data-s="csv"]').onclick=()=>{ closeSheet(); exportCsv(); };
+    s.querySelector('[data-s="exportJson"]').onclick=()=>{ exportJson(); };
+    const fileInput=s.querySelector('[name="jsonFile"]');
+    s.querySelector('[data-s="importJson"]').onclick=()=>{ fileInput.click(); };
+    fileInput.onchange=()=>{
+      const file=fileInput.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        let data;
+        try{ data=JSON.parse(ev.target.result); }
+        catch(err){ toast('讀取失敗，請確認是有效的 JSON 檔'); return; }
+        if(!data||!Array.isArray(data.members)||!Array.isArray(data.roles)||typeof data.schedule!=='object'){
+          toast('檔案格式不正確'); return;
+        }
+        closeSheet();
+        confirmSheet('匯入將覆蓋目前所有成員、職業與排班資料，確定要匯入嗎？',()=>{
+          curDate=null;
+          commit(()=>{ state=migrate(data); });
+          toast('已匯入設定');
+        });
+      };
+      reader.readAsText(file);
+    };
+  });
+}
+
+function exportJson(){
+  const json=JSON.stringify(state,null,2);
+  download(new Blob([json],{type:'application/json'}),`星座塔團隊_設定_${APP_VERSION}_${todayKey()}.json`);
+  toast('已匯出設定 JSON');
+}
+
+/* ══════════════════════════════════════════════════════════
+   匯出
+   圖片：不截取畫面，改用資料重建一份乾淨的 DOM 再轉圖，
+   避免 html2canvas 對 <button> 與 CSS 動畫的已知問題。
+   ══════════════════════════════════════════════════════════ */
+function buildExportNode(){
+  const pts=ptsOf(curDate);
+  const cols=pts.map(pt=>{
+    const rows=pt.slots.length ? pt.slots.map(s=>{
+      const m=memberById(s.memberId), r=roleById(s.roleId);
+      if(!m) return '';
+      return `<div class="ex-row"><span class="ex-nm">${esc(m.name)}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
+        (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
+           :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
+    }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
+    return `<div class="ex-pt">
+      <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
+        <span class="ex-pt-t">${esc(pt.time||'')}</span>
+        <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
+      ${rows}
+      ${(pt.drops&&pt.drops.length)?`<div class="ex-drops">掉落：${pt.drops.map(d=>`${esc(d.name)}×${d.qty}`).join('、')}</div>`:''}
+      </div>`;
+  }).join('');
+  const host=document.getElementById('exportHost');
+  host.innerHTML=`<div class="exportwrap" id="exportWrap">
+    <div class="ex-h">${fmtDate(curDate)}（${DOW[parseYmd(curDate).getDay()]}） 陣容分配</div>
+    <div class="ex-sub">${pts.length} RUN · 出席 ${pts.reduce((a,p)=>a+p.slots.length,0)} 人 · 產出於 ${fmtNow()}</div>
+    <div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>
+  </div>`;
+  return document.getElementById('exportWrap');
+}
+
+async function exportImage(){
+  if(typeof html2canvas==='undefined') return toast('圖片功能需要連線載入元件，請連上網路再試');
+  toast('產出中⋯');
+  const node=buildExportNode();
+  try{
+    const canvas=await html2canvas(node,{backgroundColor:'#ffffff',scale:2,useCORS:true});
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+    const file=new File([blob],`陣容分配_${fmtDate(curDate).replace('/','')}.png`,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file],title:'陣容分配'}); }
+      catch(err){ if(err.name!=='AbortError') download(blob,file.name); }
+    } else download(blob,file.name);
+  }catch(err){ console.error(err); toast('圖片產出失敗，請再試一次'); }
+  finally{ document.getElementById('exportHost').innerHTML=''; }
+}
+
+function exportCsv(){
+  const rows=[['日期','RUN','時間','成員','職業','BUFF','掉落物']];
+  ptsOf(curDate).forEach(pt=>{
+    pt.slots.forEach(s=>{
+      const m=memberById(s.memberId), r=roleById(s.roleId);
+      if(m) rows.push([fmtDate(curDate),pt.name,pt.time||'',m.name,r?r.name:'',r&&r.buff||'','']);
+    });
+    if(pt.drops&&pt.drops.length){
+      rows.push([fmtDate(curDate),pt.name,pt.time||'','','',
+        '',pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
+    }
+  });
+  if(rows.length===1) return toast('這天還沒有排班資料');
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),`陣容分配_${fmtDate(curDate).replace('/','')}.csv`);
+  toast('已匯出 CSV');
+}
+function download(blob,name){
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════════════
+   事件綁定
+   ══════════════════════════════════════════════════════════ */
+document.addEventListener('click',e=>{
+  const chip=e.target.closest('[data-date]');
+  if(chip){ curDate=chip.dataset.date; picked=null; render(); return; }
+  const t=e.target.closest('.tab');
+  if(t){
+    document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+t.dataset.view));
+    const onBoard=t.dataset.view==='board';
+    document.getElementById('bench').classList.toggle('hidden',!onBoard);
+    document.querySelector('.app').classList.toggle('nobench',!onBoard);
+    return;
+  }
+  const btn=e.target.closest('[data-act]'); if(!btn) return;
+  const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
+  if(a==='role')      rolePickSheet(ptId,i);
+  if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
+  if(a==='addDrop')   dropSheet(ptId,null);
+  if(a==='editDrop')  dropSheet(ptId,btn.dataset.d);
+  if(a==='editPt')    ptSheet(ptId);
+  if(a==='dupPt'){
+    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
+      state.schedule[curDate].push({...JSON.parse(JSON.stringify(p)),id:uid(),name:p.name+' 複本',slots:[],drops:[]}); });
+  }
+  if(a==='delPt'){
+    const p=ptsOf(curDate).find(x=>x.id===ptId);
+    confirmSheet(`刪除「${p.name}」？`, ()=>{
+      commit(()=>{ state.schedule[curDate]=ptsOf(curDate).filter(x=>x.id!==ptId); });
+    });
+  }
+  if(a==='editMember') memberSheet(id);
+  if(a==='editRole')   roleSheet(id);
+  if(a==='addRole')    roleSheet(null);
+  if(a==='addExpansionRole') expansionRoleSheet();
+  if(a==='toggleRoleSel'){
+    if(roleSelected.has(id)) roleSelected.delete(id); else roleSelected.add(id);
+    renderRoles();
+  }
+  if(a==='roleUp'||a==='roleDown'){
+    commit(()=>{
+      const rs=sortedRoles(), i2=rs.findIndex(r=>r.id===id), j=a==='roleUp'?i2-1:i2+1;
+      if(j<0||j>=rs.length) return;
+      [rs[i2].order,rs[j].order]=[rs[j].order,rs[i2].order];
+    });
+  }
+});
+
+document.getElementById('btnUndo').onclick=undo;
+document.getElementById('btnRedo').onclick=redo;
+document.getElementById('btnMore').onclick=moreSheet;
+document.getElementById('btnAddDate').onclick=dateSheet;
+document.getElementById('btnEditDate').onclick=editDateSheet;
+document.getElementById('btnToday').onclick=()=>{
+  const tk=todayKey();
+  if(!state.schedule[tk]) return toast('今天還沒有建立排班，可以點「＋ 新增日期」建立');
+  curDate=tk; picked=null; render();
+};
+document.getElementById('btnDelDate').onclick=()=>{
+  if(dates().length<=1) return toast('至少要保留一天');
+  const target=curDate;
+  confirmSheet(`刪除 ${fmtDate(target)}（${fmtDow(target)}）這天的所有 RUN 與排班？`,()=>{
+    commit(()=>{ delete state.schedule[target]; });
+    curDate=null; render();
+  });
+};
+document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
+document.getElementById('btnAddMember').onclick=()=>memberSheet(null);
+document.getElementById('memberSearch').oninput=renderMembers;
+document.getElementById('btnPrevDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i>0){curDate=ks[i-1];render();} };
+document.getElementById('btnNextDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i<ks.length-1){curDate=ks[i+1];render();} };
+
+document.getElementById('btnClearDay').onclick=()=>{
+  if(!assignedIds(curDate).size) return toast('本日還沒有排班');
+  confirmSheet(`清空 ${fmtDate(curDate)} 所有 RUN 的成員？RUN 本身會保留。`, ()=>{
+    commit(()=>{ ptsOf(curDate).forEach(p=>p.slots=[]); });
+  });
+};
+
+/* iOS Safari（尤其 standalone PWA）鍵盤彈出時不會縮小 fixed 元素所依據的 layout viewport，
+   改用 visualViewport 動態量測可視高度／位移，寫進 --vvh／--vvtop，讓 sheet／scrim 貼齊實際看得到的範圍，
+   避免鍵盤蓋住輸入欄或畫面被鍵盤頂到跑版。 */
+function syncVVH(){
+  const vv=window.visualViewport;
+  const h=(vv&&vv.height)||window.innerHeight;
+  const top=(vv&&vv.offsetTop)||0;
+  document.documentElement.style.setProperty('--vvh',h+'px');
+  document.documentElement.style.setProperty('--vvtop',top+'px');
+}
+syncVVH();
+let focusedField=null;
+document.addEventListener('focusin',e=>{
+  if(e.target.matches('input,textarea,select')) focusedField=e.target;
+});
+document.addEventListener('focusout',e=>{
+  if(e.target===focusedField) focusedField=null;
+});
+/* 只在 visualViewport 真的因鍵盤而變化「之後」才校正一次位置，
+   不用猜時間的 setTimeout（會跟 iOS 原生的捲動打架，越修越跑版）。 */
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    syncVVH();
+    if(focusedField&&document.activeElement===focusedField){
+      focusedField.scrollIntoView({block:'nearest'});
+    }
+  });
+  window.visualViewport.addEventListener('scroll',syncVVH);
+}else{
+  window.addEventListener('resize',syncVVH);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select')) return;
+  const mod=e.metaKey||e.ctrlKey;
+  if(mod&&e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
+  if(mod&&e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); }
+});
+
+/* PWA：manifest 為 head 內的靜態檔（./manifest.webmanifest），離線快取由 ./sw.js 處理 */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+/* ══════════════════════════════════════════════════════════
+   PT 計算（屬性星數 → 總 PT 等級）
+   ══════════════════════════════════════════════════════════ */
+const ATTRS=[
+  {id:'hp',      label:'體力', en:'HP',       color:'#0f9d76', pts:[0,15,30,45,60,75]},
+  {id:'attack',  label:'攻擊', en:'Attack',   color:'#dc2626', pts:[0,20,40,60,80,100]},
+  {id:'recovery',label:'恢復', en:'Recovery', color:'#65a30d', pts:[0,30,60,90,120,150]},
+  {id:'defense', label:'防禦', en:'Defense',  color:'#ca8a04', pts:[0,50,100,150,200,250]},
+  {id:'trap',    label:'陷阱', en:'Trap',     color:'#9333ea', pts:[0,85,170,255,340,425]},
+];
+const MAX_PT=1000;
+const PT_TIERS=[
+  {pt:0,   label:'50 層挑戰範圍'},
+  {pt:600, label:'75 層挑戰範圍'},
+];
+const stars={hp:0,attack:0,recovery:0,defense:0,trap:0};
+const tierOf=t=>PT_TIERS.reduce((c,x)=>t>=x.pt?x:c,PT_TIERS[0]);
+
+function renderCalc(){
+  document.getElementById('attrCards').innerHTML=ATTRS.map((a,i)=>{
+    const n=stars[a.id];
+    return `<div class="attrcard" style="--ac:${a.color};--ac-soft:${hexA(a.color,.1)};--ac-line:${hexA(a.color,.28)};animation-delay:${i*40}ms">
+      <div class="attr-top">
+        <span class="attr-nm">${a.label}</span><span class="attr-en">${a.en}</span>
+        <span class="attr-pt num">${a.pts[n]} pt</span>
+      </div>
+      <div class="stars">
+        ${[1,2,3,4,5].map(v=>`<button class="star ${v<=n?'on':''}" data-attr="${a.id}" data-v="${v}" aria-label="${a.label} ${v} 顆星">★</button>`).join('')}
+        <span class="star-lb">${n?n+' 顆星':'封印'}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const total=ATTRS.reduce((s,a)=>s+a.pts[stars[a.id]],0);
+  const tier=tierOf(total), hi=tier.pt>=600;
+  document.getElementById('calcTotal').innerHTML=`${total}<small>pt</small>`;
+  document.getElementById('calcMeter').innerHTML=
+    Array.from({length:10},(_,i)=>`<div class="pip ${total/MAX_PT*10>i?(hi?'full':'on'):''}"></div>`).join('');
+  document.getElementById('calcTier').className='tier'+(hi?' hi':'');
+  document.getElementById('calcTierText').textContent=tier.label;
+  document.getElementById('calcBreak').innerHTML=ATTRS.map(a=>{
+    const n=stars[a.id];
+    return `<div class="bd-row" style="--ac:${a.color}">
+      <span class="bd-nm">${a.label}</span>
+      <span class="bd-st">${n?'★'.repeat(n):'封印中'}</span>
+      <span class="bd-pt num">${a.pts[n]} pt</span></div>`;
+  }).join('');
+}
+
+document.addEventListener('click',e=>{
+  const st=e.target.closest('.star');
+  if(st){
+    const id=st.dataset.attr, v=+st.dataset.v;
+    stars[id]= stars[id]===v ? v-1 : v;   // 再點同一顆＝取消該顆
+    renderCalc(); return;
+  }
+  const ps=e.target.closest('[data-preset]');
+  if(ps){
+    ps.dataset.preset.split(',').forEach((v,i)=>stars[ATTRS[i].id]=+v);
+    renderCalc();
+  }
+});
+renderCalc();
+
+render();
+</script>
+
+</body>
+</html>
