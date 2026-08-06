@@ -338,6 +338,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .salerow-t{font-size:15px; font-weight:680; letter-spacing:-.3px}
 .salerow-t span{color:#7c3aed}
 .salerow-s{font-size:11.5px; color:var(--faint); margin-top:2px}
+.salerow-edit{flex:0 0 auto; width:26px; height:26px; border-radius:8px; color:var(--faint); display:flex; align-items:center; justify-content:center}
+.salerow-edit svg{width:14px; height:14px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round}
+.salerow-edit:hover{color:var(--accent); background:var(--accent-soft)}
 .salerow-x{flex:0 0 auto; width:26px; height:26px; border-radius:8px; color:var(--faint); font-size:16px; line-height:1}
 .salerow-x:hover{color:var(--danger); background:rgba(220,38,38,.07)}
 
@@ -766,7 +769,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v21';
+const APP_VERSION='v22';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -1371,6 +1374,7 @@ function renderSales(){
             <div class="salerow-t num">${nf(x.twd)} <span>· ${nf(x.r)} R</span></div>
             <div class="salerow-s">${fmtDate(s.date)} ${fmtDow(s.date)} · ${nf(s.sets)} 組 × ${nf(s.twd)} 台幣 · R 幣值 ${nf(s.rate)}</div>
           </div>
+          <button class="salerow-edit" data-act="editSale" data-id="${s.id}" aria-label="編輯這筆交易" title="編輯"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
           <button class="salerow-x" data-act="delSale" data-id="${s.id}" aria-label="刪除這筆交易">×</button>
         </div>`;
       }).join('')
@@ -1409,6 +1413,40 @@ document.getElementById('saleAdd').onclick=()=>{
   commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),sets,twd,rate}); });
   toast('已記錄這筆交易');
 };
+
+/* 編輯一筆已記錄的交易明細（日期／組數／台幣／R 幣值都能改），或從這裡直接刪除 */
+function saleSheet(id){
+  const s=(state.sales||[]).find(x=>x.id===id); if(!s) return;
+  sheet('編輯交易明細',`
+    <div class="field"><label>日期</label><input name="date" type="date" value="${esc(s.date)}"></div>
+    <div class="field"><label>組數</label><input name="sets" type="number" min="0" step="1" inputmode="numeric" value="${esc(String(s.sets))}"></div>
+    <div class="field-2">
+      <div class="field"><label>台幣（每組）</label><input name="twd" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.twd))}"></div>
+      <div class="field"><label>遊戲 R 幣值（1 台幣 = ? R）</label><input name="rate" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.rate))}"></div>
+    </div>
+    <div class="sheet-foot">
+      <button class="gbtn warn" data-s="del">刪除</button>
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`, sh=>{
+    sh.querySelector('[data-s="save"]').onclick=()=>{
+      const date=sh.querySelector('[name="date"]').value||s.date;
+      const sets=Number(val(sh,'sets'))||0, twd=Number(val(sh,'twd'))||0, rate=Number(val(sh,'rate'))||0;
+      if(sets<=0) return toast('請先填組數');
+      if(twd<=0)  return toast('請先填每組台幣');
+      commit(()=>{ Object.assign(s,{date,sets,twd,rate}); });
+      closeSheet();
+      toast('已更新交易明細');
+    };
+    sh.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    sh.querySelector('[data-s="del"]').onclick=()=>{
+      confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
+        commit(()=>{ state.sales=(state.sales||[]).filter(x=>x.id!==id); });
+        toast('已刪除交易紀錄');
+      });
+    };
+  });
+}
 
 /* 材料總計 / 組數試算 / 售出計算 / 場次明細 子分頁 */
 document.querySelectorAll('#matSeg [data-sub]').forEach(b=>b.onclick=()=>{
@@ -2212,6 +2250,7 @@ document.addEventListener('click',e=>{
     commit(()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
     toast('已刪除交易紀錄');
   });
+  if(a==='editSale')  saleSheet(id);
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
     commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
