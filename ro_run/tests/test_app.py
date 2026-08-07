@@ -322,9 +322,26 @@ def run(page):
     check("資料用量顯示公斤位數字",
           "KB" in page.locator(".settings-d").filter(has_text="KB").inner_text(), True)
     page.click('[data-s="changelog"]')
-    page.wait_for_timeout(200)
-    check("更新記錄至少有幾筆版本說明",
-          page.locator("#sheetHost .settings-row").count() >= 5, True)
+    page.wait_for_timeout(250)
+    check("版本更新紀錄以時間軸呈現，至少有幾筆版本",
+          page.locator("#sheetHost .cl-item").count() >= 5, True)
+    check("每筆版本都有版本號與日期",
+          page.evaluate("""() => {
+              const items = [...document.querySelectorAll('.cl-item')];
+              return items.every(i => i.querySelector('.cl-ver') && i.querySelector('.cl-date'));
+          }"""), True)
+    check("最新版標記為「目前版本」，且只有一個",
+          page.locator("#sheetHost .cl-now-badge").count(), 1)
+    check("第一筆就是最新版（帶 now 樣式）",
+          page.evaluate("() => document.querySelector('.cl-item').classList.contains('now')"), True)
+    check("變更項目有分類標籤",
+          page.locator("#sheetHost .cl-tag").count() >= 5, True)
+    check("標籤文字為中文分類而非代碼",
+          page.evaluate("""() => {
+              const tags = [...document.querySelectorAll('.cl-tag')].map(t => t.textContent);
+              const valid = ['新增','修正','改善','變更','移除'];
+              return tags.every(t => valid.includes(t));
+          }"""), True)
     page.evaluate("() => closeSheet()")
     page.wait_for_timeout(150)
 

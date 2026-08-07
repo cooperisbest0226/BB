@@ -496,6 +496,49 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .settings-t{font-size:14.5px; font-weight:560; color:var(--ink)}
 .settings-d{font-size:11.5px; color:var(--faint); line-height:1.4}
 .settings-chev{flex:0 0 auto; width:15px; height:15px; stroke:var(--faint); stroke-width:2.2; fill:none; stroke-linecap:round; stroke-linejoin:round}
+
+/* ── 版本更新紀錄：左側一條時間軸（版本點 + 連接線），最新版標記為「目前版本」 ── */
+.sheet.sheet-tall{max-height:calc(var(--vvh,100vh) * .86)}
+.cl-list{padding-top:2px}
+.cl-item{position:relative; padding:0 0 20px 26px}
+.cl-item::before{                       /* 時間軸的線 */
+  content:''; position:absolute; left:5px; top:14px; bottom:0; width:2px; background:var(--line);
+}
+.cl-item:last-child{padding-bottom:2px}
+.cl-item:last-child::before{display:none}
+.cl-dot{
+  position:absolute; left:0; top:5px; width:12px; height:12px; border-radius:50%;
+  background:var(--surface-2); border:2px solid var(--bg); box-shadow:0 0 0 1.5px var(--line);
+}
+.cl-item.now .cl-dot{background:var(--accent); box-shadow:0 0 0 1.5px var(--accent)}
+.cl-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:9px}
+.cl-ver{font-size:14.5px; font-weight:650; color:var(--ink); letter-spacing:-.01em}
+.cl-item.now .cl-ver{color:var(--accent)}
+.cl-date{font-size:11.5px; color:var(--faint)}
+.cl-now-badge{
+  font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-soft);
+  padding:2px 7px; border-radius:99px; letter-spacing:.04em;
+}
+.cl-note{
+  font-size:11.5px; color:var(--muted); line-height:1.55; margin:-3px 0 9px;
+  padding:7px 10px; background:var(--surface-2); border-radius:9px;
+}
+.cl-line{display:flex; gap:8px; align-items:flex-start; margin-bottom:6px}
+.cl-tag{
+  flex:0 0 auto; font-size:10px; font-weight:700; padding:2px 6px; border-radius:5px;
+  margin-top:2px; letter-spacing:.03em; min-width:30px; text-align:center;
+}
+.cl-tag.add{color:#15803d; background:rgba(21,128,61,.12)}
+.cl-tag.fix{color:#b91c1c; background:rgba(185,28,28,.11)}
+.cl-tag.imp{color:#1d4ed8; background:rgba(29,78,216,.11)}
+.cl-tag.chg{color:#b45309; background:rgba(180,83,9,.13)}
+.cl-tag.rm{color:var(--muted); background:var(--surface-2)}
+.cl-txt{font-size:13px; color:var(--ink-2); line-height:1.6; flex:1; min-width:0}
+/* 深色模式下標籤底色要提亮，不然在深色面板上幾乎看不到 */
+[data-theme="dark"] .cl-tag.add{color:#4ade80; background:rgba(74,222,128,.15)}
+[data-theme="dark"] .cl-tag.fix{color:#f87171; background:rgba(248,113,113,.15)}
+[data-theme="dark"] .cl-tag.imp{color:#7dabff; background:rgba(125,171,255,.15)}
+[data-theme="dark"] .cl-tag.chg{color:#fbbf24; background:rgba(251,191,36,.15)}
 .field{margin-bottom:12px}
 .field label{display:block; font-size:11.5px; font-weight:550; color:var(--muted); margin-bottom:5px}
 .field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}

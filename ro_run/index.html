@@ -234,7 +234,7 @@ try{
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v31';
+const APP_VERSION='v32';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -1641,28 +1641,88 @@ async function checkUpdate(btn){
 }
 
 /* 更新記錄：手動維護的簡短版本說明，給使用者看這個 PWA 有在持續改版 */
+/* ── 版本更新紀錄 ─────────────────────────────────────────
+   資料放這裡，之後發新版只要在最前面加一筆。
+   tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
+   note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
-  ['v31','拿掉未儲存警示列功能；存檔失敗恢復成簡單提示，深色模式主要按鈕/toast 對比度修正保留'],
-  ['v30','未備份提示改放在底部（不再擋在最上面）；修正深色模式下儲存/建立等主要按鈕、toast 提示變成看不見的問題'],
-  ['v29','修復壓力測試發現的問題：日期列效能優化（快約 90 倍）、指派人員不再跳頁、存檔失敗改成不會自動消失的警示'],
-  ['v28','設定新增：深色模式、新增 RUN 預設值、資料用量、檢查更新、清空所有資料'],
-  ['v27','設定選單改版：拿掉職業篩選、圖示化分組列表，好找也好按'],
-  ['v26','底部分頁列跟螢幕邊緣的距離調得更貼齊'],
-  ['v25','分頁列移到底部（玻璃質感）、成員清單移到頂部；復原／重做功能移除'],
-  ['v24','匯入前自動備份、匯出支援日期區間、CSS 拆成獨立檔案、資料版本化管理'],
-  ['v23','新增日期時可以指定要複製哪一天的陣容配置'],
-  ['v22','售出計算的交易明細支援編輯'],
-  ['v21','全站關閉長按選字／選單，避免跟拖曳排序手勢衝突'],
-  ['v20','陣容分配改成全螢幕排序編輯器；便當只有在編輯模式才能切換'],
+  { v:'v32', d:'2026/08/07', c:[
+    ['imp','版本更新紀錄改成時間軸呈現，補上發布日期與變更分類標籤'],
+  ]},
+  { v:'v31', d:'2026/08/07', c:[
+    ['rm','未儲存警示列（依需求移除，存檔失敗恢復為一般提示）'],
+  ]},
+  { v:'v30', d:'2026/08/07', c:[
+    ['fix','深色模式下「儲存 / 建立」等主要按鈕、toast 提示、售出明細編號幾乎看不見 —— 這些元素的底色誤用了會隨主題反轉的文字色變數'],
+    ['chg','未備份提示從畫面頂部移到底部，不再擋住標題列'],
+  ]},
+  { v:'v29', d:'2026/08/07',
+    note:'針對「長期使用」做了一輪壓力測試（模擬兩年、每天排班、17,520 個排班位子），以下為據此修復的項目。',
+    c:[
+    ['imp','日期列不再每次操作都整條重繪，兩年份資料下從約 99ms 降到約 1ms'],
+    ['fix','指派人員後畫面會自動跳回頂部（日期列的自動捲動連帶捲動了整個頁面）'],
+    ['imp','存檔失敗改為常駐警示，不再只有一閃即逝的提示'],
+  ]},
+  { v:'v28', d:'2026/08/06', c:[
+    ['add','深色模式，可選淺色 / 深色 / 跟隨系統'],
+    ['add','新增 RUN 的預設時間與預設人數上限可自訂'],
+    ['add','設定頁顯示目前資料用量'],
+    ['add','檢查更新與版本更新紀錄'],
+    ['add','清空所有資料（清除前自動備份）'],
+  ]},
+  { v:'v27', d:'2026/08/06', c:[
+    ['chg','「更多」改名為「設定」，圖示改為齒輪'],
+    ['imp','設定選項改為分組列表，每列整條可點，觸控區域加大'],
+    ['rm','職業篩選功能'],
+  ]},
+  { v:'v26', d:'2026/08/06', c:[
+    ['chg','底部分頁列與螢幕邊緣的間距調得更貼齊'],
+  ]},
+  { v:'v25', d:'2026/08/06', c:[
+    ['chg','分頁列移至底部，改為玻璃質感懸浮設計，文字改為圖示 + 標籤'],
+    ['chg','待分配成員列從底部移到頂部'],
+    ['rm','復原 / 重做功能，連同 Ctrl+Z 快捷鍵'],
+  ]},
+  { v:'v24', d:'2026/08/06', c:[
+    ['add','匯入設定前自動下載一份現有資料備份'],
+    ['add','圖片與 CSV 匯出支援日期區間，附本週 / 本月 / 全部快捷'],
+    ['imp','資料結構改為明確版本號管理，不再靠欄位存在與否推測版本'],
+    ['imp','材料統計改為切到該分頁時才計算，不再每次操作都掃描全部歷史'],
+    ['chg','CSS 抽離為獨立的 styles.css'],
+  ]},
+  { v:'v23', d:'2026/08/06', c:[
+    ['add','新增日期時可指定要複製哪一天的陣容配置，不再固定複製前一天'],
+  ]},
+  { v:'v22', d:'2026/08/06', c:[
+    ['add','售出計算的交易明細支援編輯（日期、組數、金額、幣值）'],
+  ]},
+  { v:'v21', d:'2026/08/06', c:[
+    ['fix','長按會跳出選字與複製選單，與拖曳排序手勢互相干擾'],
+  ]},
+  { v:'v20', d:'2026/08/06', c:[
+    ['chg','陣容排序改為全螢幕編輯器，拖曳把手加大'],
+    ['chg','便當標記改為只在排序編輯器內切換，主畫面僅以底色標示'],
+  ]},
 ];
+const CL_TAG={add:'新增',fix:'修正',imp:'改善',chg:'變更',rm:'移除'};
 function changelogSheet(){
-  sheet('更新記錄',`
-    <div class="settings-group" style="margin-bottom:4px">
-      ${CHANGELOG.map(([v,d])=>`<div class="settings-row" style="cursor:default">
-        <span class="settings-ic" style="color:var(--accent);background:var(--accent-soft);font-size:11px;font-weight:700">${esc(v)}</span>
-        <span class="settings-tx"><span class="settings-t" style="font-weight:500">${esc(d)}</span></span>
-      </div>`).join('')}
-    </div>`,()=>{});
+  sheet('版本更新紀錄',`
+    <div class="cl-list">${CHANGELOG.map((e,i)=>`
+      <div class="cl-item${i===0?' now':''}">
+        <span class="cl-dot"></span>
+        <div class="cl-head">
+          <span class="cl-ver num">${esc(e.v)}</span>
+          <span class="cl-date num">${esc(e.d)}</span>
+          ${i===0?'<span class="cl-now-badge">目前版本</span>':''}
+        </div>
+        ${e.note?`<div class="cl-note">${esc(e.note)}</div>`:''}
+        ${e.c.map(([t,txt])=>`<div class="cl-line">
+          <span class="cl-tag ${t}">${CL_TAG[t]||''}</span>
+          <span class="cl-txt">${esc(txt)}</span>
+        </div>`).join('')}
+      </div>`).join('')}</div>`, s=>{
+    s.classList.add('sheet-tall');
+  });
 }
 
 /* 清空所有資料：回到全新安裝的狀態。跟匯入一樣，動手前先自動備份一份，且完全無法用復原救回 */
@@ -1748,7 +1808,7 @@ function moreSheet(){
         <span class="settings-ic" style="color:var(--muted);background:var(--surface-2)">
           <svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h10l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
         </span>
-        <span class="settings-tx"><span class="settings-t">更新記錄</span></span>
+        <span class="settings-tx"><span class="settings-t">版本更新紀錄</span><span class="settings-d">${esc(CHANGELOG[0].v)} · ${esc(CHANGELOG[0].c[0][1])}</span></span>
         <svg class="settings-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
