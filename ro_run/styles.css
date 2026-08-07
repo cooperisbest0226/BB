@@ -110,17 +110,6 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   background:rgba(238,241,247,.82); backdrop-filter:blur(20px) saturate(1.6);
   -webkit-backdrop-filter:blur(20px) saturate(1.6); border-bottom:1px solid var(--line-2);
 }
-.storage-banner{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:8px 12px; margin:-10px -16px 9px; font-size:12px; line-height:1.5;
-  color:#fff; background:var(--danger);
-}
-.storage-banner.hidden{display:none}
-.storage-banner span{flex:1; min-width:180px}
-.storage-banner button{
-  flex:0 0 auto; padding:5px 11px; border-radius:7px; font-size:11.5px; font-weight:650;
-  color:var(--danger); background:#fff;
-}
 .topbar-row{display:flex; align-items:center; gap:10px}
 .brand{display:flex; align-items:baseline; gap:8px; margin-right:auto; min-width:0}
 .brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
@@ -276,8 +265,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 }
 .gbtn:hover{background:var(--surface); border-color:var(--line)}
 .gbtn:active{transform:scale(.96)}
-.gbtn.accent{color:#fff; background:var(--ink); border-color:var(--ink)}
-.gbtn.accent:hover{background:#000}
+.gbtn.accent{color:#fff; background:var(--accent); border-color:var(--accent)}
+.gbtn.accent:hover{filter:brightness(.92)}
 .gbtn.warn:hover{color:var(--danger); border-color:rgba(220,38,38,.3); background:rgba(220,38,38,.05)}
 
 /* ── bench (unassigned pool) ────────────────────────────── */
@@ -409,7 +398,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   margin-bottom:8px; box-shadow:var(--shadow);
 }
 .salerow-i{
-  flex:0 0 auto; width:26px; height:26px; border-radius:8px; background:var(--ink); color:#fff;
+  flex:0 0 auto; width:26px; height:26px; border-radius:8px; background:var(--accent); color:#fff;
   display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700;
 }
 .salerow-m{flex:1; min-width:0}
@@ -627,7 +616,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 /* toast */
 .toast{
   position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:200;
-  transform:translateX(-50%); background:var(--ink); color:#fff; font-size:13px; font-weight:500;
+  transform:translateX(-50%); background:var(--accent); color:#fff; font-size:13px; font-weight:500;
   padding:10px 17px; border-radius:99px; box-shadow:var(--shadow-lift); animation:toastIn .3s var(--ease) both;
 }
 @keyframes toastIn{from{opacity:0; transform:translate(-50%,10px)}to{opacity:1; transform:translate(-50%,0)}}

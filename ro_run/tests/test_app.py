@@ -370,27 +370,38 @@ def run(page):
               return rail.querySelector('.datechip') === nodeBefore;
           }"""), True)
 
-    # ---------- 壓力測試修復 ----------
-    print("\n[storage-banner] 存檔失敗警示（不會自動消失）")
+    # ---------- 存檔失敗仍要能優雅處理（警示列功能已依需求拿掉，但底層防護還是要在） ----------
+    print("\n[storage-fallback] 存檔失敗不會讓 App 掛掉")
     seed(page)
-    check("初始警示列為隱藏",
-          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), True)
+    check("警示列相關元素已經拿掉", page.locator("#storageBanner").count(), 0)
     page.evaluate("""() => {
         window.__origSetItem = Storage.prototype.setItem;
         Storage.prototype.setItem = function(k,v){ if(k===KEY) throw new DOMException('quota','QuotaExceededError'); return window.__origSetItem.call(this,k,v); };
     }""")
-    page.evaluate("() => commit(()=>{ ptsOf(curDate)[0].capacity += 1; })")
-    page.wait_for_timeout(200)
-    check("存檔失敗後警示列顯示",
-          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), False)
-    page.wait_for_timeout(3000)
-    check("警示列 3 秒後仍未自動消失",
-          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), False)
+    result = page.evaluate("""() => {
+        let threw = false;
+        try { commit(()=>{ ptsOf(curDate)[0].capacity += 1; }); } catch(e) { threw = true; }
+        return {threw, appAlive: typeof render === 'function'};
+    }""")
+    check("存檔失敗時 commit() 不會拋出未捕捉例外", result["threw"], False)
+    check("存檔失敗後 App 仍正常運作", result["appAlive"], True)
     page.evaluate("() => { Storage.prototype.setItem = window.__origSetItem; }")
-    page.evaluate("() => commit(()=>{ ptsOf(curDate)[0].capacity += 1; })")
+
+    # ---------- 深色模式下主要按鈕的對比度 ----------
+    print("\n[dark-contrast] 深色模式下的主要動作按鈕不會變成看不見")
+    seed(page)
+    page.evaluate("() => { commit(()=>{ state.settings.theme='dark'; }); applyTheme(); }")
+    page.click('button:has-text("新增 RUN")')
     page.wait_for_timeout(200)
-    check("恢復儲存成功後警示列自動關閉",
-          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), True)
+    contrast = page.evaluate("""() => {
+        const btn = document.querySelector('.gbtn.accent');
+        const s = getComputedStyle(btn);
+        return {bg: s.backgroundColor, color: s.color};
+    }""")
+    check("深色模式下主要按鈕背景不是淺色的 --ink（不會跟白字疊在一起看不見）",
+          contrast["bg"] in ("rgb(238, 240, 244)", "rgb(21, 23, 28)"), False)
+    page.evaluate("() => closeSheet()")
+    page.wait_for_timeout(150)
 
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")

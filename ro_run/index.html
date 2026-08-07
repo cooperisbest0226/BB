@@ -34,12 +34,6 @@ try{
 
 <div class="app">
   <div class="topbar">
-    <!-- 存檔失敗警示：跟一般 toast 不一樣，這個不會自動消失，因為存檔失敗當下畫面看起來完全正常，
-         使用者很容易錯過短暫的提示，事後才發現東西不見了。這裡會一直留著，直到成功存檔為止。 -->
-    <div class="storage-banner hidden" id="storageBanner">
-      <span>⚠️ 尚未儲存成功，裝置空間可能已滿。目前的變更暫時只存在畫面上，建議立即備份。</span>
-      <button id="storageBannerBtn">匯出備份</button>
-    </div>
     <div class="topbar-row">
       <div class="brand">
         <span class="brand-mark">星座塔團隊</span>
@@ -240,7 +234,7 @@ try{
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v29';
+const APP_VERSION='v31';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -448,22 +442,9 @@ function applyTheme(){
 }
 applyTheme();
 if(sysDark) sysDark.addEventListener('change',()=>{ if((state.settings?.theme||'system')==='system') applyTheme(); });
-/* 存檔失敗這件事，光靠一個會自動消失的 toast 使用者很容易錯過 ——
-   失敗當下畫面看起來完全正常（改動還在記憶體裡），要等下次重開才會發現東西不見了，那時候已經很難回想是哪個操作弄丟的。
-   改成：失敗就顯示一條不會自動消失的警示列，一直留到某次存檔成功為止。 */
-let storageError=false;
-function setStorageBanner(on){
-  storageError=on;
-  const el=document.getElementById('storageBanner');
-  if(el) el.classList.toggle('hidden',!on);
-}
 function persist(){
-  try{
-    localStorage.setItem(KEY,JSON.stringify(state));
-    if(storageError) setStorageBanner(false);
-  }catch(e){
-    setStorageBanner(true);
-  }
+  try{ localStorage.setItem(KEY,JSON.stringify(state)); }
+  catch(e){ toast('儲存失敗，裝置空間可能已滿'); }
 }
 
 /* 所有異動都走這裡：改資料 → 存檔 → 重繪。
@@ -1661,6 +1642,8 @@ async function checkUpdate(btn){
 
 /* 更新記錄：手動維護的簡短版本說明，給使用者看這個 PWA 有在持續改版 */
 const CHANGELOG=[
+  ['v31','拿掉未儲存警示列功能；存檔失敗恢復成簡單提示，深色模式主要按鈕/toast 對比度修正保留'],
+  ['v30','未備份提示改放在底部（不再擋在最上面）；修正深色模式下儲存/建立等主要按鈕、toast 提示變成看不見的問題'],
   ['v29','修復壓力測試發現的問題：日期列效能優化（快約 90 倍）、指派人員不再跳頁、存檔失敗改成不會自動消失的警示'],
   ['v28','設定新增：深色模式、新增 RUN 預設值、資料用量、檢查更新、清空所有資料'],
   ['v27','設定選單改版：拿掉職業篩選、圖示化分組列表，好找也好按'],
@@ -2076,7 +2059,6 @@ document.addEventListener('click',e=>{
 });
 
 document.getElementById('btnMore').onclick=moreSheet;
-document.getElementById('storageBannerBtn').onclick=exportJson;
 document.getElementById('btnAddDate').onclick=dateSheet;
 document.getElementById('btnEditDate').onclick=editDateSheet;
 document.getElementById('btnToday').onclick=()=>{
