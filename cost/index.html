@@ -1265,6 +1265,47 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   content:'';position:absolute;left:0;right:0;bottom:100%;
   height:20px;background:var(--bg);
 }
+/* ── 版本更新紀錄 ───────────────────────────────────────────
+   左側一條時間軸：版本點 + 連接線。最新版標記為「目前版本」。 */
+.cl-item{position:relative;padding:0 0 20px 26px}
+.cl-item::before{                       /* 時間軸的線 */
+  content:'';position:absolute;left:5px;top:14px;bottom:0;width:2px;
+  background:var(--border2);
+}
+.cl-item:last-child{padding-bottom:4px}
+.cl-item:last-child::before{display:none}
+.cl-dot{
+  position:absolute;left:0;top:5px;width:12px;height:12px;border-radius:50%;
+  background:var(--surface4);border:2px solid var(--bg);box-shadow:0 0 0 1.5px var(--border2);
+}
+.cl-item.now .cl-dot{background:var(--green);box-shadow:0 0 0 1.5px var(--green)}
+.cl-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.cl-ver{font-family:'DM Mono',monospace;font-size:14.5px;font-weight:600;color:var(--text);letter-spacing:-.01em}
+.cl-item.now .cl-ver{color:var(--green)}
+.cl-date{font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace}
+.cl-now-badge{
+  font-size:10px;font-weight:700;color:var(--green);background:var(--green-lt);
+  padding:2px 7px;border-radius:99px;letter-spacing:.04em;
+}
+.cl-note{
+  font-size:11.5px;color:var(--text3);line-height:1.55;margin:-3px 0 9px;
+  padding:7px 10px;background:var(--surface3);border-radius:9px;
+}
+.cl-line{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
+.cl-tag{
+  flex:0 0 auto;font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;
+  margin-top:1.5px;letter-spacing:.03em;min-width:30px;text-align:center;
+}
+.cl-tag.add{color:var(--green);background:var(--green-lt)}
+.cl-tag.fix{color:var(--red-dk);background:var(--red-lt)}
+.cl-tag.imp{color:var(--blue);background:var(--blue-lt)}
+.cl-tag.chg{color:var(--amber);background:var(--amber-lt)}
+.cl-txt{font-size:13px;color:var(--text2);line-height:1.6;flex:1;min-width:0}
+/* 設定頁「版本」那一列變成可點的入口 */
+.app-info-row-tap{cursor:pointer;border-radius:8px;margin:0 -6px;padding-left:6px;padding-right:6px}
+.app-info-row-tap:active{background:var(--surface2)}
+.app-info-chev{color:var(--text3);font-weight:400}
+
 .btn{flex:1;height:48px;border:1.5px solid var(--border2);border-radius:var(--radius);cursor:pointer;background:var(--surface3);color:var(--text);font-weight:500;font-size:15px;transition:all var(--t-fast);box-shadow:var(--shadow-sm)}
 .btn:active{background:var(--surface4);transform:scale(.98)}
 .btn.primary{background:var(--green);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 4px 16px rgba(46,158,114,.30)}
@@ -2012,6 +2053,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         <div><div class="settings-row-lbl">檢查更新</div><div class="settings-row-sub" id="pwa-sw-sub">—</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 11-2.1-9.4L23 10"/></svg></div>
       </div>
+      <div class="settings-row" role="button" tabindex="0" onclick="openChangelog()">
+        <div><div class="settings-row-lbl">版本更新紀錄</div><div class="settings-row-sub" id="cl-sub">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg></div>
+      </div>
       <div class="settings-row" role="button" tabindex="0" onclick="toggleDiag()">
         <div><div class="settings-row-lbl">診斷模式</div><div class="settings-row-sub" id="diag-sub">關閉</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.9 2.9M16.2 16.2l2.9 2.9M2 12h4M18 12h4M4.9 19.1l2.9-2.9M16.2 7.8l2.9-2.9"/></svg></div>
@@ -2028,8 +2073,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-name">COST</div>
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
-        <div class="app-info-row"><span>版本</span><span>v4.9.2</span></div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/07/29</span></div>
+        <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
+          <span>版本</span><span id="app-info-ver">v4.9.3 <span class="app-info-chev">›</span></span>
+        </div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/07/30</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -2223,6 +2270,18 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <div class="sheet-btns" style="margin-top:14px">
       <button class="btn primary" onclick="closeCatModal()">完成</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="clov" role="dialog" aria-modal="true" aria-labelledby="clov-title" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr-row">
+      <h3 id="clov-title">版本更新紀錄</h3>
+      <button class="btn" style="flex:0 0 auto;width:auto;height:36px;padding:0 16px;font-size:14px"
+              onclick="document.getElementById('clov').classList.remove('on')">關閉</button>
+    </div>
+    <div id="cl-list"></div>
   </div>
 </div>
 
@@ -5808,6 +5867,8 @@ function rSettings(){
   const ms=document.getElementById('pwa-mode-sub');
   if(ms) ms.textContent = isStandalone() ? '已安裝 · 主畫面模式執行中' : '目前在瀏覽器分頁中執行';
   const ss=document.getElementById('pwa-sw-sub');
+  const cls=document.getElementById('cl-sub');
+  if(cls && CHANGELOG.length) cls.textContent = `${CHANGELOG[0].v} · ${CHANGELOG[0].d}`;
   if(ss) ss.textContent =
     swState === 'ready'   ? '離線快取已啟用' :
     swState === 'pending' ? '離線快取啟用中…' :
@@ -6483,6 +6544,84 @@ function applyUpdate() {
   if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
   else location.reload();
 }
+// ── 版本更新紀錄 ─────────────────────────────────────────
+// 資料放在這裡，之後發新版只要在最前面加一筆就好。
+// tag：add 新增 / fix 修正 / imp 改善 / chg 變更
+// note：整段說明（用在無法逐版還原的彙整項目上）
+const CHANGELOG = [
+  { v:'v4.9.3', d:'2026/07/30', c:[
+    ['add','版本更新紀錄：設定頁新增入口，並補齊 v4.0.0 以來的歷史紀錄'],
+  ]},
+  { v:'v4.9.2', d:'2026/07/30', c:[
+    ['fix','「檢查更新」在 sw.js 缺檔時誤報「環境不支援」。現在會分辨「未支援 / 啟用中 / 載入失敗」，並顯示實際原因（例如 404）'],
+    ['imp','離線元件載入失敗時，可直接在設定頁點擊重試，不必重新載入整個 App'],
+  ]},
+  { v:'v4.9.1', d:'2026/07/30', c:[
+    ['add','完整 iOS / PWA 圖示組，含 Android maskable 版本'],
+    ['chg','App 名稱固定為 COST'],
+    ['fix','manifest 的 start_url 與實際檔名不符，安裝後可能開不到正確頁面'],
+  ]},
+  { v:'v4.9.0', d:'2026/07/29', c:[
+    ['add','補上 sw.js 與 manifest.webmanifest —— 這兩個檔案先前根本不存在，離線與安裝從未生效'],
+    ['fix','換月時的金額滾動動畫從未播放過（判斷用的變數在檢查前就被覆寫）'],
+    ['fix','表單上的「提前 3 天 / 7 天」提醒設定寫進去了但沒有被套用'],
+    ['fix','類別名稱含單引號時，該類別的按鈕會失效'],
+    ['fix','資料寫入失敗時畫面會卡住，沒有任何提示'],
+    ['fix','離線時圖表分頁會整頁失效'],
+    ['fix','CSV 匯入在部分瀏覽器無法運作；含引號的欄位會解析錯誤'],
+    ['add','匯入資料驗證，格式不符的資料不再寫入'],
+    ['imp','設定項目與清單可用鍵盤操作，彈窗加入焦點鎖定'],
+    ['imp','全表查詢加入快取，勾選項目時不再重複掃描整個資料表'],
+  ]},
+  { v:'v4.8.0', d:'2026/07/29', c:[
+    ['fix','首頁金額被卡片漸層蓋住而顯得模糊'],
+    ['fix','浮動新增按鈕擋住底部合計'],
+    ['fix','只有「即將到期」而沒有逾期時，提醒視窗不會跳出'],
+    ['fix','提醒視窗的每日重置在 App 長時間開著時失效'],
+    ['add','切回 App 時自動重新整理並重新檢查提醒'],
+  ]},
+  { v:'v4.1.0 – v4.7.0', d:'2026/07/28–29',
+    note:'這段期間的逐版紀錄沒有保留，以下為主要變更彙整。',
+    c:[
+    ['add','訂閱管理：外幣換算與手續費計算鏈、家庭分攤（純資訊，不產生代墊記錄）、12 個月現金流預測'],
+    ['add','首頁左右滑動切換月份、下拉重整、金額滾動動畫'],
+    ['add','分頁列滑動指示條與拖曳切換'],
+    ['imp','首頁空間精簡：月份選擇併入 hero、未設定預算時收合、訂閱入口改為細條'],
+    ['chg','文字篩選改為圖示 + 未處理數量標記'],
+    ['fix','Safari 網址列顯示/隱藏造成畫面高度跳動（100dvh → 100%）'],
+  ]},
+  { v:'v4.0.0', d:'2026/07/28', c:[
+    ['add','PWA 基礎：manifest、圖示、離線快取'],
+    ['fix','新增費用表單在手機上會左右滑出畫面'],
+    ['fix','iOS 日期欄位破圖溢出'],
+    ['fix','Service Worker 原本用 blob URL 註冊，瀏覽器一律拒絕，離線從未生效'],
+  ]},
+];
+const CL_TAG = { add:'新增', fix:'修正', imp:'改善', chg:'變更' };
+
+function renderChangelog(){
+  document.getElementById('cl-list').innerHTML = CHANGELOG.map((e,i)=>`
+    <div class="cl-item${i===0?' now':''}">
+      <span class="cl-dot"></span>
+      <div class="cl-head">
+        <span class="cl-ver">${esc(e.v)}</span>
+        <span class="cl-date">${esc(e.d)}</span>
+        ${i===0?'<span class="cl-now-badge">目前版本</span>':''}
+      </div>
+      ${e.note?`<div class="cl-note">${esc(e.note)}</div>`:''}
+      ${e.c.map(([t,txt])=>`<div class="cl-line">
+          <span class="cl-tag ${t}">${CL_TAG[t]||''}</span>
+          <span class="cl-txt">${esc(txt)}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function openChangelog(){
+  renderChangelog();
+  document.getElementById('clov').classList.add('on');
+  document.getElementById('cl-list').scrollTop = 0;
+}
+
 async function checkUpdate() {
   if (swState === 'unsupported') {
     toast(location.protocol === 'https:' ? '此瀏覽器不支援離線快取'
