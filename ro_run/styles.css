@@ -4,6 +4,8 @@
 :root{
   --vvh:100vh; --vvtop:0px; /* JS 依 visualViewport 動態更新，讓鍵盤彈出時 sheet 仍貼齊可視範圍，不被鍵盤蓋住或跑版 */
   --bg:#eef1f7;
+  --surface:#fff;             /* 卡片／按鈕懸停／輸入框等「面」的底色 */
+  --surface-2:#f4f5f9;
   --ink:#15171c;
   --ink-2:#3d434f;
   --muted:#7b8194;
@@ -20,6 +22,54 @@
   --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
   --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
   --ease:cubic-bezier(.32,.72,0,1);
+}
+/* 深色模式：同一套變數換一組值，其餘規則不用重寫。
+   .exportwrap（圖片匯出用的節點）刻意不跟著換色，匯出的圖片不管目前是深色還淺色介面，畫面一律維持白底好分享。 */
+[data-theme="dark"]{
+  --bg:#0d0f14;
+  --surface:#1b1e26;
+  --surface-2:#20232c;
+  --ink:#eef0f4;
+  --ink-2:#c7cbd6;
+  --muted:#8b90a0;
+  --faint:#5c6072;
+  --line:rgba(255,255,255,.1);
+  --line-2:rgba(255,255,255,.07);
+  --glass:rgba(27,30,38,.72);
+  --glass-2:rgba(27,30,38,.55);
+  --accent:#8583ff;
+  --accent-soft:rgba(133,131,255,.16);
+  --danger:#f87171;
+  --ok:#34d399;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -8px rgba(0,0,0,.5);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.35), 0 18px 40px -12px rgba(0,0,0,.6);
+}
+[data-theme="dark"] body::before{opacity:.5}       /* 夜空底紋在深色模式下亮度收斂一點，不然會過曝 */
+[data-theme="dark"] .exportwrap{background:#fff; color:#15171c}  /* 匯出圖片固定白底，見上方註解 */
+/* 這些是「半透明白色玻璃卡片疊在底色上」的寫法，深色模式下改成低透明度的白，
+   在深色背景上呈現「微微亮起的面板」而不是刺眼的白卡片 */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select{background:rgba(255,255,255,.055)}
+[data-theme="dark"] .slot{background:rgba(255,255,255,.04)}
+[data-theme="dark"] .slot:hover{background:rgba(255,255,255,.075)}
+[data-theme="dark"] .slot-empty{background:rgba(255,255,255,.03)}
+[data-theme="dark"] .pt-foot{background:rgba(255,255,255,.03)}
+[data-theme="dark"] .gbtn{background:rgba(255,255,255,.05)}
+[data-theme="dark"] .gbtn:hover{background:rgba(255,255,255,.09)}
+[data-theme="dark"] .row:hover{background:rgba(255,255,255,.06)}
+[data-theme="dark"] .order-row{background:rgba(255,255,255,.05)}
+[data-theme="dark"] .icon-btn:hover{background:rgba(255,255,255,.08)}
+[data-theme="dark"] .topbar{background:rgba(13,15,20,.82)}
+[data-theme="dark"] .tabbar-glass{
+  background:rgba(27,30,38,.68);
+  border-color:rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(255,255,255,.04),
+    0 1px 2px rgba(0,0,0,.3), 0 12px 32px -8px rgba(0,0,0,.55);
+}
+[data-theme="dark"] .tab[aria-selected="true"]{
+  background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 3px rgba(0,0,0,.3);
 }
 /* 整個 App 都是用「按住拖曳」操作的（陣容分配、成員列表…），
    手機上長按預設會跳出選字/複製或 iOS 的操作選單，跟拖曳搶手勢，容易誤觸 —— 全面關掉。
@@ -60,6 +110,17 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   background:rgba(238,241,247,.82); backdrop-filter:blur(20px) saturate(1.6);
   -webkit-backdrop-filter:blur(20px) saturate(1.6); border-bottom:1px solid var(--line-2);
 }
+.storage-banner{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:8px 12px; margin:-10px -16px 9px; font-size:12px; line-height:1.5;
+  color:#fff; background:var(--danger);
+}
+.storage-banner.hidden{display:none}
+.storage-banner span{flex:1; min-width:180px}
+.storage-banner button{
+  flex:0 0 auto; padding:5px 11px; border-radius:7px; font-size:11.5px; font-weight:650;
+  color:var(--danger); background:#fff;
+}
 .topbar-row{display:flex; align-items:center; gap:10px}
 .brand{display:flex; align-items:baseline; gap:8px; margin-right:auto; min-width:0}
 .brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
@@ -69,7 +130,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   color:var(--ink-2); background:var(--glass-2); border:1px solid var(--line-2);
   transition:background .16s, color .16s, transform .12s var(--ease);
 }
-.icon-btn:hover{background:#fff; color:var(--ink)}
+.icon-btn:hover{background:var(--surface); color:var(--ink)}
 .icon-btn:active{transform:scale(.94)}
 .icon-btn:disabled{opacity:.32; cursor:default}
 .icon-btn svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
@@ -213,7 +274,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   font-size:12px; font-weight:500; color:var(--ink-2); padding:6px 11px; border-radius:8px;
   border:1px solid var(--line); background:rgba(255,255,255,.7); transition:background .16s, border-color .16s, transform .12s var(--ease);
 }
-.gbtn:hover{background:#fff; border-color:var(--line)}
+.gbtn:hover{background:var(--surface); border-color:var(--line)}
 .gbtn:active{transform:scale(.96)}
 .gbtn.accent{color:#fff; background:var(--ink); border-color:var(--ink)}
 .gbtn.accent:hover{background:#000}
@@ -234,7 +295,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .bench-list::-webkit-scrollbar{display:none}
 .chip{
   flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:7px 12px;
-  background:#fff; border:1px solid var(--line-2); border-radius:99px; font-size:13px; font-weight:500;
+  background:var(--surface); border:1px solid var(--line-2); border-radius:99px; font-size:13px; font-weight:500;
   box-shadow:0 1px 2px rgba(21,23,28,.05); touch-action:pan-x; cursor:grab;
   transition:transform .14s var(--ease), box-shadow .16s, opacity .16s;
 }
@@ -248,7 +309,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 }
 .bench-empty{font-size:12.5px; color:var(--faint); padding:8px 2px}
 .drag-ghost{
-  position:fixed; z-index:999; pointer-events:none; padding:7px 12px; background:#fff;
+  position:fixed; z-index:999; pointer-events:none; padding:7px 12px; background:var(--surface);
   border-radius:99px; font-size:13px; font-weight:600; box-shadow:var(--shadow-lift);
   border:1px solid var(--accent); transform:translate(-50%,-50%) scale(1.04);
 }
@@ -264,7 +325,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .swatch{width:22px; height:22px; border-radius:7px; flex:0 0 auto; border:1px solid rgba(21,23,28,.1)}
 .checkbox{
   width:21px; height:21px; border-radius:7px; flex:0 0 auto; border:1.5px solid var(--line);
-  background:#fff; position:relative; transition:background .16s, border-color .16s;
+  background:var(--surface); position:relative; transition:background .16s, border-color .16s;
 }
 .checkbox.on{background:var(--accent); border-color:var(--accent)}
 .checkbox.on::after{
@@ -313,7 +374,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
   color:var(--muted); white-space:nowrap; transition:color .18s, background .18s, box-shadow .18s;
 }
-.subseg button[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
+.subseg button[aria-selected="true"]{background:var(--surface); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
 .subview{display:none}
 .subview.active{display:block; animation:rise .3s var(--ease) both}
 
@@ -419,7 +480,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 }
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .sheet{
-  width:100%; max-width:480px; background:#fff; border-radius:22px 22px 0 0;
+  width:100%; max-width:480px; background:var(--surface); border-radius:22px 22px 0 0;
   padding:8px 18px calc(20px + env(safe-area-inset-bottom)); max-height:calc(var(--vvh, 100vh) * .88); overflow-y:auto;
   animation:slide .34s var(--ease) both; box-shadow:0 -8px 40px rgba(21,23,28,.2);
 }
@@ -430,7 +491,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 /* ── 設定選單：分組列表，每一列整條都可以按，比擠在一起的小按鈕好按很多 ── */
 .settings-sec{font-size:11.5px; font-weight:650; color:var(--muted); letter-spacing:.04em; margin:18px 2px 7px}
 .settings-sec:first-child{margin-top:2px}
-.settings-group{background:#fff; border-radius:14px; overflow:hidden; border:1px solid var(--line-2)}
+.settings-group{background:var(--surface); border-radius:14px; overflow:hidden; border:1px solid var(--line-2)}
 .settings-row{
   display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px;
   text-align:left; border-bottom:1px solid var(--line-2); transition:background .14s;
@@ -509,7 +570,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .skillgrp{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em; margin:13px 0 6px}
 .skillgrid{display:flex; flex-wrap:wrap; gap:7px}
 .skillpill{
-  padding:7px 12px; border-radius:99px; border:1px solid var(--line); background:#fff;
+  padding:7px 12px; border-radius:99px; border:1px solid var(--line); background:var(--surface);
   font-size:12.5px; font-weight:500; transition:background .14s, color .14s, border-color .14s;
 }
 .skillpill[aria-pressed="true"]{color:#fff; background:var(--accent); border-color:var(--accent)}
@@ -541,13 +602,13 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .stepper{display:flex; align-items:center; gap:4px; flex:0 0 auto}
 .stepbtn{
   width:32px; height:32px; border-radius:9px; border:1px solid var(--line);
-  background:#fff; font-size:17px; font-weight:600; line-height:1; color:var(--ink-2);
+  background:var(--surface); font-size:17px; font-weight:600; line-height:1; color:var(--ink-2);
 }
 .stepbtn:disabled{opacity:.3}
 .stepbtn.plus{background:var(--accent-soft); border-color:rgba(79,70,229,.25); color:var(--accent)}
 .stepqty{
   width:44px !important; text-align:center; font-size:15px !important; font-weight:650;
-  padding:6px 2px !important; border:1px solid var(--line-2) !important; background:#fff;
+  padding:6px 2px !important; border:1px solid var(--line-2) !important; background:var(--surface);
 }
 .dropsum{
   font-size:12.5px; color:#92400e; background:rgba(180,83,9,.08);

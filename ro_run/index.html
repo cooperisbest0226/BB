@@ -3,6 +3,17 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+<script>
+/* 一定要在 CSS 套用前就決定好深色/淺色，不然畫面會先閃一下淺色再變深色。
+   直接讀 localStorage 裡的設定，不等主程式載入完。 */
+try{
+  const raw=localStorage.getItem('pt-manager-v1');
+  const parsed=raw&&JSON.parse(raw);
+  const saved=parsed&&parsed.settings&&parsed.settings.theme;
+  const dark=saved==='dark'||(saved!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  if(dark) document.documentElement.dataset.theme='dark';
+}catch(e){}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#eef1f7">
 <title>星座塔團隊</title>
@@ -23,6 +34,12 @@
 
 <div class="app">
   <div class="topbar">
+    <!-- 存檔失敗警示：跟一般 toast 不一樣，這個不會自動消失，因為存檔失敗當下畫面看起來完全正常，
+         使用者很容易錯過短暫的提示，事後才發現東西不見了。這裡會一直留著，直到成功存檔為止。 -->
+    <div class="storage-banner hidden" id="storageBanner">
+      <span>⚠️ 尚未儲存成功，裝置空間可能已滿。目前的變更暫時只存在畫面上，建議立即備份。</span>
+      <button id="storageBannerBtn">匯出備份</button>
+    </div>
     <div class="topbar-row">
       <div class="brand">
         <span class="brand-mark">星座塔團隊</span>
@@ -223,7 +240,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v27';
+const APP_VERSION='v29';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -350,7 +367,8 @@ function roJobIdByName(name){
 // 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
 function seed(){
   const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
-  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[]};
+  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[],
+    settings:{theme:'system',defaultTime:'20:00',defaultCap:12}};
 }
 
 function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[]}; }
@@ -392,6 +410,10 @@ const MIGRATIONS=[
     });
     if(!Array.isArray(p.sales)) p.sales=[];
   },
+  /* 1 → 2：新增設定物件（外觀主題、新增 RUN 的預設時間／人數上限） */
+  p=>{
+    p.settings=Object.assign({theme:'system',defaultTime:'20:00',defaultCap:12},p.settings||{});
+  },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
 
@@ -413,7 +435,36 @@ function load(){
   }catch(e){}
   return seed();
 }
-function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){ toast('儲存失敗，裝置空間可能已滿'); } }
+
+/* 套用外觀設定。<head> 裡的行內 script 已經在畫面畫出來前先套過一次（避免閃色），
+   這裡是主程式載入後、以及使用者在設定裡切換主題時，同步更新 <html> 屬性跟瀏覽器狀態列顏色。 */
+const sysDark=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(){
+  const t=state.settings?.theme||'system';
+  const dark=t==='dark'||(t==='system'&&sysDark&&sysDark.matches);
+  document.documentElement.dataset.theme=dark?'dark':'';
+  const mc=document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.content=dark?'#0d0f14':'#eef1f7';
+}
+applyTheme();
+if(sysDark) sysDark.addEventListener('change',()=>{ if((state.settings?.theme||'system')==='system') applyTheme(); });
+/* 存檔失敗這件事，光靠一個會自動消失的 toast 使用者很容易錯過 ——
+   失敗當下畫面看起來完全正常（改動還在記憶體裡），要等下次重開才會發現東西不見了，那時候已經很難回想是哪個操作弄丟的。
+   改成：失敗就顯示一條不會自動消失的警示列，一直留到某次存檔成功為止。 */
+let storageError=false;
+function setStorageBanner(on){
+  storageError=on;
+  const el=document.getElementById('storageBanner');
+  if(el) el.classList.toggle('hidden',!on);
+}
+function persist(){
+  try{
+    localStorage.setItem(KEY,JSON.stringify(state));
+    if(storageError) setStorageBanner(false);
+  }catch(e){
+    setStorageBanner(true);
+  }
+}
 
 /* 所有異動都走這裡：改資料 → 存檔 → 重繪。
    （復原／重做已移除，因此不再需要每次異動前後各做一次整包 JSON 快照比對） */
@@ -478,18 +529,47 @@ function render(){
   document.getElementById('brandSub').textContent=fmtDate(curDate)+' '+fmtDow(curDate);
 }
 
+/* 日期列的日期集合通常不會變（新增/刪除/改日期才會變），
+   但只要陣容分配有任何異動，render() 就會呼叫這裡 —— 資料量一大（例如用了兩年、累積幾百天）
+   整條日期列每次都重新產生 DOM 會變成明顯的效能負擔。
+   改成：日期集合沒變的話，只更新「目前這天」那一顆的人數/RUN數跟 aria-current，不重建整條列。 */
+let dateRailKeysCache=null, dateRailTodayCache=null;
+function dateChipHTML(k, tk){
+  const pts=ptsOf(k), used=assignedIds(k).size;
+  return `<button class="datechip ${k===tk?'today':''}" data-date="${k}" aria-current="${k===curDate}">
+    <div class="dc-dow">${k===tk?'今天':fmtDow(k)}</div>
+    <div class="dc-md num">${fmtDate(k)}</div>
+    <div class="dc-meta num">${pts.length}R · ${used}人</div>
+  </button>`;
+}
 function renderDates(){
   const rail=document.getElementById('dateRail'), tk=todayKey();
-  rail.innerHTML=dates().map(k=>{
-    const pts=ptsOf(k), used=assignedIds(k).size;
-    return `<button class="datechip ${k===tk?'today':''}" data-date="${k}" aria-current="${k===curDate}">
-      <div class="dc-dow">${k===tk?'今天':fmtDow(k)}</div>
-      <div class="dc-md num">${fmtDate(k)}</div>
-      <div class="dc-meta num">${pts.length}R · ${used}人</div>
-    </button>`;
-  }).join('');
+  const ks=dates(), keysStr=ks.join(',');
+  if(keysStr!==dateRailKeysCache||tk!==dateRailTodayCache){
+    rail.innerHTML=ks.map(k=>dateChipHTML(k,tk)).join('');
+    dateRailKeysCache=keysStr; dateRailTodayCache=tk;
+  }else{
+    /* 日期集合沒變：唯一可能變動內容的只有「目前這天」（使用者一次只能編輯 curDate），
+       其餘日期的 chip 沿用上次畫好的 DOM，省掉整條重繪的成本 */
+    rail.querySelectorAll('.datechip[aria-current="true"]').forEach(el=>{
+      if(el.dataset.date!==curDate) el.setAttribute('aria-current','false');
+    });
+    const btn=rail.querySelector(`[data-date="${curDate}"]`);
+    if(btn){
+      btn.setAttribute('aria-current','true');
+      const meta=btn.querySelector('.dc-meta');
+      if(meta) meta.textContent=`${ptsOf(curDate).length}R · ${assignedIds(curDate).size}人`;
+    }
+  }
+  /* 這裡故意不用 cur.scrollIntoView() —— 日期列在 sticky 頂部列裡面，
+     scrollIntoView 為了「把日期列本身捲進可視範圍」，會連帶把整個頁面往上捲到頂，
+     每次指派人員都會跳頁，很煩。改成只算日期列「自己」要橫向捲多少，不去動整頁的垂直捲動位置。 */
   const cur=rail.querySelector('[aria-current="true"]');
-  if(cur) cur.scrollIntoView({block:'nearest',inline:'center',behavior:dateRailReady?'smooth':'auto'});
+  if(cur){
+    const rRect=rail.getBoundingClientRect(), cRect=cur.getBoundingClientRect();
+    const delta=(cRect.left+cRect.width/2)-(rRect.left+rRect.width/2);
+    if(Math.abs(delta)>1) rail.scrollTo({left:rail.scrollLeft+delta, behavior:dateRailReady?'smooth':'auto'});
+  }
   dateRailReady=true;
 }
 
@@ -1331,7 +1411,7 @@ function expansionRoleSheet(){
 }
 
 function ptSheet(id){
-  const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,time:'20:00',capacity:12};
+  const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,time:state.settings.defaultTime,capacity:state.settings.defaultCap};
   sheet(id?'編輯 RUN':'新增 RUN',`
     <div class="field"><label>RUN 名稱</label><input name="name" value="${esc(pt.name)}"></div>
     <div class="field-2">
@@ -1518,7 +1598,7 @@ function dateSheet(){
       commit(()=>{
         state.schedule[k]= (copy&&from&&state.schedule[from])
           ? JSON.parse(JSON.stringify(ptsOf(from))).map(p=>({...p,id:uid(),drops:[]}))
-          : [mkPt('RUN 1','20:00',12)];
+          : [mkPt('RUN 1',state.settings.defaultTime,state.settings.defaultCap)];
       });
       curDate=k; closeSheet(); render();
     };
@@ -1551,8 +1631,88 @@ function editDateSheet(){
   });
 }
 
+/* 目前 localStorage 用掉多少空間，設定頁的「資料用量」要顯示這個 */
+function storageUsageKB(){
+  try{ return new Blob([localStorage.getItem(KEY)||'']).size/1024; }
+  catch(e){ return 0; }
+}
+
+/* 主動檢查有沒有新版本：強迫瀏覽器重新抓一次 sw.js，真的抓到不同內容才會觸發 updatefound。
+   sw.js 的 install 階段本來就會自動 skipWaiting，所以這裡等新的 worker 進到 activated 就代表換版完成，直接重新整理套用。 */
+async function checkUpdate(btn){
+  if(!('serviceWorker' in navigator)) return toast('此瀏覽器不支援自動更新檢查');
+  if(btn) btn.disabled=true;
+  toast('檢查更新中…');
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    if(!reg){ toast('找不到背景服務，請確認網路連線'); if(btn) btn.disabled=false; return; }
+    let found=false;
+    reg.addEventListener('updatefound',()=>{
+      found=true;
+      const nw=reg.installing;
+      if(nw) nw.addEventListener('statechange',()=>{
+        if(nw.state==='activated'){ toast('已更新到最新版本，重新整理中…'); setTimeout(()=>location.reload(),500); }
+      });
+    });
+    await reg.update();
+    setTimeout(()=>{ if(!found){ toast(`已經是最新版本（${APP_VERSION}）`); if(btn) btn.disabled=false; } },1400);
+  }catch(e){ toast('檢查更新失敗，請確認網路連線'); if(btn) btn.disabled=false; }
+}
+
+/* 更新記錄：手動維護的簡短版本說明，給使用者看這個 PWA 有在持續改版 */
+const CHANGELOG=[
+  ['v29','修復壓力測試發現的問題：日期列效能優化（快約 90 倍）、指派人員不再跳頁、存檔失敗改成不會自動消失的警示'],
+  ['v28','設定新增：深色模式、新增 RUN 預設值、資料用量、檢查更新、清空所有資料'],
+  ['v27','設定選單改版：拿掉職業篩選、圖示化分組列表，好找也好按'],
+  ['v26','底部分頁列跟螢幕邊緣的距離調得更貼齊'],
+  ['v25','分頁列移到底部（玻璃質感）、成員清單移到頂部；復原／重做功能移除'],
+  ['v24','匯入前自動備份、匯出支援日期區間、CSS 拆成獨立檔案、資料版本化管理'],
+  ['v23','新增日期時可以指定要複製哪一天的陣容配置'],
+  ['v22','售出計算的交易明細支援編輯'],
+  ['v21','全站關閉長按選字／選單，避免跟拖曳排序手勢衝突'],
+  ['v20','陣容分配改成全螢幕排序編輯器；便當只有在編輯模式才能切換'],
+];
+function changelogSheet(){
+  sheet('更新記錄',`
+    <div class="settings-group" style="margin-bottom:4px">
+      ${CHANGELOG.map(([v,d])=>`<div class="settings-row" style="cursor:default">
+        <span class="settings-ic" style="color:var(--accent);background:var(--accent-soft);font-size:11px;font-weight:700">${esc(v)}</span>
+        <span class="settings-tx"><span class="settings-t" style="font-weight:500">${esc(d)}</span></span>
+      </div>`).join('')}
+    </div>`,()=>{});
+}
+
+/* 清空所有資料：回到全新安裝的狀態。跟匯入一樣，動手前先自動備份一份，且完全無法用復原救回 */
+function resetAllData(){
+  confirmSheet(
+    '這會清空所有成員、職業、排班與售出紀錄，且無法復原（復原功能已移除）。\n按下確定後會先自動下載一份目前資料的備份。',
+    ()=>{
+      backupJson();
+      commit(()=>{ state=seed(); });
+      curDate=null; applyTheme(); render();
+      toast('已清空所有資料（已自動備份）');
+    },'清空所有資料');
+}
+
+
 function moreSheet(){
+  const set=state.settings;
   sheet('設定',`
+    <div class="settings-sec">偏好設定</div>
+    <div class="settings-group" style="padding:12px 14px 14px">
+      <div style="font-size:13px;font-weight:560;margin-bottom:8px">外觀</div>
+      <div class="subseg" role="tablist" id="themeSeg" style="margin-bottom:16px">
+        <button role="tab" data-theme-v="light" aria-selected="${set.theme==='light'}">淺色</button>
+        <button role="tab" data-theme-v="dark" aria-selected="${set.theme==='dark'}">深色</button>
+        <button role="tab" data-theme-v="system" aria-selected="${set.theme==='system'}">自動</button>
+      </div>
+      <div style="font-size:13px;font-weight:560;margin-bottom:8px">新增 RUN 的預設值</div>
+      <div class="field-2">
+        <div class="field"><label>預設時間</label><input name="defTime" value="${esc(set.defaultTime)}" placeholder="20:00"></div>
+        <div class="field" style="margin-bottom:0"><label>預設人數上限</label><input name="defCap" type="number" min="1" max="30" value="${set.defaultCap}"></div>
+      </div>
+    </div>
+
     <div class="settings-sec">分享與匯出</div>
     <div class="settings-group">
       <button class="settings-row" data-s="img">
@@ -1587,10 +1747,54 @@ function moreSheet(){
       </button>
     </div>
 
+    <div class="settings-sec">關於</div>
+    <div class="settings-group">
+      <div class="settings-row" style="cursor:default">
+        <span class="settings-ic" style="color:var(--muted);background:var(--surface-2)">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+        </span>
+        <span class="settings-tx"><span class="settings-t">資料用量</span><span class="settings-d">目前約 ${storageUsageKB().toFixed(0)} KB（瀏覽器通常提供 5–10MB 空間）</span></span>
+      </div>
+      <button class="settings-row" data-s="checkUpdate">
+        <span class="settings-ic" style="color:#4f46e5;background:var(--accent-soft)">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+        </span>
+        <span class="settings-tx"><span class="settings-t">檢查更新</span><span class="settings-d">目前版本 ${esc(APP_VERSION)}</span></span>
+      </button>
+      <button class="settings-row" data-s="changelog">
+        <span class="settings-ic" style="color:var(--muted);background:var(--surface-2)">
+          <svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h10l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
+        </span>
+        <span class="settings-tx"><span class="settings-t">更新記錄</span></span>
+        <svg class="settings-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+
+    <div class="settings-sec">危險區</div>
+    <div class="settings-group" style="border-color:rgba(220,38,38,.3)">
+      <button class="settings-row" data-s="reset">
+        <span class="settings-ic" style="color:var(--danger);background:rgba(220,38,38,.1)">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </span>
+        <span class="settings-tx"><span class="settings-t" style="color:var(--danger)">清空所有資料</span><span class="settings-d">回到全新安裝狀態，會先自動備份</span></span>
+      </button>
+    </div>
+
     <div style="text-align:center;color:var(--faint);font-size:11px;margin-top:16px">
       作者：${esc(APP_AUTHOR)} · 版本 ${esc(APP_VERSION)}
     </div>
     <input type="file" name="jsonFile" accept="application/json,.json" style="display:none">`,s=>{
+    s.querySelectorAll('#themeSeg [data-theme-v]').forEach(b=>b.onclick=()=>{
+      commit(()=>{ state.settings.theme=b.dataset.themeV; });
+      applyTheme();
+      s.querySelectorAll('#themeSeg [data-theme-v]').forEach(x=>x.setAttribute('aria-selected',x===b));
+    });
+    const defTime=s.querySelector('[name="defTime"]'), defCap=s.querySelector('[name="defCap"]');
+    defTime.onchange=()=>{ commit(()=>{ state.settings.defaultTime=defTime.value.trim()||'20:00'; }); };
+    defCap.onchange=()=>{ commit(()=>{ state.settings.defaultCap=Math.max(1,Math.min(30,parseInt(defCap.value)||12)); }); };
+    s.querySelector('[data-s="checkUpdate"]').onclick=e=>checkUpdate(e.currentTarget);
+    s.querySelector('[data-s="changelog"]').onclick=()=>{ closeSheet(); changelogSheet(); };
+    s.querySelector('[data-s="reset"]').onclick=()=>{ closeSheet(); resetAllData(); };
     s.querySelector('[data-s="img"]').onclick=()=>{ closeSheet(); exportRangeSheet('img'); };
     s.querySelector('[data-s="csv"]').onclick=()=>{ closeSheet(); exportRangeSheet('csv'); };
     s.querySelector('[data-s="exportJson"]').onclick=()=>{ exportJson(); };
@@ -1612,6 +1816,7 @@ function moreSheet(){
           backupJson();
           curDate=null;
           commit(()=>{ state=migrate(data); });
+          applyTheme();
           toast('已匯入設定（原資料已備份下載）');
         },'備份並匯入');
       };
@@ -1871,6 +2076,7 @@ document.addEventListener('click',e=>{
 });
 
 document.getElementById('btnMore').onclick=moreSheet;
+document.getElementById('storageBannerBtn').onclick=exportJson;
 document.getElementById('btnAddDate').onclick=dateSheet;
 document.getElementById('btnEditDate').onclick=editDateSheet;
 document.getElementById('btnToday').onclick=()=>{

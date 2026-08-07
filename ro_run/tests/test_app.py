@@ -270,6 +270,128 @@ def run(page):
               return saved.schedule['2026-08-05'][0].slots.length === before + 1;
           }"""), True)
 
+    # ---------- 設定選單重做 ----------
+    print("\n[settings] 設定選單重做")
+    seed(page)
+    check("settings 物件存在且有預設值",
+          page.evaluate("() => state.settings"),
+          {"theme": "system", "defaultTime": "20:00", "defaultCap": 12})
+    check("設定按鈕標題已改成「設定」",
+          page.get_attribute("#btnMore", "title"), "設定")
+
+    page.click("#btnMore")
+    page.wait_for_timeout(250)
+    check("職業篩選已移除", page.locator('select[name="rf"]').count(), 0)
+    check("sheet 標題為「設定」", page.locator(".sheet-t").first.inner_text().strip(), "設定")
+    check("設定列採分組列表呈現", page.locator(".settings-row").count() >= 6, True)
+
+    page.click('[data-theme-v="dark"]')
+    page.wait_for_timeout(200)
+    check("切換深色後 state.settings.theme 更新",
+          page.evaluate("() => state.settings.theme"), "dark")
+    check("切換深色後 <html data-theme> 更新",
+          page.evaluate("() => document.documentElement.dataset.theme"), "dark")
+    check("深色模式下狀態列顏色跟著換",
+          page.evaluate("() => document.querySelector('meta[name=theme-color]').content"), "#0d0f14")
+    page.click('[data-theme-v="light"]')
+    page.wait_for_timeout(200)
+    check("切回淺色後狀態列顏色也換回來",
+          page.evaluate("() => document.querySelector('meta[name=theme-color]').content"), "#eef1f7")
+
+    page.fill('input[name="defTime"]', "21:30")
+    page.dispatch_event('input[name="defTime"]', "change")
+    page.fill('input[name="defCap"]', "6")
+    page.dispatch_event('input[name="defCap"]', "change")
+    page.wait_for_timeout(150)
+    check("預設時間／人數上限已存到 settings",
+          page.evaluate("() => [state.settings.defaultTime, state.settings.defaultCap]"),
+          ["21:30", 6])
+    page.evaluate("() => closeSheet()")
+    page.wait_for_timeout(150)
+    page.click('button:has-text("新增 RUN")')
+    page.wait_for_timeout(200)
+    check("新增 RUN 表單帶入新的預設時間",
+          page.eval_on_selector('input[name="time"]', "el => el.value"), "21:30")
+    check("新增 RUN 表單帶入新的預設人數上限",
+          page.eval_on_selector('input[name="cap"]', "el => el.value"), "6")
+    page.evaluate("() => closeSheet()")
+    page.wait_for_timeout(150)
+
+    page.click("#btnMore")
+    page.wait_for_timeout(200)
+    check("資料用量顯示公斤位數字",
+          "KB" in page.locator(".settings-d").filter(has_text="KB").inner_text(), True)
+    page.click('[data-s="changelog"]')
+    page.wait_for_timeout(200)
+    check("更新記錄至少有幾筆版本說明",
+          page.locator("#sheetHost .settings-row").count() >= 5, True)
+    page.evaluate("() => closeSheet()")
+    page.wait_for_timeout(150)
+
+    # 清空所有資料
+    page.click("#btnMore")
+    page.wait_for_timeout(200)
+    downloaded = []
+    page.on("download", lambda d: downloaded.append(d.suggested_filename))
+    page.click('[data-s="reset"]')
+    page.wait_for_timeout(200)
+    page.click('[data-s="yes"]')
+    page.wait_for_timeout(300)
+    check("清空後成員歸零", page.evaluate("() => state.members.length"), 0)
+    check("清空後 settings 回到預設值",
+          page.evaluate("() => state.settings"),
+          {"theme": "system", "defaultTime": "20:00", "defaultCap": 12})
+    check("清空前有自動下載備份", bool(downloaded), True)
+
+    # ---------- 壓力測試修復 ----------
+    print("\n[perf-fix] 日期列不再整條重繪、指派人員不再跳頁")
+    seed(page)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(100)
+    page.evaluate("""() => {
+        const r0 = state.roles[0].id;
+        for (let i=0;i<8;i++) state.members.push({id:'x'+i,name:'測試員'+i,active:true,defaultRoleId:r0});
+        ptsOf(curDate)[0].capacity = 12;
+        persist(); render();
+    }""")
+    page.evaluate("() => window.scrollTo(0, 300)")
+    page.wait_for_timeout(150)
+    before_scroll = page.evaluate("() => window.scrollY")
+    page.evaluate("() => assign(state.members[state.members.length-1].id, ptsOf(curDate)[0].id)")
+    page.wait_for_timeout(200)
+    after_scroll = page.evaluate("() => window.scrollY")
+    check("指派人員後頁面垂直捲動位置不變", after_scroll, before_scroll)
+
+    check("日期集合沒變時 renderDates 不整條重建（沿用既有 DOM 節點）",
+          page.evaluate("""() => {
+              const rail = document.getElementById('dateRail');
+              const nodeBefore = rail.querySelector('.datechip');
+              renderDates();
+              return rail.querySelector('.datechip') === nodeBefore;
+          }"""), True)
+
+    # ---------- 壓力測試修復 ----------
+    print("\n[storage-banner] 存檔失敗警示（不會自動消失）")
+    seed(page)
+    check("初始警示列為隱藏",
+          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), True)
+    page.evaluate("""() => {
+        window.__origSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(k,v){ if(k===KEY) throw new DOMException('quota','QuotaExceededError'); return window.__origSetItem.call(this,k,v); };
+    }""")
+    page.evaluate("() => commit(()=>{ ptsOf(curDate)[0].capacity += 1; })")
+    page.wait_for_timeout(200)
+    check("存檔失敗後警示列顯示",
+          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), False)
+    page.wait_for_timeout(3000)
+    check("警示列 3 秒後仍未自動消失",
+          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), False)
+    page.evaluate("() => { Storage.prototype.setItem = window.__origSetItem; }")
+    page.evaluate("() => commit(()=>{ ptsOf(curDate)[0].capacity += 1; })")
+    page.wait_for_timeout(200)
+    check("恢復儲存成功後警示列自動關閉",
+          page.evaluate("() => document.getElementById('storageBanner').classList.contains('hidden')"), True)
+
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")
     check("全域禁止選字",

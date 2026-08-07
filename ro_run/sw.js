@@ -4,7 +4,7 @@
    - 導覽請求（開啟 App）：network-first，連線時抓最新版本，離線時退回快取
    - 其他（如 Google Fonts、html2canvas CDN）：stale-while-revalidate
 */
-const CACHE_NAME = 'star-tower-team-v27';
+const CACHE_NAME = 'star-tower-team-v29';
 const APP_SHELL = [
   './',
   './index.html',
@@ -15,6 +15,10 @@ const APP_SHELL = [
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png'
 ];
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
