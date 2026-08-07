@@ -224,11 +224,31 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .pt-count span{font-size:12px; color:var(--faint); font-weight:500}
 .pt-count.full b{color:var(--ok)}
 
-/* signature: segmented capacity meter */
-.meter{display:flex; gap:2.5px; padding:11px 15px 12px}
-.pip{flex:1; height:4px; border-radius:2px; background:rgba(21,23,28,.09); transition:background .3s var(--ease)}
-.pip.on{background:var(--accent)}
-.pip.full{background:var(--ok)}
+/* signature: 波利人數計量條 —— 每一格是一隻波利，已入座的會跳動 */
+.meter{display:flex; flex-wrap:wrap; gap:3px; padding:9px 15px 11px}
+.pip{
+  width:15px; height:15px; flex:0 0 auto; display:block;
+  color:var(--line); opacity:.5; transition:color .3s var(--ease), opacity .3s var(--ease);
+  transform-origin:50% 100%;                 /* 從腳底縮放，squash/stretch 才自然 */
+}
+.pip svg{width:100%; height:100%; display:block}
+.pip.on, .pip.full{opacity:1}                /* 空的整隻淡掉，眼睛才不會比已入座的還搶眼 */
+.pip.on{color:#f2879b}                       /* 一般波利：粉紅 */
+.pip.full{color:#4ec07a}                     /* 額滿：綠色波波利，延續原本「滿了變綠」的語意 */
+/* 已入座的波利會週期性跳一下：蹲 → 躍起拉長 → 落地壓扁。
+   週期拉長到 2.8 秒、跳躍只佔其中一小段，才不會整個畫面一直在動。 */
+.pip.on, .pip.full{animation:poring-hop 2.8s var(--ease) infinite}
+@keyframes poring-hop{
+  0%, 66%, 100%{transform:translateY(0) scale(1,1)}
+  72%{transform:translateY(0) scale(1.2,.8)}        /* 蹲下蓄力 */
+  81%{transform:translateY(-7px) scale(.88,1.16)}   /* 躍起拉長 */
+  90%{transform:translateY(0) scale(1.14,.88)}      /* 落地壓扁 */
+  96%{transform:translateY(0) scale(.97,1.03)}      /* 回彈 */
+}
+/* 使用者若在系統設定關閉動態效果，就不要跳 */
+@media (prefers-reduced-motion: reduce){
+  .pip.on, .pip.full{animation:none}
+}
 
 .slots{display:flex; flex-direction:column; gap:1px; background:var(--line-2); border-top:1px solid var(--line-2)}
 .slot{

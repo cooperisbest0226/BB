@@ -32,6 +32,19 @@ try{
 </head>
 <body>
 
+<!-- 波利圖示：定義一次，人數格子用 <use> 重複引用，不用每格都塞一份完整 SVG。
+     身體用 currentColor，所以「未填 / 已填 / 額滿」三種狀態只要換 CSS 的 color 就好。 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="ic-poring" viewBox="0 0 24 24">
+    <path d="M12 2.9C6 2.9 2.1 8.8 2.1 14.1c0 4.2 4.1 6.8 9.9 6.8s9.9-2.6 9.9-6.8C21.9 8.8 18 2.9 12 2.9Z" fill="currentColor"/>
+    <ellipse cx="8.6" cy="13.3" rx="2" ry="2.5" fill="#15171c" opacity=".82"/>
+    <ellipse cx="15.4" cy="13.3" rx="2" ry="2.5" fill="#15171c" opacity=".82"/>
+    <circle cx="7.85" cy="12.2" r=".62" fill="#fff"/>
+    <circle cx="14.65" cy="12.2" r=".62" fill="#fff"/>
+    <ellipse cx="7.7" cy="7.5" rx="1.9" ry="1.1" fill="#fff" opacity=".5" transform="rotate(-24 7.7 7.5)"/>
+  </symbol>
+</svg>
+
 <div class="app">
   <div class="topbar">
     <div class="topbar-row">
@@ -234,7 +247,7 @@ try{
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v32';
+const APP_VERSION='v33';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -563,8 +576,14 @@ function renderBoard(){
   }
   grid.innerHTML=pts.map((pt,i)=>{
     const n=pt.slots.length, full=n>=pt.capacity;
-    const pips=Array.from({length:pt.capacity},(_,j)=>
-      `<div class="pip ${j<n?(full?'full':'on'):''}"></div>`).join('');
+    const pips=Array.from({length:pt.capacity},(_,j)=>{
+      const on=j<n;
+      /* 已填的波利依序錯開跳動時間，看起來像一隻接一隻跳過去，而不是整排同時彈 */
+      const delay=on?` style="animation-delay:${(j%12)*110}ms"`:'';
+      return `<span class="pip ${on?(full?'full':'on'):''}"${delay} aria-hidden="true">
+        <svg viewBox="0 0 24 24"><use href="#ic-poring"/></svg>
+      </span>`;
+    }).join('');
     const rows=pt.slots.length ? pt.slots.map((s,si)=>{
       const m=memberById(s.memberId), r=roleById(s.roleId);
       if(!m) return '';
@@ -1646,6 +1665,10 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v33', d:'2026/08/07', c:[
+    ['chg','人數格子從單調的長條改成波利圖示：粉紅波利代表已入座，額滿時整排變成綠色波波利'],
+    ['add','已入座的波利會依序跳動（蹲下 → 躍起 → 落地回彈），系統若關閉動態效果則不跳'],
+  ]},
   { v:'v32', d:'2026/08/07', c:[
     ['imp','版本更新紀錄改成時間軸呈現，補上發布日期與變更分類標籤'],
   ]},

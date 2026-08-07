@@ -420,6 +420,49 @@ def run(page):
     page.evaluate("() => closeSheet()")
     page.wait_for_timeout(150)
 
+    # ---------- 波利人數計量 ----------
+    print("\n[poring] 人數格子改為波利圖示 + 跳動動畫")
+    seed(page)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+    page.evaluate("""() => {
+        const r0 = state.roles[0].id;
+        for (let i=0;i<6;i++) state.members.push({id:'p'+i,name:'波利員'+i,active:true,defaultRoleId:r0});
+        const pt = ptsOf(curDate)[0];
+        pt.capacity = 10; pt.slots = [0,1,2].map(i=>({memberId:'p'+i, roleId:r0}));
+        persist(); render();
+    }""")
+    page.wait_for_timeout(200)
+    check("波利數量等於人數上限", page.locator(".meter .pip").count(), 10)
+    check("已入座的波利數等於實際人數", page.locator(".meter .pip.on").count(), 3)
+    check("波利用 SVG symbol 重複引用", page.evaluate("() => !!document.getElementById('ic-poring')"), True)
+    check("已入座的波利有跳動動畫",
+          page.evaluate("() => getComputedStyle(document.querySelector('.pip.on')).animationName"), "poring-hop")
+    check("空位的波利不會跳動",
+          page.evaluate("() => getComputedStyle(document.querySelector('.pip:not(.on):not(.full)')).animationName"), "none")
+    check("跳動時間有錯開（不會整排同時彈）",
+          page.evaluate("""() => {
+              const d = [...document.querySelectorAll('.pip.on')].map(e=>getComputedStyle(e).animationDelay);
+              return new Set(d).size === d.length;
+          }"""), True)
+    moved = page.evaluate("""() => new Promise(res => {
+        const el = document.querySelector('.pip.on');
+        const seen = new Set(); let n = 0;
+        const tick = () => {
+            seen.add(getComputedStyle(el).transform);
+            if (++n > 200) res(seen.size > 1); else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    })""")
+    check("波利真的會動（跨越一個完整跳躍週期取樣）", moved, True)
+    page.evaluate("""() => {
+        const pt = ptsOf(curDate)[0];
+        pt.slots = Array.from({length:10},(_,i)=>({memberId:'p'+(i%6)}));
+        persist(); render();
+    }""")
+    page.wait_for_timeout(200)
+    check("額滿時全部切換成額滿樣式", page.locator(".meter .pip.full").count(), 10)
+
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")
     check("全域禁止選字",
