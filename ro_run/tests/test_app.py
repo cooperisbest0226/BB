@@ -215,6 +215,61 @@ def run(page):
     check("備份檔名可辨識且帶時間戳",
           bool(downloaded) and downloaded[0].startswith("星座塔團隊_匯入前備份_"), True)
 
+    # ---------- 版面：底部懸浮分頁列 + 頂部成員列 ----------
+    print("\n[layout] 底部分頁列與頂部成員列")
+    seed(page)
+    check("分頁列固定在底部",
+          page.evaluate("() => getComputedStyle(document.querySelector('.tabbar')).position"),
+          "fixed")
+    check("分頁列位於畫面下半部",
+          page.evaluate("""() => {
+              const r = document.querySelector('.tabbar-glass').getBoundingClientRect();
+              return r.top > innerHeight / 2;
+          }"""), True)
+    check("分頁列兩側留白（非滿版貼齊）",
+          page.evaluate("""() => {
+              const r = document.querySelector('.tabbar-glass').getBoundingClientRect();
+              return r.left > 0 && r.right < innerWidth;
+          }"""), True)
+    check("分頁列有玻璃模糊效果",
+          page.evaluate("""() => {
+              const s = getComputedStyle(document.querySelector('.tabbar-glass'));
+              return (s.backdropFilter || s.webkitBackdropFilter || '').includes('blur');
+          }"""), True)
+    check("五個分頁都有圖示",
+          page.evaluate("() => document.querySelectorAll('.tabbar .tab svg').length"), 5)
+    check("成員列位於頂部列內",
+          page.evaluate("() => !!document.querySelector('.topbar .bench')"), True)
+    check("成員列在分頁列上方",
+          page.evaluate("""() => {
+              const b = document.getElementById('bench').getBoundingClientRect();
+              const t = document.querySelector('.tabbar-glass').getBoundingClientRect();
+              return b.top < t.top;
+          }"""), True)
+
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(200)
+    check("非陣容分頁時成員列隱藏",
+          page.evaluate("() => document.getElementById('bench').classList.contains('hidden')"), True)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(200)
+    check("回到陣容分頁時成員列顯示",
+          page.evaluate("() => document.getElementById('bench').classList.contains('hidden')"), False)
+
+    # ---------- 復原／重做已移除 ----------
+    print("\n[removed] 復原／重做已移除")
+    check("復原鈕不存在", page.locator("#btnUndo").count(), 0)
+    check("重做鈕不存在", page.locator("#btnRedo").count(), 0)
+    check("undo/redo 函式不存在",
+          page.evaluate("() => [typeof undo, typeof redo]"), ["undefined", "undefined"])
+    check("commit 仍能正常存檔與重繪",
+          page.evaluate("""() => {
+              const before = ptsOf('2026-08-05')[0].slots.length;
+              commit(()=>{ ptsOf('2026-08-05')[0].slots.push({memberId:'m2'}); });
+              const saved = JSON.parse(localStorage.getItem(KEY));
+              return saved.schedule['2026-08-05'][0].slots.length === before + 1;
+          }"""), True)
+
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")
     check("全域禁止選字",

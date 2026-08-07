@@ -53,8 +53,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .num{font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1}
 
 /* ── layout ─────────────────────────────────────────────── */
-.app{max-width:1180px; margin:0 auto; padding:0 16px calc(120px + env(safe-area-inset-bottom)); transition:padding-bottom .3s var(--ease)}
-.app.nobench{padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+/* 底部留白讓出懸浮分頁列的高度（分頁列是 fixed，不佔文件流） */
+.app{max-width:1180px; margin:0 auto; padding:0 16px calc(104px + env(safe-area-inset-bottom))}
 .topbar{
   position:sticky; top:0; z-index:30; margin:0 -16px; padding:10px 16px 10px;
   background:rgba(238,241,247,.82); backdrop-filter:blur(20px) saturate(1.6);
@@ -75,12 +75,47 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .icon-btn svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
 
 /* tabs */
-.tabbar{display:flex; gap:2px; margin-top:9px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px}
-.tab{
-  flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:500;
-  color:var(--muted); transition:color .18s, background .18s, box-shadow .18s; white-space:nowrap;
+/* ── 底部懸浮分頁列（Liquid Glass 風格）─────────────────────
+   懸浮在畫面底部、四周留白不貼齊滿版；模糊+提高飽和度做出玻璃透光感，
+   上緣一道亮邊模擬鏡面反光，多層陰影讓它浮在內容之上。
+   註：真正的 Liquid Glass 折射是系統層即時渲染，網頁端只能逼近質感。 */
+.tabbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  padding:0 14px calc(10px + env(safe-area-inset-bottom));
+  pointer-events:none;                 /* 只有玻璃本體接收點擊，兩側留白讓下方內容可捲動 */
 }
-.tab[aria-selected="true"]{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(21,23,28,.1)}
+.tabbar-glass{
+  pointer-events:auto;
+  max-width:520px; margin:0 auto; display:flex; gap:2px;
+  padding:6px; border-radius:26px;
+  background:rgba(255,255,255,.62);
+  backdrop-filter:blur(30px) saturate(1.9);
+  -webkit-backdrop-filter:blur(30px) saturate(1.9);
+  border:1px solid rgba(255,255,255,.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),          /* 上緣高光：鏡面反光 */
+    inset 0 -1px 0 rgba(255,255,255,.35),
+    0 1px 2px rgba(21,23,28,.06),
+    0 12px 32px -8px rgba(21,23,28,.22);
+}
+.tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:8px 2px 7px; border-radius:20px; font-size:10.5px; font-weight:550;
+  color:var(--muted); transition:color .2s var(--ease), background .2s var(--ease), transform .2s var(--ease);
+  white-space:nowrap; position:relative;
+}
+.tab svg{
+  width:21px; height:21px; fill:none; stroke:currentColor;
+  stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
+  transition:stroke-width .2s var(--ease);
+}
+.tab[aria-selected="true"]{
+  color:var(--accent);
+  background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.7));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1), 0 1px 3px rgba(21,23,28,.09);
+}
+.tab[aria-selected="true"] svg{stroke-width:2.1}
+.tab:active{transform:scale(.94)}
 .view{display:none; animation:rise .34s var(--ease) both}
 .view.active{display:block}
 @keyframes rise{from{opacity:0; transform:translateY(7px)} to{opacity:1; transform:none}}
@@ -185,15 +220,14 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .gbtn.warn:hover{color:var(--danger); border-color:rgba(220,38,38,.3); background:rgba(220,38,38,.05)}
 
 /* ── bench (unassigned pool) ────────────────────────────── */
+/* 待分配成員：現在位於頂部標題列下方（原本固定在畫面底部）。
+   已經在 .topbar 的毛玻璃底之下，這裡不再重複做背景模糊，只留一條分隔線。 */
 .bench{
-  position:fixed; left:0; right:0; bottom:0; z-index:25;
-  background:rgba(238,241,247,.9); backdrop-filter:blur(22px) saturate(1.6);
-  -webkit-backdrop-filter:blur(22px) saturate(1.6); border-top:1px solid var(--line);
-  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-  transition:transform .3s var(--ease);
+  margin-top:9px; padding-top:9px; border-top:1px solid var(--line-2);
+  border-radius:10px; transition:opacity .2s var(--ease);
 }
-.bench.drop-on{box-shadow:inset 0 3px 0 var(--accent)}
-.bench.hidden{transform:translateY(105%); pointer-events:none}
+.bench.drop-on{box-shadow:inset 0 0 0 2px var(--accent); background:var(--accent-soft)}
+.bench.hidden{display:none}
 .bench-top{display:flex; align-items:center; gap:9px; margin-bottom:8px}
 .bench-t{font-size:11.5px; font-weight:600; color:var(--muted); letter-spacing:.03em}
 .bench-list{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; min-height:34px}
