@@ -156,6 +156,60 @@ def run(page):
     check("掉落紀錄不跟著複製",
           page.evaluate("() => state.schedule['2026-08-10'][0].drops.length"), 0)
 
+    # ---------- 複製 RUN ----------
+    print("\n[pt] 複製 RUN 會帶走陣容")
+    seed(page)
+    page.evaluate("""() => {
+        const rid = state.roles[0].id;
+        const p = state.schedule['2026-08-05'][0];
+        p.slots = [{memberId:'m1', roleId:rid, bento:true},
+                   {memberId:'m2', roleId:rid},
+                   {memberId:'m3'}];
+        p.drops = [{id:'d9', name:'威力隕石碎片', qty:2}];
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(100)
+    page.click('[data-act="dupPt"][data-pt="ptB"]')
+    page.wait_for_timeout(250)
+    check("複本會新增一個 RUN",
+          page.evaluate("() => state.schedule['2026-08-05'].length"), 2)
+    check("複本名稱加上「複本」",
+          page.evaluate("() => state.schedule['2026-08-05'][1].name"), "RUN B1 複本")
+    check("複本帶走全部成員",
+          page.evaluate("() => state.schedule['2026-08-05'][1].slots.map(s=>s.memberId)"),
+          ["m1", "m2", "m3"])
+    check("複本保留職業指定",
+          page.evaluate("""() => {
+              const rid = state.roles[0].id;
+              return state.schedule['2026-08-05'][1].slots.map(s => s.roleId === rid);
+          }"""), [True, True, False])
+    check("複本保留便當標記",
+          page.evaluate("() => state.schedule['2026-08-05'][1].slots.map(s=>!!s.bento)"),
+          [True, False, False])
+    check("複本不帶掉落紀錄",
+          page.evaluate("() => state.schedule['2026-08-05'][1].drops.length"), 0)
+    check("複本的 id 與來源不同",
+          page.evaluate("() => state.schedule['2026-08-05'][1].id !== 'ptB'"), True)
+    check("複本人數顯示為 3/10",
+          page.evaluate("""() => {
+              const cards = [...document.querySelectorAll('.ptcard')];
+              const c = cards[1] && cards[1].querySelector('.pt-count');
+              return c ? c.textContent.replace(/\\s/g, '') : null;
+          }"""), "3/10")
+    check("複本畫面上列出三位成員",
+          page.evaluate("""() => {
+              const cards = [...document.querySelectorAll('.ptcard')];
+              return cards[1]
+                  ? [...cards[1].querySelectorAll('.slot-name')].map(e => e.textContent)
+                  : null;
+          }"""), ["小明", "小華", "小美"])
+    check("複本與來源的 slots 各自獨立",
+          page.evaluate("""() => {
+              state.schedule['2026-08-05'][1].slots.splice(0, 1);
+              return state.schedule['2026-08-05'][0].slots.length;
+          }"""), 3)
+
     # ---------- 刪除整天 ----------
     print("\n[date] 刪除整天排班")
     seed(page)

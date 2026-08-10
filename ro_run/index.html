@@ -247,7 +247,7 @@ try{
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v33';
+const APP_VERSION='v34';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -1665,6 +1665,9 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v34', d:'2026/08/10', c:[
+    ['fix','複製 RUN 只產生空白名單，成員、職業與便當標記沒有一起帶過去'],
+  ]},
   { v:'v33', d:'2026/08/07', c:[
     ['chg','人數格子從單調的長條改成波利圖示：粉紅波利代表已入座，額滿時整排變成綠色波波利'],
     ['add','已入座的波利會依序跳動（蹲下 → 躍起 → 落地回彈），系統若關閉動態效果則不跳'],
@@ -2115,8 +2118,15 @@ document.addEventListener('click',e=>{
   if(a==='editSale')  saleSheet(id);
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
-    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId);
-      state.schedule[curDate].push({...JSON.parse(JSON.stringify(p)),id:uid(),name:p.name+' 複本',slots:[],drops:[]}); });
+    /* 複製 RUN：成員、職業、便當標記都要帶過去；
+       掉落物是「當天實際掉了什麼」的紀錄，複本不該憑空多出一份，所以清空。 */
+    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
+      const copy=JSON.parse(JSON.stringify(p));
+      copy.id=uid();
+      copy.name=p.name+' 複本';
+      copy.slots=(p.slots||[]).map(s=>({memberId:s.memberId,roleId:s.roleId??null,bento:!!s.bento}));
+      copy.drops=[];
+      state.schedule[curDate].push(copy); });
   }
   if(a==='delPt'){
     const p=ptsOf(curDate).find(x=>x.id===ptId);
