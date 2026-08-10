@@ -62,6 +62,22 @@ def run(page):
     check("資料版本比程式新時不強制轉換",
           page.evaluate("() => migrate({schemaVersion:999,members:[],roles:[],schedule:{}}).schemaVersion"),
           999)
+    check("舊的交易紀錄會補上 mode='set' 與空的 items",
+          page.evaluate("""() => {
+              const old = {members:[],roles:[],schedule:{},
+                           sales:[{id:'z',date:'2026-01-01',sets:3,twd:100,rate:2}]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [m.sales[0].mode, Array.isArray(m.sales[0].items), m.sales[0].items.length,
+                      m.sales[0].sets, m.sales[0].twd];
+          }"""), ["set", True, 0, 3, 100])
+    check("已經是單品的交易不會被改回整組",
+          page.evaluate("""() => {
+              const old = {schemaVersion:2, members:[],roles:[],schedule:{},
+                           sales:[{id:'z',date:'2026-01-01',mode:'item',rate:2,
+                                   items:[{name:'威力隕石碎片',qty:5,twd:10}]}]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [m.sales[0].mode, m.sales[0].items.length];
+          }"""), ["item", 1])
 
     # ---------- 材料統計延後計算 ----------
     print("\n[perf] 材料統計延後計算")
@@ -110,11 +126,9 @@ def run(page):
     page.wait_for_timeout(200)
 
     # ---------- 售出計算 CRUD ----------
-    print("\n[sales] 售出計算新增／編輯／刪除")
+    print("\n[sales] 拍賣頁交易新增／編輯／刪除")
     seed(page)
-    page.click('.tab[data-view="stats"]')
-    page.wait_for_timeout(150)
-    page.click('[data-sub="sales"]')
+    page.click('.tab[data-view="auction"]')
     page.wait_for_timeout(150)
     page.fill("#saleSets", "5")
     page.fill("#saleTwd", "100")
@@ -139,6 +153,272 @@ def run(page):
     page.click('[data-s="yes"]')
     page.wait_for_timeout(200)
     check("刪除交易", page.evaluate("() => state.sales.length"), 0)
+
+    # ---------- 拍賣：成交紀錄與走勢 ----------
+    print("\n[auction] 成交紀錄分月 + 走勢")
+
+    def load_sales(js):
+        seed(page)
+        page.evaluate("(rows) => { state.sales = rows; persist(); render(); }", js)
+        page.click('.tab[data-view="auction"]')
+        page.wait_for_timeout(350)
+
+    load_sales([])
+    check("沒有成交紀錄時顯示空狀態",
+          page.evaluate("() => !!document.querySelector('#saleList .bench-empty')"), True)
+    check("沒有成交紀錄時走勢區顯示提示，不畫圖",
+          page.evaluate("""() => [!!document.querySelector('#saleTrend .bench-empty'),
+                                  document.querySelectorAll('#saleTrend .spark').length]"""),
+          [True, 0])
+
+    load_sales([{"id": "a1", "date": "2026-08-05", "sets": 10, "twd": 100, "rate": 2}])
+    check("只有一筆時不畫走勢圖",
+          page.evaluate("() => document.querySelectorAll('#saleTrend .spark').length"), 0)
+    check("只有一筆時仍列出該筆成交",
+          page.evaluate("() => document.querySelectorAll('#saleList .auccard').length"), 1)
+
+    six = [
+        {"id": "b1", "date": "2026-05-12", "sets": 6,  "twd": 110, "rate": 2.1},
+        {"id": "b2", "date": "2026-06-03", "sets": 10, "twd": 98,  "rate": 2.0},
+        {"id": "b3", "date": "2026-06-21", "sets": 8,  "twd": 125, "rate": 2.2},
+        {"id": "b4", "date": "2026-07-09", "sets": 12, "twd": 140, "rate": 2.15},
+        {"id": "b5", "date": "2026-07-28", "sets": 5,  "twd": 132, "rate": 2.3},
+        {"id": "b6", "date": "2026-08-05", "sets": 14, "twd": 155, "rate": 2.4},
+    ]
+    load_sales(six)
+    check("成交紀錄依月份分成四堆",
+          page.evaluate("() => document.querySelectorAll('#saleList .aucmon').length"), 4)
+    check("月份由新到舊排列",
+          page.evaluate("""() => [...document.querySelectorAll('.aucmon-t')].map(e=>e.textContent)"""),
+          ["2026 年 8 月", "2026 年 7 月", "2026 年 6 月", "2026 年 5 月"])
+    check("月份小結顯示筆數與組數",
+          page.evaluate("""() => document.querySelectorAll('.aucmon-k')[1].textContent"""),
+          "2 筆 · 17 組")
+    check("月份小結金額為該月成交總額",
+          page.evaluate("""() => document.querySelectorAll('.aucmon-v')[1].textContent"""),
+          "2,340")
+    check("同月份內新的成交在前",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .aucmon')[1]
+              .querySelectorAll('.auc-lot')].map(e=>e.textContent)"""), ["#5", "#4"])
+    check("每筆成交都有品項編號",
+          page.evaluate("""() => [...document.querySelectorAll('.auc-lot')].map(e=>e.textContent)"""),
+          ["#6", "#5", "#4", "#3", "#2", "#1"])
+    check("成交卡片顯示組數／每組價／幣值",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')[0]
+              .querySelectorAll('.auc-chip')].map(e=>e.textContent)"""),
+          ["14 組", "每組 155", "幣值 2.4"])
+
+    check("平均每組台幣用加權算（總台幣 ÷ 總組數）",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
+              .find(c => c.querySelector('.stat-k').textContent === '平均每組台幣')
+              .querySelector('.stat-v').textContent"""), "130")
+    check("高於／低於均價的標記分別出現",
+          page.evaluate("""() => [document.querySelectorAll('.auc-badge.up').length,
+                                  document.querySelectorAll('.auc-badge.down').length]"""),
+          [3, 3])
+    check("最貴的那筆標成高於均價",
+          page.evaluate("""() => document.querySelectorAll('#saleList .auccard')[0]
+              .querySelector('.auc-badge').className.includes('up')"""), True)
+
+    check("兩筆以上會畫出走勢折線",
+          page.evaluate("() => document.querySelectorAll('#saleTrend .spark').length"), 1)
+    check("折線的轉折點數等於成交筆數",
+          page.evaluate("""() => document.querySelector('.spark-l')
+              .getAttribute('d').split(/[ML]/).filter(Boolean).length"""), 6)
+    check("走勢區顯示最高與最低成交價",
+          page.evaluate("() => document.querySelector('.trend-hl').textContent"),
+          "最高 155 · 最低 98"),
+    check("月度長條每月一根",
+          page.evaluate("() => document.querySelectorAll('.mbars .mbar').length"), 4)
+    check("最高的月份長條為滿高",
+          page.evaluate("""() => {
+              const f = [...document.querySelectorAll('.mbar-fill')].map(e => parseFloat(e.style.height));
+              return Math.max(...f);
+          }"""), 100.0)
+
+    # 超過六個月只留最近六個月
+    many = [{"id": f"c{i}", "date": f"2026-{m:02d}-10", "sets": 5, "twd": 100 + i, "rate": 2}
+            for i, m in enumerate(range(1, 9))]
+    load_sales(many)
+    check("月度長條最多只顯示近六個月",
+          page.evaluate("() => document.querySelectorAll('.mbars .mbar').length"), 6)
+    check("留下的是最新的六個月",
+          page.evaluate("() => [...document.querySelectorAll('.mbar-l')].map(e=>e.textContent)"),
+          ["3 月", "4 月", "5 月", "6 月", "7 月", "8 月"])
+
+    # 編輯過日期的紀錄要照日期排，但品項編號沿用當初記錄的先後
+    load_sales([
+        {"id": "d1", "date": "2026-08-20", "sets": 5, "twd": 100, "rate": 2},
+        {"id": "d2", "date": "2026-08-02", "sets": 5, "twd": 100, "rate": 2},
+    ])
+    check("日期被改過也照日期排序，編號不跟著跳動",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')].map(c => [
+              c.querySelector('.auc-lot').textContent,
+              c.querySelector('.auc-date').textContent.trim().split(' ')[0]
+          ])"""), [["#1", "08/20"], ["#2", "08/02"]])
+
+    # ---------- 拍賣：單品出售 ----------
+    print("\n[auction] 單品出售與單品行情")
+    mixed = [
+        {"id": "m1", "date": "2026-06-03", "mode": "set", "sets": 10, "twd": 100, "rate": 2,
+         "items": []},
+        {"id": "m2", "date": "2026-07-09", "mode": "item", "sets": 0, "twd": 0, "rate": 2,
+         "items": [{"name": "威力隕石碎片", "qty": 20, "twd": 10},
+                   {"name": "耐力隕石浮塵", "qty": 10, "twd": 8}]},
+        {"id": "m3", "date": "2026-08-05", "mode": "item", "sets": 0, "twd": 0, "rate": 2,
+         "items": [{"name": "威力隕石碎片", "qty": 30, "twd": 20}]},
+    ]
+    load_sales(mixed)
+    check("單品交易的總額為各列數量 × 單價相加",
+          page.evaluate("() => [saleAmounts(state.sales[1]).twd, saleAmounts(state.sales[2]).twd]"),
+          [280, 600])
+    check("累計售出組數只算整組交易",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
+              .find(c => c.querySelector('.stat-k').textContent === '累計售出組數')
+              .querySelector('.stat-v').textContent"""), "10")
+    check("累計售出單品只算單品交易",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
+              .find(c => c.querySelector('.stat-k').textContent === '累計售出單品')
+              .querySelector('.stat-v').textContent"""), "60")
+    check("平均每組台幣不被單品交易稀釋",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
+              .find(c => c.querySelector('.stat-k').textContent === '平均每組台幣')
+              .querySelector('.stat-v').textContent"""), "100")
+    check("單品交易的卡片標成單品，不比較每組均價",
+          page.evaluate("""() => {
+              const c = document.querySelectorAll('#saleList .auccard')[0];
+              return [c.querySelector('.auc-badge').textContent,
+                      c.querySelector('.auc-lot').classList.contains('item')];
+          }"""), ["單品 1 項", True])
+    check("單品卡片把每種材料列成標籤",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')[1]
+              .querySelectorAll('.auc-chip')].map(e=>e.textContent)"""),
+          ["威力隕石碎片 ×20 @10", "耐力隕石浮塵 ×10 @8", "幣值 2"])
+
+    check("單品行情依材料統計，依成交額由大到小",
+          page.evaluate("() => [...document.querySelectorAll('.quote-n')].map(e=>e.textContent)"),
+          ["威力隕石碎片", "耐力隕石浮塵"])
+    check("單品均價用加權算（總金額 ÷ 總數量）",
+          page.evaluate("() => materialQuotes(state.sales).map(e => Math.round(e.avg*10)/10)"),
+          [16, 8])
+    check("單品行情記到最近一次成交價與日期",
+          page.evaluate("""() => {
+              const q = materialQuotes(state.sales)[0];
+              return [q.lastUnit, q.lastDate, q.qty, q.n];
+          }"""), [20, "2026-08-05", 50, 2])
+    check("最近成交價高於均價時標成上漲",
+          page.evaluate("""() => document.querySelector('.quote-p .auc-badge')
+              .className.includes('up')"""), True)
+    check("整組交易不會被算進單品行情",
+          page.evaluate("""() => materialQuotes(state.sales.filter(s=>s.mode==='set')).length"""), 0)
+
+    # 切到單品模式後可以新增／刪除明細列
+    page.click('#saleModeSeg [data-mode="item"]')
+    page.wait_for_timeout(250)
+    check("切到單品模式會換掉輸入欄位",
+          page.evaluate("""() => [document.getElementById('saleSetFields').hidden,
+                                  document.getElementById('saleItemFields').hidden]"""),
+          [True, False])
+    check("切過去預設帶一列空明細",
+          page.evaluate("() => document.querySelectorAll('#saleItemRows .itemrow').length"), 1)
+    page.click("#saleItemAdd")
+    page.wait_for_timeout(150)
+    check("可以新增明細列",
+          page.evaluate("() => document.querySelectorAll('#saleItemRows .itemrow').length"), 2)
+    page.click('#saleItemRows .itemrow:nth-child(2) .salerow-x')
+    page.wait_for_timeout(150)
+    check("可以刪掉明細列",
+          page.evaluate("() => document.querySelectorAll('#saleItemRows .itemrow').length"), 1)
+
+    page.fill('#saleItemRows [data-f="name"]', "智慧隕石浮塵")
+    page.fill('#saleItemRows [data-f="qty"]', "6")
+    page.fill('#saleItemRows [data-f="twd"]', "25")
+    page.wait_for_timeout(150)
+    check("明細列即時算出小計",
+          page.evaluate("() => document.querySelector('.itemrow-s').textContent"), "150")
+    page.click("#saleAdd")
+    page.wait_for_timeout(300)
+    check("記錄單品交易會存成 mode='item'",
+          page.evaluate("""() => {
+              const s = state.sales[state.sales.length-1];
+              return [s.mode, s.items.length, s.items[0].name, s.items[0].qty, s.items[0].twd];
+          }"""), ["item", 1, "智慧隕石浮塵", 6, 25])
+    check("記錄後明細列清空成一列空白",
+          page.evaluate("""() => document.querySelectorAll('#saleItemRows .itemrow').length"""), 1)
+
+    page.click('#saleModeSeg [data-mode="set"]')
+    page.wait_for_timeout(200)
+    check("每組台幣沿用上一筆整組交易，不會被單品交易的 0 蓋掉",
+          page.evaluate("() => document.getElementById('saleTwd').value"), "100")
+
+    # ---------- 拍賣：日期區間篩選 ----------
+    print("\n[auction] 成交紀錄日期區間篩選")
+    load_sales(mixed)
+    check("預設不篩選，摘要顯示全部日期",
+          page.evaluate("() => document.getElementById('aucFiltText').textContent"), "全部日期")
+    check("未篩選時三筆都列出",
+          page.evaluate("() => document.querySelectorAll('#saleList .auccard').length"), 3)
+
+    page.click("#aucFiltBtn")
+    page.wait_for_timeout(200)
+    check("按篩選會展開條件區",
+          page.evaluate("() => document.getElementById('aucFiltBody').hidden"), False)
+    page.fill("#aucFrom", "2026-07-01")
+    page.dispatch_event("#aucFrom", "change")
+    page.wait_for_timeout(250)
+    check("設定起日後只留該日之後的成交",
+          page.evaluate("() => document.querySelectorAll('#saleList .auccard').length"), 2)
+    page.fill("#aucTo", "2026-07-31")
+    page.dispatch_event("#aucTo", "change")
+    page.wait_for_timeout(250)
+    check("加上迄日後只留區間內的成交",
+          page.evaluate("() => [...document.querySelectorAll('.auc-lot')].map(e=>e.textContent)"),
+          ["#2"])
+    check("摘要顯示所選區間",
+          page.evaluate("() => document.getElementById('aucFiltText').textContent"),
+          "07/01 — 07/31")
+    check("累計卡片跟著篩選走",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
+              .find(c => c.querySelector('.stat-k').textContent === '累計總台幣')
+              .querySelector('.stat-v').textContent"""), "280")
+    check("單品行情也跟著篩選走",
+          page.evaluate("() => [...document.querySelectorAll('.quote-n')].map(e=>e.textContent)"),
+          ["威力隕石碎片", "耐力隕石浮塵"])
+    check("區間內只有一筆時走勢圖不畫",
+          page.evaluate("() => document.querySelectorAll('#saleTrend .spark').length"), 0)
+
+    page.click('#aucFiltBody [data-aucpreset="all"]')
+    page.wait_for_timeout(250)
+    check("按全部會清掉區間",
+          page.evaluate("""() => [document.getElementById('aucFiltText').textContent,
+                                  document.querySelectorAll('#saleList .auccard').length]"""),
+          ["全部日期", 3])
+
+    page.fill("#aucFrom", "2026-01-01")
+    page.dispatch_event("#aucFrom", "change")
+    page.fill("#aucTo", "2026-01-31")
+    page.dispatch_event("#aucTo", "change")
+    page.wait_for_timeout(250)
+    check("區間內沒有成交時顯示對應的空狀態",
+          page.evaluate("() => document.querySelector('#saleList .bench-empty').textContent"),
+          "這個日期區間沒有成交紀錄")
+    page.click('#aucFiltBody [data-aucpreset="all"]')
+    page.wait_for_timeout(200)
+
+    # PT 計算的星數快捷鈕不該連動材料篩選
+    page.click('.tab[data-view="calc"]')
+    page.wait_for_timeout(150)
+    page.evaluate("() => { matFrom='2026-08-01'; matTo='2026-08-31'; }")
+    page.click('#view-calc [data-preset="0,5,5,3,5"]')
+    page.wait_for_timeout(200)
+    check("按 PT 快捷鈕不會把材料篩選重設掉",
+          page.evaluate("() => [matFrom, matTo]"), ["2026-08-01", "2026-08-31"])
+    check("PT 快捷鈕本身仍正常帶入星數",
+          page.evaluate("() => ATTRS.map(a => stars[a.id])"), [0, 5, 5, 3, 5])
+    page.evaluate("() => { matFrom=''; matTo=''; }")
+
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
 
     # ---------- 新增日期複製指定來源 ----------
     print("\n[date] 新增日期可指定複製來源")
@@ -309,6 +589,72 @@ def run(page):
     page.wait_for_timeout(200)
     check("回到陣容分頁時成員列顯示",
           page.evaluate("() => document.getElementById('bench').classList.contains('hidden')"), False)
+
+    # ---------- 分頁重整：成員含職業、材料與拍賣分家 ----------
+    print("\n[nav] 分頁重整")
+    seed(page)
+    check("底部分頁共五個",
+          page.evaluate("() => [...document.querySelectorAll('.tab')].map(t=>t.dataset.view)"),
+          ["board", "calc", "members", "stats", "auction"])
+    check("職業不再是獨立分頁",
+          page.locator('.tab[data-view="roles"]').count(), 0)
+    check("拍賣分頁標籤文字",
+          page.evaluate("""() => document.querySelector('.tab[data-view="auction"] span').textContent"""),
+          "拍賣")
+
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(200)
+    check("成員頁有兩個子分頁，成員列表在前",
+          page.evaluate("""() => [...document.querySelectorAll('#memberSeg [data-sub]')]
+              .map(b => [b.dataset.sub, b.textContent])"""),
+          [["mlist", "成員列表"], ["mroles", "職業設定"]])
+    check("進入成員頁預設顯示成員列表",
+          page.evaluate("""() => [document.getElementById('sub-mlist').classList.contains('active'),
+                                  document.getElementById('sub-mroles').classList.contains('active')]"""),
+          [True, False])
+    check("成員搜尋框可用", page.locator("#memberSearch").is_visible(), True)
+
+    page.click('#memberSeg [data-sub="mroles"]')
+    page.wait_for_timeout(200)
+    check("切到職業設定後顯示職業清單",
+          page.evaluate("""() => [document.getElementById('sub-mlist').classList.contains('active'),
+                                  document.getElementById('sub-mroles').classList.contains('active')]"""),
+          [False, True])
+    check("職業設定裡的新增職業鈕仍在",
+          page.locator('#roleHeaderActions [data-act="addRole"]').count(), 1)
+    check("職業清單有內容",
+          page.evaluate("() => document.querySelectorAll('#roleList .row').length > 0"), True)
+
+    # 切到材料頁再切回來，成員頁的子分頁不該被材料的子分頁切換影響
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(150)
+    check("材料頁子分頁只剩三個",
+          page.evaluate("() => [...document.querySelectorAll('#matSeg [data-sub]')].map(b=>b.dataset.sub)"),
+          ["totals", "sets", "detail"])
+    check("售出計算已移出材料頁", page.locator('#matSeg [data-sub="sales"]').count(), 0)
+    page.click('#matSeg [data-sub="sets"]')
+    page.wait_for_timeout(200)
+    check("材料子分頁切換不會關掉成員頁的子分頁",
+          page.evaluate("() => document.getElementById('sub-mroles').classList.contains('active')"),
+          True)
+    check("材料子分頁本身有正常切換",
+          page.evaluate("""() => [document.getElementById('sub-sets').classList.contains('active'),
+                                  document.getElementById('sub-totals').classList.contains('active')]"""),
+          [True, False])
+
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(250)
+    check("拍賣頁顯示售出試算欄位",
+          page.evaluate("""() => ['saleSets','saleTwd','saleRate','saleAdd','saleList']
+              .every(id => !!document.getElementById(id))"""), True)
+    check("拍賣頁的售出區塊確實在拍賣分頁底下",
+          page.evaluate("""() => !!document.getElementById('view-auction')
+              .querySelector('#saleAdd')"""), True)
+    check("切到拍賣頁時「帶入目前組數」有算出來",
+          page.evaluate("""() => /帶入目前組數 \\d+/.test(
+              document.getElementById('saleLoad').textContent)"""), True)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
 
     # ---------- 復原／重做已移除 ----------
     print("\n[removed] 復原／重做已移除")
