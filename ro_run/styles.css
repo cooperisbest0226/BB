@@ -846,3 +846,51 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
 }
+
+
+/* ── 自動備份快照 ───────────────────────────────────────── */
+.snaprow{
+  display:flex; align-items:center; gap:9px; padding:10px 12px; margin-bottom:6px;
+  border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--line-2);
+}
+.snap-m{flex:1; min-width:0}
+.snap-t{font-size:12.5px; font-weight:600; letter-spacing:-.2px}
+.snap-s{font-size:10.5px; color:var(--faint); margin-top:2px}
+.snaprow .gbtn{padding:6px 12px; font-size:12px}
+
+.backupnag{
+  display:flex; align-items:flex-start; gap:9px; margin-top:10px;
+  padding:11px 13px; border-radius:var(--r-sm); font-size:11.5px; line-height:1.6;
+  color:var(--danger); background:color-mix(in srgb, var(--danger) 8%, transparent);
+  border:1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.backupnag svg{
+  flex:0 0 auto; width:15px; height:15px; margin-top:1px;
+  stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round;
+}
+
+
+/* ── PWA 更新提示列 ─────────────────────────────────────── */
+/* 底色用固定的深色，不要用 --ink —— 那是「文字色」，深色模式會反轉成淺色，
+   配上白字就整條看不見了（v30 修過同一類問題）。 */
+.updatebar{
+  position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:200;
+  transform:translate(-50%, 16px);
+  display:flex; align-items:center; gap:10px;
+  max-width:min(94vw, 420px); padding:10px 10px 10px 15px;
+  border-radius:999px; font-size:12.5px; font-weight:500;
+  color:#fff; background:#22252c; box-shadow:0 8px 28px rgba(0,0,0,.28);
+  opacity:0; transition:opacity .25s var(--ease), transform .25s var(--ease);
+}
+.updatebar.in{opacity:1; transform:translate(-50%, 0)}
+.updatebar>span{flex:1; min-width:0; white-space:nowrap}
+.updatebar-go{
+  flex:0 0 auto; padding:6px 13px; border-radius:999px;
+  font-size:12px; font-weight:600; color:#fff; background:var(--accent);
+}
+.updatebar-go:disabled{opacity:.6}
+.updatebar-x{
+  flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+  color:rgba(255,255,255,.6); font-size:17px; line-height:1;
+}
+.updatebar-x:hover{color:#fff; background:rgba(255,255,255,.12)}

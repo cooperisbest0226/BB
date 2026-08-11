@@ -99,6 +99,102 @@ def run(page):
     page.wait_for_timeout(150)
     check("切到統計分頁後會補算", page.evaluate("() => matDirty"), False)
 
+    # ---------- 分頁延後渲染 ----------
+    print("\n[perf] 分頁延後渲染")
+    seed(page)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+    check("render() 後只有目前分頁是乾淨的",
+          page.evaluate("""() => {
+              render();
+              return VIEW_IDS.map(v => [v, viewDirty[v]]);
+          }"""),
+          [["board", False], ["calc", True], ["members", True],
+           ["stats", True], ["auction", True]])
+    check("在陣容分頁改資料不會重建成員列表的 DOM",
+          page.evaluate("""() => {
+              const host = document.getElementById('memberList');
+              const before = host.firstElementChild;
+              commit(()=>{ state.members[0].name = '改過的名字'; });
+              return host.firstElementChild === before;   // 同一個節點 = 沒被重建
+          }"""), True)
+    check("切到成員分頁時才補畫，名字才更新",
+          page.evaluate("""() => {
+              document.querySelector('.tab[data-view="members"]').click();
+              return document.querySelector('#memberList .row-t').textContent;
+          }"""), "改過的名字")
+    check("補畫後該分頁變乾淨",
+          page.evaluate("() => viewDirty.members"), False)
+    check("留在成員分頁改資料會立刻重畫",
+          page.evaluate("""() => {
+              commit(()=>{ state.members[0].name = '再改一次'; });
+              return document.querySelector('#memberList .row-t').textContent;
+          }"""), "再改一次")
+    # ---------- 輸入框不被重繪打斷 ----------
+    print("\n[perf] 重繪不打斷輸入")
+    # 留在成員分頁做：隱藏中的元素 focus() 不會生效
+    check("setInputValue 不動正在輸入的欄位",
+          page.evaluate("""() => {
+              const el = document.getElementById('memberSearch');
+              el.focus(); el.value = '打到一半';
+              setInputValue(el, '被蓋掉');
+              const kept = el.value;
+              el.blur();
+              setInputValue(el, '沒在編輯就可以改');
+              return [kept, el.value];
+          }"""), ["打到一半", "沒在編輯就可以改"])
+    check("值沒變時不重寫輸入框",
+          page.evaluate("""() => {
+              const el = document.getElementById('memberSearch');
+              el.value = 'abc';
+              let writes = 0;
+              const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+              Object.defineProperty(el, 'value', {
+                  get: () => d.get.call(el),
+                  set: v => { writes++; d.set.call(el, v); },
+                  configurable: true
+              });
+              setInputValue(el, 'abc');    // 一樣，不該寫
+              setInputValue(el, 'xyz');    // 不一樣，該寫
+              delete el.value;
+              el.value = '';           // 清掉搜尋字串，否則後面的成員測試會被篩到空清單
+              renderMembers();
+              return writes;
+          }"""), 1)
+
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(300)
+    page.click('#saleModeSeg [data-mode="item"]')
+    page.wait_for_timeout(300)
+    check("列數沒變時不重建明細列的 DOM",
+          page.evaluate("""() => {
+              const row = document.querySelector('#saleItemRows .itemrow');
+              const input = row.querySelector('[data-f="name"]');
+              renderSaleItemRows();          // 非強制：列數沒變
+              return document.querySelector('#saleItemRows [data-f="name"]') === input;
+          }"""), True)
+    check("列數沒變時仍會更新小計",
+          page.evaluate("""() => {
+              saleDraftItems[0] = {name:'威力隕石碎片', qty:4, twd:25};
+              renderSaleItemRows();
+              return document.querySelector('.itemrow-s').textContent;
+          }"""), "100")
+    check("新增列會真的重建",
+          page.evaluate("""() => {
+              const input = document.querySelector('#saleItemRows [data-f="name"]');
+              document.getElementById('saleItemAdd').click();
+              return [document.querySelectorAll('#saleItemRows .itemrow').length,
+                      document.querySelector('#saleItemRows [data-f="name"]') !== input];
+          }"""), [2, True])
+    page.evaluate("""() => {
+        saleDraftItems = [{name:'', qty:'', twd:''}];   // 還原草稿，不要污染後面的拍賣測試
+        renderSaleItemRows(true);
+    }""")
+    page.click('#saleModeSeg [data-mode="set"]')
+    page.wait_for_timeout(200)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+
     # ---------- 陣容排序編輯器 ----------
     print("\n[order] 全螢幕排序編輯器")
     seed(page)
@@ -782,16 +878,205 @@ def run(page):
           page.evaluate("""() => {
               const before = ptsOf('2026-08-05')[0].slots.length;
               commit(()=>{ ptsOf('2026-08-05')[0].slots.push({memberId:'m2'}); });
+              flushPersist();                       // 寫入已改為延遲合併，讀檔前先強制落盤
               const saved = JSON.parse(localStorage.getItem(KEY));
               return saved.schedule['2026-08-05'][0].slots.length === before + 1;
+          }"""), True)
+
+    # ---------- 資料安全：延遲寫入與自動快照 ----------
+    print("\n[backup] 延遲寫入與自動備份快照")
+    seed(page)
+    page.evaluate("() => { flushPersist(); localStorage.setItem(KEY, JSON.stringify(state)); }")
+    check("連續異動不會每次都寫 localStorage",
+          page.evaluate("""() => {
+              flushPersist();
+              const before = localStorage.getItem(KEY);
+              for (let i = 0; i < 5; i++) commit(()=>{ state.members[0].notes = 'n' + i; });
+              const during = localStorage.getItem(KEY);   // 還在 debounce 視窗內，應該還是舊的
+              return during === before;
+          }"""), True)
+    page.wait_for_timeout(400)
+    check("停手後會自動落盤",
+          page.evaluate("""() => JSON.parse(localStorage.getItem(KEY)).members[0].notes"""), "n4")
+    check("flushPersist 可以立刻落盤",
+          page.evaluate("""() => {
+              commit(()=>{ state.members[0].notes = '立刻'; });
+              flushPersist();
+              return JSON.parse(localStorage.getItem(KEY)).members[0].notes;
+          }"""), "立刻")
+
+    # 快照
+    page.evaluate("""async () => {
+        const db = await snapDB();
+        await new Promise(r => { const t = db.transaction('snapshots','readwrite');
+            t.objectStore('snapshots').clear(); t.oncomplete = r; });
+    }""")
+    check("一開始沒有任何快照",
+          page.evaluate("async () => (await listSnapshots()).length"), 0)
+    check("可以建立快照並記下原因與版本",
+          page.evaluate("""async () => {
+              await saveSnapshot('daily');
+              const rows = await listSnapshots();
+              return [rows.length, rows[0].reason, rows[0].version, rows[0].size > 0];
+          }"""), [1, "daily", page.evaluate("() => APP_VERSION"), True])
+    check("快照存的是當下的完整資料",
+          page.evaluate("""async () => {
+              const rows = await listSnapshots();
+              const snap = JSON.parse(rows[0].data);
+              return [snap.members.length, Object.keys(snap.schedule).length];
+          }"""), [3, 2])
+    check("超過保留上限時丟掉最舊的",
+          page.evaluate("""async () => {
+              for (let i = 0; i < SNAP_KEEP + 3; i++) await saveSnapshot('daily');
+              return (await listSnapshots()).length;
+          }"""), page.evaluate("() => SNAP_KEEP"))
+    check("快照由新到舊排列",
+          page.evaluate("""async () => {
+              const rows = await listSnapshots();
+              return rows.every((r,i) => i === 0 || rows[i-1].id >= r.id);
+          }"""), True)
+    check("可以刪除單一快照",
+          page.evaluate("""async () => {
+              const rows = await listSnapshots();
+              await deleteSnapshot(rows[0].id);
+              const left = await listSnapshots();
+              return [left.length, left.some(r => r.id === rows[0].id)];
+          }"""), [page.evaluate("() => SNAP_KEEP") - 1, False])
+
+    check("每天只自動建立一份快照",
+          page.evaluate("""async () => {
+              const db = await snapDB();
+              await new Promise(r => { const t = db.transaction('snapshots','readwrite');
+                  t.objectStore('snapshots').clear(); t.oncomplete = r; });
+              delete state.settings.lastSnapDay;
+              await autoSnapshot();
+              const first = (await listSnapshots()).length;
+              const second = await autoSnapshot();       // 同一天再呼叫應該被擋掉
+              return [first, second, (await listSnapshots()).length, state.settings.lastSnapDay];
+          }"""), [1, False, 1, page.evaluate("() => todayKey()")])
+
+    check("還原快照會蓋掉目前資料",
+          page.evaluate("""async () => {
+              await saveSnapshot('daily');
+              const rows = await listSnapshots();
+              commit(()=>{ state.members = []; });
+              const wiped = state.members.length;
+              const data = JSON.parse(rows[0].data);
+              curDate = null;
+              commit(()=>{ state = migrate(data); });
+              return [wiped, state.members.length];
+          }"""), [0, 3])
+
+    check("從沒匯出過時，備份提醒會顯示警告",
+          page.evaluate("""() => {
+              delete state.settings.lastExportAt;
+              return [daysSinceExport(), backupNagHTML().includes('backupnag')];
+          }"""), [None, True])
+    check("剛匯出過就不顯示警告",
+          page.evaluate("""() => {
+              state.settings.lastExportAt = Date.now();
+              return [daysSinceExport(), backupNagHTML().includes('backupnag')];
+          }"""), [0, False])
+    check("超過兩週沒匯出會重新提醒",
+          page.evaluate("""() => {
+              state.settings.lastExportAt = Date.now() - 20 * 86400000;
+              return [daysSinceExport(), backupNagHTML().includes('backupnag')];
+          }"""), [20, True])
+    check("匯出 JSON 會記下時間",
+          page.evaluate("""() => {
+              delete state.settings.lastExportAt;
+              const realDownload = window.download;
+              window.download = () => {};              // 測試中不要真的觸發下載
+              exportJson();
+              window.download = realDownload;
+              return typeof state.settings.lastExportAt;
+          }"""), "number")
+
+    # ---------- PWA：更新流程與離線資源 ----------
+    print("\n[pwa] 更新提示與離線資源")
+    seed(page)
+    check("html2canvas 改為自帶，不再依賴 CDN",
+          page.evaluate("""() => {
+              const src = [...document.querySelectorAll('script[src]')].map(e => e.getAttribute('src'));
+              return [src.some(u => u.includes('./vendor/html2canvas')),
+                      src.some(u => u.includes('cdnjs.cloudflare.com'))];
+          }"""), [True, False])
+    check("html2canvas 實際載入成功",
+          page.evaluate("() => typeof html2canvas"), "function")
+
+    check("更新提示列預設不存在",
+          page.evaluate("() => !!document.getElementById('updateBar')"), False)
+    check("showUpdateBar 會顯示提示列與更新鈕",
+          page.evaluate("""() => {
+              showUpdateBar({postMessage(){}});
+              const bar = document.getElementById('updateBar');
+              return [!!bar, !!bar.querySelector('.updatebar-go'), bar.textContent.includes('新版本')];
+          }"""), [True, True, True])
+    check("重複呼叫不會疊出第二條",
+          page.evaluate("""() => {
+              showUpdateBar({postMessage(){}});
+              return document.querySelectorAll('.updatebar').length;
+          }"""), 1)
+    check("按下立即更新會送出 SKIP_WAITING 並先落盤",
+          page.evaluate("""() => {
+              document.getElementById('updateBar').remove();
+              let msg = null;
+              showUpdateBar({postMessage(m){ msg = m; }});
+              commit(()=>{ state.members[0].notes = '換版前'; });
+              document.querySelector('.updatebar-go').click();
+              const saved = JSON.parse(localStorage.getItem(KEY)).members[0].notes;
+              return [msg && msg.type, saved];
+          }"""), ["SKIP_WAITING", "換版前"])
+    check("可以關掉提示列",
+          page.evaluate("""() => {
+              document.querySelector('.updatebar-x').click();
+              return !!document.getElementById('updateBar');
+          }"""), False)
+
+    # ---------- 主程式拆檔 ----------
+    print("\n[split] 主程式拆檔後的完整性")
+    seed(page)
+    check("index.html 不再有內嵌的主程式",
+          page.evaluate("""() => {
+              const inline = [...document.querySelectorAll('script:not([src])')];
+              return inline.every(s => s.textContent.length < 2000);   // 只剩 head 那段防閃色的小程式
+          }"""), True)
+    check("主程式依固定順序載入 10 個檔案",
+          page.evaluate("""() => [...document.querySelectorAll('script[src^="./js/"]')]
+              .map(s => s.getAttribute('src').replace('./js/','').replace('.js',''))"""),
+          ["data", "render", "materials", "auction", "assign",
+           "sheets", "export", "events", "calc", "main"])
+    check("拆檔後仍共用同一個全域範圍",
+          page.evaluate("""() => {
+              // 這幾個分別定義在不同檔案裡，彼此看得到才代表拆檔沒有切斷相依
+              return [typeof state, typeof commit, typeof renderBoard,
+                      typeof renderMaterials, typeof saleAmounts, typeof assign,
+                      typeof sheet, typeof exportJson, typeof renderCalc];
+          }"""), ["object"] + ["function"] * 8)
+    check("跨檔案的常數也讀得到",
+          page.evaluate("""() => [typeof APP_VERSION, typeof SCHEMA_VERSION,
+                                  typeof SNAP_KEEP, typeof VIEW_IDS, typeof ATTRS]"""),
+          ["string", "number", "number", "object", "object"])
+    check("啟動流程有跑完（畫面已渲染、快照旗標已設）",
+          page.evaluate("""() => [document.querySelectorAll('.datechip').length > 0,
+                                  document.getElementById('brandSub').textContent.length > 0]"""),
+          [True, True])
+    check("Service Worker 會預先快取全部主程式檔案",
+          page.evaluate("""async () => {
+              const src = await (await fetch('./sw.js')).text();
+              return ['data','render','materials','auction','assign',
+                      'sheets','export','events','calc','main']
+                  .every(n => src.includes(`./js/${n}.js`));
           }"""), True)
 
     # ---------- 設定選單重做 ----------
     print("\n[settings] 設定選單重做")
     seed(page)
     check("settings 物件存在且有預設值",
-          page.evaluate("() => state.settings"),
-          {"theme": "system", "defaultTime": "20:00", "defaultCap": 12})
+          page.evaluate("""() => {
+              const s = state.settings;
+              return [s.theme, s.defaultTime, s.defaultCap];
+          }"""), ["system", "20:00", 12])
     check("設定按鈕標題已改成「設定」",
           page.get_attribute("#btnMore", "title"), "設定")
 
