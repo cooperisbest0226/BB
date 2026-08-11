@@ -1,0 +1,878 @@
+<!doctype html>
+<!-- 保養里程尺 — 汽車保養紀錄表 PWA / 作者：BB -->
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>保養里程尺</title>
+<meta name="theme-color" content="#0f1317">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="保養里程尺">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#0f1317; --surf:#161c22; --surf2:#1c242b; --line:#29343d; --line2:#354350;
+  --ink:#e9eef3; --mut:#8ea0b0; --dim:#5f7180;
+  --acc:#f5a524; --acc-d:#c07d10; --acc-ink:#1a1206;
+  --ok:#35c48b; --warn:#f5a524; --bad:#f0484d;
+  --r:16px; --r-s:11px;
+  --vvh:100vh; --vvtop:0px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:env(safe-area-inset-top,0px);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Roboto Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:none;
+}
+body.locked{position:fixed;width:100%;overflow:hidden}
+button,input,select,textarea{font-family:inherit;color:inherit}
+input,select,textarea{font-size:16px}
+button{cursor:pointer;border:none;background:none;padding:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+/* ── layout ── */
+.app{max-width:640px;margin:0 auto;padding:calc(var(--safe-t) + 10px) 14px calc(88px + var(--safe-b))}
+.head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 14px}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.brand .mk{width:26px;height:26px;border-radius:8px;background:linear-gradient(155deg,var(--acc),var(--acc-d));
+  display:grid;place-items:center;color:var(--acc-ink);font-size:13px;font-weight:800;flex:none}
+.brand h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.head .sub{font-size:11.5px;color:var(--dim);letter-spacing:.06em}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);margin-bottom:12px}
+.card.glass{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.pad{padding:14px}
+.sect-t{font-size:11.5px;letter-spacing:.14em;color:var(--dim);font-weight:700;margin:20px 4px 9px;text-transform:uppercase}
+.row-b{display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* ── odometer ── */
+.odo{padding:16px 14px 14px}
+.odo .lbl{font-size:11.5px;letter-spacing:.16em;color:var(--dim);font-weight:700;margin-bottom:9px}
+.odo-read{display:flex;align-items:flex-end;gap:8px}
+.digits{display:flex;gap:3px}
+.dg{width:26px;height:40px;border-radius:6px;background:#0a0e11;border:1px solid var(--line);
+  display:grid;place-items:center;font-family:var(--mono);font-size:23px;font-weight:600;
+  color:var(--ink);position:relative;overflow:hidden}
+.dg::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.06)}
+.dg.lead{color:var(--dim)}
+.dg.sep{width:8px;background:none;border:none;color:var(--dim);font-size:19px;align-items:end}
+.odo-u{font-size:12.5px;color:var(--mut);padding-bottom:5px;letter-spacing:.08em}
+.odo-meta{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.odo-meta .t{font-size:11.5px;color:var(--dim)}
+
+.btn{border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:650;border:1px solid var(--line2);
+  background:var(--surf2);color:var(--ink);transition:.15s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn.acc{background:linear-gradient(160deg,var(--acc),var(--acc-d));color:var(--acc-ink);border-color:transparent}
+.btn.gho{background:none}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px}
+.btn.wide{width:100%;text-align:center;padding:13px}
+.btn.bad{color:var(--bad);border-color:rgba(240,72,77,.35)}
+.btn[disabled]{opacity:.35;pointer-events:none}
+
+/* ── 里程尺 signature ── */
+.ruler-wrap{padding:14px 0 10px;position:relative;overflow:hidden}
+.ruler-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 14px 10px;gap:10px}
+.ruler-h .t{font-size:11.5px;letter-spacing:.14em;color:var(--dim);font-weight:700}
+.ruler-h .hint{font-size:11.5px;color:var(--mut)}
+.ruler-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ruler-scroll::-webkit-scrollbar{display:none}
+.ruler{position:relative;height:0}
+.axis{position:absolute;left:0;right:0;height:1px;background:var(--line2)}
+.tick{position:absolute;width:1px;background:var(--line2)}
+.tick.maj{background:var(--line2);opacity:.9}
+.tick.min{opacity:.45}
+.tlab{position:absolute;font-family:var(--mono);font-size:10px;color:var(--dim);transform:translateX(-50%);white-space:nowrap}
+.now{position:absolute;width:2px;background:var(--ink);border-radius:2px}
+.now-cap{position:absolute;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap;letter-spacing:.06em}
+.past{position:absolute;top:0;background:linear-gradient(90deg,rgba(240,72,77,0),rgba(240,72,77,.09))}
+.pin{position:absolute;display:flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 6px;
+  border-radius:20px;background:var(--surf2);border:1px solid var(--line2);white-space:nowrap;
+  font-size:11.5px;font-weight:600;color:var(--ink)}
+.pin .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+.pin .km{font-family:var(--mono);font-size:10.5px;color:var(--mut)}
+.pin.s-warn{border-color:rgba(245,165,36,.5)} .pin.s-warn .dot{background:var(--warn)}
+.pin.s-bad{border-color:rgba(240,72,77,.55);background:rgba(240,72,77,.12)} .pin.s-bad .dot{background:var(--bad)}
+.stem{position:absolute;width:1px;background:var(--line2)}
+.stem.s-warn{background:rgba(245,165,36,.5)} .stem.s-bad{background:rgba(240,72,77,.55)}
+.upd{display:flex;align-items:stretch;gap:0;margin-bottom:12px;border-radius:var(--r);
+  background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.28);overflow:hidden}
+.upd-b{flex:1;min-width:0;text-align:left;padding:11px 13px;display:block}
+.upd-t{display:block;font-size:13px;font-weight:700;color:#f7c46b}
+.upd-d{display:block;font-size:12px;color:var(--mut);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upd-x{width:42px;flex:none;color:var(--dim);font-size:14px;border-left:1px solid rgba(245,165,36,.2)}
+/* 更新紀錄：時間軸 + 分類標籤 */
+.cl-wrap{position:relative;padding-left:2px}
+.cl{position:relative;padding:0 0 20px 20px;border-left:1px solid var(--line)}
+.cl.last{border-left-color:transparent;padding-bottom:8px}
+.cl-dot{position:absolute;left:-5px;top:5px;width:9px;height:9px;border-radius:50%;
+  background:var(--line2);border:2px solid var(--surf);box-sizing:content-box}
+.cl.cur>.cl-dot{background:var(--acc);box-shadow:0 0 0 4px rgba(245,165,36,.15)}
+.cl-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cl-v{font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.cl.cur .cl-v{color:var(--acc)}
+.cl-d{font-family:var(--mono);font-size:11px;color:var(--dim);margin-left:auto}
+.cl-now{font-size:10px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:20px;
+  background:rgba(245,165,36,.16);border:1px solid rgba(245,165,36,.4);color:#f7c46b}
+.cl-sum{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px}
+.cl-cnt{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;
+  font-family:var(--mono);letter-spacing:.02em}
+.cl-l{list-style:none;margin:8px 0 0;padding:0}
+.cl-l li{display:flex;gap:8px;align-items:flex-start;padding:5px 0}
+.cl-l .tx{font-size:13px;color:var(--mut);line-height:1.6;flex:1;min-width:0;overflow-wrap:anywhere}
+.tg{flex:none;margin-top:1px;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  padding:2px 7px;border-radius:6px;min-width:38px;text-align:center}
+.t-add{background:rgba(53,196,139,.14);border:1px solid rgba(53,196,139,.38);color:#5fd7a8}
+.t-fix{background:rgba(240,72,77,.13);border:1px solid rgba(240,72,77,.38);color:#ff8f92}
+.t-imp{background:rgba(245,165,36,.13);border:1px solid rgba(245,165,36,.38);color:#f7c46b}
+.t-chg{background:rgba(110,150,190,.13);border:1px solid rgba(110,150,190,.38);color:#a3c2de}
+.odband{margin:0 14px 12px;padding:10px 11px;border-radius:12px;background:rgba(240,72,77,.09);
+  border:1px solid rgba(240,72,77,.26)}
+.odt{font-size:11.5px;letter-spacing:.1em;font-weight:700;color:#ff9a9d;margin-bottom:8px}
+.odt b{font-family:var(--mono);font-size:13px}
+.odband.setup{background:rgba(245,165,36,.08);border-color:rgba(245,165,36,.26)}
+.odband.setup .odt{color:#f7c46b}
+.odd{font-size:12.5px;color:var(--mut);line-height:1.6}
+.odd b{font-family:var(--mono);color:var(--ink)}
+.odc{display:flex;flex-wrap:wrap;gap:6px}
+.odp{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;
+  background:rgba(240,72,77,.14);border:1px solid rgba(240,72,77,.4);color:#ffd0d1;
+  font-size:12.5px;font-weight:650}
+.odp .km{font-family:var(--mono);font-size:10.5px;color:#f0888b}
+.batch{margin:8px 14px 0;padding:9px 11px;border-radius:11px;background:rgba(245,165,36,.09);
+  border:1px solid rgba(245,165,36,.22);font-size:12.5px;color:#f7c46b;line-height:1.45}
+.ruler-empty{padding:22px 14px;text-align:center;color:var(--dim);font-size:13px}
+
+/* ── next-up ── */
+.next{padding:15px 14px 14px;position:relative;overflow:hidden}
+.next .eyebrow{font-size:11.5px;letter-spacing:.14em;color:var(--dim);font-weight:700}
+.next .nm{font-size:21px;font-weight:750;margin:7px 0 2px;letter-spacing:.01em}
+.next .rem{display:flex;align-items:baseline;gap:6px;margin-top:6px}
+.next .rem .v{font-family:var(--mono);font-size:30px;font-weight:650;line-height:1}
+.next .rem .u{font-size:12.5px;color:var(--mut)}
+.next .desc{font-size:12.5px;color:var(--mut);margin-top:7px}
+.next.s-ok .rem .v{color:var(--ok)}
+.next.s-warn .rem .v{color:var(--warn)}
+.next.s-bad .rem .v{color:var(--bad)}
+
+/* ── item bars ── */
+.ib{padding:12px 14px;border-bottom:1px solid var(--line)}
+.ib:last-child{border-bottom:none}
+.ib-t{display:flex;align-items:center;gap:9px}
+.ib-ic{width:24px;text-align:center;font-size:15px;flex:none}
+.ib-nm{font-size:14.5px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib-rm{font-family:var(--mono);font-size:12.5px;font-weight:600;flex:none}
+.ib.s-ok .ib-rm{color:var(--ok)} .ib.s-warn .ib-rm{color:var(--warn)} .ib.s-bad .ib-rm{color:var(--bad)}
+.bar{height:5px;border-radius:5px;background:#0a0e11;margin-top:9px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;border-radius:5px;background:var(--ok);transition:width .4s ease}
+.ib.s-warn .bar i{background:var(--warn)} .ib.s-bad .bar i{background:var(--bad)}
+.ib-sub{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:6px}
+
+/* ── records ── */
+.rec{padding:13px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px}
+.rec:last-child{border-bottom:none}
+.rec-km{flex:none;width:78px;text-align:right}
+.rec-km .v{font-family:var(--mono);font-size:16px;font-weight:650;letter-spacing:-.02em}
+.rec-km .u{font-family:var(--mono);font-size:10px;color:var(--dim);display:block;margin-top:1px}
+.rec-b{flex:1;min-width:0;border-left:1px solid var(--line);padding-left:12px}
+.rec-d{font-size:11.5px;color:var(--dim);font-family:var(--mono)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--surf2);border:1px solid var(--line2);font-weight:600}
+.chip.gone{opacity:.5;text-decoration:line-through}
+.rec-x{font-size:12px;color:var(--mut);margin-top:7px;display:flex;gap:12px;flex-wrap:wrap}
+.rec-x .c{font-family:var(--mono);color:var(--acc);font-weight:650}
+.rec-note{font-size:12.5px;color:var(--mut);margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ── stats ── */
+.stat-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--surf);border:1px solid var(--line);border-radius:var(--r-s);padding:12px}
+.stat .k{font-size:11px;color:var(--dim);letter-spacing:.08em;font-weight:650}
+.stat .v{font-family:var(--mono);font-size:19px;font-weight:650;margin-top:5px}
+.stat .v small{font-size:11px;color:var(--mut);font-weight:500;margin-left:3px}
+
+/* ── item manage ── */
+.mi{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:11px}
+.mi:last-child{border-bottom:none}
+.mi .ic{font-size:17px;width:26px;text-align:center;flex:none}
+.mi .b{flex:1;min-width:0}
+.mi .n{font-size:14.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi .s{font-size:11.5px;color:var(--dim);font-family:var(--mono);margin-top:2px}
+
+/* ── nav ── */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:rgba(15,19,23,.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid var(--line);padding:6px 8px calc(6px + var(--safe-b))}
+.nav-in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+.nb{padding:7px 2px 6px;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--dim);font-size:10.5px;font-weight:650;letter-spacing:.04em;transition:.15s}
+.nb .i{font-size:17px;line-height:1}
+.nb.on{color:var(--acc);background:rgba(245,165,36,.1)}
+
+.fab{position:fixed;right:16px;bottom:calc(74px + var(--safe-b));z-index:41;
+  width:54px;height:54px;border-radius:18px;background:linear-gradient(160deg,var(--acc),var(--acc-d));
+  color:var(--acc-ink);font-size:26px;font-weight:400;display:grid;place-items:center;
+  box-shadow:0 10px 26px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08) inset}
+.fab:active{transform:scale(.94)}
+
+/* ── sheet ── */
+.scrim{position:fixed;left:0;top:0;width:100%;height:var(--vvh);transform:translateY(var(--vvtop));
+  background:rgba(0,0,0,.55);backdrop-filter:blur(3px);z-index:60;display:none}
+.scrim.on{display:block}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92%;display:flex;flex-direction:column;
+  background:var(--surf);border-radius:22px 22px 0 0;border-top:1px solid var(--line2);
+  max-width:640px;margin:0 auto;animation:up .24s cubic-bezier(.2,.9,.3,1)}
+@keyframes up{from{transform:translateY(18px);opacity:.4}to{transform:none;opacity:1}}
+.sh-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--line);flex:none}
+.sh-h h3{margin:0;font-size:16px;font-weight:700}
+.sh-b{padding:14px 16px calc(16px + var(--safe-b));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sh-x{width:30px;height:30px;border-radius:9px;background:var(--surf2);color:var(--mut);font-size:16px;display:grid;place-items:center}
+
+.f{margin-bottom:13px}
+.f label{display:block;font-size:11.5px;letter-spacing:.1em;color:var(--dim);font-weight:700;margin-bottom:6px}
+.f input,.f select,.f textarea{width:100%;background:#0a0e11;border:1px solid var(--line2);border-radius:11px;
+  padding:11px 12px;outline:none;transition:.15s}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--acc);background:#0c1115}
+.f textarea{resize:vertical;min-height:64px;line-height:1.5}
+.f .hint{font-size:11.5px;color:var(--dim);margin-top:5px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:400px){.f2{grid-template-columns:1fr}}
+.pick{display:flex;flex-wrap:wrap;gap:7px}
+.pk{padding:8px 12px;border-radius:11px;background:#0a0e11;border:1px solid var(--line2);
+  font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px;transition:.15s}
+.pk.on{background:rgba(245,165,36,.16);border-color:var(--acc);color:#fbc978}
+.pk .kk{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.pk.on .kk{color:#c9903c}
+.sh-act{display:flex;gap:9px;margin-top:6px}
+.sh-act .btn{flex:1;text-align:center;padding:13px}
+
+.empty{padding:36px 20px;text-align:center;color:var(--dim)}
+.empty .e{font-size:30px;opacity:.5}
+.empty .t{font-size:14px;margin-top:9px;font-weight:600;color:var(--mut)}
+.empty .d{font-size:12.5px;margin-top:5px;line-height:1.6}
+
+.toast{position:fixed;left:50%;bottom:calc(90px + var(--safe-b));transform:translateX(-50%);
+  background:var(--ink);color:var(--bg);font-size:13px;font-weight:650;padding:10px 16px;border-radius:22px;
+  z-index:70;opacity:0;pointer-events:none;transition:.2s;white-space:nowrap;max-width:88%}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+.tabs{display:flex;gap:6px;margin-bottom:12px;background:var(--surf);border:1px solid var(--line);
+  border-radius:13px;padding:4px}
+.tabs button{flex:1;padding:8px 4px;border-radius:10px;font-size:13px;font-weight:650;color:var(--mut)}
+.tabs button.on{background:var(--surf2);color:var(--ink)}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<nav class="nav"><div class="nav-in" id="nav"></div></nav>
+<button class="fab" id="fab" aria-label="新增保養紀錄">＋</button>
+<div class="scrim" id="scrim"></div>
+<div class="toast" id="toast"></div>
+<script>
+/* 保養里程尺 — 作者：BB */
+const APP_NAME='保養里程尺', APP_AUTHOR='BB', APP_VERSION='1.2.0';
+const LS='car-maint-v1', LS_SEEN='car-maint-seen-ver';
+
+/* 更新紀錄
+   發新版：在最前面加一筆，並同步 APP_VERSION 與 sw.js 的 CACHE_NAME
+   tag：add 新增 / fix 修正 / imp 優化 / chg 調整 */
+const TAGS={add:['新增','t-add'],fix:['修正','t-fix'],imp:['優化','t-imp'],chg:['調整','t-chg']};
+const CHANGELOG=[
+ {v:'1.2.0', date:'2026-08-10', changes:[
+   {t:'chg', s:'版本號改為語意化版號（主版本.次版本.修訂）'},
+   {t:'imp', s:'更新紀錄改版，每筆異動加上新增／修正／優化／調整分類標籤'},
+   {t:'imp', s:'更新紀錄改成時間軸排版，版本之間更好分辨'}
+ ]},
+ {v:'1.1.0', date:'2026-08-10', changes:[
+   {t:'add', s:'新增「更新紀錄」，可以查看每一版改了什麼'},
+   {t:'add', s:'更新之後首頁會提示這一版的改動'},
+   {t:'chg', s:'移除「更多」分頁的復原／重做按鈕'},
+   {t:'fix', s:'修正開啟 App 後未立即建立預設保養項目的問題'}
+ ]},
+ {v:'1.0.0', date:'2026-08-10', changes:[
+   {t:'add', s:'第一版：以里程為單一時間軸的保養追蹤'},
+   {t:'add', s:'里程尺：所有項目的到期里程畫在同一條刻度上，並提示可以同一趟做完的項目'},
+   {t:'add', s:'保養紀錄、花費統計、自訂保養項目與更換週期'},
+   {t:'add', s:'JSON 備份匯出／匯入，離線可用的 PWA'}
+ ]}
+];
+
+const DEFAULT_ITEMS=[
+ {name:'機油',        icon:'🛢️', interval:5000},
+ {name:'機油芯',      icon:'🌀', interval:5000},
+ {name:'空氣濾芯',    icon:'💨', interval:20000},
+ {name:'冷氣濾芯',    icon:'❄️', interval:20000},
+ {name:'煞車皮（前）',icon:'🛑', interval:30000},
+ {name:'煞車皮（後）',icon:'🛑', interval:50000},
+ {name:'輪胎',        icon:'🛞', interval:50000},
+ {name:'電瓶',        icon:'🔋', interval:60000},
+ {name:'冷卻液',      icon:'🧊', interval:40000},
+ {name:'變速箱油',    icon:'⚙️', interval:60000},
+ {name:'火星塞',      icon:'⚡', interval:40000},
+ {name:'雨刷',        icon:'🌧️', interval:20000},
+];
+const ICONS=['🛢️','🌀','💨','❄️','🛑','🛞','🔋','🧊','⚙️','⚡','🌧️','🔧','🔩','🚗','💡','🪫','🧴','📏'];
+
+/* ── state ── */
+let S=null, tab='home';
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=n=>Number(n||0).toLocaleString('en-US');
+const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+
+function seed(){
+  return {v:1, odo:0, odoAt:null,
+    items:DEFAULT_ITEMS.map((d,i)=>({id:uid(),name:d.name,icon:d.icon,interval:d.interval,base:0,sort:i})),
+    records:[]};
+}
+function migrate(s){
+  if(!s||typeof s!=='object') return seed();
+  s.v=1; s.odo=Number(s.odo)||0; s.odoAt=s.odoAt||null;
+  s.items=Array.isArray(s.items)?s.items:[];
+  s.records=Array.isArray(s.records)?s.records:[];
+  s.items.forEach((it,i)=>{it.id=it.id||uid();it.icon=it.icon||'🔧';it.interval=Number(it.interval)||0;
+    it.base=Number(it.base)||0; if(typeof it.sort!=='number')it.sort=i;});
+  s.records.forEach(r=>{r.id=r.id||uid();r.km=Number(r.km)||0;r.date=r.date||todayISO();
+    r.items=Array.isArray(r.items)?r.items:[];r.cost=Number(r.cost)||0;r.shop=r.shop||'';r.note=r.note||'';});
+  return s;
+}
+function load(){ try{const raw=localStorage.getItem(LS); S=raw?migrate(JSON.parse(raw)):seed();}catch(e){S=seed();} }
+function save(){ try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){toast('儲存失敗，可能是空間不足');} }
+function commit(fn,msg){ fn(); save(); render(); if(msg)toast(msg); }
+
+/* ── computation ── */
+const items=()=>[...S.items].sort((a,b)=>a.sort-b.sort);
+const records=()=>[...S.records].sort((a,b)=>b.km-a.km || String(b.date).localeCompare(String(a.date)));
+function lastKm(it){
+  let m=null;
+  for(const r of S.records) if(r.items.includes(it.id)) m=(m===null||r.km>m)?r.km:m;
+  return m===null?(it.base||0):m;
+}
+function calc(it){
+  const last=lastKm(it), iv=it.interval||0, due=last+iv, remain=due-S.odo;
+  const done=Math.max(0,S.odo-last), pct=iv>0?Math.min(100,Math.max(0,done/iv*100)):0;
+  let st='ok';
+  if(iv<=0) st='none';
+  else if(remain<=0) st='bad';
+  else if(remain<=Math.min(1000,iv*0.2)) st='warn';
+  return {last,iv,due,remain,pct,st,tracked:S.records.some(r=>r.items.includes(it.id))};
+}
+const stName=st=>st==='bad'?'已到期':st==='warn'?'快到了':'還很久';
+function isSetup(){
+  if(S.records.length) return false;
+  const over=items().filter(it=>it.interval>0).map(it=>calc(it)).filter(c=>c.remain<=0);
+  return over.length>=4 && over.every(c=>!c.tracked);
+}
+
+/* ── ruler ── */
+function rulerHTML(){
+  const list=items().filter(it=>it.interval>0).map(it=>({it,c:calc(it)}));
+  if(!list.length) return `<div class="ruler-empty">還沒有設定週期的保養項目<br>到「項目」分頁加一個吧</div>`;
+
+  const over=list.filter(x=>x.c.remain<=0).sort((a,b)=>a.c.remain-b.c.remain);
+  const fwd =list.filter(x=>x.c.remain>0).sort((a,b)=>a.c.due-b.c.due);
+
+  let band='';
+  if(isSetup()){
+    band=`<div class="odband setup"><div class="odt">先把起算點填好</div>
+      <div class="odd">有 <b>${over.length}</b> 項因為還沒填過「上次更換里程」，被當成已經超過週期了。
+      到「項目」分頁把每一項上次換的里程填進去，里程尺才會準。</div>
+      <button class="btn sm" data-act="goItems" style="margin-top:9px">去設定項目</button></div>`;
+  }else if(over.length){
+    band=`<div class="odband"><div class="odt">現在就該做 <b>${over.length}</b> 項</div><div class="odc">`
+      +over.map(x=>`<button class="odp" data-act="item" data-id="${x.it.id}">${x.it.icon} ${esc(x.it.name)}
+        <span class="km">超出 ${nf(-x.c.remain)}</span></button>`).join('')
+      +`</div></div>`;
+  }
+
+  let track='';
+  if(!fwd.length){
+    track=`<div class="ruler-empty">接下來沒有排定的項目了</div>`;
+  }else{
+    const hiDue=Math.max(...fwd.map(x=>x.c.due));
+    const fr=Math.max(1000,hiDue-S.odo);
+    const lo=S.odo-fr*0.05, hi=hiDue+fr*0.16;
+    const range=hi-lo;
+    const scale=Math.min(0.5,Math.max(0.04,2400/range));
+    const W=Math.round(range*scale);
+    const X=km=>Math.round((km-lo)*scale);
+
+    const est=p=>26+String(p.it.name).length*12.6+String(nf(p.c.due)).length*6.4;
+    const lanes=[], pins=[];
+    for(const p of fwd){
+      const x=X(p.c.due), w=est(p);
+      let L=lanes.findIndex(e=>e<x-6);
+      if(L<0){L=lanes.length;lanes.push(0);}
+      lanes[L]=x+w; pins.push({p,x,L});
+    }
+    const nL=Math.max(1,lanes.length);
+    const axisY=nL*26+14, H=axisY+34;
+
+    let step=500; for(const s of [500,1000,2000,5000,10000,20000]){ step=s; if(s*scale>=46) break; }
+    let ticks='';
+    for(let k=Math.ceil(lo/(step/2))*(step/2);k<=hi;k+=step/2){
+      const maj=Math.abs(k%step)<1, x=X(k);
+      ticks+=`<div class="tick ${maj?'maj':'min'}" style="left:${x}px;top:${axisY}px;height:${maj?10:5}px"></div>`;
+      if(maj) ticks+=`<div class="tlab" style="left:${x}px;top:${axisY+13}px">${nf(k)}</div>`;
+    }
+    let pinHTML='';
+    for(const {p,x,L} of pins){
+      const top=axisY-26*(L+1)-4, cls=p.c.st==='warn'?'s-warn':'';
+      pinHTML+=`<div class="stem ${cls}" style="left:${x}px;top:${top+22}px;height:${axisY-top-22}px"></div>`
+        +`<div class="pin ${cls}" style="left:${x+2}px;top:${top}px" data-act="item" data-id="${p.it.id}">`
+        +`<span class="dot"></span>${esc(p.it.name)}<span class="km">${nf(p.c.due)}</span></div>`;
+    }
+    const nowX=X(S.odo);
+    track=`<div class="ruler-scroll" id="rulerScroll"><div class="ruler" style="width:${W}px;height:${H}px">
+      <div class="axis" style="top:${axisY}px"></div>${ticks}${pinHTML}
+      <div class="now" style="left:${nowX}px;top:14px;height:${axisY-4}px"></div>
+      <div class="now-cap" style="left:${nowX}px;top:0px">現在 ${nf(S.odo)}</div>
+    </div></div>`;
+  }
+
+  let batch='';
+  for(let i=0;i<fwd.length-1;i++){
+    const grp=fwd.filter(x=>x.c.due>=fwd[i].c.due && x.c.due<=fwd[i].c.due+1500);
+    if(grp.length>=2){
+      batch=`<div class="batch">再開 <b>${nf(grp[0].c.remain)} km</b> 之內有 <b>${grp.length}</b> 項要換：${grp.map(x=>esc(x.it.name)).join('、')}，同一趟做完比較省。</div>`;
+      break;
+    }
+  }
+  return `<div class="ruler-h"><span class="t">里程尺</span><span class="hint">${fwd.length?'向右滑看更遠的里程':''}</span></div>
+    ${band}${track}${batch}<div style="height:6px"></div>`;
+}
+
+/* ── views ── */
+function odoHTML(){
+  const s=String(Math.max(0,Math.round(S.odo))).padStart(6,'0');
+  let lead=true, dg='';
+  for(let i=0;i<s.length;i++){
+    if(s[i]!=='0') lead=false;
+    if(i===s.length-3) dg+=`<span class="dg sep">,</span>`;
+    dg+=`<span class="dg${lead&&i<s.length-1?' lead':''}">${s[i]}</span>`;
+  }
+  const t=S.odoAt?`更新於 ${S.odoAt}`:'尚未更新過';
+  return `<div class="card glass odo">
+    <div class="lbl">目前里程</div>
+    <div class="odo-read"><div class="digits">${dg}</div><span class="odo-u">km</span></div>
+    <div class="odo-meta"><span class="t">${t}</span>
+      <button class="btn acc sm" data-act="odo">更新里程</button></div>
+  </div>`;
+}
+function viewHome(){
+  const list=items().map(it=>({it,c:calc(it)})).filter(x=>x.c.st!=='none');
+  const setup=isSetup();
+  const up=[...list].sort((a,b)=>a.c.remain-b.c.remain)[0];
+  let next='';
+  if(up && !setup){
+    const bad=up.c.remain<=0;
+    next=`<div class="card glass next s-${up.c.st}">
+      <div class="eyebrow">${bad?'已經超過週期':'下一件該做的'}</div>
+      <div class="nm">${up.it.icon} ${esc(up.it.name)}</div>
+      <div class="rem"><span class="v">${bad?'-':''}${nf(Math.abs(up.c.remain))}</span><span class="u">km ${bad?'超出':'之後'}</span></div>
+      <div class="desc">上次 ${nf(up.c.last)} km${up.c.tracked?'':'（起算里程）'} · 每 ${nf(up.c.iv)} km 一次 · 到期 ${nf(up.c.due)} km</div>
+    </div>`;
+  }
+  let bars='';
+  for(const {it,c} of list.sort((a,b)=>a.c.remain-b.c.remain)){
+    bars+=`<div class="ib s-${c.st}" data-act="item" data-id="${it.id}">
+      <div class="ib-t"><span class="ib-ic">${it.icon}</span><span class="ib-nm">${esc(it.name)}</span>
+        <span class="ib-rm">${c.remain<=0?'已到期 '+nf(-c.remain):'剩 '+nf(c.remain)} km</span></div>
+      <div class="bar"><i style="width:${c.pct}%"></i></div>
+      <div class="ib-sub"><span>${nf(c.last)}</span><span>每 ${nf(c.iv)} km</span><span>${nf(c.due)}</span></div>
+    </div>`;
+  }
+  if(!bars) bars=`<div class="empty"><div class="e">🔧</div><div class="t">還沒有保養項目</div>
+    <div class="d">到「項目」分頁新增，或按下方 ＋ 開始記錄</div></div>`;
+  return odoHTML()
+    +`<div class="card glass ruler-wrap">${rulerHTML()}</div>`
+    +next
+    +`<div class="sect-t">全部項目</div><div class="card">${bars}</div>`;
+}
+function viewLog(){
+  const rs=records();
+  const cost=S.records.reduce((a,r)=>a+(r.cost||0),0);
+  const yr=new Date().getFullYear();
+  const yc=S.records.filter(r=>String(r.date).slice(0,4)==String(yr)).reduce((a,r)=>a+(r.cost||0),0);
+  const kms=S.records.map(r=>r.km);
+  const span=kms.length>1?Math.max(...kms)-Math.min(...kms):0;
+  const per=span>0?Math.round(cost/span*1000):0;
+  const stat=`<div class="stat-g">
+    <div class="stat"><div class="k">紀錄筆數</div><div class="v">${nf(rs.length)}<small>筆</small></div></div>
+    <div class="stat"><div class="k">累計花費</div><div class="v">${nf(cost)}<small>元</small></div></div>
+    <div class="stat"><div class="k">${yr} 年花費</div><div class="v">${nf(yc)}<small>元</small></div></div>
+    <div class="stat"><div class="k">平均每千公里</div><div class="v">${nf(per)}<small>元</small></div></div>
+  </div>`;
+  if(!rs.length) return stat+`<div class="card"><div class="empty"><div class="e">📋</div>
+    <div class="t">還沒有保養紀錄</div><div class="d">按右下角 ＋ 記下這次進廠做了什麼<br>之後里程尺就會自動幫你算下一次</div></div></div>`;
+  const map={}; S.items.forEach(i=>map[i.id]=i);
+  let html='';
+  for(const r of rs){
+    const chips=r.items.map(id=>map[id]
+      ?`<span class="chip">${map[id].icon} ${esc(map[id].name)}</span>`
+      :`<span class="chip gone">已刪除項目</span>`).join('');
+    const x=[];
+    if(r.cost) x.push(`<span class="c">$${nf(r.cost)}</span>`);
+    if(r.shop) x.push(`<span>${esc(r.shop)}</span>`);
+    html+=`<div class="rec" data-act="rec" data-id="${r.id}">
+      <div class="rec-km"><span class="v">${nf(r.km)}</span><span class="u">km</span></div>
+      <div class="rec-b"><div class="rec-d">${esc(r.date)}</div>
+        ${chips?`<div class="chips">${chips}</div>`:''}
+        ${x.length?`<div class="rec-x">${x.join('')}</div>`:''}
+        ${r.note?`<div class="rec-note">${esc(r.note)}</div>`:''}
+      </div></div>`;
+  }
+  return stat+`<div class="sect-t">保養歷程</div><div class="card">${html}</div>`;
+}
+function viewItems(){
+  let html='';
+  for(const it of items()){
+    const c=calc(it);
+    html+=`<div class="mi" data-act="item" data-id="${it.id}">
+      <span class="ic">${it.icon}</span>
+      <div class="b"><div class="n">${esc(it.name)}</div>
+        <div class="s">每 ${nf(it.interval)} km · 上次 ${nf(c.last)} · 到期 ${nf(c.due)}</div></div>
+      <span class="ib-rm" style="color:var(--${c.st==='bad'?'bad':c.st==='warn'?'warn':'ok'})">
+        ${c.remain<=0?'到期':'剩 '+nf(c.remain)}</span></div>`;
+  }
+  if(!html) html=`<div class="empty"><div class="e">🔧</div><div class="t">沒有任何項目</div>
+    <div class="d">新增一個，或還原成預設的 12 項</div></div>`;
+  return `<div class="row-b" style="margin:0 4px 10px">
+      <span class="sect-t" style="margin:0">保養項目</span>
+      <div style="display:flex;gap:7px">
+        <button class="btn sm" data-act="restore">還原預設</button>
+        <button class="btn acc sm" data-act="newItem">＋ 新增</button></div></div>
+    <div class="card">${html}</div>
+    <div class="card pad" style="color:var(--mut);font-size:12.5px;line-height:1.65">
+      每個項目的「上次更換里程」會自動取最近一筆有勾到它的保養紀錄。<br>
+      還沒有紀錄的項目，可以在編輯裡直接填上次換的里程當起算點。</div>`;
+}
+function viewMore(){
+  return `<div class="sect-t">資料</div>
+  <div class="card pad">
+    <button class="btn wide" data-act="export" style="margin-bottom:9px">匯出 JSON 備份</button>
+    <button class="btn wide" data-act="import" style="margin-bottom:9px">匯入 JSON 備份</button>
+    <button class="btn wide bad" data-act="wipe">清除所有資料</button>
+    <input type="file" id="fileIn" accept="application/json,.json" style="display:none">
+  </div>
+  <div class="sect-t">關於</div>
+  <div class="card">
+    <div class="mi" data-act="changelog">
+      <span class="ic">📄</span>
+      <div class="b"><div class="n">更新紀錄</div>
+        <div class="s">看看每一版改了什麼</div></div>
+      <span style="color:var(--dim);font-size:16px">›</span></div>
+    <div class="mi">
+      <span class="ic">🏷️</span>
+      <div class="b"><div class="n">目前版本</div>
+        <div class="s">${CHANGELOG[0]?.date||''} · 共 ${CHANGELOG.length} 個版本</div></div>
+      <span class="ib-rm" style="color:var(--acc)">v${APP_VERSION}</span></div>
+    <div class="mi">
+      <span class="ic">✍️</span>
+      <div class="b"><div class="n">作者</div>
+        <div class="s">單一 HTML 的離線 PWA</div></div>
+      <span class="ib-rm" style="color:var(--mut)">${APP_AUTHOR}</span></div>
+  </div>
+  <div class="card pad" style="color:var(--mut);font-size:12.5px;line-height:1.7">
+    ${APP_NAME}以里程作為唯一的時間軸：每個項目從上次更換的里程起算，走完週期就到期。<br>
+    剩下不到 1,000 km 會轉成黃色、超過週期轉成紅色，不管那個項目的週期是 5,000 還是 60,000 km。<br>
+    所有資料存在這台裝置上，離線也能用。</div>`;
+}
+
+/* ── 更新紀錄 ── */
+function verParts(s){ return String(s).split('.').map(n=>parseInt(n,10)||0); }
+function cmpVer(a,b){
+  const x=verParts(a), y=verParts(b), n=Math.max(x.length,y.length);
+  for(let i=0;i<n;i++){ const d=(x[i]||0)-(y[i]||0); if(d) return d>0?1:-1; }
+  return 0;
+}
+function seenVer(){
+  const raw=localStorage.getItem(LS_SEEN);
+  if(!raw) return null;
+  return raw.includes('.') ? raw : `1.${(parseInt(raw,10)||1)-1}.0`; // 相容舊的流水號 1 / 2
+}
+function markSeen(){ try{localStorage.setItem(LS_SEEN,APP_VERSION);}catch(e){} }
+function updateBanner(){
+  const s=seenVer();
+  if(!s || cmpVer(s,APP_VERSION)>=0) return '';
+  const cur=CHANGELOG.find(c=>c.v===APP_VERSION);
+  const n=cur?cur.changes.length:0;
+  return `<div class="upd">
+    <button class="upd-b" data-act="changelog">
+      <span class="upd-t">已更新到 v${APP_VERSION}</span>
+      <span class="upd-d">${n?`這一版有 ${n} 項異動，點開看看`:'看看這一版改了什麼'}</span>
+    </button>
+    <button class="upd-x" data-act="dismissUpd" aria-label="知道了">✕</button></div>`;
+}
+function tagCount(c,t){ return c.changes.filter(x=>x.t===t).length; }
+function sheetChangelog(){
+  markSeen();
+  const html=CHANGELOG.map((c,i)=>{
+    const cur=c.v===APP_VERSION;
+    const sum=Object.keys(TAGS).map(t=>{const n=tagCount(c,t);
+      return n?`<span class="cl-cnt ${TAGS[t][1]}">${TAGS[t][0]} ${n}</span>`:''}).join('');
+    return `<div class="cl${cur?' cur':''}${i===CHANGELOG.length-1?' last':''}">
+      <span class="cl-dot"></span>
+      <div class="cl-hd">
+        <span class="cl-v">v${esc(c.v)}</span>
+        ${cur?'<span class="cl-now">目前版本</span>':''}
+        <span class="cl-d">${esc(c.date)}</span>
+      </div>
+      <div class="cl-sum">${sum}</div>
+      <ul class="cl-l">${c.changes.map(x=>{
+        const [lbl,cls]=TAGS[x.t]||TAGS.chg;
+        return `<li><span class="tg ${cls}">${lbl}</span><span class="tx">${esc(x.s)}</span></li>`;
+      }).join('')}</ul></div>`;
+  }).join('');
+  openSheet('更新紀錄',`<div class="cl-wrap">${html}</div>
+    <div class="sh-act" style="margin-top:2px">
+      <button class="btn acc" data-act="close">知道了</button></div>`);
+}
+
+const TABS=[['home','🛠','保養'],['log','📋','歷程'],['items','🔧','項目'],['more','⋯','更多']];
+function render(){
+  const app=document.getElementById('app');
+  const body=tab==='home'?viewHome():tab==='log'?viewLog():tab==='items'?viewItems():viewMore();
+  app.innerHTML=`<div class="head">
+      <div class="brand"><span class="mk">↔</span><h1>${APP_NAME}</h1></div>
+      <span class="sub">v${APP_VERSION}</span></div>${tab==='home'?updateBanner():''}${body}`;
+  document.getElementById('nav').innerHTML=TABS.map(([k,i,n])=>
+    `<button class="nb${tab===k?' on':''}" data-tab="${k}"><span class="i">${i}</span>${n}</button>`).join('');
+  document.getElementById('fab').style.display=(tab==='home'||tab==='log')?'grid':'none';
+  const rs=document.getElementById('rulerScroll');
+  if(rs){
+    rs.scrollLeft=0;
+    const hint=document.querySelector('.ruler-h .hint');
+    if(hint && rs.scrollWidth<=rs.clientWidth+4) hint.textContent='';
+  }
+}
+
+/* ── sheets ── */
+let sheetOpen=false, scrollY=0;
+function lockBody(){ scrollY=window.scrollY; document.body.style.top=`-${scrollY}px`; document.body.classList.add('locked'); }
+function unlockBody(){ document.body.classList.remove('locked'); document.body.style.top=''; window.scrollTo(0,scrollY); }
+function openSheet(title,html,mount){
+  const sc=document.getElementById('scrim');
+  sc.innerHTML=`<div class="sheet"><div class="sh-h"><h3>${title}</h3>
+    <button class="sh-x" data-act="close">✕</button></div><div class="sh-b">${html}</div></div>`;
+  sc.classList.add('on'); if(!sheetOpen){lockBody();sheetOpen=true;}
+  if(mount)mount(sc);
+}
+function closeSheet(){
+  const sc=document.getElementById('scrim');
+  sc.classList.remove('on'); sc.innerHTML='';
+  if(sheetOpen){unlockBody();sheetOpen=false;}
+}
+let tt;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2000); }
+const v=id=>document.getElementById(id)?.value.trim()??'';
+const numv=id=>{const n=parseFloat(String(v(id)).replace(/[, ]/g,''));return isNaN(n)?0:n;};
+
+function sheetOdo(){
+  openSheet('更新里程',`
+    <div class="f"><label>目前里程 (km)</label>
+      <input id="fOdo" type="number" inputmode="numeric" value="${S.odo||''}" placeholder="例如 48250">
+      <div class="hint">看一下儀表板的總里程，填進來就好。</div></div>
+    <div class="sh-act"><button class="btn gho" data-act="close">取消</button>
+      <button class="btn acc" data-act="saveOdo">更新</button></div>`,
+    ()=>setTimeout(()=>document.getElementById('fOdo')?.focus(),60));
+}
+function itemPickHTML(sel){
+  return items().map(it=>`<button class="pk${sel.includes(it.id)?' on':''}" data-act="pick" data-id="${it.id}">
+    ${it.icon} ${esc(it.name)}<span class="kk">${nf(it.interval)}</span></button>`).join('')
+    ||`<div class="hint">還沒有保養項目，先到「項目」分頁新增。</div>`;
+}
+let pickSel=[];
+function sheetRecord(id){
+  const r=id?S.records.find(x=>x.id===id):null;
+  pickSel=r?[...r.items]:[];
+  openSheet(r?'編輯保養紀錄':'新增保養紀錄',`
+    <div class="f2">
+      <div class="f"><label>里程 (km)</label>
+        <input id="fKm" type="number" inputmode="numeric" value="${r?r.km:(S.odo||'')}" placeholder="進廠時的里程"></div>
+      <div class="f"><label>日期</label>
+        <input id="fDate" type="date" value="${r?r.date:todayISO()}"></div>
+    </div>
+    <div class="f"><label>這次做了什麼（可複選）</label>
+      <div class="pick" id="fPick">${itemPickHTML(pickSel)}</div></div>
+    <div class="f2">
+      <div class="f"><label>花費 (元)</label>
+        <input id="fCost" type="number" inputmode="numeric" value="${r&&r.cost?r.cost:''}" placeholder="選填"></div>
+      <div class="f"><label>保養廠</label>
+        <input id="fShop" value="${r?esc(r.shop):''}" placeholder="選填"></div>
+    </div>
+    <div class="f"><label>備註</label>
+      <textarea id="fNote" placeholder="換了什麼牌子、師傅說了什麼…">${r?esc(r.note):''}</textarea></div>
+    <div class="sh-act">
+      ${r?`<button class="btn bad" data-act="delRec" data-id="${r.id}">刪除</button>`:`<button class="btn gho" data-act="close">取消</button>`}
+      <button class="btn acc" data-act="saveRec" data-id="${r?r.id:''}">${r?'儲存':'新增紀錄'}</button></div>`);
+}
+function sheetItem(id){
+  const it=id?S.items.find(x=>x.id===id):null;
+  const c=it?calc(it):null;
+  openSheet(it?'編輯項目':'新增項目',`
+    <div class="f"><label>名稱</label>
+      <input id="iName" value="${it?esc(it.name):''}" placeholder="例如 機油"></div>
+    <div class="f"><label>圖示</label>
+      <div class="pick" id="iIcons">${ICONS.map(ic=>
+        `<button class="pk${(it?it.icon:'🔧')===ic?' on':''}" data-act="pickIcon" data-ic="${ic}" style="font-size:17px">${ic}</button>`).join('')}</div>
+      <input type="hidden" id="iIcon" value="${it?it.icon:'🔧'}"></div>
+    <div class="f"><label>更換週期 (km)</label>
+      <input id="iIv" type="number" inputmode="numeric" value="${it?it.interval:''}" placeholder="例如 5000"></div>
+    <div class="f"><label>上次更換里程 (km)</label>
+      <input id="iBase" type="number" inputmode="numeric" value="${it&&it.base?it.base:''}" placeholder="選填，起算點">
+      <div class="hint">${c&&c.tracked
+        ?`目前是從保養紀錄的 <b>${nf(c.last)} km</b> 起算，這裡填的起算點會被紀錄蓋過。`
+        :`還沒有紀錄勾到這個項目，會用這個里程起算。`}</div></div>
+    <div class="sh-act">
+      ${it?`<button class="btn bad" data-act="delItem" data-id="${it.id}">刪除</button>`:`<button class="btn gho" data-act="close">取消</button>`}
+      <button class="btn acc" data-act="saveItem" data-id="${it?it.id:''}">${it?'儲存':'新增'}</button></div>`);
+}
+
+/* ── actions ── */
+document.addEventListener('click',e=>{
+  const nb=e.target.closest('.nb');
+  if(nb){ tab=nb.dataset.tab; window.scrollTo(0,0); render(); return; }
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const a=el.dataset.act, id=el.dataset.id;
+
+  if(a==='close'){ closeSheet(); return; }
+  if(a==='odo'){ sheetOdo(); return; }
+  if(a==='saveOdo'){
+    const n=numv('fOdo');
+    if(n<0) return toast('里程不能是負數');
+    if(n<S.odo && !confirm(`新里程 ${nf(n)} 比目前的 ${nf(S.odo)} 還小，確定要改嗎？`)) return;
+    commit(()=>{S.odo=Math.round(n);S.odoAt=todayISO();},'里程已更新'); closeSheet(); return;
+  }
+  if(a==='rec'){ sheetRecord(id); return; }
+  if(a==='pick'){
+    pickSel=pickSel.includes(id)?pickSel.filter(x=>x!==id):[...pickSel,id];
+    document.getElementById('fPick').innerHTML=itemPickHTML(pickSel); return;
+  }
+  if(a==='saveRec'){
+    const km=numv('fKm');
+    if(!km) return toast('請填里程');
+    if(!pickSel.length) return toast('至少選一個保養項目');
+    const d={km:Math.round(km),date:v('fDate')||todayISO(),items:[...pickSel],
+      cost:numv('fCost'),shop:v('fShop'),note:v('fNote')};
+    commit(()=>{
+      if(id){ Object.assign(S.records.find(x=>x.id===id),d); }
+      else { S.records.push({id:uid(),...d}); }
+      if(d.km>S.odo){ S.odo=d.km; S.odoAt=todayISO(); }
+    }, id?'已儲存':'已新增紀錄');
+    closeSheet(); return;
+  }
+  if(a==='delRec'){
+    if(!confirm('刪除這筆保養紀錄？')) return;
+    commit(()=>{S.records=S.records.filter(x=>x.id!==id);},'已刪除'); closeSheet(); return;
+  }
+  if(a==='item'){ sheetItem(id); return; }
+  if(a==='newItem'){ sheetItem(null); return; }
+  if(a==='goItems'){ tab='items'; window.scrollTo(0,0); render(); return; }
+  if(a==='changelog'){ sheetChangelog(); render(); return; }
+  if(a==='dismissUpd'){ markSeen(); render(); return; }
+  if(a==='pickIcon'){
+    document.getElementById('iIcon').value=el.dataset.ic;
+    document.querySelectorAll('#iIcons .pk').forEach(b=>b.classList.toggle('on',b.dataset.ic===el.dataset.ic));
+    return;
+  }
+  if(a==='saveItem'){
+    const name=v('iName'), iv=numv('iIv');
+    if(!name) return toast('請填項目名稱');
+    if(iv<=0) return toast('請填更換週期');
+    const d={name,icon:v('iIcon')||'🔧',interval:Math.round(iv),base:Math.round(numv('iBase'))};
+    commit(()=>{
+      if(id) Object.assign(S.items.find(x=>x.id===id),d);
+      else S.items.push({id:uid(),sort:S.items.length,...d});
+    }, id?'已儲存':'已新增項目');
+    closeSheet(); return;
+  }
+  if(a==='delItem'){
+    const used=S.records.filter(r=>r.items.includes(id)).length;
+    if(!confirm(used?`有 ${used} 筆紀錄勾了這個項目，刪除後那些紀錄會顯示「已刪除項目」。確定刪除？`:'刪除這個保養項目？')) return;
+    commit(()=>{S.items=S.items.filter(x=>x.id!==id);},'已刪除'); closeSheet(); return;
+  }
+  if(a==='restore'){
+    if(!confirm('把預設的 12 個保養項目補回來？（同名的不會重複新增，你自訂的不會被動到）')) return;
+    commit(()=>{
+      const have=new Set(S.items.map(i=>i.name));
+      DEFAULT_ITEMS.forEach(d=>{ if(!have.has(d.name))
+        S.items.push({id:uid(),name:d.name,icon:d.icon,interval:d.interval,base:0,sort:S.items.length}); });
+    },'預設項目已補齊'); return;
+  }
+  if(a==='export'){
+    const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob), aE=document.createElement('a');
+    aE.href=url; aE.download=`保養里程尺_${todayISO()}_v${APP_VERSION}.json`;
+    document.body.appendChild(aE); aE.click(); aE.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+    toast('已匯出備份'); return;
+  }
+  if(a==='import'){ document.getElementById('fileIn').click(); return; }
+  if(a==='wipe'){
+    if(!confirm('清除所有里程、項目與保養紀錄？這個動作沒辦法復原，建議先匯出一份 JSON 備份。')) return;
+    commit(()=>{ const s=seed(); S.odo=s.odo; S.odoAt=null; S.items=s.items; S.records=[]; },'已清除');
+    return;
+  }
+});
+document.getElementById('fab').addEventListener('click',()=>sheetRecord(null));
+document.getElementById('scrim').addEventListener('click',e=>{ if(e.target.id==='scrim') closeSheet(); });
+document.addEventListener('change',e=>{
+  if(e.target.id!=='fileIn') return;
+  const f=e.target.files?.[0]; if(!f) return;
+  const fr=new FileReader();
+  fr.onload=()=>{ try{
+    const d=migrate(JSON.parse(fr.result));
+    if(!Array.isArray(d.items)||!Array.isArray(d.records)) throw 0;
+    if(!confirm(`匯入後會覆蓋目前資料。\n這份備份有 ${d.items.length} 個項目、${d.records.length} 筆紀錄。要繼續嗎？`)) return;
+    commit(()=>{S=d;},'匯入完成');
+  }catch(err){ toast('檔案格式不對，無法匯入'); } finally { e.target.value=''; } };
+  fr.readAsText(f);
+});
+
+/* ── iOS viewport / keyboard ── */
+function syncVV(){
+  const vv=window.visualViewport;
+  if(!vv) return;
+  document.documentElement.style.setProperty('--vvh',vv.height+'px');
+  document.documentElement.style.setProperty('--vvtop',vv.offsetTop+'px');
+}
+if(window.visualViewport){
+  let raf;
+  const on=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{
+    syncVV();
+    if(sheetOpen){
+      const f=document.activeElement;
+      if(f&&/INPUT|TEXTAREA|SELECT/.test(f.tagName)) f.scrollIntoView({block:'nearest'});
+    }
+  }); };
+  visualViewport.addEventListener('resize',on);
+  visualViewport.addEventListener('scroll',on);
+  syncVV();
+}
+
+/* ── boot ── */
+load(); save();
+if(!seenVer() && !S.records.length && !S.odo) markSeen();
+render();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
+</script>
+</body>
+</html>
