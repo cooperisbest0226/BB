@@ -357,6 +357,42 @@ function allMaterialNames(){
   return [...KNOWN_MATERIALS, ...[...extra].sort((a,b)=>a.localeCompare(b,'zh-Hant'))];
 }
 
+/* 按住不放連續觸發（給數量加減鈕用）。
+   一次只加 1 的話，記一場 20 個材料要按 20 下；按住之後改成自動連發，
+   而且越按越快 —— 前幾下維持慢速讓人來得及在小數字上停手，
+   按久了才加速，避免一放手就衝過頭。
+
+   用 pointerdown 起頭而不是 click：click 要等放開才觸發，按住就沒反應了。
+   鍵盤操作（Enter／空白鍵）只會發 click 不會發 pointerdown，所以 click 那條也要留著，
+   靠 usedPointer 旗標避免滑鼠／觸控時被算成兩次。 */
+function bindRepeat(btn, fn){
+  let timer=null, ticks=0, usedPointer=false;
+  const stop=()=>{ clearTimeout(timer); timer=null; ticks=0; };
+  const tick=()=>{
+    if(btn.disabled){ stop(); return; }
+    fn(); ticks++;
+    /* 節奏：慢 → 中 → 快。門檻抓在「常見數量」附近，個位數不會不小心衝過去 */
+    const gap = ticks<5 ? 260 : ticks<12 ? 120 : ticks<25 ? 60 : 30;
+    timer=setTimeout(tick,gap);
+  };
+  btn.addEventListener('pointerdown',e=>{
+    if(e.button&&e.button!==0) return;
+    usedPointer=true;
+    if(btn.disabled) return;
+    fn();                       // 第一下立刻生效，點一下就是 +1
+    ticks=1;
+    timer=setTimeout(tick,420); // 超過這個時間還按著才進入連發
+    /* 按住時不要選到文字或跳出系統選單 */
+    e.preventDefault();
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>btn.addEventListener(ev,stop));
+  btn.addEventListener('contextmenu',e=>e.preventDefault());
+  btn.addEventListener('click',()=>{
+    if(usedPointer){ usedPointer=false; return; }   // 滑鼠／觸控已經在 pointerdown 算過了
+    if(!btn.disabled) fn();
+  });
+}
+
 /* 掉落物批次編輯：一次調整整場 RUN 的所有材料數量（新增／修改／刪除都在這裡完成）。
    數量歸 0 就等於把那筆刪掉，不用一個一個開來刪。 */
 function dropsSheet(ptId){
@@ -370,7 +406,8 @@ function dropsSheet(ptId){
       <span class="droprow-n">${esc(n)}</span>
       <div class="stepper">
         <button class="stepbtn" data-step="-1" data-m="${esc(n)}" ${(work.get(n)||0)<=0?'disabled':''}>−</button>
-        <input class="stepqty" type="number" min="0" data-qty="${esc(n)}" value="${work.get(n)||0}">
+        <input class="stepqty" type="number" min="0" inputmode="numeric" placeholder="0"
+               data-qty="${esc(n)}" value="${work.get(n)?work.get(n):''}">
         <button class="stepbtn plus" data-step="1" data-m="${esc(n)}">＋</button>
       </div>
     </div>`;
@@ -405,21 +442,31 @@ function dropsSheet(ptId){
       const row=host.querySelector(`[data-row="${CSS.escape(n)}"]`); if(!row) return;
       const q=work.get(n)||0;
       row.classList.toggle('on',q>0);
-      row.querySelector('[data-qty]').value=q;
+      const qi=row.querySelector('[data-qty]');
+      /* 0 顯示成空白（靠 placeholder 提示），這樣點進去直接打數字就好，
+         不用先把原本的 0 刪掉，也不會打出 "08" 這種東西 */
+      if(document.activeElement!==qi) qi.value = q ? q : '';
       row.querySelector('[data-step="-1"]').disabled=q<=0;
     }
     function bindRow(row){
       const n=row.dataset.row;
-      row.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{
+      row.querySelectorAll('[data-step]').forEach(b=>bindRepeat(b,()=>{
         const q=Math.max(0,(work.get(n)||0)+(+b.dataset.step));
         work.set(n,q); paintRow(n); paintSum();
-      });
-      row.querySelector('[data-qty]').oninput=e=>{
+      }));
+      const qi=row.querySelector('[data-qty]');
+      /* 點進數字直接全選：接著打的數字就是取代而不是接在後面。
+         滑鼠放開時瀏覽器會把選取收成游標，所以要擋掉那一下，不然桌機上白選。 */
+      qi.onfocus=()=>qi.select();
+      qi.onmouseup=e=>e.preventDefault();
+      qi.oninput=e=>{
         work.set(n,Math.max(0,parseInt(e.target.value)||0));
         row.classList.toggle('on',(work.get(n)||0)>0);
         row.querySelector('[data-step="-1"]').disabled=(work.get(n)||0)<=0;
         paintSum();
       };
+      /* 離開時把 "0"、"-3"、空字串這些統一收斂成畫面該有的樣子 */
+      qi.onblur=()=>paintRow(n);
     }
     host.querySelectorAll('.droprow').forEach(bindRow);
     paintSum();
@@ -570,6 +617,10 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v43', d:'2026/08/11', c:[
+    ['add','掉落物的加減鈕可以按住不放連續累加，按越久加越快（約 2 秒 10 個、3 秒 30 個、5 秒 100 個）'],
+    ['imp','數量為 0 時欄位留白，點一下數字會整個選起來，直接打數字取代，不用先把 0 刪掉'],
+  ]},
   { v:'v42', d:'2026/08/11', c:[
     ['fix','手機上連點兩下會把整頁放大，點擊也慢半拍（雙指縮放仍然保留）'],
     ['fix','切到成員分頁時畫面停在半空中，要往上滑才看得到「成員列表／職業設定」'],

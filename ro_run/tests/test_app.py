@@ -1143,6 +1143,89 @@ def run(page):
     page.wait_for_timeout(200)
     page.evaluate("() => window.scrollTo(0, 0)")
 
+    # ---------- 掉落物數量輸入 ----------
+    print("\n[drops] 掉落物數量輸入")
+    seed(page)
+    page.evaluate("() => { curDate = '2026-08-05'; render(); dropsSheet('ptB'); }")
+    page.wait_for_timeout(400)
+    check("列出預設的 14 種材料",
+          page.evaluate("() => document.querySelectorAll('#dropRows .droprow').length"), 14)
+    check("數量 0 時欄位留白，用 placeholder 提示",
+          page.evaluate("""() => {
+              const i = document.querySelector('#dropRows [data-qty]');
+              return [i.value, i.placeholder];
+          }"""), ["", "0"])
+    check("數量 0 時減號是停用的",
+          page.evaluate("""() => document.querySelector('#dropRows [data-step="-1"]').disabled"""), True)
+
+    # 注意：.droprow 之間夾著系列標題 .dropgrp，:first-of-type 會落空，用實際名稱定位
+    first = page.evaluate("() => document.querySelector('#dropRows .droprow').dataset.row")
+    plus = f'[data-step="1"][data-m="{first}"]'
+    minus = f'[data-step="-1"][data-m="{first}"]'
+    qty = f'[data-qty="{first}"]'
+    page.click(plus)
+    page.wait_for_timeout(120)
+    check("點一下加號只加 1",
+          page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"), "1")
+    check("有數量後減號解除停用",
+          page.evaluate("""() => document.querySelector('#dropRows [data-step="-1"]').disabled"""), False)
+
+    # 按住不放：連續累加
+    box = page.locator(plus).bounding_box()
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(1500)
+    page.mouse.up()
+    page.wait_for_timeout(150)
+    held = int(page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"))
+    check("按住加號會連續累加", 5 < held < 40, True)
+    check("放開後就停住",
+          (lambda before: (page.wait_for_timeout(500),
+                           int(page.evaluate("() => document.querySelector('#dropRows [data-qty]').value")) == before)[1])(held),
+          True)
+
+    # 按住減號一樣會連發，且不會掉到負數
+    box = page.locator(minus).bounding_box()
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(2500)
+    page.mouse.up()
+    page.wait_for_timeout(200)
+    check("按住減號會扣到 0 就停住，不會變負數",
+          page.evaluate("""() => {
+              const i = document.querySelector('#dropRows [data-qty]');
+              return [i.value, document.querySelector('#dropRows [data-step="-1"]').disabled];
+          }"""), ["", True])
+
+    # 點數字直接打字取代，不用先刪掉原本的值
+    page.click(plus)
+    page.click(plus)
+    page.wait_for_timeout(150)
+    check("先累加到 2", page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"), "2")
+    page.click(qty)
+    page.keyboard.type("8")
+    page.wait_for_timeout(200)
+    check("點數字後打字是取代不是接在後面",
+          page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"), "8")
+
+    # 鍵盤操作不會被算成兩次
+    page.evaluate("""() => {
+        const b = document.querySelector('#dropRows .droprow [data-step="1"]');
+        b.focus(); b.click();          // 鍵盤觸發只會發 click
+    }""")
+    page.wait_for_timeout(150)
+    check("鍵盤觸發的 click 只算一次",
+          page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"), "9")
+
+    check("摘要即時反映目前記錄",
+          page.evaluate("() => document.getElementById('dropSum').textContent.includes('1 種')"), True)
+
+    page.click('.sheet [data-s="save"]')
+    page.wait_for_timeout(400)
+    check("儲存後只寫入有數量的材料",
+          page.evaluate("""() => ptsOf('2026-08-05')[0].drops.map(d => [d.name, d.qty])"""),
+          [[first, 9]])
+
     # ---------- 設定選單重做 ----------
     print("\n[settings] 設定選單重做")
     seed(page)

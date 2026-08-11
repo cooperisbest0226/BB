@@ -776,7 +776,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .stepbtn{
   width:32px; height:32px; border-radius:9px; border:1px solid var(--line);
   background:var(--surface); font-size:17px; font-weight:600; line-height:1; color:var(--ink-2);
+  /* 按住會連續累加，期間不要讓瀏覽器把它當成長按選字或捲動手勢 */
+  touch-action:none; -webkit-user-select:none; user-select:none;
 }
+.stepbtn:active{background:var(--line-2); transform:scale(.94)}
+.stepbtn.plus:active{background:rgba(79,70,229,.2)}
 .stepbtn:disabled{opacity:.3}
 .stepbtn.plus{background:var(--accent-soft); border-color:rgba(79,70,229,.25); color:var(--accent)}
 .stepqty{
