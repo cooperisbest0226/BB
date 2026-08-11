@@ -297,7 +297,7 @@ try{
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v37';
+const APP_VERSION='v38';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -479,6 +479,13 @@ const MIGRATIONS=[
       if(!Array.isArray(s.items)) s.items=[];
     });
   },
+  /* 3 → 4：成員可以針對「自己在某個職業時」覆蓋該職業的預設 BUFF。
+            舊資料沒有任何覆蓋，補上空物件即可，顯示結果完全不變。 */
+  p=>{
+    (p.members||[]).forEach(m=>{
+      if(!m.buffs || typeof m.buffs!=='object' || Array.isArray(m.buffs)) m.buffs={};
+    });
+  },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
 
@@ -531,6 +538,20 @@ const ptsOf=k=>state.schedule[k]||[];
 const memberById=id=>state.members.find(m=>m.id===id);
 const roleById=id=>state.roles.find(r=>r.id===id);
 const sortedRoles=()=>[...state.roles].sort((a,b)=>a.order-b.order);
+
+/* ── BUFF 的兩層設定 ───────────────────────────────────────
+   職業卡上的 buff 是「這個職業的預設」，成員的 buffs[職業id] 是「這個人當這個職業時」的覆蓋。
+   用 key 存不存在來判斷有沒有覆蓋，不是看字串空不空 —— 這樣「這個人刻意不放 BUFF」
+   （存空字串）才能跟「沒設定過、套職業預設」區分開。 */
+function hasBuffOverride(m,roleId){
+  return !!(m && m.buffs && Object.prototype.hasOwnProperty.call(m.buffs, roleId));
+}
+function buffFor(m, r){
+  if(!r) return '';
+  return hasBuffOverride(m, r.id) ? (m.buffs[r.id]||'') : (r.buff||'');
+}
+function setBuffOverride(m, roleId, text){ (m.buffs=m.buffs||{})[roleId]=text; }
+function clearBuffOverride(m, roleId){ if(m&&m.buffs) delete m.buffs[roleId]; }
 function assignedIds(k){ const s=new Set(); ptsOf(k).forEach(p=>p.slots.forEach(x=>s.add(x.memberId))); return s; }
 /* 同一天可以把同一個人加進多個 RUN，所以「成員名單」永遠列出全部啟用中的成員，
    不會因為已經加過就消失 —— 這樣才能重複拖曳/點選加入不同場次。 */
@@ -654,10 +675,16 @@ function renderBoard(){
         ? `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
              style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
         : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
+      const bf=buffFor(m,r), own=hasBuffOverride(m,r&&r.id);
+      const buffTag = r
+        ? `<button class="slot-buff ${own?'own':''} ${bf?'':'none'}" data-act="slotBuff"
+             data-pt="${pt.id}" data-i="${si}" title="${own?'這個人自己的 BUFF':'套用職業預設 BUFF'}"
+           >${bf?esc(bf):'＋ BUFF'}</button>`
+        : '';
       return `<div class="slot ${s.bento?'bento':''}" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
-          ${r&&r.buff?`<span class="slot-buff">${esc(r.buff)}</span>`:''}
+          ${buffTag}
         </div>${pill}
         <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
       </div>`;
@@ -718,7 +745,7 @@ function renderMembers(){
   }
   host.innerHTML=`<div class="list">`+list.map(m=>{
     const r=roleById(m.defaultRoleId);
-    const meta=[r?r.name:'', r&&r.buff, m.notes].filter(Boolean).join(' · ');
+    const meta=[r?r.name:'', buffFor(m,r), m.notes].filter(Boolean).join(' · ');
     return `<div class="row" data-act="editMember" data-id="${m.id}">
       <div class="row-main">
         <div class="row-t">${esc(m.name)}${m.active?'':'<span class="badge off">停用</span>'}</div>
@@ -1662,26 +1689,52 @@ function confirmSheet(message, onConfirm, confirmLabel){
 }
 
 function memberSheet(id){
-  const m=id?memberById(id):{name:'',active:true,notes:'',defaultRoleId:null};
+  const m=id?memberById(id):{name:'',active:true,notes:'',defaultRoleId:null,buffs:{}};
   const opts=`<option value="">不指定</option>`+sortedRoles().map(r=>
     `<option value="${r.id}" ${m.defaultRoleId===r.id?'selected':''}>${esc(r.name)}</option>`).join('');
+  /* 已設過覆蓋的職業 + 預設職業，都列出來讓人直接改（新成員還沒存檔，先不顯示） */
+  const buffRoleIds=[...new Set([
+    ...Object.keys(m.buffs||{}),
+    ...(m.defaultRoleId?[m.defaultRoleId]:[]),
+  ])].filter(rid=>roleById(rid));
+  const buffRows = !id ? '' : `
+    <div class="skillgrp">職業 BUFF</div>
+    ${buffRoleIds.length ? buffRoleIds.map(rid=>{
+      const r=roleById(rid), own=hasBuffOverride(m,rid), txt=buffFor(m,r);
+      return `<button class="buffrow" data-buffrole="${rid}">
+        <span class="buffrow-n" style="color:${r.color}">${esc(r.icon||'')}${esc(r.name)}</span>
+        <span class="buffrow-v ${txt?'':'none'}">${txt?esc(txt):'未設定'}</span>
+        <span class="buffrow-tag ${own?'own':''}">${own?'自訂':'預設'}</span>
+      </button>`;
+    }).join('') : `<p class="sheet-note">先指定預設職業，就能在這裡調整這個人的 BUFF。</p>`}
+    <p class="sheet-note">「自訂」只影響這個人，不會動到職業預設或其他同職業的成員。</p>`;
+
   sheet(id?'編輯成員':'新增成員',`
     <div class="field"><label>名字</label><input name="name" value="${esc(m.name)}" placeholder="遊戲角色名"></div>
     <div class="field"><label>預設職業</label><select name="role">${opts}</select></div>
     <div class="field"><label>備註</label><input name="notes" value="${esc(m.notes)}" placeholder="選填"></div>
     <label class="toggle"><input type="checkbox" name="active" ${m.active?'checked':''}> 目前有在跑（停用後不會出現在成員名單）</label>
+    ${buffRows}
     <div class="sheet-foot">
       ${id?'<button class="gbtn warn" data-s="del">刪除</button>':''}
       <button class="gbtn" data-s="cancel">取消</button>
       <button class="gbtn accent" data-s="save">儲存</button>
     </div>`,s=>{
+    s.querySelectorAll('[data-buffrole]').forEach(b=>b.onclick=()=>{
+      /* 先把面板上改過的欄位存起來再跳走，不然改到一半的名字／備註會不見 */
+      commit(()=>{ Object.assign(memberById(id),{
+        name:val(s,'name')||m.name, notes:val(s,'notes'),
+        defaultRoleId:s.querySelector('[name="role"]').value||null,
+        active:s.querySelector('[name="active"]').checked}); });
+      memberBuffSheet(id, b.dataset.buffrole);
+    });
     s.querySelector('[data-s="save"]').onclick=()=>{
       const name=val(s,'name'); if(!name) return toast('請輸入名字');
       commit(()=>{
         const d={name,notes:val(s,'notes'),
           defaultRoleId:s.querySelector('[name="role"]').value||null,
           active:s.querySelector('[name="active"]').checked};
-        if(id) Object.assign(memberById(id),d); else state.members.push({id:uid(),...d});
+        if(id) Object.assign(memberById(id),d); else state.members.push({id:uid(),buffs:{},...d});
       });
       closeSheet();
     };
@@ -1750,6 +1803,52 @@ function roleSheet(id, draft){
           state.members.forEach(m=>{ if(m.defaultRoleId===id) m.defaultRoleId=null; });
         });
       });
+    };
+  });
+}
+
+/* 某個成員「當某個職業時」的 BUFF。存在成員身上，所以改這裡不會動到職業預設，
+   也不會影響其他同職業的人。draft 用來從技能選擇器返回時帶回還沒儲存的內容。 */
+function memberBuffSheet(memberId, roleId, draft){
+  const m=memberById(memberId), r=roleById(roleId);
+  if(!m||!r) return;
+  const own=hasBuffOverride(m,roleId);
+  const cur = draft!==undefined ? draft : (own ? (m.buffs[roleId]||'') : (r.buff||''));
+  sheet(`${m.name} · ${r.name} 的 BUFF`,`
+    <div class="buffdefault">
+      <span class="buffdefault-k">職業預設</span>
+      <span class="buffdefault-v">${r.buff?esc(r.buff):'（未設定）'}</span>
+    </div>
+    <div class="field">
+      <label>這個人的 BUFF
+        <button class="minibtn" data-s="pick" type="button">從技能挑選</button>
+      </label>
+      <input name="buff" value="${esc(cur)}" placeholder="留空＝這個人不放 BUFF">
+    </div>
+    <p class="sheet-note">只會套用在「${esc(m.name)}」擔任「${esc(r.name)}」的時候，其他人與職業預設都不受影響。</p>
+    <div class="sheet-foot">
+      ${own?'<button class="gbtn warn" data-s="reset">還原成職業預設</button>':''}
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`, s=>{
+    s.querySelector('[data-s="pick"]').onclick=()=>{
+      const typed=val(s,'buff');
+      buffPickerSheet(typed, r.name,
+        picked=>memberBuffSheet(memberId, roleId, picked),
+        ()=>memberBuffSheet(memberId, roleId, typed));
+    };
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      const text=val(s,'buff');
+      commit(()=>{ setBuffOverride(memberById(memberId), roleId, text); });
+      closeSheet();
+      toast('已更新這個人的 BUFF');
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+    const rs=s.querySelector('[data-s="reset"]');
+    if(rs) rs.onclick=()=>{
+      commit(()=>{ clearBuffOverride(memberById(memberId), roleId); });
+      closeSheet();
+      toast('已還原成職業預設');
     };
   });
 }
@@ -2098,6 +2197,12 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v38', d:'2026/08/11', c:[
+    ['add','同職業的不同成員可以各自覆蓋 BUFF，職業卡上的設定變成「沒特別指定時套用的預設」'],
+    ['add','陣容格子的 BUFF 可直接點開修改，自訂過的會加上虛線底標示'],
+    ['add','成員編輯面板列出該成員的職業 BUFF，標示是自訂還是套用預設，可一鍵還原'],
+    ['imp','資料結構升到第 4 版，既有成員一律維持套用職業預設，顯示結果不變'],
+  ]},
   { v:'v37', d:'2026/08/10', c:[
     ['add','交易可選「整組出售」或「單品出售」，單品模式逐列記錄材料、數量與單價'],
     ['add','單品行情：依材料統計歷史加權均價、最近成交價與累計售出數量'],
@@ -2460,7 +2565,7 @@ function ptExportBlock(pt){
   const rows=pt.slots.length ? pt.slots.map(s=>{
     const m=memberById(s.memberId), r=roleById(s.roleId);
     if(!m) return '';
-    return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">便當</span>':''}${r&&r.buff?`<span class="ex-buff">${esc(r.buff)}</span>`:''}</span>`+
+    return `<div class="ex-row ${s.bento?'bento':''}"><span class="ex-nm">${esc(m.name)}${s.bento?'<span class="ex-buff" style="color:#16a34a">便當</span>':''}${buffFor(m,r)?`<span class="ex-buff">${esc(buffFor(m,r))}</span>`:''}</span>`+
       (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
          :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
   }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
@@ -2519,7 +2624,7 @@ function exportCsv(ks){
     ptsOf(k).forEach(pt=>{
       pt.slots.forEach(s=>{
         const m=memberById(s.memberId), r=roleById(s.roleId);
-        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'',m.name,r?r.name:'',r&&r.buff||'',s.bento?'是':'','']);
+        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'',m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
       });
       if(pt.drops&&pt.drops.length){
         rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'','','','','',
@@ -2557,6 +2662,13 @@ document.addEventListener('click',e=>{
   const btn=e.target.closest('[data-act]'); if(!btn) return;
   const a=btn.dataset.act, id=btn.dataset.id, ptId=btn.dataset.pt, i=+btn.dataset.i;
   if(a==='role')      rolePickSheet(ptId,i);
+  if(a==='slotBuff'){
+    const p=ptsOf(curDate).find(x=>x.id===ptId), sl=p&&p.slots[i];
+    if(sl){
+      if(!sl.roleId) toast('請先指定職業');
+      else memberBuffSheet(sl.memberId, sl.roleId);
+    }
+  }
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
   if(a==='toggleBento') commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); const s=p.slots[i]; s.bento=!s.bento; });
   if(a==='orderPt')   orderSheet(ptId);

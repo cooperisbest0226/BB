@@ -265,7 +265,41 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .slot.dragging{opacity:.4}
 .slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
 .slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.slot-buff{font-size:10.5px; font-weight:500; color:var(--accent); white-space:normal; overflow-wrap:anywhere; line-height:1.4}
+.slot-buff{
+  display:inline-block; font-size:10.5px; font-weight:500; color:var(--accent);
+  white-space:normal; overflow-wrap:anywhere; line-height:1.4; text-align:left;
+  padding:1px 0; border-radius:5px;
+  align-self:flex-start; max-width:100%;   /* 不要撐滿整列，虛線底才會只在文字底下 */
+}
+/* 這個人自己設的 BUFF 用虛線底標出來，跟套職業預設的一眼分得出來 */
+.slot-buff.own{border-bottom:1px dashed var(--accent); padding-bottom:0}
+.slot-buff.none{color:var(--faint); font-weight:400}
+.slot-buff:hover{color:var(--accent); background:var(--accent-soft)}
+
+/* 成員面板裡的職業 BUFF 列 */
+.buffrow{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  padding:10px 12px; margin-bottom:6px; border-radius:var(--r-sm);
+  background:var(--surface-2); border:1px solid var(--line-2);
+}
+.buffrow:hover{border-color:var(--line)}
+.buffrow-n{flex:0 0 auto; font-size:12.5px; font-weight:600; letter-spacing:-.2px}
+.buffrow-v{flex:1; min-width:0; font-size:11.5px; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.buffrow-v.none{color:var(--faint)}
+.buffrow-tag{
+  flex:0 0 auto; font-size:10px; font-weight:600; padding:2px 7px; border-radius:999px;
+  color:var(--faint); background:var(--glass-2); border:1px solid var(--line-2);
+}
+.buffrow-tag.own{color:var(--accent); border-color:color-mix(in srgb, var(--accent) 38%, transparent); background:var(--accent-soft)}
+
+/* 覆蓋面板頂端的「職業預設」提示列 */
+.buffdefault{
+  display:flex; align-items:baseline; gap:9px; padding:9px 12px; margin-bottom:13px;
+  border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--line-2);
+}
+.buffdefault-k{flex:0 0 auto; font-size:11px; color:var(--faint); font-weight:500}
+.buffdefault-v{flex:1; min-width:0; font-size:12px; color:var(--ink-2)}
+.sheet-note{font-size:11px; color:var(--faint); line-height:1.6; margin:8px 2px 0}
 .rolepill{
   font-size:11.5px; font-weight:600; padding:3.5px 9px; border-radius:99px; white-space:nowrap;
   border:1px solid; transition:transform .12s var(--ease);

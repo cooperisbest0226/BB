@@ -70,14 +70,21 @@ def run(page):
               return [m.sales[0].mode, Array.isArray(m.sales[0].items), m.sales[0].items.length,
                       m.sales[0].sets, m.sales[0].twd];
           }"""), ["set", True, 0, 3, 100])
-    check("已經是單品的交易不會被改回整組",
-          page.evaluate("""() => {
+    check("已經是單品的交易不會被改回整組",          page.evaluate("""() => {
               const old = {schemaVersion:2, members:[],roles:[],schedule:{},
                            sales:[{id:'z',date:'2026-01-01',mode:'item',rate:2,
                                    items:[{name:'威力隕石碎片',qty:5,twd:10}]}]};
               const m = migrate(JSON.parse(JSON.stringify(old)));
               return [m.sales[0].mode, m.sales[0].items.length];
           }"""), ["item", 1])
+    check("舊成員會補上空的 buffs，BUFF 顯示結果不變",
+          page.evaluate("""() => {
+              const old = {members:[{id:'a',name:'小明',defaultRoleId:'r1'}],
+                           roles:[{id:'r1',name:'聖衛軍',buff:'天使之護',order:0}],
+                           schedule:{}, sales:[]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [typeof m.members[0].buffs, Object.keys(m.members[0].buffs).length];
+          }"""), ["object", 0])
 
     # ---------- 材料統計延後計算 ----------
     print("\n[perf] 材料統計延後計算")
@@ -653,6 +660,115 @@ def run(page):
     check("切到拍賣頁時「帶入目前組數」有算出來",
           page.evaluate("""() => /帶入目前組數 \\d+/.test(
               document.getElementById('saleLoad').textContent)"""), True)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+
+    # ---------- 成員個人 BUFF 覆蓋 ----------
+    print("\n[buff] 成員 × 職業的 BUFF 覆蓋")
+    seed(page)
+    page.evaluate("""() => {
+        const g = state.roles[1], k = state.roles[2];
+        g.buff = '天使之護'; k.buff = '暗影披風';
+        Object.assign(memberById('m1'), {defaultRoleId:g.id, buffs:{}});
+        Object.assign(memberById('m2'), {defaultRoleId:g.id, buffs:{[g.id]:'聖體降臨'}});
+        Object.assign(memberById('m3'), {defaultRoleId:k.id, buffs:{[k.id]:''}});
+        const p = state.schedule['2026-08-05'][0];
+        p.slots = [{memberId:'m1',roleId:g.id},{memberId:'m2',roleId:g.id},{memberId:'m3',roleId:k.id}];
+        curDate = '2026-08-05'; persist(); render();
+    }""")
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(300)
+
+    check("沒設定覆蓋的人套用職業預設",
+          page.evaluate("() => buffFor(memberById('m1'), state.roles[1])"), "天使之護")
+    check("有設定覆蓋的人用自己的 BUFF",
+          page.evaluate("() => buffFor(memberById('m2'), state.roles[1])"), "聖體降臨")
+    check("覆蓋成空字串代表這個人不放 BUFF，不是回頭套預設",
+          page.evaluate("() => buffFor(memberById('m3'), state.roles[2])"), "")
+    check("覆蓋不會改到職業預設",
+          page.evaluate("() => [state.roles[1].buff, state.roles[2].buff]"),
+          ["天使之護", "暗影披風"])
+    check("同職業的其他人不受影響",
+          page.evaluate("""() => [buffFor(memberById('m1'), state.roles[1]),
+                                  buffFor(memberById('m2'), state.roles[1])]"""),
+          ["天使之護", "聖體降臨"])
+    check("陣容格子顯示各自的 BUFF",
+          page.evaluate("""() => [...document.querySelectorAll('.slot .slot-buff')]
+              .map(e => e.textContent.trim())"""),
+          ["天使之護", "聖體降臨", "＋ BUFF"])
+    check("自訂的格子加上 own 標記，套預設的沒有",
+          page.evaluate("""() => [...document.querySelectorAll('.slot .slot-buff')]
+              .map(e => e.classList.contains('own'))"""),
+          [False, True, True])
+
+    # 從陣容格子點 BUFF 標籤修改
+    page.click('.slot[data-si="0"] .slot-buff')
+    page.wait_for_timeout(400)
+    check("點格子的 BUFF 會開出該成員該職業的面板",
+          page.evaluate("() => document.querySelector('.sheet-t, .sheet h3, .sheet-title')?.textContent || ''")
+          .find("小明") >= 0, True)
+    check("面板預先帶入目前生效的 BUFF",
+          page.evaluate("""() => document.querySelector('.sheet [name="buff"]').value"""), "天使之護")
+    check("沒有覆蓋時不顯示還原鈕",
+          page.evaluate("""() => !!document.querySelector('.sheet [data-s="reset"]')"""), False)
+    page.fill('.sheet [name="buff"]', "疾走、加速")
+    page.click('.sheet [data-s="save"]')
+    page.wait_for_timeout(400)
+    check("儲存後只寫進該成員，職業預設不動",
+          page.evaluate("""() => [memberById('m1').buffs[state.roles[1].id],
+                                  state.roles[1].buff,
+                                  buffFor(memberById('m2'), state.roles[1])]"""),
+          ["疾走、加速", "天使之護", "聖體降臨"])
+    check("格子立刻換成新的 BUFF 並標為自訂",
+          page.evaluate("""() => {
+              const e = document.querySelectorAll('.slot .slot-buff')[0];
+              return [e.textContent.trim(), e.classList.contains('own')];
+          }"""), ["疾走、加速", True])
+
+    # 還原成職業預設
+    page.click('.slot[data-si="0"] .slot-buff')
+    page.wait_for_timeout(400)
+    check("已有覆蓋時出現還原鈕",
+          page.evaluate("""() => !!document.querySelector('.sheet [data-s="reset"]')"""), True)
+    page.click('.sheet [data-s="reset"]')
+    page.wait_for_timeout(400)
+    check("還原後移除覆蓋，回頭套職業預設",
+          page.evaluate("""() => [hasBuffOverride(memberById('m1'), state.roles[1].id),
+                                  buffFor(memberById('m1'), state.roles[1])]"""),
+          [False, "天使之護"])
+
+    # 沒指定職業的格子不給設定
+    page.evaluate("""() => {
+        state.schedule['2026-08-05'][0].slots.push({memberId:'m1'});
+        persist(); render();
+    }""")
+    page.wait_for_timeout(250)
+    check("沒指定職業的格子不顯示 BUFF 標籤",
+          page.evaluate("() => document.querySelectorAll('.slot .slot-buff').length"), 3)
+
+    # 成員面板的 BUFF 列
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(250)
+    page.click('#memberSeg [data-sub="mlist"]')   # 前面的測試可能停在「職業設定」子分頁
+    page.wait_for_timeout(250)
+    page.click('.row[data-id="m2"]')
+    page.wait_for_timeout(400)
+    check("成員面板列出該職業的 BUFF 與自訂標記",
+          page.evaluate("""() => {
+              const r = document.querySelector('.sheet .buffrow');
+              return [r.querySelector('.buffrow-v').textContent,
+                      r.querySelector('.buffrow-tag').textContent];
+          }"""), ["聖體降臨", "自訂"])
+    page.click('.sheet .buffrow')
+    page.wait_for_timeout(400)
+    check("從成員面板可以進到 BUFF 設定",
+          page.evaluate("""() => document.querySelector('.sheet [name="buff"]').value"""), "聖體降臨")
+    page.click('.sheet [data-s="cancel"]')
+    page.wait_for_timeout(300)
+
+    check("成員列表的摘要顯示生效後的 BUFF",
+          page.evaluate("""() => document.querySelector('.row[data-id="m2"] .row-s').textContent"""),
+          "帝國聖衛軍 · 聖體降臨")
     page.click('.tab[data-view="board"]')
     page.wait_for_timeout(150)
 
