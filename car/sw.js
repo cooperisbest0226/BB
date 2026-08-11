@@ -1,5 +1,5 @@
-/* 保養里程尺 service worker — 作者：BB */
-const CACHE_NAME = 'car-maint-v3';
+/* 保養里程尺 service worker — 作者：Henry */
+const CACHE_NAME = 'car-maint-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
+
+  // 帶查詢字串的請求（例如檢查更新用的 index.html?_=時間戳）直接走網路，不攔截也不快取
+  if (new URL(req.url).search) return;
 
   // 導覽請求：network first，離線時回快取的 index.html
   if (req.mode === 'navigate') {
