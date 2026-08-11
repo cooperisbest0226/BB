@@ -19,6 +19,7 @@
   --ink:#e9eef3; --mut:#8ea0b0; --dim:#5f7180;
   --acc:#f5a524; --acc-d:#c07d10; --acc-ink:#1a1206;
   --ok:#35c48b; --warn:#f5a524; --bad:#f0484d;
+  --car:#d81324; --car-d:#8f0c18; --car-hi:#ff6b74;
   --r:16px; --r-s:11px;
   --vvh:100vh; --vvtop:0px;
   --safe-b:env(safe-area-inset-bottom,0px);
@@ -61,11 +62,17 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .odo-read{display:flex;align-items:flex-end;gap:8px}
 .digits{display:flex;gap:3px}
 .dg{width:26px;height:40px;border-radius:6px;background:#0a0e11;border:1px solid var(--line);
-  display:grid;place-items:center;font-family:var(--mono);font-size:23px;font-weight:600;
-  color:var(--ink);position:relative;overflow:hidden}
-.dg::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.06)}
+  font-family:var(--mono);font-size:23px;font-weight:600;
+  color:var(--ink);position:relative;overflow:hidden;display:block}
+.dg::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.06);z-index:2}
+.dg::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 28%,transparent 72%,rgba(0,0,0,.45))}
+.reel{display:block;will-change:transform}
+.reel>span{display:flex;align-items:center;justify-content:center;height:40px;line-height:1}
 .dg.lead{color:var(--dim)}
-.dg.sep{width:8px;background:none;border:none;color:var(--dim);font-size:19px;align-items:end}
+.dg.sep{width:8px;background:none;border:none;color:var(--dim);font-size:19px;
+  display:grid;place-items:end center;overflow:visible}
+.dg.sep::before,.dg.sep::after{display:none}
 .odo-u{font-size:12.5px;color:var(--mut);padding-bottom:5px;letter-spacing:.08em}
 .odo-meta{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .odo-meta .t{font-size:11.5px;color:var(--dim)}
@@ -113,6 +120,40 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .upd-d{display:block;font-size:12px;color:var(--mut);margin-top:2px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .upd-x{width:42px;flex:none;color:var(--dim);font-size:14px;border-left:1px solid rgba(245,165,36,.2)}
+/* 里程尺上的小車 */
+.car{position:absolute;transform:translateX(-50%);z-index:3;
+  animation:carbob 1.9s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.car svg{display:block;overflow:visible}
+.c-body{fill:var(--car)}
+.c-low{fill:var(--car-d)}
+.c-hi{fill:var(--car-hi);opacity:.55}
+.c-win{fill:#0a0e11;opacity:.85}
+.c-lamp{fill:#fff6df}
+.c-tail{fill:#ff8f92}
+.c-shadow{fill:#000;opacity:.35}
+.c-tyre{fill:#151b22;stroke:#4a5866;stroke-width:1}
+.c-rim{fill:#2a343e;stroke:#8ea0b0;stroke-width:.6}
+.c-hub{fill:var(--mut)}
+.c-spk{fill:#aebcc8}
+.wh{transform-box:fill-box;transform-origin:center;animation:whspin 1.15s linear infinite}
+.wh2{animation-delay:-.12s}
+@keyframes whspin{to{transform:rotate(360deg)}}
+@keyframes carbob{0%,100%{transform:translateX(-50%) translateY(0)}
+  50%{transform:translateX(-50%) translateY(-1.2px)}}
+
+/* 下拉重整 */
+.ptr{position:fixed;left:50%;top:calc(var(--safe-t) + 4px);z-index:35;
+  transform:translate(-50%,0);opacity:0;pointer-events:none;
+  width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surf);border:1px solid var(--line2);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.ptr-r{display:grid;place-items:center;transform-origin:center}
+.ptr-t{fill:none;stroke:var(--line2);stroke-width:2.4}
+.ptr-p{fill:none;stroke:var(--mut);stroke-width:2.4;stroke-linecap:round}
+.ptr.ready{border-color:rgba(245,165,36,.55)}
+.ptr.ready .ptr-p{stroke:var(--acc)}
+.ptr.spin .ptr-r{animation:ptrspin .75s linear infinite}
+.ptr.spin .ptr-p{stroke:var(--acc)}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
 /* 連線／快取狀態 */
 .pill{flex:none;font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:20px}
 .p-on{background:rgba(53,196,139,.14);border:1px solid rgba(53,196,139,.38);color:#5fd7a8}
@@ -288,6 +329,9 @@ button{cursor:pointer;border:none;background:none;padding:0}
 </style>
 </head>
 <body>
+<div class="ptr" id="ptr" aria-hidden="true"><div class="ptr-r">
+  <svg viewBox="0 0 24 24" width="19" height="19"><circle class="ptr-t" cx="12" cy="12" r="9"/>
+  <path class="ptr-p" d="M12 3 a9 9 0 0 1 9 9"/></svg></div></div>
 <div class="app" id="app"></div>
 <nav class="nav"><div class="nav-in" id="nav"></div></nav>
 <button class="fab" id="fab" aria-label="新增保養紀錄">＋</button>
@@ -295,7 +339,7 @@ button{cursor:pointer;border:none;background:none;padding:0}
 <div class="toast" id="toast"></div>
 <script>
 /* 保養里程尺 — 作者：Henry */
-const APP_NAME='保養里程尺', APP_AUTHOR='Henry', APP_VERSION='1.3.0';
+const APP_NAME='保養里程尺', APP_AUTHOR='Henry', APP_VERSION='1.5.0';
 const LS='car-maint-v1', LS_SEEN='car-maint-seen-ver';
 
 /* 更新紀錄
@@ -303,6 +347,15 @@ const LS='car-maint-v1', LS_SEEN='car-maint-seen-ver';
    tag：add 新增 / fix 修正 / imp 優化 / chg 調整 */
 const TAGS={add:['新增','t-add'],fix:['修正','t-fix'],imp:['優化','t-imp'],chg:['調整','t-chg']};
 const CHANGELOG=[
+ {v:'1.5.0', date:'2026-08-11', changes:[
+   {t:'chg', s:'里程尺上的小車改成紅色跑車造型（楔形車身、鴨尾擾流、五輻輪圈）'}
+ ]},
+ {v:'1.4.0', date:'2026-08-11', changes:[
+   {t:'add', s:'目前里程改成機械式里程表，數字會滾動到新的里程'},
+   {t:'add', s:'首頁下拉可以重新整理，順便確認有沒有新版本'},
+   {t:'add', s:'里程尺的「現在」位置多了一台會跑的小車'},
+   {t:'fix', s:'避免在里程尺上橫滑時被下拉重整攔截'}
+ ]},
  {v:'1.3.0', date:'2026-08-11', changes:[
    {t:'fix', s:'修正項目的「上次更換里程」填了之後不會生效的問題，現在會與保養紀錄取里程較大者'},
    {t:'add', s:'「更多」新增檢查更新：可查看連線狀態、線上檢查新版本、確認離線快取是否備妥'},
@@ -345,7 +398,7 @@ const DEFAULT_ITEMS=[
 const ICONS=['🛢️','🌀','💨','❄️','🛑','🛞','🔋','🧊','⚙️','⚡','🌧️','🔧','🔩','🚗','💡','🪫','🧴','📏'];
 
 /* ── state ── */
-let S=null, tab='home';
+let S=null, tab='home', odoShown=0;
 const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nf=n=>Number(n||0).toLocaleString('en-US');
@@ -459,8 +512,9 @@ function rulerHTML(){
     const nowX=X(S.odo);
     track=`<div class="ruler-scroll" id="rulerScroll"><div class="ruler" style="width:${W}px;height:${H}px">
       <div class="axis" style="top:${axisY}px"></div>${ticks}${pinHTML}
-      <div class="now" style="left:${nowX}px;top:14px;height:${axisY-4}px"></div>
+      <div class="now" style="left:${nowX}px;top:16px;height:${Math.max(4,axisY-40)}px"></div>
       <div class="now-cap" style="left:${nowX}px;top:0px">現在 ${nf(S.odo)}</div>
+      <div class="car" style="left:${nowX}px;top:${axisY-20}px" aria-hidden="true"><svg viewBox="0 0 58 20" width="58" height="20"><ellipse class="c-shadow" cx="29" cy="19.4" rx="24" ry="1.1"/><path class="c-body" d="M3.2 16.8 V12.6 Q3.3 11.3 5.4 11.2 L14.4 11.3 L21 6.5 Q21.8 5.9 23.1 5.9 H29.6 Q30.8 5.9 31.6 6.6 L38 11.2 L50 11.6 Q53.6 12.1 54.6 14.6 L55.1 16 Q55.4 16.8 54.4 16.8 Z"/><path class="c-low" d="M4 15.6 H54.8 L55.1 16 Q55.4 16.8 54.4 16.8 H3.2 V15.6 Z"/><path class="c-low" d="M3 10.7 H9.8 V12 H3 Z"/><path class="c-low" d="M10.8 16.8 a4.75 4.75 0 0 1 9.5 0 h-1.4 a3.35 3.35 0 0 0 -6.7 0 Z"/><path class="c-low" d="M37.3 16.8 a4.75 4.75 0 0 1 9.5 0 h-1.4 a3.35 3.35 0 0 0 -6.7 0 Z"/><path class="c-win" d="M22.8 7.4 H27.8 V11.1 H16.8 Z"/><path class="c-win" d="M29.1 7.4 H30.4 L35.8 11.1 H29.1 Z"/><path class="c-hi" d="M23.1 6.5 H29.6 Q30.2 6.5 30.6 6.9 H22.2 Q22.5 6.5 23.1 6.5 Z"/><path class="c-lamp" d="M51.6 12.6 H54 Q54.9 13 55 13.9 H51.6 Z"/><rect class="c-tail" x="3.3" y="12.7" width="2.1" height="1.7" rx=".6"/><g class="wh"><circle class="c-tyre" cx="15.55" cy="15.5" r="4.5"/><circle class="c-rim" cx="15.55" cy="15.5" r="2.75"/><rect class="c-spk" x="15.15" y="12.5" width=".8" height="6"/><rect class="c-spk" x="12.55" y="15.1" width="6" height=".8"/><circle class="c-hub" cx="15.55" cy="15.5" r=".9"/></g><g class="wh wh2"><circle class="c-tyre" cx="42.05" cy="15.5" r="4.5"/><circle class="c-rim" cx="42.05" cy="15.5" r="2.75"/><rect class="c-spk" x="41.65" y="12.5" width=".8" height="6"/><rect class="c-spk" x="39.05" y="15.1" width="6" height=".8"/><circle class="c-hub" cx="42.05" cy="15.5" r=".9"/></g></svg></div>
     </div></div>`;
   }
 
@@ -479,19 +533,46 @@ function rulerHTML(){
 /* ── views ── */
 function odoHTML(){
   const s=String(Math.max(0,Math.round(S.odo))).padStart(6,'0');
+  const prev=String(Math.max(0,Math.round(odoShown))).padStart(6,'0');
   let lead=true, dg='';
   for(let i=0;i<s.length;i++){
     if(s[i]!=='0') lead=false;
     if(i===s.length-3) dg+=`<span class="dg sep">,</span>`;
-    dg+=`<span class="dg${lead&&i<s.length-1?' lead':''}">${s[i]}</span>`;
+    const p=+prev[i]||0, t=+s[i];
+    // 0-9 兩輪，數字變小時往下一輪滾，視覺上永遠向前
+    const idx = p<=t ? t : 10+t;
+    dg+=`<span class="dg${lead&&i<s.length-1?' lead':''}">`
+      +`<span class="reel" data-from="${p}" data-to="${idx}" data-final="${t}" style="transform:translateY(${-p*40}px)">`
+      +Array.from({length:20},(_,k)=>`<span>${k%10}</span>`).join('')
+      +`</span></span>`;
   }
   const t=S.odoAt?`更新於 ${S.odoAt}`:'尚未更新過';
   return `<div class="card glass odo">
     <div class="lbl">目前里程</div>
-    <div class="odo-read"><div class="digits">${dg}</div><span class="odo-u">km</span></div>
+    <div class="odo-read"><div class="digits" id="digits">${dg}</div><span class="odo-u">km</span></div>
     <div class="odo-meta"><span class="t">${t}</span>
       <button class="btn acc sm" data-act="odo">更新里程</button></div>
   </div>`;
+}
+function rollOdo(){
+  const box=document.getElementById('digits'); if(!box) return;
+  const reels=[...box.querySelectorAll('.reel')];
+  if(!reels.length) return;
+  const changed=reels.some(r=>r.dataset.from!==r.dataset.final);
+  if(!changed){ odoShown=S.odo; return; }
+  requestAnimationFrame(()=>{
+    reels.forEach((r,i)=>{
+      const to=+r.dataset.to, fin=+r.dataset.final;
+      r.style.transition=`transform .85s cubic-bezier(.16,.84,.28,1) ${(reels.length-1-i)*55}ms`;
+      r.style.transform=`translateY(${-to*40}px)`;
+      if(to!==fin){ // 滾到第二輪之後無動畫歸位，下次才不會倒轉
+        r.addEventListener('transitionend',()=>{
+          r.style.transition='none'; r.style.transform=`translateY(${-fin*40}px)`;
+        },{once:true});
+      }
+    });
+  });
+  odoShown=S.odo;
 }
 function viewHome(){
   const list=items().map(it=>({it,c:calc(it)})).filter(x=>x.c.st!=='none');
@@ -729,6 +810,7 @@ function render(){
   document.getElementById('nav').innerHTML=TABS.map(([k,i,n])=>
     `<button class="nb${tab===k?' on':''}" data-tab="${k}"><span class="i">${i}</span>${n}</button>`).join('');
   document.getElementById('fab').style.display=(tab==='home'||tab==='log')?'grid':'none';
+  rollOdo();
   const rs=document.getElementById('rulerScroll');
   if(rs){
     rs.scrollLeft=0;
@@ -943,6 +1025,62 @@ if(window.visualViewport){
   visualViewport.addEventListener('scroll',on);
   syncVV();
 }
+
+/* ── 下拉重整 ── */
+let ptrStart=null, ptrY=0, ptrBusy=false;
+const PTR_MAX=96, PTR_TRIG=58;
+function setPtr(y,spin){
+  const el=document.getElementById('ptr'), app=document.getElementById('app');
+  if(!el) return;
+  el.style.transition = ptrStart===null ? 'transform .3s ease, opacity .3s ease' : 'none';
+  app.style.transition = ptrStart===null ? 'transform .3s ease' : 'none';
+  el.style.transform=`translate(-50%,${y}px)`;
+  el.style.opacity=Math.min(1,y/40);
+  el.classList.toggle('spin',!!spin);
+  const r=el.querySelector('.ptr-r');
+  if(r) r.style.transform = spin?'':`rotate(${y*4.2}deg)`;
+  el.classList.toggle('ready',!spin && y>=PTR_TRIG);
+  app.style.transform = y?`translateY(${y*0.5}px)`:'';
+}
+async function doRefresh(){
+  ptrBusy=true; setPtr(64,true);
+  const t0=Date.now();
+  probeCache();
+  let msg='已重新整理';
+  if(navigator.onLine){
+    try{
+      const res=await fetch(`index.html?_=${Date.now()}`,{cache:'no-store'});
+      const m=(await res.text()).match(/APP_VERSION='([^']+)'/);
+      if(m && cmpVer(m[1],APP_VERSION)>0){ msg=`有新版本 v${m[1]}`; setTimeout(()=>sheetUpdate(m[1]),420); }
+    }catch(e){}
+  }else{ msg='目前離線，顯示的是本機資料'; }
+  const wait=Math.max(0,650-(Date.now()-t0));
+  setTimeout(()=>{ odoShown=0; render(); ptrBusy=false; ptrY=0; setPtr(0); toast(msg); },wait);
+}
+let ptrX=null, ptrLock=false;
+document.addEventListener('touchstart',e=>{
+  ptrStart=null; ptrLock=false;
+  if(sheetOpen||ptrBusy||window.scrollY>0) return;
+  // 里程尺是橫向捲動區，不在上面啟動下拉
+  if(e.target.closest && e.target.closest('.ruler-scroll')) return;
+  ptrStart=e.touches[0].clientY; ptrX=e.touches[0].clientX; ptrY=0;
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(ptrStart===null||ptrLock||sheetOpen||ptrBusy) return;
+  if(window.scrollY>0){ ptrStart=null; setPtr(0); return; }
+  const dy=e.touches[0].clientY-ptrStart, dx=e.touches[0].clientX-ptrX;
+  // 明顯是橫向手勢就整個放掉，交還原生橫向捲動
+  if(Math.abs(dx)>Math.abs(dy)+4){ ptrLock=true; if(ptrY){ ptrY=0; setPtr(0); } return; }
+  if(dy<=0){ if(ptrY){ ptrY=0; setPtr(0); } return; }
+  if(e.cancelable) e.preventDefault();
+  ptrY=Math.min(PTR_MAX,dy*0.55);
+  setPtr(ptrY);
+},{passive:false});
+document.addEventListener('touchend',()=>{
+  if(ptrStart===null) return;
+  const go=ptrY>=PTR_TRIG; ptrStart=null;
+  if(go) doRefresh(); else { ptrY=0; setPtr(0); }
+},{passive:true});
 
 /* ── boot ── */
 load(); save();

@@ -1,5 +1,5 @@
 /* 保養里程尺 service worker — 作者：Henry */
-const CACHE_NAME = 'car-maint-v5';
+const CACHE_NAME = 'car-maint-v7';
 const ASSETS = [
   './',
   './index.html',

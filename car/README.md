@@ -14,6 +14,8 @@
 
 ### 里程尺
 
+「現在」的位置停著一台紅色跑車，車輪會轉、車身會微微起伏，正好停在刻度線上。
+
 首頁那條橫向刻度是核心。所有項目的到期里程畫在同一條尺上，「現在」是固定的白線。
 
 一眼就能看出「50,000 這裡擠了三項」，因此下方會自動提示：*再開 1,750 km 之內有 3 項要換，同一趟做完比較省*。這是表格式介面給不出的資訊。
@@ -37,6 +39,8 @@
 - 首次使用只填了里程、還沒填起算點時，會顯示設定引導而不是滿江紅
 - 更新版本後首頁會出現「已更新到 vX.Y.Z」提示，點開看更新紀錄
 - 「更多 → 檢查更新」會向伺服器比對版本；離線時會明講目前沒有網路，App 本身照常可用
+- 目前里程用機械式字輪呈現，數字會滾動到新的里程（永遠向前滾，進位時會跑完整圈）
+- 首頁下拉可以重新整理，順便在背景確認有沒有新版本
 
 ---
 
@@ -51,7 +55,7 @@
 ```bash
 git init
 git add .
-git commit -m "保養里程尺 v1.3.0"
+git commit -m "保養里程尺 v1.5.0"
 git branch -M main
 git remote add origin https://github.com/<你的帳號>/<repo 名稱>.git
 git push -u origin main
@@ -153,4 +157,5 @@ python3 -m http.server 8000
 ### iOS 上的兩個坑（已處理，改動時別踩回去）
 
 1. **輸入框字級必須 ≥ 16px**。低於 16px 時 Safari 會自動放大頁面，在 standalone 模式下會整個跑版。CSS 裡 `input, select, textarea` 的 `font-size:16px` 不要改小。
-2. **鍵盤彈出時 layout viewport 不會縮**。彈窗用 `--vvh` / `--vvtop`（由 `visualViewport` 動態計算）而不是 `100vh`，開啟彈窗時把 `body` 鎖成 `position:fixed`，並且**只在** `visualViewport` 真的 resize 之後才用 `block:'nearest'` 校正一次 —— 不要自己加 `setTimeout` + `scrollIntoView({block:'center'})`，會跟 iOS 原生的聚焦捲動打架、疊加捲過頭。
+2. **下拉重整不能吃掉橫向手勢**。`touchmove` 會 `preventDefault()`，所以起手就要判斷方向：`|dx| > |dy|` 時整個放掉交還原生橫向捲動，並且在 `.ruler-scroll`（橫向捲動的里程尺）上完全不啟動下拉。少了這兩道防呆，里程尺會滑不動。
+3. **鍵盤彈出時 layout viewport 不會縮**。彈窗用 `--vvh` / `--vvtop`（由 `visualViewport` 動態計算）而不是 `100vh`，開啟彈窗時把 `body` 鎖成 `position:fixed`，並且**只在** `visualViewport` 真的 resize 之後才用 `block:'nearest'` 校正一次 —— 不要自己加 `setTimeout` + `scrollIntoView({block:'center'})`，會跟 iOS 原生的聚焦捲動打架、疊加捲過頭。
