@@ -25,6 +25,8 @@ function defaultDate(){
 let matDirty=true;
 const VIEW_IDS=['board','calc','members','stats','auction'];
 let viewDirty=Object.fromEntries(VIEW_IDS.map(v=>[v,true]));
+/* 每個分頁各自的捲動位置，切回去時還原（初次進入是 0，所以會從最上面開始看） */
+let viewScroll=Object.fromEntries(VIEW_IDS.map(v=>[v,0]));
 
 function activeViewId(){
   const el=document.querySelector('.view.active');

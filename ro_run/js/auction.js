@@ -510,6 +510,8 @@ function bindSeg(segId, viewHost){
   seg.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{
     seg.querySelectorAll('[data-sub]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
     host.querySelectorAll(':scope > .subview').forEach(v=>v.classList.toggle('active',v.id==='sub-'+b.dataset.sub));
+    /* 子分頁的內容整個換掉了，停在原本的捲動位置沒有意義，回到最上面 */
+    window.scrollTo(0,0);
   });
 }
 bindSeg('matSeg','view-stats');      // 材料總計 / 組數試算 / 場次明細

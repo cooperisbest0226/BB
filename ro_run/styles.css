@@ -84,6 +84,12 @@ body{
   font-family:'Inter','Noto Sans TC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
   overscroll-behavior-y:none;
+  /* 停用「連點兩下放大」。手機瀏覽器沒有這行時，每次點擊都要先等約 300ms
+     確認不是雙擊，操作起來會鈍鈍的，連點加減也可能整頁被放大。
+     用 manipulation 而不是 none：雙指縮放要留著，那是無障礙需求。
+     touch-action 在命中測試時取「元素到根」整條鏈的交集，
+     所以下面日期列的 pan-x 與拖曳把手的 none 仍然照舊生效。 */
+  touch-action:manipulation;
 }
 /* ambient night-sky wash */
 body::before{

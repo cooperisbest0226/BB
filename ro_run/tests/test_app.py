@@ -1069,6 +1069,80 @@ def run(page):
                   .every(n => src.includes(`./js/${n}.js`));
           }"""), True)
 
+    # ---------- 切分頁的捲動位置與雙擊縮放 ----------
+    print("\n[ux] 切分頁捲動位置與雙擊縮放")
+    seed(page)
+    # 塞夠多資料讓陣容頁可以往下捲
+    page.evaluate("""() => {
+        for (let i = 0; i < 12; i++)
+            state.schedule['2026-08-05'].push({id:'sp'+i, name:'RUN '+i, time:'21:00',
+                capacity:12, slots:[{memberId:'m1'}], drops:[]});
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(300)
+    page.evaluate("() => window.scrollTo(0, 600)")
+    page.wait_for_timeout(250)
+    check("陣容頁確實捲下去了", page.evaluate("() => window.scrollY > 300"), True)
+
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(450)
+    check("切到成員分頁時回到最上面",
+          page.evaluate("() => window.scrollY"), 0)
+    check("成員分頁的子分頁按鈕在畫面內",
+          page.evaluate("""() => {
+              const r = document.getElementById('memberSeg').getBoundingClientRect();
+              return r.top >= 0 && r.bottom <= window.innerHeight;
+          }"""), True)
+
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(450)
+    check("切回陣容分頁會還原剛才的捲動位置",
+          page.evaluate("() => window.scrollY > 300"), True)
+    check("點目前這一頁不會清掉捲動位置",
+          page.evaluate("""() => {
+              const before = window.scrollY;
+              document.querySelector('.tab[data-view="board"]').click();
+              return window.scrollY === before;
+          }"""), True)
+
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(400)
+    page.evaluate("() => window.scrollTo(0, 200)")
+    page.wait_for_timeout(200)
+    page.click('#memberSeg [data-sub="mroles"]')
+    page.wait_for_timeout(300)
+    check("切子分頁會回到最上面",
+          page.evaluate("() => window.scrollY"), 0)
+    page.click('#memberSeg [data-sub="mlist"]')
+    page.wait_for_timeout(250)
+
+    check("body 停用雙擊放大但保留雙指縮放",
+          page.evaluate("""() => getComputedStyle(document.body).touchAction"""), "manipulation")
+    check("viewport 沒有鎖死縮放（無障礙）",
+          page.evaluate("""() => {
+              const c = document.querySelector('meta[name="viewport"]').content;
+              return [c.includes('user-scalable=no'), c.includes('maximum-scale')];
+          }"""), [False, False])
+    check("待分配成員的橫向拖曳 touch-action 沒有被蓋掉",
+          page.evaluate("""() => {
+              const chip = document.querySelector('.bench-list .chip');
+              return chip ? getComputedStyle(chip).touchAction : null;
+          }"""), "pan-x")
+    check("排序把手的 touch-action 沒有被蓋掉",
+          page.evaluate("""() => {
+              const el = document.createElement('div');
+              el.className = 'order-grip';       // 排序編輯器的拖曳把手
+              document.body.appendChild(el);
+              const ta = getComputedStyle(el).touchAction;
+              el.remove();
+              return ta;
+          }"""), "none")
+
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(200)
+    page.evaluate("() => window.scrollTo(0, 0)")
+
     # ---------- 設定選單重做 ----------
     print("\n[settings] 設定選單重做")
     seed(page)

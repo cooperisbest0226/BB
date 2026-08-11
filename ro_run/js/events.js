@@ -9,12 +9,19 @@ document.addEventListener('click',e=>{
   if(chip){ curDate=chip.dataset.date; picked=null; render(); return; }
   const t=e.target.closest('.tab');
   if(t){
+    const from=activeViewId(), to=t.dataset.view, moved=from!==to;
+    /* 各分頁記住自己的捲動位置。以前切分頁時整頁的捲動位置是共用的，
+       在陣容往下捲之後切到成員，畫面會停在半空中，最上面的子分頁按鈕看不到。
+       點目前這一頁不算切換，位置不動（也不要吃掉重畫）。 */
+    if(moved) viewScroll[from]=window.scrollY;
     document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
     document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+t.dataset.view));
-    const onBoard=t.dataset.view==='board';
+    const onBoard=to==='board';
     document.getElementById('bench').classList.toggle('hidden',!onBoard);
     /* 切過去的分頁如果在背景時有資料異動，這時才補畫（見 renderActiveView 的說明） */
     renderActiveView();
+    /* 等這一輪版面完成再捲，不然高度還沒定，捲過去會被夾到錯的位置 */
+    if(moved) requestAnimationFrame(()=>window.scrollTo(0, viewScroll[to]||0));
     return;
   }
   const btn=e.target.closest('[data-act]'); if(!btn) return;
@@ -183,9 +190,12 @@ if('serviceWorker' in navigator){
       watchWorker(swReg);
     }catch(e){}
   });
-  /* 新的 worker 接管後重新整理一次，讓頁面拿到新版資源。加旗標避免無限重整。 */
+  /* 第一次安裝時頁面本來就沒有 controller，activate 的 clients.claim() 也會觸發
+     controllerchange —— 那不是「換版」，重整只是白白閃一下（在測試裡還會把執行到一半的
+     操作打斷）。所以只有「本來就有舊版在跑」時才需要重整。 */
+  const hadController=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(swReloading) return;
+    if(!hadController||swReloading) return;
     swReloading=true;
     location.reload();
   });
