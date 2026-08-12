@@ -16,6 +16,7 @@
   --glass-2:rgba(255,255,255,.55);
   --accent:#4f46e5;
   --accent-soft:rgba(79,70,229,.1);
+  --warn:#b45309;             /* 瓶頸／注意的琥珀色，深色模式要提亮 */
   --rcoin:#7c3aed;            /* 遊戲 R 幣的金額色，深色模式要提亮，不然紫字埋進深底看不清 */
   --danger:#dc2626;
   --ok:#0f9d76;
@@ -40,6 +41,7 @@
   --glass-2:rgba(27,30,38,.55);
   --accent:#8583ff;
   --accent-soft:rgba(133,131,255,.16);
+  --warn:#f0a862;
   --rcoin:#c4b5fd;
   --danger:#f87171;
   --ok:#34d399;
@@ -438,7 +440,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .matgrp-k{font-size:11px; color:var(--faint)}
 .matgrp-v{margin-left:auto; font-size:16px; font-weight:680; color:var(--ink); letter-spacing:-.4px}
 .matgrp .bar-fill{background:var(--ms)}
-.matgrp .setrow.short .setrow-n,.matgrp .setrow.short .setrow-v b{color:#b45309}
+.matgrp .setrow.short .setrow-n,.matgrp .setrow.short .setrow-v b{color:var(--warn)}
+/* 瓶頸材料才有的小標：再幾個就能多組一組 */
+.setrow-v i{
+  font-style:normal; font-size:10.5px; font-weight:600; color:var(--warn);
+  background:color-mix(in srgb, var(--warn) 14%, transparent); border-radius:5px; padding:1px 5px; margin-left:5px;
+}
 
 /* ── 售出計算 ──────────────────────────────────────────── */
 .salebox{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px 15px; box-shadow:var(--shadow)}
@@ -695,10 +702,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .setcfg input{width:76px !important; text-align:center; font-weight:650}
 .setrow{display:flex; align-items:center; gap:10px}
 .setrow-n{font-size:12px; font-weight:500; width:112px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.setrow.short .setrow-n{color:#b45309; font-weight:650}
+.setrow.short .setrow-n{color:var(--warn); font-weight:650}
 .setrow-v{font-size:12px; color:var(--muted); margin-left:auto; flex:0 0 auto; white-space:nowrap}
 .setrow-v b{color:var(--ink-2); font-weight:650}
-.setrow.short .setrow-v b{color:#b45309}
+.setrow.short .setrow-v b{color:var(--warn)}
 .sheet-foot .gbtn{flex:1; padding:11px; font-size:13.5px; font-weight:550; text-align:center}
 
 /* ── 全螢幕排序編輯器：把「陣容分配」拖曳排序獨立成大按鈕的專屬畫面，比清單裡的小把手好按 ── */

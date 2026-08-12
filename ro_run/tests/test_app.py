@@ -1255,6 +1255,70 @@ def run(page):
           page.evaluate("""() => ptsOf('2026-08-05')[0].drops.map(d => [d.name, d.qty])"""),
           [[first, 2]])
 
+    # ---------- 組數試算的每列標示 ----------
+    print("\n[sets] 組數試算的每列標示")
+    seed(page)
+    page.evaluate("""() => {
+        const tot = {'威力隕石碎片':19,'耐力隕石碎片':7,'專注隕石碎片':21,'創造隕石碎片':38,
+                     '咒數隕石碎片':20,'智慧隕石碎片':17,'威力隕石浮塵':35,'耐力隕石浮塵':15,
+                     '專注隕石浮塵':28,'創造隕石浮塵':48,'咒數隕石浮塵':46,'智慧隕石浮塵':36};
+        state.schedule['2026-08-05'][0].drops =
+            Object.entries(tot).map(([n,q],i)=>({id:'sd'+i, name:n, qty:q}));
+        matPerSet = 1; persist(); render();
+    }""")
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(250)
+    page.click('#matSeg [data-sub="sets"]')
+    page.wait_for_timeout(400)
+
+    row = """(name) => {
+        const r = [...document.querySelectorAll('.setrow')].find(x => x.textContent.includes(name));
+        return [r.querySelector('.setrow-v').textContent, r.classList.contains('short')];
+    }"""
+    check("每種材料 1 個時，瓶頸材料決定可組成組數",
+          page.evaluate("""() => [...document.querySelectorAll('#setCards .stat-v')].map(e=>e.textContent)"""),
+          ["7", "1"])
+    check("瓶頸材料寫「可組 N 組」，不再寫成「缺 N」",
+          page.evaluate(row, "耐力隕石碎片"), ["7 · 可組 7 組再 1", True])
+    check("瓶頸那列的組數與上方可組成組數一致",
+          page.evaluate("""() => {
+              const r = [...document.querySelectorAll('.setrow')].find(x => x.textContent.includes('耐力隕石碎片'));
+              const own = +r.querySelector('.setrow-v').textContent.match(/可組 (\\d+) 組/)[1];
+              const sets = +document.querySelector('#setCards .stat-v').textContent;
+              return own === sets;
+          }"""), True)
+    check("非瓶頸材料照自己的數量算組數，且不標成瓶頸",
+          page.evaluate(row, "創造隕石碎片"), ["38 · 可組 38 組", False])
+    check("只有瓶頸材料才顯示「再 N」小標",
+          page.evaluate("""() => {
+              const tags = [...document.querySelectorAll('.setrow-v i')];
+              return [tags.length, tags[0].textContent,
+                      tags.every(t => t.closest('.setrow').classList.contains('short'))];
+          }"""), [1, "再 1", True])
+
+    # 每種 5 個時整體往下掉，標示要跟著改
+    page.evaluate("() => { matPerSet = 5; renderMaterials(); }")
+    page.wait_for_timeout(300)
+    check("每種材料 5 個時可組成組數跟著改",
+          page.evaluate("""() => document.querySelector('#setCards .stat-v').textContent"""), "1")
+    check("瓶頸材料 7 個、每組 5 個 → 可組 1 組，再 3 個進下一組",
+          page.evaluate(row, "耐力隕石碎片"), ["7 · 可組 1 組再 3", True])
+    check("數量足夠的材料不會被標成瓶頸",
+          page.evaluate(row, "創造隕石浮塵"), ["48 · 可組 9 組", False])
+
+    check("瓶頸的琥珀色用色票，深色模式不會變暗",
+          page.evaluate("""() => {
+              const before = getComputedStyle(document.documentElement).getPropertyValue('--warn').trim();
+              document.documentElement.dataset.theme = 'dark';
+              const after = getComputedStyle(document.documentElement).getPropertyValue('--warn').trim();
+              delete document.documentElement.dataset.theme;
+              return [before.length > 0, before !== after];
+          }"""), [True, True])
+
+    page.evaluate("() => { matPerSet = 5; }")
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+
     # ---------- 設定選單重做 ----------
     print("\n[settings] 設定選單重做")
     seed(page)

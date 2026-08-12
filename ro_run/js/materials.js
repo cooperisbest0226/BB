@@ -141,11 +141,16 @@ function renderMaterials(){
         <span class="matgrp-v num">${names.reduce((a,n)=>a+(totals[n]||0),0)}</span></div>
       <div class="bars">${names.map(n=>{
         const q=totals[n]||0, own=Math.floor(q/per), lack=Math.max(0,nextNeed-q);
-        /* 卡住整體組數的那幾種（木桶效應的短板）標成琥珀色，一眼看出瓶頸 */
+        /* 卡住整體組數的那幾種（木桶效應的短板）標成琥珀色，一眼看出瓶頸。
+
+           這裡寫「可組 N 組」而不是「缺 N／已足」：lack 算的是「湊到下一組還差多少」，
+           但寫成「缺」會讓人以為現有的組數還少了東西 —— 瓶頸材料剛好夠 7 組時
+           顯示「7 · 缺 1」，看起來就像那 7 組沒湊齊。改成直接講這種材料撐得起幾組，
+           跟上方「可組成組數」對得起來；差多少才進下一組另外用小字標在瓶頸那幾列。 */
         return `<div class="setrow ${own===sets?'short':''}">
           <span class="setrow-n">${esc(n)}</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,q/nextNeed*100)}%${own===sets?';background:#b45309':''}"></div></div>
-          <span class="setrow-v"><b>${q}</b> · ${lack?`缺 ${lack}`:'已足'}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,q/nextNeed*100)}%${own===sets?';background:var(--warn)':''}"></div></div>
+          <span class="setrow-v"><b>${q}</b> · 可組 ${own} 組${own===sets&&lack?`<i>再 ${lack}</i>`:''}</span>
         </div>`;
       }).join('')}</div>
     </div>`).join('');
