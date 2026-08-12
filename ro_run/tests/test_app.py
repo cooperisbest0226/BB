@@ -1217,6 +1217,35 @@ def run(page):
     check("鍵盤觸發的 click 只算一次",
           page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"), "9")
 
+    # 打字之後再按加減：焦點還留在輸入框裡，畫面也必須跟著更新
+    # （加減鈕會 preventDefault 以免長按選字，焦點不會自動離開輸入框）
+    page.evaluate("() => { closeSheet(); }")
+    page.wait_for_timeout(250)
+    page.evaluate("() => dropsSheet('ptB')")
+    page.wait_for_timeout(350)
+    page.click(qty)
+    page.keyboard.type("6")
+    page.wait_for_timeout(150)
+    page.click(plus)
+    page.wait_for_timeout(200)
+    check("打字後按加號，欄位數字會跟著更新（不會少 1）",
+          page.evaluate(f"() => document.querySelector('{qty}').value"), "7")
+    check("打字後按加號，欄位與摘要一致",
+          page.evaluate("() => document.getElementById('dropSum').textContent.includes('共 7 個')"), True)
+    check("這時焦點確實還在輸入框裡",
+          page.evaluate(f"() => document.activeElement === document.querySelector('{qty}')"), True)
+    page.click(minus)
+    page.wait_for_timeout(200)
+    check("打字後按減號也會同步更新",
+          page.evaluate(f"() => document.querySelector('{qty}').value"), "6")
+    page.click('.sheet [data-s="clear"]')
+    page.wait_for_timeout(250)
+    check("焦點在輸入框時按全部清空，欄位也會清掉",
+          page.evaluate(f"() => document.querySelector('{qty}').value"), "")
+    page.click(plus)
+    page.click(plus)
+    page.wait_for_timeout(200)
+
     check("摘要即時反映目前記錄",
           page.evaluate("() => document.getElementById('dropSum').textContent.includes('1 種')"), True)
 
@@ -1224,7 +1253,7 @@ def run(page):
     page.wait_for_timeout(400)
     check("儲存後只寫入有數量的材料",
           page.evaluate("""() => ptsOf('2026-08-05')[0].drops.map(d => [d.name, d.qty])"""),
-          [[first, 9]])
+          [[first, 2]])
 
     # ---------- 設定選單重做 ----------
     print("\n[settings] 設定選單重做")

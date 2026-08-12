@@ -438,21 +438,29 @@ function dropsSheet(ptId){
         ? `<b>${picked.length} 種 · 共 ${total} 個</b><br>${esc(picked.map(([n,q])=>`${n}×${q}`).join('、'))}`
         : `<span class="none">還沒記錄任何材料</span>`;
     }
-    function paintRow(n){
+    /* force：這個數字是使用者按加減鈕（或全部清空）改的，一定要更新畫面。
+       平常的守門是為了不要在使用者打字時把欄位內容抽掉，但加減鈕會 preventDefault
+       以避免長按選字，焦點因此留在輸入框裡 —— 沒有 force 的話畫面就會停在舊數字，
+       看起來像是「按了沒反應」或「少算一個」。 */
+    function paintRow(n,force){
       const row=host.querySelector(`[data-row="${CSS.escape(n)}"]`); if(!row) return;
       const q=work.get(n)||0;
       row.classList.toggle('on',q>0);
       const qi=row.querySelector('[data-qty]');
       /* 0 顯示成空白（靠 placeholder 提示），這樣點進去直接打數字就好，
          不用先把原本的 0 刪掉，也不會打出 "08" 這種東西 */
-      if(document.activeElement!==qi) qi.value = q ? q : '';
+      if(force||document.activeElement!==qi){
+        qi.value = q ? q : '';
+        /* 欄位還握著焦點時順手重選，接著打字一樣是取代而不是接在後面 */
+        if(force&&document.activeElement===qi) qi.select();
+      }
       row.querySelector('[data-step="-1"]').disabled=q<=0;
     }
     function bindRow(row){
       const n=row.dataset.row;
       row.querySelectorAll('[data-step]').forEach(b=>bindRepeat(b,()=>{
         const q=Math.max(0,(work.get(n)||0)+(+b.dataset.step));
-        work.set(n,q); paintRow(n); paintSum();
+        work.set(n,q); paintRow(n,true); paintSum();
       }));
       const qi=row.querySelector('[data-qty]');
       /* 點進數字直接全選：接著打的數字就是取代而不是接在後面。
@@ -484,7 +492,7 @@ function dropsSheet(ptId){
       if(added) added.scrollIntoView({block:'nearest'});
     };
     s.querySelector('[data-s="clear"]').onclick=()=>{
-      names.forEach(n=>{ work.set(n,0); paintRow(n); });
+      names.forEach(n=>{ work.set(n,0); paintRow(n,true); });
       paintSum();
     };
     s.querySelector('[data-s="save"]').onclick=()=>{
@@ -617,6 +625,9 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v44', d:'2026/08/11', c:[
+    ['fix','手動輸入數量後再按加減，欄位上的數字沒有跟著更新，看起來像少算一個（實際存檔的數量是正確的）'],
+  ]},
   { v:'v43', d:'2026/08/11', c:[
     ['add','掉落物的加減鈕可以按住不放連續累加，按越久加越快（約 2 秒 10 個、3 秒 30 個、5 秒 100 個）'],
     ['imp','數量為 0 時欄位留白，點一下數字會整個選起來，直接打數字取代，不用先把 0 刪掉'],
