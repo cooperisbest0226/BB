@@ -385,7 +385,6 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
    沒有 display 或 flex 方向的切換，所以全程可補間。 */
 .home-hero{
   transition:padding var(--t-med,.26s) ease;
-  will-change:padding;
 }
 .home-hero.collapsed{padding-bottom:0}
 .hero-main-card{
@@ -948,13 +947,23 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   background:var(--bg);border-radius:var(--radius-lg);
   margin-bottom:8px;overflow:hidden;position:relative;
   box-shadow:var(--shadow-sm);transition:box-shadow var(--t-base);
+  /* 畫面外的卡片跳過排版與繪製。intrinsic-size 用 auto 關鍵字：
+     第一次算過之後就記住實際高度，所以捲軸長度不會跳。
+     不支援的瀏覽器整條規則失效，行為與原本相同。 */
+  content-visibility:auto;
+  contain-intrinsic-size:auto 70px;
 }
 .icard:active{box-shadow:none}
 .irow{
   display:flex;align-items:center;gap:11px;padding:13px 14px;
   background:var(--bg);position:relative;z-index:var(--z-card-row);
-  transition:transform .22s ease,background var(--t-fast);will-change:transform;
+  transition:transform .22s ease,background var(--t-fast);
 }
+/* will-change:transform 原本掛在每一列上。它不是「提示」而是指令：
+   瀏覽器會替每一列開一層合成層，150 筆就是 150 層貼圖常駐記憶體，
+   捲動時全部要重新合成 —— 這正是清單一長就變頓的原因。
+   滑動刪除只作用在被按住的那一列，所以只在手勢期間才掛。 */
+.irow.swiping{will-change:transform}
 .irow:active{background:var(--surface3)}
 .ichk{width:20px;height:20px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
 /* 命中區 36×44，視覺仍是 20×20 —— 負外距把撐開的部分收回去 */
@@ -3026,28 +3035,43 @@ function initHeroCollapse(){
   const sc   = document.getElementById('home-scroll');
   const hero = document.querySelector('.home-hero');
   if(!sc || !hero) return;
-  let collapsed = false, ticking = false, expandedClientH = 0;
+  let collapsed = false, ticking = false, expandedClientH = 0, scrollable = 0;
+  // scrollHeight / clientHeight 是會強制同步 reflow 的讀取。原本每個捲動
+  // frame 都讀一次，等於捲動時把排版樹反覆算過 —— 清單越長越明顯。
+  // 這兩個值只在內容或視窗改變時才會變，所以改成事件驅動地量一次就好。
+  const measure = () => {
+    // 「夠不夠長」必須用展開時的容器高度來量。用當下的 clientHeight 會形成
+    // 回授迴圈：收合 → 容器變高 → 可捲距離變短 → 判定不該收合 → 展開…
+    if(!collapsed) expandedClientH = sc.clientHeight;
+    scrollable = sc.scrollHeight - expandedClientH;
+  };
   const apply = () => {
     ticking = false;
-    // 「夠不夠長」必須用展開時的容器高度來量。
-    // 直接用當下的 clientHeight 會形成回授迴圈：收合 → 容器變高 →
-    // 可捲距離變短 → 判定不該收合 → 展開 → 又變得夠長 → 收合…
-    // 一秒抖 60 次，class 一直重設，所有 transition 都停在起點。
-    if(!collapsed) expandedClientH = sc.clientHeight;
-    if(sc.scrollHeight - expandedClientH < 90){
+    // 內容不夠長就不收合：收了反而更空
+    if(scrollable < 90){
       if(collapsed){ collapsed=false; hero.classList.remove('collapsed'); }
       return;
     }
-    const y = sc.scrollTop;
+    const y = sc.scrollTop;   // scrollTop 不會觸發 reflow，讀它是便宜的
     if(!collapsed && y > 64){ collapsed = true;  hero.classList.add('collapsed'); }
     else if(collapsed && y < 8){ collapsed = false; hero.classList.remove('collapsed'); }
   };
   sc.addEventListener('scroll', ()=>{
     if(!ticking){ ticking = true; requestAnimationFrame(apply); }
   }, {passive:true});
-  // 換月／篩選重繪後長度會變，重新判斷一次
-  window.addEventListener('resize', apply, {passive:true});
-  hero._reevalCollapse = apply;
+  const remeasure = () => { measure(); apply(); };
+  window.addEventListener('resize', remeasure, {passive:true});
+  // content-visibility 讓卡片高度在捲入時才定案，捲軸長度會隨之修正，
+  // 所以也要跟著重新量一次
+  if(window.ResizeObserver){
+    let roTick = false;
+    new ResizeObserver(()=>{
+      if(roTick) return; roTick = true;
+      requestAnimationFrame(()=>{ roTick = false; measure(); apply(); });
+    }).observe(document.getElementById('home-list'));
+  }
+  measure();
+  hero._reevalCollapse = remeasure;
 }
 
 // ── 清單 ──────────────────────────────────────────────────
@@ -7472,6 +7496,7 @@ openDB().then(async ()=>{
         if(s.phase === DIR.VERT) return;
       }
       e.preventDefault();
+      row.classList.add('swiping');          // 只有這一列需要合成層
       s.dx = rx < -50 ? -50+(rx+50)*.3 : rx;
       s.dx = Math.max(s.dx, -FULL);
       if(s.dx < 0) row.style.transform = `translateX(${s.dx}px)`;
@@ -7485,6 +7510,10 @@ openDB().then(async ()=>{
       } else {
         row.style.transform = '';
       }
+      // 回彈動畫跑完再收掉合成層，不然收得太早會閃一下
+      const drop = () => { row.classList.remove('swiping'); row.removeEventListener('transitionend', drop); };
+      row.addEventListener('transitionend', drop);
+      setTimeout(drop, 300);
       swipeState.set(row, {...s, phase:DIR.IDLE, dx:0});
     }, {passive:true});
   }
