@@ -2121,7 +2121,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.10.0 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.10.1 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/17</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -6885,6 +6885,13 @@ async function registerSW() {
     swState = 'ready';
     swError = null;
 
+    // 頁面載入時可能「已經」有一個裝好、等待接手的新版 SW
+    // （上次沒更新就關掉、或背景已裝好）。這種情況 updatefound 不會再觸發，
+    // 所以要在這裡主動檢查一次。
+    if (swReg.waiting && navigator.serviceWorker.controller) {
+      toastUpdate();
+    }
+
     // 有新版本下載完成 → 提示使用者，不強制中斷手上的輸入
     swReg.addEventListener('updatefound', () => {
       const nw = swReg.installing;
@@ -6945,15 +6952,36 @@ function toastUpdate() {
   clearTimeout(t._t);
   t._t = setTimeout(() => t.classList.remove('on'), 8000);
 }
-function applyUpdate() {
-  if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
-  else location.reload();
+async function applyUpdate() {
+  // controllerchange 會在 SW 接手後負責 reload —— 這裡只要把 waiting 的 SW
+  // 叫醒即可。若當下沒有 waiting，先催一次 update 把新版找出來。
+  try {
+    if (!(swReg && swReg.waiting) && swReg) {
+      toast('套用更新中…');
+      await swReg.update();
+    }
+    if (swReg && swReg.waiting) {
+      swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // 保險：萬一 controllerchange 沒觸發（少數瀏覽器），2 秒後強制重整
+      setTimeout(() => { if (!_reloading) location.reload(); }, 2000);
+    } else {
+      // 真的沒有新版可套用 —— 直接重整（會拿到目前快取，等同無操作）
+      location.reload();
+    }
+  } catch {
+    location.reload();
+  }
 }
 // ── 版本更新紀錄 ─────────────────────────────────────────
 // 資料放在這裡，之後發新版只要在最前面加一筆就好。
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.10.1', d:'2026/08/17', c:[
+    ['fix','「檢查更新」找到新版時沒有提示、仍顯示「已是最新版本」，導致要關掉 PWA 重開才更新得到。現在會直接跳出「立即更新」按鈕'],
+    ['fix','按「立即更新」在新版尚未就緒時只重整、拿到的還是舊版；改為先催出新版再套用，並在少數瀏覽器未自動重整時 2 秒後強制重整'],
+    ['fix','App 載入時若已有裝好待接手的新版，會主動提示更新（先前只有背景剛下載完才提示）'],
+  ]},
   { v:'v4.10.0', d:'2026/08/17', c:[
     ['add','自動備份：App 每次開啟與資料變動後自動存檔，保留最近 5 份，設定頁「自動備份與還原」可一鍵還原。用來救誤刪、誤匯入'],
     ['add','還原前會先自動存一份目前狀態，還原錯了可以再還原回來'],
@@ -7062,8 +7090,24 @@ async function checkUpdate() {
     return;
   }
   toast('檢查更新中…');
-  try { await swReg.update(); setTimeout(() => toast('已是最新版本'), 1200); }
-  catch { toast('檢查失敗，請確認網路'); }
+  try {
+    const reg = await swReg.update();     // 向伺服器要最新 sw.js，等它裝好
+    // update() 完成後，新版本若存在會落在 waiting（或還在 installing）。
+    if (swReg.waiting) {
+      toastUpdate();                      // 有新版 → 直接給「立即更新」按鈕
+    } else if (swReg.installing) {
+      // 還在下載：等它裝完再提示，不要先說「已是最新版」誤導使用者
+      const nw = swReg.installing;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed') {
+          if (swReg.waiting || navigator.serviceWorker.controller) toastUpdate();
+        }
+      });
+      toast('正在下載新版本…');
+    } else {
+      toast('已是最新版本');
+    }
+  } catch { toast('檢查失敗，請確認網路'); }
 }
 
 // ── 安裝到主畫面 ─────────────────────────────────────────
