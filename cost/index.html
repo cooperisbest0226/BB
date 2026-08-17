@@ -274,8 +274,8 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .hero-main-card{
   background:var(--bg);
   border-radius:var(--radius-lg);
-  padding:20px 20px 16px;
-  margin-bottom:10px;
+  padding:16px 18px 15px;
+  margin-bottom:8px;
   box-shadow:var(--shadow-md);
   position:relative;overflow:hidden;
 }
@@ -368,70 +368,170 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 .hero-big-num{
   font-family:'Sora',sans-serif;
-  font-size:40px;font-weight:700;
+  font-size:37px;font-weight:700;
   letter-spacing:-.04em;line-height:1;
   /* #D94B4B 在米色底上對比約 4:1，對這麼大的主數字偏淡；--red-dk 是 5.4:1 */
   color:var(--red-dk);
-  margin-bottom:10px;
+  margin-bottom:7px;
   /* Sora 是比例字，$9,999 → $10,000 時字寬會變，數字會輕微抖動 */
   font-variant-numeric:tabular-nums;
   font-feature-settings:'tnum' 1;
 }
 
-/* ── Hero budget row — inline inside hero-main-card ─────────── */
-.hero-remain-row{
-  display:flex;align-items:center;gap:16px;
+/* ── Hero 收合 ──────────────────────────────────────────────
+   hero 原本 flex-shrink:0 永久釘住 184px。捲清單時那 184px 不再工作，
+   所以往下捲就把它降到約 72px：大數字讓位給 eyebrow 上的小總額，
+   只有月份切換與預算條留著。收合只動高度／透明度／字級，
+   沒有 display 或 flex 方向的切換，所以全程可補間。 */
+.home-hero{
+  transition:padding var(--t-med,.26s) ease;
+  will-change:padding;
 }
-.hero-remain-left{flex:1;min-width:0}
-.hero-remain-lbl{
-  font-size:10px;font-weight:600;color:var(--text3);
-  text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;
+.home-hero.collapsed{padding-bottom:0}
+.hero-main-card{
+  transition:padding var(--t-med,.26s) ease,margin-bottom var(--t-med,.26s) ease,
+             box-shadow var(--t-med,.26s) ease;
 }
-.hero-remain-val{
-  font-family:'DM Mono',monospace;
-  font-size:18px;font-weight:600;letter-spacing:-.02em;
-  color:var(--green);white-space:nowrap;
-}
-.hero-remain-val.r{color:var(--red)}
-.hero-remain-sub{font-size:10.5px;color:var(--text3);margin-top:2px}
-/* ── Budget ring — replaces the old 4px inline track ───────── */
-.bud-ring-wrap{position:relative;width:92px;height:92px;flex-shrink:0}
-.bud-ring{width:92px;height:92px;display:block}
-.bud-ring-bg{fill:none;stroke:var(--surface4);stroke-width:9}
-.bud-ring-fg{
-  fill:none;stroke:var(--green);stroke-width:9;stroke-linecap:round;
-  transform:rotate(-90deg);transform-origin:50% 50%;
-  transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1),stroke .3s ease;
-}
-.bud-ring-fg.warn{stroke:var(--amber)}
-.bud-ring-fg.over{stroke:var(--red)}
-.bud-ring-center{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  text-align:center;line-height:1;
-}
-.bud-ring-pct{
-  font-family:'Sora',sans-serif;font-size:21px;font-weight:700;
-  letter-spacing:-.03em;color:var(--text);
-}
-.bud-ring-pct.na{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:0}
-.bud-ring-cap{font-size:9.5px;color:var(--text3);margin-top:3px;letter-spacing:.06em}
+.home-hero.collapsed .hero-main-card{padding:9px 18px 10px;margin-bottom:6px}
 
-/* ── Daily-allowance / payday countdown boxes ───────────────── */
-.hero-stat-row{
-  display:flex;margin-top:13px;padding-top:12px;
-  border-top:1px solid var(--border);
+/* 大數字：收合時高度歸零並縮向 eyebrow */
+.hero-big-num{
+  transition:font-size .26s ease,height .26s ease,opacity .18s ease,
+             margin-bottom .26s ease,transform .26s ease;
+  transform-origin:left center;overflow:hidden;
 }
-.hero-stat{flex:1;text-align:center;position:relative}
-.hero-stat+.hero-stat::before{
-  content:'';position:absolute;left:0;top:2px;bottom:2px;width:1px;background:var(--border);
+.home-hero.collapsed .hero-big-num{
+  height:0;opacity:0;margin-bottom:0;transform:scale(.72);pointer-events:none;
 }
-.hero-stat-num{
-  font-family:'DM Mono',monospace;font-size:17px;font-weight:600;
-  letter-spacing:-.02em;color:var(--text);
+
+/* 付款狀態行同樣收掉 */
+.hero-subline{
+  transition:height .26s ease,opacity .18s ease,margin .26s ease;
+  overflow:hidden;
 }
-.hero-stat-num.r{color:var(--red)}
-.hero-stat-num.g{color:var(--green)}
-.hero-stat-lbl{font-size:10.5px;color:var(--text3);margin-top:4px;letter-spacing:.03em}
+.home-hero.collapsed .hero-subline{height:0;opacity:0;margin:0}
+
+/* eyebrow 右側：展開顯示「個人支出」，收合換成總額 */
+.hero-mini-tot{
+  position:absolute;right:0;top:50%;transform:translateY(-50%);
+  font-family:'Sora',sans-serif;font-size:19px;font-weight:700;
+  letter-spacing:-.03em;color:var(--red-dk);white-space:nowrap;
+  font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+.hero-eyebrow{position:relative}
+.home-hero.collapsed .hero-mini-tot{opacity:1}
+.hero-eyebrow-tag{transition:opacity .18s ease}
+.home-hero.collapsed .hero-eyebrow-tag{opacity:0}
+/* 收合時訂閱條與代墊說明一起讓位 */
+.home-hero.collapsed .sub-chip,
+.home-hero.collapsed .hero-deduct-badge,
+.home-hero.collapsed .hero-deduct-note{
+  height:0;opacity:0;margin:0;padding:0;overflow:hidden;pointer-events:none;
+}
+.sub-chip,.hero-deduct-badge{transition:height .26s ease,opacity .18s ease,margin .26s ease,padding .26s ease}
+
+@media (prefers-reduced-motion:reduce){
+  .home-hero,.home-hero *{transition-duration:.01ms !important}
+}
+
+/* ── Hero budget bar — 6px 取代 92px 的環 ──────────────────── */
+.hbud{margin-top:12px}
+.hbud[hidden]{display:none}
+.hbud-track{
+  position:relative;height:6px;border-radius:99px;
+  background:var(--surface4);
+  /* overflow 不能剪：跑者要浮在軌道上方 */
+}
+.hbud-fill{
+  position:absolute;inset:0 auto 0 0;width:0;
+  border-radius:99px;background:var(--green);
+  transition:width .9s cubic-bezier(.32,.9,.36,1),background .3s ease;
+}
+.hbud-fill.warn{background:var(--amber)}
+.hbud-fill.over{background:var(--red)}
+/* 今日應有進度：把「用了多少」變成「用得快不快」 */
+.hbud-tick{
+  position:absolute;top:-2px;bottom:-2px;width:2px;
+  background:var(--text3);opacity:.55;border-radius:2px;
+  transition:left .8s cubic-bezier(.4,0,.2,1);
+}
+.hbud-tick[hidden]{display:none}
+.hbud-meta{
+  display:flex;align-items:baseline;gap:0;flex-wrap:wrap;
+  font-size:11.5px;color:var(--text3);margin-top:7px;line-height:1.4;
+  overflow:hidden;transition:height .26s ease,opacity .18s ease,margin .26s ease;
+}
+.home-hero.collapsed .hbud-meta{height:0;opacity:0;margin:0}
+.hbud{transition:margin-top .26s ease}
+.home-hero.collapsed .hbud{margin-top:9px}
+.hbud-meta b{font-family:'DM Mono',monospace;font-weight:600;color:var(--text2);margin:0 1px 0 3px}
+.hbud-meta .g{color:var(--green)}
+.hbud-meta .r{color:var(--red)}
+.hbud-meta .sep{margin:0 6px;opacity:.5}
+
+
+/* ── 進度頭的跑者 ────────────────────────────────────────────
+   數字跳到 74% 說的是結果；一個沿著軌道彈過去的東西說的是過程。
+   借的是擠壓／伸展（squash & stretch）這套動作語言，不是任何既有角色的造型：
+   落地壓扁、頂點拉長、停下時多彈一下。跑完就靜止 —— 記帳工具裡
+   永遠在動的東西只會變成雜訊。 */
+.hbud-poli{
+  position:absolute;top:50%;left:0;width:0;height:0;
+  transition:left .9s cubic-bezier(.32,.9,.36,1);
+  z-index:2;
+}
+.hbud-poli-body{
+  display:block;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;
+  border-radius:50% 50% 47% 47% / 44% 44% 56% 56%;
+  background:var(--green);
+  box-shadow:0 1px 3px rgba(0,0,0,.2),inset 0 -2px 3px rgba(0,0,0,.09),
+             inset 0 2px 2px rgba(255,255,255,.35);
+  transform-origin:50% 100%;
+  position:relative;
+}
+.hbud-poli-body i{
+  position:absolute;top:4.5px;width:2.1px;height:2.8px;border-radius:50%;
+  background:rgba(0,0,0,.5);
+}
+.hbud-poli-body i:first-child{left:3.2px}
+.hbud-poli-body i:last-child{right:3.2px}
+.hbud-poli.warn .hbud-poli-body{background:var(--amber)}
+.hbud-poli.over .hbud-poli-body{background:var(--red)}
+
+@keyframes poliHop{
+  0%  {transform:translateY(0)    scaleX(1)    scaleY(1)}
+  16% {transform:translateY(0)    scaleX(1.28) scaleY(.7)}
+  46% {transform:translateY(-9px) scaleX(.84)  scaleY(1.2)}
+  74% {transform:translateY(0)    scaleX(1.22) scaleY(.76)}
+  90% {transform:translateY(-2px) scaleX(.96)  scaleY(1.05)}
+  100%{transform:translateY(0)    scaleX(1)    scaleY(1)}
+}
+.hbud-poli.hop .hbud-poli-body{animation:poliHop .40s ease-in-out infinite}
+
+/* 抵達：一次收尾的回彈，然後停住 */
+@keyframes poliLand{
+  0%  {transform:translateY(-7px) scaleX(.86) scaleY(1.18)}
+  34% {transform:translateY(0)    scaleX(1.3) scaleY(.7)}
+  62% {transform:translateY(-3px) scaleX(.94) scaleY(1.08)}
+  100%{transform:translateY(0)    scaleX(1)   scaleY(1)}
+}
+.hbud-poli.land .hbud-poli-body{animation:poliLand .34s cubic-bezier(.3,1.4,.5,1) both}
+
+/* 超支：撞到底之後被擋住的抖動，語意跟顏色一致 */
+@keyframes poliBump{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-3px) scaleX(1.15) scaleY(.88)}
+  60%{transform:translateX(1.5px)}
+}
+.hbud-poli.bump .hbud-poli-body{animation:poliBump .36s ease-out both}
+
+@media (prefers-reduced-motion:reduce){
+  .hbud-poli{transition:none}
+  .hbud-poli.hop .hbud-poli-body,
+  .hbud-poli.land .hbud-poli-body,
+  .hbud-poli.bump .hbud-poli-body{animation:none}
+}
 
 /* ── Cards ───────────────────────────────────────────────── */
 .card{
@@ -595,7 +695,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 
 /* ── Hero supporting line (replaces the old three-chip strip) ── */
-.hero-subline{font-size:12.5px;color:var(--text2);margin-bottom:9px;letter-spacing:.01em}
+.hero-subline{font-size:12.5px;color:var(--text2);margin-bottom:0;letter-spacing:.01em}
 .hero-subline b{font-family:'DM Mono',monospace;font-weight:600}
 .hero-subline .g{color:var(--green)}
 .hero-subline .r{color:var(--red)}
@@ -1609,6 +1709,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
 
 /* ── 訂閱單行細條（hero 卡下方，高度壓到約 34px）────────── */
+.sub-chip[hidden]{display:none}
 .sub-chip{
   width:100%;
   display:flex;align-items:center;gap:8px;
@@ -1829,12 +1930,14 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         </button>
         <button class="hero-mnav" onclick="shiftM(1)" aria-label="下個月">&#8250;</button>
         <span class="hero-eyebrow-tag" id="h-period">個人支出</span>
+        <!-- 收合後大數字讓位，總額改由這裡承接（純交叉淡入，不動版面） -->
+        <span class="hero-mini-tot" id="h-mini-tot" aria-hidden="true"></span>
       </div>
 
       <!-- Primary big number — personal expenses ONLY (advance/proxy excluded) -->
       <div class="hero-big-num" id="h-tot">—</div>
 
-      <!-- Single supporting line replaces the old three-chip strip -->
+      <!-- 付款狀態：已繳可由 total−未繳 推得，只留需要行動的那一半 -->
       <div class="hero-subline" id="h-subline">—</div>
 
       <!-- Proxy deduction: badge only; the formula stays folded until tapped -->
@@ -1843,40 +1946,18 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
               aria-expanded="false" aria-controls="h-deduct-note"></button>
       <div class="hero-deduct-note" id="h-deduct-note" style="display:none" aria-live="polite"></div>
 
-      <!-- Divider -->
-      <div id="h-hero-div" style="height:1px;background:var(--border);margin:12px 0 11px"></div>
-
-      <!-- Budget remain row (unique data, promoted here) -->
-      <div class="hero-remain-row" id="h-remain-row">
-        <div class="bud-ring-wrap">
-          <svg class="bud-ring" viewBox="0 0 100 100" role="img" aria-labelledby="h-ring-t">
-            <title id="h-ring-t">預算使用進度</title>
-            <circle class="bud-ring-bg" cx="50" cy="50" r="42"/>
-            <circle class="bud-ring-fg" id="h-ring" cx="50" cy="50" r="42"/>
-          </svg>
-          <div class="bud-ring-center">
-            <div class="bud-ring-pct" id="h-bud-pct">—</div>
-            <div class="bud-ring-cap" id="h-bud-cap">已用</div>
+      <!-- 預算：92px 的環只編碼一個純量，改用共用同一條水平軸的細長條。
+           track 上的 tick 標出「今天應該用到哪」，把比例變成判斷。 -->
+      <div class="hbud" id="h-bud-wrap">
+        <div class="hbud-track">
+          <div class="hbud-fill" id="h-bud-fill"></div>
+          <div class="hbud-tick" id="h-bud-tick" title="今日應有進度"></div>
+          <!-- 進度頭的跑者：擠壓／伸展的彈跳，把「用到哪」變成看得見的移動 -->
+          <div class="hbud-poli" id="h-bud-poli">
+            <span class="hbud-poli-body"><i></i><i></i></span>
           </div>
         </div>
-        <div class="hero-remain-left">
-          <div class="hero-remain-lbl" id="h-remain-lbl">預算剩餘</div>
-          <div class="hero-remain-val" id="h-remain">未設定</div>
-          <div class="hero-remain-sub" id="h-remain-sub"></div>
-        </div>
-      </div>
-
-      <!-- Only meaningful while the current month is on screen -->
-      <!-- 純顯示，不再是預算入口；調整一律到設定頁 -->
-      <div class="hero-stat-row" id="h-stat-row" style="display:none">
-        <div class="hero-stat">
-          <div class="hero-stat-num" id="h-daily">—</div>
-          <div class="hero-stat-lbl" id="h-daily-lbl">每日可花</div>
-        </div>
-        <div class="hero-stat">
-          <div class="hero-stat-num" id="h-payday">—</div>
-          <div class="hero-stat-lbl" id="h-payday-lbl">距離月底</div>
-        </div>
+        <div class="hbud-meta" id="h-bud-meta"></div>
       </div>
 
     </div>
@@ -2875,9 +2956,14 @@ async function renderSubChip(){
   if(!live.length){
     chip.classList.remove('urgent');
     amtEl.textContent='';
-    txtEl.textContent = all.length ? `訂閱 · ${all.length} 項未啟用` : '訂閱 · 尚未建立';
+    // 沒有啟用中的訂閱時整條收起來：44px 只為了說「這裡沒東西」並不划算，
+    // 入口保留在設定頁。有停用的項目才留一條提示。
+    if(!all.length){ chip.hidden = true; return; }
+    chip.hidden = false;
+    txtEl.textContent = `訂閱 · ${all.length} 項未啟用`;
     return;
   }
+  chip.hidden = false;
 
   const hasSplit = live.some(subHasSplit);
   const mo       = live.reduce((t,x)=>t+subMonthly(x),0);
@@ -2899,6 +2985,69 @@ async function renderSubChip(){
     chip.classList.remove('urgent');
     txtEl.textContent = `訂閱 ${live.length} 項${hasSplit?`　我負擔（帳單 ${fmt(mo)}）`:'　已含在信用卡帳單'}`;
   }
+}
+
+
+// ── 預算進度條上的跑者 ───────────────────────────────────────
+// 沿軌道移動的 0.9s 內持續彈跳，抵達後收尾一次就停。
+// 超支則撞在 100% 處抖一下 —— 動作本身就是「過不去了」。
+let _poliTimer = 0;
+// 位置用 calc 把行程往內縮一個半徑：0% 時貼齊軌道左端而不是騎在邊緣上，
+// 100% 時同理。純 calc 之間仍可補間，不需要 @property。
+const _poliPos = pct => `calc(${pct}% + ${((50-pct)/50*7.5).toFixed(2)}px)`;
+function _runPoli(pct, isOver){
+  const el = document.getElementById('h-bud-poli');
+  if(!el) return;
+  clearTimeout(_poliTimer);
+  el.classList.remove('hop','land','bump');
+  el.classList.toggle('over', !!isOver);
+  el.classList.toggle('warn', !isOver && pct>=80);
+
+  if(_reduceMotion()){ el.style.left = _poliPos(pct); return; }
+
+  el.style.left = _poliPos(0);
+  void el.offsetWidth;                      // 重置 transition 起點
+  el.classList.add('hop');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    el.style.left = _poliPos(pct);
+  }));
+  _poliTimer = setTimeout(()=>{
+    el.classList.remove('hop');
+    void el.offsetWidth;
+    el.classList.add(isOver ? 'bump' : 'land');
+  }, 900);
+}
+
+// ── Hero 捲動收合 ────────────────────────────────────────────
+// hero 在 scroll 容器之外，等於永久佔著版面高度。往下捲時它不再工作，
+// 就讓它退成一條約 72px 的月份／預算列。用兩個門檻（56 / 16）做遲滯，
+// 免得在臨界點來回抖動。
+function initHeroCollapse(){
+  const sc   = document.getElementById('home-scroll');
+  const hero = document.querySelector('.home-hero');
+  if(!sc || !hero) return;
+  let collapsed = false, ticking = false, expandedClientH = 0;
+  const apply = () => {
+    ticking = false;
+    // 「夠不夠長」必須用展開時的容器高度來量。
+    // 直接用當下的 clientHeight 會形成回授迴圈：收合 → 容器變高 →
+    // 可捲距離變短 → 判定不該收合 → 展開 → 又變得夠長 → 收合…
+    // 一秒抖 60 次，class 一直重設，所有 transition 都停在起點。
+    if(!collapsed) expandedClientH = sc.clientHeight;
+    if(sc.scrollHeight - expandedClientH < 90){
+      if(collapsed){ collapsed=false; hero.classList.remove('collapsed'); }
+      return;
+    }
+    const y = sc.scrollTop;
+    if(!collapsed && y > 64){ collapsed = true;  hero.classList.add('collapsed'); }
+    else if(collapsed && y < 8){ collapsed = false; hero.classList.remove('collapsed'); }
+  };
+  sc.addEventListener('scroll', ()=>{
+    if(!ticking){ ticking = true; requestAnimationFrame(apply); }
+  }, {passive:true});
+  // 換月／篩選重繪後長度會變，重新判斷一次
+  window.addEventListener('resize', apply, {passive:true});
+  hero._reevalCollapse = apply;
 }
 
 // ── 清單 ──────────────────────────────────────────────────
@@ -3335,6 +3484,20 @@ async function copyDiag(){
 const _reduceMotion = () =>
   window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// 動畫播完就把 class 拿掉，避免 fill-mode:both 永久蓋住後續樣式
+function _clearOnAnimEnd(el, cls){
+  if(!el) return;
+  const off = e => {
+    if(e.target !== el && !el.contains(e.target)) return;
+    el.classList.remove(cls);
+    el.removeEventListener('animationend', off);
+  };
+  el.addEventListener('animationend', off);
+  // 動畫被中斷時 animationend 不會來，補一個保險
+  clearTimeout(el['_ce_'+cls]);
+  el['_ce_'+cls] = setTimeout(()=>el.classList.remove(cls), 900);
+}
+
 function animNum(el, to, formatter=fmt, opts={}){
   if(!el) return;
   to = Math.round(to||0);
@@ -3361,6 +3524,10 @@ function replayHeroIntro(fromZero){
   const card=document.querySelector('.hero-main-card');
   if(card && !_reduceMotion()){
     card.classList.remove('replay'); void card.offsetWidth; card.classList.add('replay');
+    // animation-fill-mode:both 會把 keyframe 的最後一格永久釘在元素上，
+    // 而 animation 的優先序高於一般宣告 —— .replay 留著不清，
+    // 之後任何想改 .hero-big-num 的 opacity/transform 的規則都會失效。
+    _clearOnAnimEnd(card, 'replay');
   }
   const tot=document.getElementById('h-tot');
   if(tot && tot.dataset.num!=null){
@@ -4348,6 +4515,9 @@ async function rHome(){
   diag('rHome');
   dirty.home=false;
   renderSubChip();
+  // 清單長度變了（換月、切篩選、刪一筆）就重算一次收合條件
+  const _hero=document.querySelector('.home-hero');
+  if(_hero && _hero._reevalCollapse) requestAnimationFrame(_hero._reevalCollapse);
   const{y,m}=curYM(), key=ymStr(y,m);
   // BUGFIX: _lastHomeYm 原本在這裡就被覆寫，等到下面要判斷「是不是換了月份」
   // 時永遠等於 key，於是換月時從 0 起跳的滾動動畫一次都沒播過。
@@ -4358,7 +4528,7 @@ async function rHome(){
   // 整頁橫向滑出需要雙緩衝兩份清單，複雜度不划算，先只做這個。
   if(monthChanged){
     const hc=document.querySelector('.hero-main-card');
-    if(hc){ hc.classList.remove('mfade'); void hc.offsetWidth; hc.classList.add('mfade'); }
+    if(hc){ hc.classList.remove('mfade'); void hc.offsetWidth; hc.classList.add('mfade'); _clearOnAnimEnd(hc,'mfade'); }
   }
   _lastHomeYm=key;
   const items = await getByYM(key);
@@ -4392,96 +4562,74 @@ async function rHome(){
   document.getElementById('h-period').textContent='個人支出';  // 月份已在 eyebrow 的選擇器上
   animNum(document.getElementById('h-tot'), total, fmt,
           {from: (monthChanged || !prevHomeYm) ? 0 : undefined, dur:750});
-  let sub=`已繳 <b class="g">${fmt(paid)}</b><span class="sep">·</span>未繳 <b class="r">${fmt(unpaid)}</b>`;
+  // 收合後接手總額的小字，同步同一個數字
+  const miniTot=document.getElementById('h-mini-tot');
+  if(miniTot) animNum(miniTot, total, fmt,
+          {from: (monthChanged || !prevHomeYm) ? 0 : undefined, dur:750});
+  // 已繳 = total − 未繳，是推得的；只留需要行動的那一半。
+  let sub = unpaid>0
+    ? `未繳 <b class="r">${fmt(unpaid)}</b><span class="sep">·</span>已繳 <b class="g">${fmt(paid)}</b>`
+    : `全部已繳 <b class="g">${fmt(paid)}</b>`;
   if(advOn()&&advUnrec>0) sub+=`<span class="sep">·</span>待收 <b class="o">${fmt(advUnrec)}</b>`;
   document.getElementById('h-subline').innerHTML=sub;
   _setDeductNote(advTotal,total);
 
-  // ── Budget ring + pacing ────────────────────────────────────────────
+  // ── Budget bar ──────────────────────────────────────────────────────
   const bTotal=budStore.total||0;
-  const remEl=document.getElementById('h-remain');
-  const remSub=document.getElementById('h-remain-sub');
-  const ring=document.getElementById('h-ring');
-  const pctEl=document.getElementById('h-bud-pct');
-  const capEl=document.getElementById('h-bud-cap');
-  const statRow=document.getElementById('h-stat-row');
-  const isNow = (y===cy() && m===cm());   // pacing only means something now
+  const isNow = (y===cy() && m===cm());
+  const wrap = document.getElementById('h-bud-wrap');
+  const fill = document.getElementById('h-bud-fill');
+  const tick = document.getElementById('h-bud-tick');
+  const meta = document.getElementById('h-bud-meta');
 
-  const R=42, CIRC=2*Math.PI*R;
-  ring.style.strokeDasharray=CIRC;
+  // 沒設預算就整塊收起來：一條 0% 的軌道不說明任何事
+  if(bTotal<=0){
+    wrap.hidden = true;
+  }else{
+    wrap.hidden = false;
+    const remain = bTotal-total;
+    const rawPct = Math.round(total/bTotal*100);
+    const over   = remain<0;
 
-  // 未設定預算時整塊隱藏（含分隔線）：不可點又只說「未設定」，
-  // 92px 換不到任何資訊。發現性交給設定頁的「預算設定」列。
-  const remainRow=document.getElementById('h-remain-row');
-  const heroDiv=document.getElementById('h-hero-div');
-  if(remainRow) remainRow.style.display = bTotal>0 ? '' : 'none';
-  if(heroDiv)   heroDiv.style.display   = bTotal>0 ? '' : 'none';
-
-  if(bTotal>0){
-    const remain=bTotal-total;
-    const rawPct=Math.round(total/bTotal*100);      // may exceed 100
-    const pct=Math.min(rawPct,100);                 // ring never overfills
-    // 超支時把超支金額放到醒目位置。原本是「剩餘 $0」＋小字「超支 $92,688」，
-    // 最大的字沒有資訊量，真正該看的數字反而被降級成註腳。
-    const over=remain<0;
-    const remLbl=document.getElementById('h-remain-lbl');
-    if(remLbl) remLbl.textContent = over?'預算超支':'預算剩餘';
-    animNum(remEl, Math.abs(remain), fmt, {dur:620});
-    remEl.className='hero-remain-val'+(over?' r':'');
-    remSub.textContent=`預算 ${fmt(bTotal)}`;
-    pctEl.textContent=rawPct+'%';
-    pctEl.className='bud-ring-pct';
-    capEl.textContent='已用';
-    ring.setAttribute('class','bud-ring-fg'+(rawPct>=100?' over':rawPct>=80?' warn':''));
-    // Paint from empty so the sweep animates on every render
-    ring.style.strokeDashoffset=CIRC;
+    const shownPct = Math.min(rawPct,100);
+    const state = rawPct>=100?'over':rawPct>=80?'warn':'';
+    fill.style.width = '0%';
+    fill.className = 'hbud-fill'+(state?' '+state:'');
+    _runPoli(shownPct, rawPct>=100);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      ring.style.strokeDashoffset=CIRC-(pct/100)*CIRC;
+      fill.style.width = shownPct+'%';
     }));
-  }else{
-    const remLbl2=document.getElementById('h-remain-lbl');
-    if(remLbl2) remLbl2.textContent='預算剩餘';
-    remEl.textContent='未設定';remEl.className='hero-remain-val';remEl.dataset.num=0;
-    remSub.textContent='可於設定頁設定預算';
-    pctEl.textContent='未設定';pctEl.className='bud-ring-pct na';
-    capEl.textContent='';
-    ring.setAttribute('class','bud-ring-fg');
-    ring.style.strokeDashoffset=CIRC;
-  }
 
-  // 每日可花 / 距離發薪日 —— 只在檢視當月時顯示
-  if(isNow && bTotal>0){
-    statRow.style.display='';
-    const pace=budgetPacing(bTotal-total);
-    const over=(bTotal-total)<0;
-    const dailyEl=document.getElementById('h-daily');
-    if(over){ dailyEl.textContent='超支'; dailyEl.dataset.num=0; }
-    else animNum(dailyEl, pace.daily, fmt, {dur:560});
-    dailyEl.className='hero-stat-num'+(over?' r':'');
-    document.getElementById('h-daily-lbl').textContent=
-      over?'已無可用額度':`每日可花（÷${pace.coverDays} 天）`;
-
-    const pdEl=document.getElementById('h-payday');
-    const pdLbl=document.getElementById('h-payday-lbl');
-    const dp=daysUntilPayday();
-    if(dp===null){
-      pdEl.textContent=daysLeftInMonth()+' 天';
-      pdEl.className='hero-stat-num';
-      // 這一列已改為純顯示（預算入口統一在設定頁），標籤不能再說「點此」
-      pdLbl.textContent='距離月底 · 未設發薪日';
-    }else if(dp===0){
-      pdEl.textContent='今天';
-      pdEl.className='hero-stat-num g';
-      pdLbl.textContent='發薪日';
+    // 今日應有進度（只有看當月才有意義）
+    if(isNow){
+      const dim = new Date(y,m,0).getDate();
+      tick.hidden = false;
+      tick.style.left = Math.min(new Date().getDate()/dim*100,100)+'%';
+      tick.title = `今日應有進度 ${Math.round(new Date().getDate()/dim*100)}%`;
     }else{
-      pdEl.textContent=dp+' 天';
-      pdEl.className='hero-stat-num';
-      const nd=nextPayday(payday);
-      pdLbl.textContent=`距離發薪日（${nd.getMonth()+1}/${nd.getDate()}）`;
+      tick.hidden = true;
     }
-  }else{
-    statRow.style.display='none';
+
+    // 一行 meta 取代原本的 92px 環 + 57px stat row
+    const parts = [];
+    parts.push(over
+      ? `超支 <b class="r">${fmt(-remain)}</b>`
+      : `剩 <b class="g">${fmt(remain)}</b>`);
+    parts.push(`<span id="h-bud-pct">${rawPct}</span>% / ${fmt(bTotal)}`);
+    if(isNow && !over){
+      const pace = budgetPacing(remain);
+      const dp   = daysUntilPayday();
+      parts.push(dp===null
+        ? `每日 <b>${fmt(pace.daily)}</b>（${pace.coverDays} 天）`
+        : dp===0 ? `<b class="g">今日發薪</b>`
+                 : `每日 <b>${fmt(pace.daily)}</b>（${dp} 天後發薪）`);
+    }
+    meta.innerHTML = parts.join('<span class="sep">·</span>');
+    // 百分比與跑者同步爬升：數字與位置說的是同一件事，就該一起動
+    const pctEl = document.getElementById('h-bud-pct');
+    if(pctEl) animNum(pctEl, rawPct, v=>Math.round(v), {from:0, dur:900});
   }
+
 
   await refreshRems();
   maybeAutoShowRems();
@@ -7438,6 +7586,7 @@ openDB().then(async ()=>{
     }
   });
 
+  initHeroCollapse();
   rHome();
   requestAnimationFrame(()=>moveTabInd(null,false));
 
