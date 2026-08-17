@@ -871,6 +871,36 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .iname.done{color:var(--text3);text-decoration:line-through}
 .isub{font-size:11.5px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .overdue-dot{width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0}
+/* 代墊摘要 chip：附在父費用卡名稱/備註下方，可點展開子項目 */
+.iproxy-chip{
+  display:inline-flex;align-items:center;gap:5px;margin-top:6px;
+  font-size:11px;font-weight:600;color:var(--orange-dk);
+  background:var(--orange-lt);border:none;border-radius:99px;
+  padding:4px 8px 4px 8px;cursor:pointer;font-family:inherit;
+  max-width:100%;white-space:nowrap;transition:background var(--t-fast);
+}
+.iproxy-chip:active{background:var(--orange-lt);filter:brightness(.94)}
+.iproxy-ico{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.iproxy-caret{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.4;
+  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-left:1px;
+  opacity:.65;transition:transform var(--t-fast)}
+.iproxy-chip[aria-expanded="true"] .iproxy-caret{transform:rotate(180deg)}
+.iproxy-sep{opacity:.45;font-weight:400}
+.iproxy-done{color:var(--green-dk)}
+.iproxy-pend{color:var(--orange-dk)}
+/* 附在父卡下方的代墊子卡：左側縮排 + 一條連接線，表示從屬關係 */
+.icard-child{
+  margin-left:20px;margin-top:-4px;margin-bottom:8px;position:relative;
+  border-top-left-radius:0;
+}
+.icard-child::before{
+  content:'';position:absolute;left:-11px;top:-6px;bottom:50%;width:11px;
+  border-left:2px solid var(--border2);border-bottom:2px solid var(--border2);
+  border-bottom-left-radius:8px;
+}
+.icard-child .irow{padding-top:11px;padding-bottom:11px}
+
 .iright{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .iamt{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;letter-spacing:-.01em}
 .iamt.g{color:var(--green)}.iamt.r{color:var(--red)}.iamt.o{color:var(--orange)}
@@ -1535,6 +1565,18 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 /* ── Settings ─────────────────────────────────────────────── */
 .settings-group{background:var(--bg);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow-sm)}
 .settings-group-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:14px 16px 6px}
+/* 備份狀態小字（設定頁「資料管理」群組下方） */
+.settings-sub-note{font-size:11.5px;color:var(--text3);line-height:1.5;padding:8px 16px 0}
+/* 快照列表（自動備份還原彈窗） */
+.snap-row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border)}
+.snap-row:last-child{border-bottom:none}
+.snap-meta{flex:1;min-width:0}
+.snap-when{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+.snap-latest{font-size:10px;font-weight:700;color:var(--green);background:var(--green-lt);padding:2px 7px;border-radius:99px;letter-spacing:.03em}
+.snap-detail{font-size:11.5px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}
+.snap-restore{flex:0 0 auto;height:34px;padding:0 16px;border-radius:99px;border:1.5px solid var(--green);
+  background:var(--green-lt);color:var(--green-dk);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+.snap-restore:active{background:var(--green);color:#fff;transform:scale(.97)}
 .settings-row{
   display:flex;align-items:center;justify-content:space-between;
   padding:15px 16px;border-top:1px solid var(--border);cursor:pointer;
@@ -2007,8 +2049,13 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         <div><div class="settings-row-lbl">匯入備份</div><div class="settings-row-sub">從 JSON 還原全部，或從 CSV 匯入項目</div></div>
         <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 14 12 9 17 14"/><line x1="12" y1="9" x2="12" y2="21"/></svg></div>
       </div>
+      <div class="settings-row" role="button" tabindex="0" onclick="openSnapshots()">
+        <div><div class="settings-row-lbl">自動備份與還原</div><div class="settings-row-sub" id="snap-sub">—</div></div>
+        <div class="settings-row-right"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg></div>
+      </div>
       <input type="file" id="imp" accept=".json,.csv" style="display:none" onchange="importFile(event)">
     </div>
+    <div class="settings-sub-note" id="backup-status-note"></div>
     <div class="settings-group-title">偏好設定</div>
     <div class="settings-group">
       <div class="settings-row" role="button" tabindex="0" onclick="openCatModal()">
@@ -2074,7 +2121,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.9.4 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.10.0 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/17</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -2270,6 +2317,19 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <div class="sheet-btns" style="margin-top:14px">
       <button class="btn primary" onclick="closeCatModal()">完成</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="snapov" role="dialog" aria-modal="true" aria-labelledby="snapov-title" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr-row">
+      <h3 id="snapov-title">自動備份與還原</h3>
+      <button class="btn" style="flex:0 0 auto;width:auto;height:36px;padding:0 16px;font-size:14px"
+              onclick="document.getElementById('snapov').classList.remove('on')">關閉</button>
+    </div>
+    <div class="remind-info-box"><p>App 會在每次開啟與資料變動後自動存檔，保留最近 5 份，可一鍵還原 —— 用來救誤刪、誤匯入。快照存在這支手機上，換機或遺失救不到，離開裝置的長期備份請用上方「匯出 JSON」。</p></div>
+    <div id="snap-list"></div>
   </div>
 </div>
 
@@ -2653,6 +2713,21 @@ function doUndo(){
   const t=document.getElementById('toast');
   if(t._undoFn){clearTimeout(_undoTimer);t._undoFn();t._undoFn=null;}
   t.classList.remove('on');
+}
+
+// 通用「訊息 + 動作按鈕」toast（用在備份提醒等場合），停留久一點方便點按
+let _actTimer=null;
+function toastAction(msg, label, fn){
+  const t=document.getElementById('toast');
+  t.innerHTML=`${esc(msg)} <button onclick="doToastAct()" style="margin-left:10px;background:rgba(255,255,255,.22);border:none;color:#fff;padding:2px 10px;border-radius:99px;cursor:pointer;font-size:13px">${esc(label)}</button>`;
+  t._actFn=fn;
+  t.classList.add('on');
+  clearTimeout(_actTimer);
+  _actTimer=setTimeout(()=>{t.classList.remove('on');t._actFn=null;},6000);
+}
+function doToastAct(){
+  const t=document.getElementById('toast');
+  if(t._actFn){clearTimeout(_actTimer);const f=t._actFn;t._actFn=null;t.classList.remove('on');f();}
 }
 
 
@@ -3555,7 +3630,7 @@ function toggleAdvFields(){
 // ── IndexedDB (Optimized Layers) ─────────────────────────
 function openDB(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open('expense_v8',3); // v3: added subs store（訂閱參考資料，不進 items）
+    const r=indexedDB.open('expense_v8',4); // v4: added snapshots store（自動快照）
     r.onupgradeneeded=e=>{
       const db=e.target.result;
       let itemStore;
@@ -3574,6 +3649,11 @@ function openDB(){
       if(!db.objectStoreNames.contains('subs')){
         const subStore=db.createObjectStore('subs',{keyPath:'id',autoIncrement:true});
         subStore.createIndex('status','status');
+      }
+      // v4: 自動快照。整份資料的定期備份，存在 App 內、獨立於一切統計。
+      // keyPath 'ts'（ISO 時間字串）天然就是排序鍵，不需 autoIncrement。
+      if(!db.objectStoreNames.contains('snapshots')){
+        db.createObjectStore('snapshots',{keyPath:'ts'});
       }
     };
     r.onsuccess=e=>{
@@ -3649,6 +3729,12 @@ const getAllSubs=()=>idbReq(subStore('readonly').getAll()).then(r=>r||[]).catch(
 const getSubById=id=>idbReq(subStore('readonly').get(id)).then(r=>r||null).catch(()=>null);
 const putSub=x=>idbWrite(subStore('readwrite').put(x));
 const delSub=id=>idbWrite(subStore('readwrite').delete(id));
+
+// ── 自動快照 store（App 內備份，獨立於一切統計）──────────────────
+const snapStore=m=>DB.transaction('snapshots',m).objectStore('snapshots');
+const getAllSnaps=()=>idbReq(snapStore('readonly').getAll()).then(r=>r||[]).catch(()=>[]);
+const putSnap=x=>idbWrite(snapStore('readwrite').put(x));
+const delSnap=ts=>idbWrite(snapStore('readwrite').delete(ts));
 
 // ── Selects ──────────────────────────────────────────────
 function buildSelects(){
@@ -3780,6 +3866,9 @@ const dirtyAll=()=>{
   _minYmCache=null;                                   // 資料變動 → 可切換範圍下界要重算
   invalidateAll();                                    // 全表快取一併作廢
   Object.keys(dirty).forEach(k=>dirty[k]=true);
+  // 資料變動後排一次自動快照（節流，見 scheduleSnapshot）。
+  // dirtyAll 是所有寫入後的共同出口，掛在這裡涵蓋新增/編輯/刪除/匯入/還原。
+  if(typeof scheduleSnapshot==='function') scheduleSnapshot('change');
 };
 
 function refreshCatSel(){
@@ -3832,18 +3921,24 @@ function toggleProxySection(){
 function getProxyRows(){
   // Only return rows with BOTH a payee name AND amount > 0 (partial rows are ignored)
   return Array.from(document.querySelectorAll('#proxy-rows .proxy-row')).map(row=>({
+    // cid：編輯既有代墊時載入的既存子項目 id。有 cid → 沿用該筆記錄（連同它的
+    // recovered 收回狀態）；沒有 cid → 這是新加的一列，儲存時才建立。
+    // 這是「差異式儲存」不再刪掉重建的關鍵：收回標記綁在延續下來的記錄上。
+    cid   : row.dataset.cid ? +row.dataset.cid : null,
     payee : (row.querySelector('.proxy-payee')?.value||'').trim(),
     amount: parseFloat((row.querySelector('.proxy-amt')?.value||'').replace(/[^0-9.]/g,''))||0
   })).filter(r=>r.amount>0&&r.payee.length>0);
 }
 
 // Adds a new proxy-row to the form; accepts optional prefill values for edit-mode repopulation
-function addProxyRow(prefillPayee='', prefillAmount=0){
+function addProxyRow(prefillPayee='', prefillAmount=0, cid=null){
   const container=document.getElementById('proxy-rows');
   const idx=++_proxyCount;
   const row=document.createElement('div');
   row.className='proxy-row';
   row.dataset.idx=idx;
+  // 帶著既存子項目 id，儲存時據此沿用而非重建（保住收回狀態）
+  if(cid!=null) row.dataset.cid=cid;
   row.innerHTML=
     `<input class="proxy-payee" type="text" placeholder="代墊對象（如：小明）" `+
     `value="${esc(prefillPayee)}" autocomplete="off" oninput="updateProxyCalc()" aria-label="代墊對象">`+
@@ -4469,9 +4564,14 @@ async function rHome(){
 // ── Item card (listener-free — all events handled by delegation) ──
 // OPT1: No addEventListener calls here. Data attributes carry the context
 // the delegation handler needs. This means N cards = 0 extra listeners.
-function makeCard(x){
+function makeCard(x, childInfo, isChild){
   const isAdv=x.itype==='advance';
   const isDone=isAdv?x.recovered===1:x.paid===1;
+  // childInfo：這張是「有代墊拆分的父費用」時帶入 {n, recovered}，
+  // 用來在卡片上顯示「代墊 N 筆 · 已收回 X」的摘要。子項目本身不再各自
+  // 成為頂層卡片，改為附在父卡下方（見 rList 的分組邏輯）。
+  // isChild：這張是附在父卡下方的代墊子卡，副標精簡（不重複「來自帳單」）。
+  const hasKids = childInfo && childInfo.n>0;
 
   const card=document.createElement('div');
   card.className='icard';
@@ -4521,10 +4621,36 @@ function makeCard(x){
   if(isAdv&&x.payee)subs.push('代墊：'+x.payee);
   if(x.date)subs.push('繳費 '+fmtMD(x.date,x.ym));
   if(x.closeDate)subs.push('結帳 '+fmtMD(x.closeDate,x.ym));
-  if(x.note)subs.push(x.note);
+  // 附在父卡下方的子卡不重複顯示「來自帳單：…」（父卡就在正上方）
+  if(x.note && !isChild){
+    const noteShown = hasKids ? stripSplitNote(x.note) : x.note;
+    if(noteShown) subs.push(noteShown);
+  }
   if(subs.length){
     const st=document.createElement('div');st.className='isub';
     st.textContent=subs.join('　');info.appendChild(st);
+  }
+  // 代墊摘要 chip —— 只在父費用卡出現，點一下展開/收合子項目。
+  // 放在 iinfo 之外、直接掛在 row 上，才不會連帶觸發「編輯」動作。
+  if(hasKids){
+    const allRec = childInfo.recovered===childInfo.n;
+    const chip=document.createElement('button');
+    chip.type='button';
+    chip.className='iproxy-chip';
+    chip.dataset.action='proxytoggle';
+    chip.setAttribute('aria-expanded', proxyExpanded.has(x.id)?'true':'false');
+    chip.setAttribute('aria-label', `代墊 ${childInfo.n} 筆，已收回 ${childInfo.recovered} 筆，點擊展開明細`);
+    chip.innerHTML =
+      `<svg class="iproxy-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>`+
+      `<circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`+
+      `<span>代墊 ${childInfo.n} 筆</span>`+
+      `<span class="iproxy-sep">·</span>`+
+      `<span class="${allRec?'iproxy-done':'iproxy-pend'}">`+
+        (allRec ? '已全數收回' : `已收回 ${childInfo.recovered}/${childInfo.n}`)+
+      `</span>`+
+      `<svg class="iproxy-caret" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+    // chip 掛在名稱/備註之外、金額之前，成為 row 的獨立可點區塊
+    info.appendChild(chip);
   }
 
   // Amount + badge
@@ -4567,6 +4693,8 @@ function setF(f){
 // ── 明細 time range: presets first, selectors only on 自訂 ──
 // 本月 follows the shared month state, so 首頁 and 明細 can't disagree.
 let listRange='month';   // 'month' | '3m' | 'custom'
+// 目前展開代墊明細的父費用 id 集合。刻意設計成 session 內記憶，換分頁回來仍保持。
+const proxyExpanded=new Set();
 
 function resolveListRange(){
   if(listRange==='custom'){
@@ -4670,8 +4798,33 @@ async function rList(){
 
   el.innerHTML='';
   const frag=document.createDocumentFragment();
+
+  // ── 代墊子項目歸戶 ────────────────────────────────────────────
+  // 目標：父費用卡顯示「代墊 N 筆 · 已收回 X」摘要，子項目附在父卡下方，
+  // 不再各自散落成頂層卡片。
+  // 但兩種情況子項目仍要獨立顯示：
+  //   1)「代墊」篩選分頁 —— 那是代墊的專屬檢視，本來就要逐筆列
+  //   2) 父費用不在目前結果內（被搜尋/篩選/時間範圍濾掉）—— 孤兒不能藏
+  const inList=new Set(items.map(x=>x.id));
+  const kidsByParent=new Map();      // parentId -> [child, ...]
+  const attachedIds=new Set();       // 已歸戶、不再獨立顯示的子項目
+  if(listFilter!=='advance'){
+    items.forEach(x=>{
+      if(x.itype==='advance' && x.parentId!=null && inList.has(x.parentId)){
+        if(!kidsByParent.has(x.parentId)) kidsByParent.set(x.parentId,[]);
+        kidsByParent.get(x.parentId).push(x);
+        attachedIds.add(x.id);
+      }
+    });
+  }
+  const childInfoOf=pid=>{
+    const ks=kidsByParent.get(pid); if(!ks) return null;
+    return {n:ks.length, recovered:ks.filter(k=>k.recovered===1).length};
+  };
+
   const groups=new Map();
   items.forEach(x=>{
+    if(attachedIds.has(x.id)) return;         // 歸戶的子項目不進頂層分組
     const key=x.date||'__no_date__';
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(x);
@@ -4683,7 +4836,20 @@ async function rList(){
     const subtotal=groupItems.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
     hdr.innerHTML=`<span>${label}</span>${subtotal>0?`<span class="date-grp-subtotal">${fmt(subtotal)}</span>`:''}`;
     frag.appendChild(hdr);
-    groupItems.forEach(x=>frag.appendChild(makeCard(x)));
+    groupItems.forEach(x=>{
+      frag.appendChild(makeCard(x, childInfoOf(x.id)));
+      // 父卡下方接續它的代墊子卡：預設收起，點 chip 展開才顯示。
+      const ks=kidsByParent.get(x.id);
+      if(ks && proxyExpanded.has(x.id)){
+        ks.sort((a,b)=>(a.recovered-b.recovered)||(a.payee||'').localeCompare(b.payee||''));
+        ks.forEach((k,i)=>{
+          const c=makeCard(k, null, true);   // isChild=true：省略「來自帳單」等冗餘副標
+          c.classList.add('icard-child');
+          if(i===ks.length-1) c.classList.add('icard-child-last');
+          frag.appendChild(c);
+        });
+      }
+    });
   });
 
   const totalAmt=items.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
@@ -5848,6 +6014,7 @@ function rSettings(){
   // Category preview
   const cp=document.getElementById('cat-preview-settings');
   if(cp) cp.textContent=getCats().join('、');
+  if(typeof refreshBackupStatus==='function') refreshBackupStatus();
   // Reminder preview
   const rp=document.getElementById('remind-preview-settings');
   if(rp) rp.textContent=remCfg.enabled?`已啟用 · 提前 ${remCfg.dueSoonDays} 天提醒`:'已停用';
@@ -5937,7 +6104,7 @@ async function openForm(id){
         const tBtn = document.getElementById('proxy-toggle-btn');
         if(sec)  sec.style.display  = '';
         if(tBtn){ tBtn.classList.add('active'); tBtn.setAttribute('aria-expanded','true'); }
-        children.forEach(c => addProxyRow(c.payee, c.amount));
+        children.forEach(c => addProxyRow(c.payee, c.amount, c.id));
         // 金額欄要放「原始帳單總額」，不是已扣除的個人金額。
         // billAmount 是新版才有的欄位；舊資料用「個人金額 + 代墊合計」還原，
         // 對只存過一次的記錄完全正確。
@@ -6047,12 +6214,10 @@ async function saveItem(){
 
   const wasEditing = !!editId; // capture BEFORE closeForm() resets editId to null
 
-  // Fix 1: In edit mode, delete ALL existing proxy children before re-saving
-  // This prevents duplicate/orphaned advance entries on repeated edits
-  if(editId && !isAdv){
-    const oldChildren = await getByParentId(editId);
-    for(const c of oldChildren) await delItem(c.id);
-  }
+  // 差異式儲存取代「刪光重建」：先讀出目前的子項目，等父項目存完後再逐一
+  // 比對沿用 / 更新 / 新增 / 刪除。刪光重建會把每一筆的 recovered 收回狀態
+  // 一併清成 0 —— 這正是「已收回的代墊重存父費用後又變未收回」的原因。
+  const existingChildren = (editId && !isAdv) ? await getByParentId(editId) : [];
 
   let savedId = editId; // will hold the parent item's final id (new or existing)
 
@@ -6097,26 +6262,47 @@ async function saveItem(){
     savedId = item.id; // capture assigned/existing id for parentId linking
   }
 
-  // ── Save each proxy row as an independent advance item ───────────────
-  let proxyCreated=0;
+  // ── 差異式同步子代墊項目（沿用 / 更新 / 新增 / 刪除）────────────────
+  // 目標：延續下來的子項目「原封不動」，尤其是它的 recovered 收回狀態。
+  const byId = new Map(existingChildren.map(c => [c.id, c]));
+  const keptIds = new Set();
+  let proxyCreated = 0;
+
   for(const row of proxyRows){
-    if(row.amount>0 && row.payee){
-      await putItem({
-        itype:     'advance',
+    const prev = row.cid != null ? byId.get(row.cid) : null;
+    if(prev){
+      // 沿用既有記錄：只改可能變動的欄位，recovered 完全不碰
+      keptIds.add(prev.id);
+      const updated = {
+        ...prev,                       // ← 保留 id、recovered、以及任何其他欄位
         cat,
-        name:      `${name}（代墊-${row.payee}）`,
-        amount:    row.amount,
+        name:  `${name}（代墊-${row.payee}）`,
+        amount: row.amount,
         date,
-        note:      `來自帳單：${name}`,
-        remindDays:remDays,
+        note:  `來自帳單：${name}`,     // 父帳單改名時，子項目備註跟著更新
+        remindDays: remDays,
         ym,
-        payee:     row.payee,
-        paid:      1,
-        recovered: 0,
-        parentId:  savedId  // Fix 1: link to parent for cascade delete/edit
+        payee: row.payee,
+        paid:  1,
+        parentId: savedId
+      };
+      await putItem(updated);
+    } else {
+      // 表單上的新代墊列 → 建立新記錄，預設未收回
+      await putItem({
+        itype:'advance', cat,
+        name:`${name}（代墊-${row.payee}）`,
+        amount:row.amount, date, note:`來自帳單：${name}`,
+        remindDays:remDays, ym, payee:row.payee,
+        paid:1, recovered:0, parentId:savedId
       });
       proxyCreated++;
     }
+  }
+
+  // 這次沒有沿用到的舊子項目 = 使用者在表單上刪掉的那幾列
+  for(const c of existingChildren){
+    if(!keptIds.has(c.id)) await delItem(c.id);
   }
 
   closeForm(true); dirtyAll(); rHome(); // skipFocusRestore=true after intentional submit
@@ -6257,6 +6443,106 @@ async function exportJSON(){
   a.download=`expenses-${today()}.json`;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast(`已備份 ${all.length} 筆項目${subs.length?`、${subs.length} 筆訂閱`:''}與所有設定`);
+  // A 方案：記下這次「往裝置外」備份的時間，供逾期提醒判斷
+  localStorage.setItem('ep_last_export', new Date().toISOString());
+  refreshBackupStatus();
+}
+
+// ── A 方案：太久沒手動匯出就提醒 ────────────────────────────────
+// 自動快照（C）防的是手滑；但快照跟資料一起存在同一支手機上，手機掉了就一起沒了。
+// 所以仍要提醒使用者定期「匯出 JSON」到裝置外。這裡只提示，不強迫。
+const EXPORT_REMIND_DAYS=7;
+
+function lastExportInfo(){
+  const iso=localStorage.getItem('ep_last_export');
+  if(!iso) return {iso:null, days:null};
+  const days=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
+  return {iso, days};
+}
+
+async function checkBackupReminder(){
+  // 沒有任何資料就不必提醒
+  const all=await getAll();
+  if(!all.length) return;
+  const {iso,days}=lastExportInfo();
+  const overdue = (iso===null) || (days>=EXPORT_REMIND_DAYS);
+  if(!overdue) return;
+  // 一天內不重複提醒
+  const shownOn=localStorage.getItem('ep_export_remind_on');
+  if(shownOn===today()) return;
+  localStorage.setItem('ep_export_remind_on', today());
+  const msg = iso===null
+    ? '尚未匯出過備份，建議匯出一份 JSON 存到雲端硬碟或傳給自己'
+    : `已 ${days} 天未匯出備份，建議匯出一份存到裝置外`;
+  toastAction(msg, '立即匯出', ()=>exportJSON());
+}
+
+// ── 自動快照 ────────────────────────────────────────────────────
+// C 方案：App 內定期把整份資料存進 snapshots store，保留最近 5 份，一鍵還原。
+// 定位是「防手滑」（誤刪、誤匯入、清資料），不是離開裝置的長期備份 ——
+// 後者仍靠手動「匯出 JSON」。快照 payload 與手動匯出完全相同，所以還原可以
+// 直接重用匯入那條久經測試的邏輯。
+const SNAP_KEEP=5;                    // 保留份數
+const SNAP_MIN_GAP_MS=3*60*1000;      // 最短間隔：3 分鐘內的密集變動只留最後一份
+let _snapTimer=null, _lastSnapAt=0;
+
+async function buildSnapshotPayload(){
+  const all=await getAll();
+  const subs=await getAllSubs();
+  return {
+    app:'COST', v:BACKUP_VER,
+    exported:new Date().toISOString(),
+    auto:true,                        // 標記為自動快照（跟手動匯出區分）
+    settings:collectSettings(),
+    items:all,
+    subs
+  };
+}
+
+// 內容指紋：只看 items + subs + settings，用來判斷「跟上一份一樣就不重複存」。
+// 不含 exported 時戳，否則每次都不同。
+function snapFingerprint(p){
+  try{ return JSON.stringify([p.items,p.subs,p.settings]).length
+        +':'+ (p.items?p.items.length:0) +':'+ (p.subs?p.subs.length:0); }
+  catch{ return String(Date.now()); }
+}
+
+async function takeSnapshot(reason){
+  if(!DB) return;
+  try{
+    const payload=await buildSnapshotPayload();
+    // 完全沒有資料就不必存空快照
+    if((!payload.items||!payload.items.length)&&(!payload.subs||!payload.subs.length)) return;
+
+    const snaps=(await getAllSnaps()).sort((a,b)=>b.ts.localeCompare(a.ts));
+    const fp=snapFingerprint(payload);
+    // 跟最新一份內容相同 → 不重複存
+    if(snaps.length && snaps[0].fp===fp) return;
+
+    const rec={
+      ts:new Date().toISOString(),    // keyPath，天然排序
+      fp,
+      reason:reason||'auto',
+      count:payload.items.length,
+      subCount:payload.subs.length,
+      payload
+    };
+    await putSnap(rec);
+    _lastSnapAt=Date.now();
+
+    // 只保留最新 SNAP_KEEP 份，其餘刪除
+    const after=(await getAllSnaps()).sort((a,b)=>b.ts.localeCompare(a.ts));
+    for(const old of after.slice(SNAP_KEEP)) await delSnap(old.ts);
+  }catch(err){
+    console.warn('自動快照失敗：',err);   // 快照是盡力而為，失敗不打擾使用者
+  }
+}
+
+// 資料變動後呼叫：節流，把 3 分鐘內的密集變動合併成最後一份。
+function scheduleSnapshot(reason){
+  clearTimeout(_snapTimer);
+  const wait=Math.max(0, SNAP_MIN_GAP_MS-(Date.now()-_lastSnapAt));
+  _snapTimer=setTimeout(()=>takeSnapshot(reason||'change'), wait || 1500);
 }
 
 // 還原偏好設定。預算優先用名稱對應，舊檔 (v8 以前) 的索引格式仍相容。
@@ -6401,6 +6687,124 @@ function normalizeImportedItem(raw){
   return rec;
 }
 
+// ── 快照還原 UI ─────────────────────────────────────────────────
+// 還原邏輯與匯入完全共用（見 restorePayload），差別只在來源。
+function fmtSnapWhen(iso){
+  const d=new Date(iso), now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const sameDay=d.toDateString()===now.toDateString();
+  const y=new Date(now-86400000).toDateString()===d.toDateString();
+  const hm=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if(sameDay) return `今天 ${hm}`;
+  if(y)       return `昨天 ${hm}`;
+  return `${d.getMonth()+1}/${d.getDate()} ${hm}`;
+}
+
+async function renderSnapshots(){
+  const snaps=(await getAllSnaps()).sort((a,b)=>b.ts.localeCompare(a.ts));
+  const el=document.getElementById('snap-list'); if(!el) return;
+  if(!snaps.length){
+    el.innerHTML=`<div class="empty-msg" style="padding:22px 10px">
+      <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+      <strong style="font-size:14px;color:var(--text2);margin-bottom:5px">尚無自動備份</strong>
+      <span style="font-size:12px">新增或修改一筆資料後就會產生第一份</span></div>`;
+    return;
+  }
+  el.innerHTML=snaps.map((s,i)=>`
+    <div class="snap-row">
+      <div class="snap-meta">
+        <div class="snap-when">${esc(fmtSnapWhen(s.ts))}${i===0?' <span class="snap-latest">最新</span>':''}</div>
+        <div class="snap-detail">${s.count} 筆項目${s.subCount?` · ${s.subCount} 筆訂閱`:''} · ${s.reason==='open'?'開啟時':'變動後'}</div>
+      </div>
+      <button type="button" class="snap-restore" data-ts="${esc(s.ts)}">還原</button>
+    </div>`).join('');
+  el.querySelectorAll('.snap-restore').forEach(btn=>{
+    btn.onclick=()=>restoreSnapshot(btn.dataset.ts);
+  });
+}
+
+async function restoreSnapshot(ts){
+  const snaps=await getAllSnaps();
+  const snap=snaps.find(s=>s.ts===ts);
+  if(!snap){ toast('找不到這份備份'); return; }
+  const when=fmtSnapWhen(ts);
+  if(!confirm(`還原「${when}」的備份（${snap.count} 筆項目）？\n\n目前的資料會被這份備份取代。還原前系統會先自動存一份目前狀態，還原錯了可以再還原回來。`)) return;
+
+  // 還原前先把「現在」拍一張，給使用者反悔的機會
+  await takeSnapshot('before-restore');
+
+  try{
+    const applied=await restorePayload(snap.payload, /*replace=*/true);
+    document.getElementById('snapov').classList.remove('on');
+    dirtyAll(); renderActive(); rSettings();
+    toast(`已還原「${when}」的備份`);
+  }catch(err){
+    alert('還原失敗：'+err.message);
+  }
+}
+
+// ── 共用還原：匯入與快照還原都走這裡 ─────────────────────────────
+// payload：{items, subs, settings}；replace=true 先清空再還原（回復備份），
+// false 則合併（併另一台裝置的資料）。回傳已套用的設定描述陣列。
+async function restorePayload(payload, replace){
+  const items = Array.isArray(payload.items)?payload.items:[];
+  const subs  = Array.isArray(payload.subs)?payload.subs:[];
+  const settings = payload.settings||null;
+
+  if(replace){
+    for(const r of await getAll())     await delItem(r.id);
+    for(const r of await getAllSubs()) await delSub(r.id);
+  }
+  const applied=settings?applySettings(settings):[];
+
+  let skipped=0;
+  for(const item of items){
+    const c=normalizeImportedItem(item);
+    if(!c){ skipped++; continue; }
+    await putItem(c);
+  }
+  for(const sub of subs){
+    const c={...sub}; delete c.id;
+    if(!c.status) c.status='active';
+    if(!c.cycle)  c.cycle='monthly';
+    await putSub(c);
+  }
+  if(!advOn() && items.some(x=>x.itype==='advance')){
+    featAdv=true; localStorage.setItem('ep_feat_adv','true');
+    applied.push('代墊功能（因含代墊資料而開啟）');
+  }
+  applyAdvVisibility(); refreshCatSel();
+  return applied;
+}
+
+async function openSnapshots(){
+  await renderSnapshots();
+  document.getElementById('snapov').classList.add('on');
+}
+
+// 設定頁「自動備份與還原」副標 + 逾期匯出提示文字
+async function refreshBackupStatus(){
+  const sub=document.getElementById('snap-sub');
+  if(sub){
+    const snaps=await getAllSnaps();
+    if(snaps.length){
+      const latest=snaps.map(s=>s.ts).sort().slice(-1)[0];
+      sub.textContent=`最近備份：${fmtSnapWhen(latest)} · 共 ${snaps.length} 份`;
+    }else{
+      sub.textContent='尚無自動備份';
+    }
+  }
+  const note=document.getElementById('backup-status-note');
+  if(note){
+    const {iso,days}=lastExportInfo();
+    note.textContent = iso===null
+      ? '提示：自動備份存在本機，建議定期「匯出 JSON」到裝置外保存。'
+      : (days>=EXPORT_REMIND_DAYS
+          ? `已 ${days} 天未匯出到裝置外，建議匯出一份 JSON 保存。`
+          : `上次匯出到裝置外：${days===0?'今天':days+' 天前'}。`);
+  }
+}
+
 async function importFile(e){
   const file=e.target.files[0];if(!file)return;
   try{
@@ -6443,40 +6847,12 @@ async function importFile(e){
     let replaced=false;
     if(existing.length&&items.length){
       replaced=confirm(`目前已有 ${existing.length} 筆項目。\n\n按「確定」清空後還原（適合回復備份）\n按「取消」保留並合併（適合合併另一台裝置）`);
-      if(replaced){
-        for(const r of existing) await delItem(r.id);
-        // 訂閱與項目屬於同一份備份，還原時要一起換掉，否則會殘留舊訂閱
-        for(const r of await getAllSubs()) await delSub(r.id);
-      }
     }
 
-    // 設定先還原，預算才能按名稱對應到還原後的類別
-    const applied=settings?applySettings(settings):[];
+    // 還原邏輯與快照還原完全共用
+    const applied=await restorePayload({items, subs, settings}, replaced);
+    const skipped=items.length - items.filter(x=>normalizeImportedItem(x)).length;
 
-    let skipped=0;
-    for(const item of items){
-      const c=normalizeImportedItem(item);   // id / parentId 一律不留：舊 id 在重匯後不存在
-      if(!c){ skipped++; continue; }
-      await putItem(c);
-    }
-    if(skipped) console.warn(`匯入時略過 ${skipped} 筆格式不符的資料`);
-
-    // 訂閱是獨立 store，不參與任何金額統計，直接還原即可
-    for(const sub of subs){
-      const c={...sub};
-      delete c.id;
-      if(!c.status) c.status='active';
-      if(!c.cycle)  c.cycle='monthly';
-      await putSub(c);
-    }
-
-    // 匯入的代墊資料若在功能關閉狀態下會整批看不見
-    if(!advOn() && items.some(x=>x.itype==='advance')){
-      featAdv=true; localStorage.setItem('ep_feat_adv','true');
-      applied.push('代墊功能（因含代墊資料而開啟）');
-    }
-    applyAdvVisibility();
-    refreshCatSel();
     dirtyAll(); renderActive(); rSettings();
 
     toast(`${replaced?'已還原':'已匯入'} ${items.length-skipped} 筆${skipped?`（略過 ${skipped} 筆格式不符）`:''}${applied.length?'　+ '+applied.length+' 項設定':''}`);
@@ -6578,6 +6954,20 @@ function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.10.0', d:'2026/08/17', c:[
+    ['add','自動備份：App 每次開啟與資料變動後自動存檔，保留最近 5 份，設定頁「自動備份與還原」可一鍵還原。用來救誤刪、誤匯入'],
+    ['add','還原前會先自動存一份目前狀態，還原錯了可以再還原回來'],
+    ['add','太久（7 天）沒有匯出 JSON 到裝置外時，會提醒匯出'],
+  ]},
+  { v:'v4.9.6', d:'2026/08/17', c:[
+    ['imp','明細頁：有代墊拆分的費用改為顯示「代墊 N 筆 · 已收回 X」摘要，子項目預設收起，點一下展開'],
+    ['imp','展開後的代墊子項目仍可各自勾選收回、各自滑動刪除；「代墊」篩選分頁維持逐筆平列'],
+    ['chg','父費用卡不再顯示自動產生的拆分備註（已由摘要取代）'],
+  ]},
+  { v:'v4.9.5', d:'2026/08/17', c:[
+    ['fix','多筆代墊時，若其中一筆已標記收回，重新開啟父費用儲存後會被打回未收回。原因是儲存時把所有子項目刪除重建，收回狀態一併被清為 0'],
+    ['imp','代墊儲存改為差異式同步（沿用／更新／新增／刪除），延續的子項目連同收回狀態原封不動；不需資料遷移'],
+  ]},
   { v:'v4.9.4', d:'2026/08/17', c:[
     ['fix','帳單含代墊款時，重新開啟編輯再儲存會重複扣除金額（反覆儲存會一路扣到 0）。原因是原始帳單金額從未被保存，表單載入的是已扣除後的數字'],
     ['fix','代墊拆分的自動備註每次儲存都會重複附加一行'],
@@ -6758,6 +7148,10 @@ openDB().then(async ()=>{
   rSettings();  // populate settings previews on first load
   renderNetState();
   requestPersistence().then(ok => { if(ok) console.info('儲存空間已設為永久保存'); });
+
+  // 開 App 時做一次自動快照（延遲一下，先讓首屏渲染完）。
+  // 同時檢查「太久沒手動匯出」的提醒（A 方案）。
+  setTimeout(()=>{ takeSnapshot('open'); checkBackupReminder(); }, 2500);
   
   // 優化：處理中文輸入法 (IME) 的搜尋防抖事件
   const sInput = document.getElementById('search');
@@ -6809,6 +7203,15 @@ openDB().then(async ()=>{
           }
           dirtyAll(); rHome(); toast('已復原');
         });
+        return;
+      }
+
+      // [proxytoggle] 展開/收合代墊子項目。必須排在 edit 之前 —— chip 在 iinfo 內，
+      // 不先攔下來就會被當成編輯點擊。
+      if(e.target.closest('[data-action="proxytoggle"]')){
+        if(proxyExpanded.has(id)) proxyExpanded.delete(id);
+        else proxyExpanded.add(id);
+        rList();
         return;
       }
 
