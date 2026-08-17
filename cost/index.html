@@ -2074,9 +2074,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.9.3 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.9.4 <span class="app-info-chev">›</span></span>
         </div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/07/30</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/08/17</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -3870,6 +3870,14 @@ function removeProxyRow(btn){
 }
 
 // Updates the live formula card below the proxy rows
+// 拆分備註是機器產生的，不是使用者寫的。之前每次儲存都把它「再接一次」到
+// 已經含有上一次結果的備註後面，於是備註每存一次就多一行。
+// 現在載入表單時先剝掉，儲存時重新產生 —— 這樣重複儲存的結果會一致。
+const SPLIT_NOTE_RE = /^帳單 \$[\d,]+(?:\.\d+)?，代墊 \$[\d,]+(?:\.\d+)? 已另立記錄$/;
+function stripSplitNote(note){
+  return String(note||'').split('\n').filter(l=>!SPLIT_NOTE_RE.test(l.trim())).join('\n').trim();
+}
+
 function updateProxyCalc(){
   const calcEl=document.getElementById('proxy-calc');
   if(!calcEl) return;
@@ -5904,10 +5912,13 @@ async function openForm(id){
     onTypeChange();
     document.getElementById('f-cat').value=x.cat;
     document.getElementById('f-name').value=x.name;
+    // 金額欄先填 x.amount；若這筆有代墊拆分，下面會改填原始帳單總額
     setAmt('f-amt-r','f-amt-d',x.amount);
     document.getElementById('f-date').value=x.date||'';
     document.getElementById('f-close').value=x.closeDate||'';
-    document.getElementById('f-note').value=x.note||'';
+    // 自動產生的拆分備註不放進輸入框：它會在儲存時重新產生，
+    // 留在框裡只會讓使用者以為那是自己寫的，而且容易被重複累加
+    document.getElementById('f-note').value=stripSplitNote(x.note);
     document.getElementById('f-payee').value=x.payee||'';
     const rd=x.remindDays||0;
     document.getElementById('rd-off').checked=rd===0;
@@ -5927,6 +5938,14 @@ async function openForm(id){
         if(sec)  sec.style.display  = '';
         if(tBtn){ tBtn.classList.add('active'); tBtn.setAttribute('aria-expanded','true'); }
         children.forEach(c => addProxyRow(c.payee, c.amount));
+        // 金額欄要放「原始帳單總額」，不是已扣除的個人金額。
+        // billAmount 是新版才有的欄位；舊資料用「個人金額 + 代墊合計」還原，
+        // 對只存過一次的記錄完全正確。
+        const kidSum = children.reduce((t,c)=>t+(c.amount||0),0);
+        const billAmt = (typeof x.billAmount === 'number' && x.billAmount > 0)
+                      ? x.billAmount
+                      : x.amount + kidSum;
+        setAmt('f-amt-r','f-amt-d', billAmt);
         updateProxyCalc();
       }
     }
@@ -5992,7 +6011,8 @@ async function saveItem(){
   const remDays= parseInt(document.querySelector('input[name="remind"]:checked')?.value||'0');
   const cat    = document.getElementById('f-cat').value;
   const date   = date0;
-  const rawNote= document.getElementById('f-note').value.trim();
+  // 剝掉可能殘留的舊自動備註，避免使用者手動改過表單後又被接一次
+  const rawNote= stripSplitNote(document.getElementById('f-note').value);
 
   // ── Proxy split: collect rows (only for normal-type entries) ─────────
   const proxyRows = (!isAdv) ? getProxyRows() : [];
@@ -6048,6 +6068,11 @@ async function saveItem(){
       date, note: finalNote,
       remindDays: remDays, ym
     };
+    // BUGFIX：原本只存扣除後的 personalAmt，原始帳單金額完全沒有留下來。
+    // 重新編輯時表單載入的是「已經扣過的金額」，但代墊明細也一併載回來，
+    // 於是再存一次就又扣一次 —— 反覆儲存會一路把金額扣到 0。
+    // 這裡把使用者實際輸入的帳單總額獨立存起來，作為唯一的事實來源。
+    if(proxySum > 0) item.billAmount = billAmt;
     const cd=document.getElementById('f-close').value;
     if(cd) item.closeDate=cd;   // 只有填了才寫入，避免整批多一個空欄位
     if(isAdv){
@@ -6369,6 +6394,10 @@ function normalizeImportedItem(raw){
     rec.paid      = 1;
   }
   if(dateOk(raw.closeDate)) rec.closeDate=raw.closeDate;
+  // 原始帳單金額：有代墊拆分的記錄靠它還原表單，不保留的話匯入後重新編輯
+  // 又會出現重複扣款
+  const ba=Number(raw.billAmount);
+  if(Number.isFinite(ba) && ba>0) rec.billAmount=Math.round(ba);
   return rec;
 }
 
@@ -6549,6 +6578,11 @@ function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.9.4', d:'2026/08/17', c:[
+    ['fix','帳單含代墊款時，重新開啟編輯再儲存會重複扣除金額（反覆儲存會一路扣到 0）。原因是原始帳單金額從未被保存，表單載入的是已扣除後的數字'],
+    ['fix','代墊拆分的自動備註每次儲存都會重複附加一行'],
+    ['imp','舊資料沒有原始金額欄位時，以「個人金額 + 代墊合計」自動還原'],
+  ]},
   { v:'v4.9.3', d:'2026/07/30', c:[
     ['add','版本更新紀錄：設定頁新增入口，並補齊 v4.0.0 以來的歷史紀錄'],
   ]},
