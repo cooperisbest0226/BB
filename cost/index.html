@@ -2287,9 +2287,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.10.1 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.14.0 <span class="app-info-chev">›</span></span>
         </div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/08/17</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/08/18</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -7282,6 +7282,14 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.14.0', d:'2026/08/18', c:[
+    ['chg','首頁預算改用細長條＋跑者動畫取代原本的圓環與統計列，同高度下多顯示約 2 倍清單內容'],
+    ['add','預算長條加上「本月已過 X%」刻度與圖例，一眼比對花錢進度與時間進度，並標出超出／低於進度多少'],
+    ['imp','捲動清單時首頁頂部自動收合成精簡列，釋放版面；此改動採用覆蓋層結構，收合動畫不再拖慢長清單的捲動'],
+    ['fix','清單較長時（100+ 筆）上下滑動延遲：移除逐列常駐的合成層、畫面外卡片延後排版與繪製，捲動時的排版工作大幅降低'],
+    ['fix','連點兩下會觸發瀏覽器縮放；已鎖定，捲動與雙指縮放不受影響'],
+    ['fix','預算刻度「今日應為」計算誤用發薪週期天數，與長條本身（日曆月）基準不一致，數字對不上；改為與預算設定頁共用同一個月結計算，兩處刻度不會再各講各的'],
+  ]},
   { v:'v4.10.1', d:'2026/08/17', c:[
     ['fix','「檢查更新」找到新版時沒有提示、仍顯示「已是最新版本」，導致要關掉 PWA 重開才更新得到。現在會直接跳出「立即更新」按鈕'],
     ['fix','按「立即更新」在新版尚未就緒時只重整、拿到的還是舊版；改為先催出新版再套用，並在少數瀏覽器未自動重整時 2 秒後強制重整'],
