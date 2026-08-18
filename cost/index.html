@@ -4739,12 +4739,14 @@ async function rHome(){
     const lgFill = document.getElementById('h-bud-lg-fill');
     const lgTick = document.getElementById('h-bud-lg-tick');
     let duePct = null;
-    if(isNow){
-      const dim = new Date(y,m,0).getDate();
-      duePct = Math.round(Math.min(new Date().getDate()/dim*100,100));
+    // 用 app 既有的 monthElapsedPct(y,m) —— 預算設定頁的分類刻度線
+    // 也是它算的，共用同一個函式，兩處的刻度才不會各講各的。
+    // 它自己會判斷是否為當月，非當月回 null。
+    duePct = monthElapsedPct(y, m);
+    if(duePct !== null){
       tick.hidden = false;
       tick.style.left = duePct+'%';
-      tick.title = `今日應有進度 ${duePct}%`;
+      tick.title = `本月已過 ${duePct}%`;
     }else{
       tick.hidden = true;
     }
@@ -4763,7 +4765,7 @@ async function rHome(){
       const verdict = diff >= 5  ? `<b class="r">超出進度 ${diff}%</b>`
                     : diff <= -5 ? `<b class="g">低於進度 ${-diff}%</b>`
                                  : `<b class="g">與進度同步</b>`;
-      lgTick.innerHTML = `今日應為 <b>${duePct}%</b><span class="sep">·</span>${verdict}`;
+      lgTick.innerHTML = `本月已過 <b>${duePct}%</b><span class="sep">·</span>${verdict}`;
     }
 
     // meta：百分比與判斷都在圖例了，這裡只留金額與節奏，維持單行
