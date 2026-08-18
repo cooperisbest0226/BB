@@ -8,7 +8,7 @@
    更新流程刻意不自動接管：install 不呼叫 skipWaiting，新版會停在 waiting 等使用者確認。
    使用者按下更新提示後，頁面才 postMessage({type:'SKIP_WAITING'}) 讓新版上線並重新整理。
    這樣才不會在使用者編輯到一半時，把舊的 index.html 配上新的 styles.css。 */
-const CACHE_NAME = 'star-tower-team-v45';
+const CACHE_NAME = 'star-tower-team-v46';
 const APP_SHELL = [
   './',
   './index.html',
@@ -30,6 +30,9 @@ const APP_SHELL = [
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png'
 ];
+
+/* 複盤用的 YouTube 資源：縮圖 i.ytimg.com、播放器 youtube-nocookie.com、影片串流 googlevideo.com */
+const YT_HOSTS = /(^|\.)(youtube\.com|youtube-nocookie\.com|ytimg\.com|ggpht\.com|googlevideo\.com)$/i;
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
@@ -80,6 +83,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(req.url);
+
+  /* YouTube 相關（縮圖、播放器、影片串流）完全不攔截，交還給瀏覽器。
+     這些請求量大又會不斷變動，若照下面的「外部資源」規則存進快取，
+     只會把裝置空間吃光，而且離線時本來就播不了，留著也沒有意義。 */
+  if (YT_HOSTS.test(url.hostname)) return;
 
   // 同網域的靜態資源：cache-first
   if (url.origin === self.location.origin) {

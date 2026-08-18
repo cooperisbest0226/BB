@@ -341,6 +341,116 @@ function ptSheet(id){
   });
 }
 
+/* ── 複盤 ──────────────────────────────────────────────────
+   一場 RUN 掛上 YouTube 錄影連結，事後邊看影片邊對照當時的陣容。
+   影片預設只放縮圖不放播放器：iframe 是跨網域資源，離線時是一塊白，
+   而且每開一次就多一個第三方框架，點下去才載入比較輕。 */
+function reviewVideoHTML(v){
+  return `<div class="ytbox" data-yt="${esc(v.vid)}" data-start="${v.start||0}">
+    <img class="yt-thumb" src="${ytThumb(v.vid)}" alt="">
+    <div class="yt-off">載不到縮圖，可能是目前沒有連線。按播放或用下方按鈕在 YouTube 開啟。</div>
+    <button class="yt-play" aria-label="播放">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>
+    </button>
+    ${v.start?`<span class="yt-at num">從 ${fmtClock(v.start)} 開始</span>`:''}
+  </div>`;
+}
+function reviewSheet(ptId, idx){
+  const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+  const vids=pt.videos||[];
+  const cur=Math.min(Math.max(idx||0,0), Math.max(vids.length-1,0));
+  const v=vids[cur];
+
+  const player = v ? reviewVideoHTML(v) : `
+    <div class="emptystate" style="margin:0 0 4px">
+      <b>這場還沒有錄影</b>貼上 YouTube 網址就能存起來，之後回來邊看邊對陣容。
+    </div>`;
+
+  const tabs = vids.length>1 ? `<div class="vidtabs">${vids.map((x,i)=>
+    `<button class="vidtab" data-v="${i}" aria-pressed="${i===cur}">${esc(x.label||('錄影 '+(i+1)))}</button>`).join('')}</div>` : '';
+
+  const openBtn = v ? `<a class="gbtn" href="${ytWatch(v.vid,v.start)}" target="_blank" rel="noopener noreferrer"
+      style="display:block;text-align:center;padding:10px;margin-top:10px">在 YouTube 開啟</a>` : '';
+
+  /* 當時的陣容：純顯示，不能在這裡改——複盤是回頭看，改要回陣容頁改 */
+  const lineup = pt.slots.length ? `<div class="rv-list">${pt.slots.map((s,i)=>{
+    const m=memberById(s.memberId), r=roleById(s.roleId);
+    const bf=m?buffFor(m,r):'';
+    return `<div class="rv-row ${s.bento?'bento':''}">
+      <span class="rv-i num">${i+1}</span>
+      <span class="rv-nm">${esc(m?m.name:'（已刪除的成員）')}${s.bento?'<span class="rv-bento">便當</span>':''}</span>
+      ${r?`<span class="rolepill" style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</span>`:'<span class="rolepill empty">未指定</span>'}
+      ${bf?`<span class="rv-buff">${esc(bf)}</span>`:''}
+    </div>`;
+  }).join('')}</div>` : `<div class="bench-empty">這場沒有排任何成員</div>`;
+
+  const list = vids.length ? `<div class="vidlist">${vids.map((x,i)=>`
+    <div class="vidrow">
+      <span class="vidrow-n">${esc(x.label||('錄影 '+(i+1)))}</span>
+      <span class="vidrow-id num">${esc(x.vid)}${x.start?' · '+fmtClock(x.start):''}</span>
+      <button class="minibtn warn" data-del="${i}">刪除</button>
+    </div>`).join('')}</div>` : '';
+
+  sheet(`複盤 · ${pt.name}`,`
+    ${tabs}
+    ${player}
+    ${openBtn}
+    <div class="rv-sec">當時的陣容 · ${pt.slots.length}/${pt.capacity} 人</div>
+    ${lineup}
+    <div class="rv-sec">錄影連結</div>
+    ${list}
+    <div class="field" style="margin-top:10px"><label>YouTube 網址</label>
+      <input name="url" inputmode="url" autocomplete="off" placeholder="貼上網址，含 &t= 會從該時間開始"></div>
+    <div class="field"><label>標籤（選填，例如「阿明視角」）</label>
+      <input name="label" autocomplete="off" placeholder="錄影 ${vids.length+1}"></div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="close">關閉</button>
+      <button class="gbtn accent" data-s="add">加入連結</button>
+    </div>`,s=>{
+    s.classList.add('sheet-tall');
+
+    /* 縮圖載不到（離線、或影片已被移除）就換成說明文字，不要留一塊破圖 */
+    const img=s.querySelector('.yt-thumb');
+    if(img) img.addEventListener('error',()=>img.closest('.ytbox').classList.add('noimg'));
+
+    /* 點下去才把 iframe 換上來 */
+    const box=s.querySelector('.ytbox');
+    if(box) box.querySelector('.yt-play').onclick=()=>{
+      const f=document.createElement('iframe');
+      f.className='yt-frame';
+      f.src=ytEmbed(box.dataset.yt, +box.dataset.start||0);
+      f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+      f.referrerPolicy='strict-origin-when-cross-origin';
+      f.allowFullscreen=true;
+      box.classList.add('playing');
+      box.innerHTML=''; box.appendChild(f);
+    };
+
+    s.querySelectorAll('.vidtab').forEach(b=>b.onclick=()=>reviewSheet(ptId,+b.dataset.v));
+    s.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.del;
+      commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) (p.videos||[]).splice(i,1); });
+      toast('已刪除錄影連結');
+      reviewSheet(ptId, Math.min(cur, Math.max(vids.length-2,0)));
+    });
+
+    s.querySelector('[data-s="close"]').onclick=closeSheet;
+    s.querySelector('[data-s="add"]').onclick=()=>{
+      const parsed=ytParse(val(s,'url'));
+      if(!parsed) return toast('這不是看得懂的 YouTube 網址');
+      const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
+      if((p.videos||[]).some(x=>x.vid===parsed.id)) return toast('這支影片已經加過了');
+      const label=val(s,'label');
+      commit(()=>{
+        p.videos=p.videos||[];
+        p.videos.push({id:uid(), vid:parsed.id, start:parsed.start, label});
+      });
+      toast('已加入錄影連結');
+      reviewSheet(ptId, (p.videos||[]).length-1);
+    };
+  });
+}
+
 /* 預先知道的材料清單（星座之塔目前的掉落物項目），一開始就會出現在自動建議裡，不用等打過一次才有 */
 const KNOWN_MATERIALS=[
   '未知的隕石碎片','稀微魔力符文石',
@@ -625,6 +735,13 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v46', d:'2026/08/18', c:[
+    ['add','每場 RUN 可以掛 YouTube 錄影連結，點「複盤」就能邊看影片邊對照當時的陣容'],
+    ['add','同一場可以放多個連結（不同人的視角），面板上方切換'],
+    ['add','網址帶 &t= 時間點會從那一秒開始播；youtu.be、Shorts、直播網址都認得'],
+    ['imp','播放器點下去才載入，平常只顯示縮圖，開面板不會卡；Service Worker 不快取 YouTube 資源'],
+    ['imp','資料結構升到第 5 版，既有 RUN 一律補上空的錄影清單，畫面不受影響'],
+  ]},
   { v:'v45', d:'2026/08/12', c:[
     ['chg','組數試算的每種材料改成顯示「可組 N 組」，跟上方的可組成組數對得起來'],
     ['fix','瓶頸材料原本寫「缺 N」，那是指湊下一組還差多少，卻讓人以為現有組數沒湊齊（剛好夠 7 組時會顯示「7 · 缺 1」）'],

@@ -1514,6 +1514,158 @@ def run(page):
     page.wait_for_timeout(200)
     check("額滿時全部切換成額滿樣式", page.locator(".meter .pip.full").count(), 10)
 
+    # ---------- 複盤錄影 ----------
+    print("\n[review] 複盤錄影連結")
+    seed(page)
+
+    check("舊的 RUN 會被遷移補上空的 videos 陣列",
+          page.evaluate("""() => {
+              const old = {schemaVersion:4, members:[], roles:[], sales:[],
+                           schedule:{'2026-01-01':[{id:'x',name:'RUN 1',slots:[],drops:[]}]}};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              const pt = m.schedule['2026-01-01'][0];
+              return [m.schemaVersion, Array.isArray(pt.videos), pt.videos.length];
+          }"""), [page.evaluate("() => SCHEMA_VERSION"), True, 0])
+    check("新建的 RUN 自帶 videos 陣列",
+          page.evaluate("() => Array.isArray(mkPt('RUN X','20:00',12).videos)"), True)
+
+    # --- 網址解析 ---
+    check("標準 watch 網址",
+          page.evaluate("() => ytParse('https://www.youtube.com/watch?v=dQw4w9WgXcQ')"),
+          {"id": "dQw4w9WgXcQ", "start": 0})
+    check("youtu.be 短網址（手機分享最常見）",
+          page.evaluate("() => ytParse('https://youtu.be/dQw4w9WgXcQ')"),
+          {"id": "dQw4w9WgXcQ", "start": 0})
+    check("Shorts 網址",
+          page.evaluate("() => ytParse('https://www.youtube.com/shorts/dQw4w9WgXcQ')"),
+          {"id": "dQw4w9WgXcQ", "start": 0})
+    check("直播網址",
+          page.evaluate("() => ytParse('https://www.youtube.com/live/dQw4w9WgXcQ')"),
+          {"id": "dQw4w9WgXcQ", "start": 0})
+    check("手機版 m.youtube.com",
+          page.evaluate("() => ytParse('https://m.youtube.com/watch?v=dQw4w9WgXcQ')"),
+          {"id": "dQw4w9WgXcQ", "start": 0})
+    check("沒有 https:// 前綴也認得",
+          page.evaluate("() => ytParse('youtu.be/dQw4w9WgXcQ')"),
+          {"id": "dQw4w9WgXcQ", "start": 0})
+    check("時間參數 t=90（純秒數）",
+          page.evaluate("() => ytParse('https://youtu.be/dQw4w9WgXcQ?t=90').start"), 90)
+    check("時間參數 t=1h2m3s",
+          page.evaluate("() => ytParse('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1h2m3s').start"), 3723)
+    check("時間參數 t=45s",
+          page.evaluate("() => ytParse('https://youtu.be/dQw4w9WgXcQ?t=45s').start"), 45)
+    check("非 YouTube 網址不收",
+          page.evaluate("() => ytParse('https://example.com/watch?v=dQw4w9WgXcQ')"), None)
+    check("javascript: 網址不收",
+          page.evaluate("() => ytParse('javascript:alert(1)')"), None)
+    check("影片 id 長度不對就不收",
+          page.evaluate("() => ytParse('https://youtu.be/abc')"), None)
+    check("空字串不收", page.evaluate("() => ytParse('')"), None)
+    check("播放網址一律用解析後的 id 重組，不會沿用貼進來的原始字串",
+          page.evaluate("() => ytEmbed('dQw4w9WgXcQ',30).startsWith('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')"),
+          True)
+
+    # --- 卡片上的入口 ---
+    check("每張 RUN 卡片都有複盤按鈕",
+          page.locator('.ptcard [data-act="review"]').count(),
+          page.evaluate("() => ptsOf(curDate).length"))
+    check("沒有錄影時按鈕不標色",
+          page.locator('.ptcard [data-act="review"].hasvid').count(), 0)
+
+    # --- 加入連結 ---
+    page.locator('.ptcard [data-act="review"]').first.click()
+    page.wait_for_timeout(200)
+    check("沒有錄影時面板顯示空狀態", page.locator(".sheet .emptystate").count(), 1)
+    check("面板列出當時的陣容",
+          page.locator(".sheet .rv-row").count(),
+          page.evaluate("() => ptsOf(curDate)[0].slots.length"))
+
+    page.fill('.sheet [name="url"]', "https://youtu.be/dQw4w9WgXcQ?t=90")
+    page.fill('.sheet [name="label"]', "阿明視角")
+    page.click('.sheet [data-s="add"]')
+    page.wait_for_timeout(250)
+    check("連結存進該場 RUN",
+          page.evaluate("() => { const v=ptsOf(curDate)[0].videos; return [v.length, v[0].vid, v[0].start, v[0].label]; }"),
+          [1, "dQw4w9WgXcQ", 90, "阿明視角"])
+    check("加入後面板換成縮圖", page.locator(".sheet .ytbox .yt-thumb").count(), 1)
+    check("縮圖指向該支影片",
+          page.evaluate("() => document.querySelector('.sheet .yt-thumb').getAttribute('src')"),
+          "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg")
+    check("有時間點時面板標示起始時間",
+          page.locator(".sheet .yt-at").inner_text(), "從 1:30 開始")
+    check("在 YouTube 開啟的連結帶著時間點",
+          page.locator('.sheet a[target="_blank"]').get_attribute("href"),
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90")
+
+    check("同一支影片不會重複加入",
+          page.evaluate("""() => {
+              const s = document.querySelector('.sheet');
+              s.querySelector('[name="url"]').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+              s.querySelector('[data-s="add"]').click();
+              return ptsOf(curDate)[0].videos.length;
+          }"""), 1)
+    check("看不懂的網址不會被存進去",
+          page.evaluate("""() => {
+              const s = document.querySelector('.sheet');
+              s.querySelector('[name="url"]').value = 'https://example.com/abc';
+              s.querySelector('[data-s="add"]').click();
+              return ptsOf(curDate)[0].videos.length;
+          }"""), 1)
+
+    # --- 點下去才載入播放器 ---
+    check("預設不放 iframe（省流量，離線也不會是一塊白）",
+          page.locator(".sheet iframe").count(), 0)
+    page.click(".sheet .yt-play")
+    page.wait_for_timeout(200)
+    check("點播放才插入播放器", page.locator(".sheet iframe.yt-frame").count(), 1)
+    check("播放器用 nocookie 網域並帶起始秒數",
+          page.evaluate("() => { const s=document.querySelector('.sheet iframe').src; "
+                        "return [s.startsWith('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'), s.includes('start=90')]; }"),
+          [True, True])
+
+    # --- 多個視角 ---
+    page.evaluate("() => { closeSheet(); reviewSheet(ptsOf(curDate)[0].id, 0); }")
+    page.wait_for_timeout(150)
+    page.fill('.sheet [name="url"]', "https://www.youtube.com/watch?v=aaaaaaaaaaa")
+    page.click('.sheet [data-s="add"]')
+    page.wait_for_timeout(250)
+    check("第二個視角也存得進去",
+          page.evaluate("() => ptsOf(curDate)[0].videos.length"), 2)
+    check("兩個以上才出現切換列", page.locator(".sheet .vidtab").count(), 2)
+    check("沒填標籤時自動用序號當名稱",
+          page.locator(".sheet .vidtab").nth(1).inner_text(), "錄影 2")
+    check("加入後直接切到新加的那一支",
+          page.evaluate("() => document.querySelector('.sheet .yt-thumb').src.includes('aaaaaaaaaaa')"), True)
+    page.locator(".sheet .vidtab").first.click()
+    page.wait_for_timeout(200)
+    check("切換視角會換掉縮圖",
+          page.evaluate("() => document.querySelector('.sheet .yt-thumb').src.includes('dQw4w9WgXcQ')"), True)
+
+    # --- 刪除 ---
+    page.locator('.sheet [data-del="1"]').click()
+    page.wait_for_timeout(250)
+    check("刪除後只剩一支",
+          page.evaluate("() => { const v=ptsOf(curDate)[0].videos; return [v.length, v[0].vid]; }"),
+          [1, "dQw4w9WgXcQ"])
+    page.evaluate("() => closeSheet()")
+    page.wait_for_timeout(150)
+    check("有錄影的 RUN 按鈕會標色並顯示數量",
+          page.locator('.ptcard [data-act="review"].hasvid').first.inner_text(), "複盤1")
+
+    # --- 不該被帶走的地方 ---
+    check("複製 RUN 不會把錄影連結一起複製",
+          page.evaluate("""() => {
+              const before = ptsOf(curDate).length;
+              document.querySelector('.ptcard [data-act="dupPt"]').click();
+              const copy = ptsOf(curDate)[ptsOf(curDate).length-1];
+              return [ptsOf(curDate).length - before, copy.videos.length, copy.slots.length > 0];
+          }"""), [1, 0, True])
+    check("錄影連結會一起匯出備份",
+          page.evaluate("""() => {
+              const dump = JSON.parse(JSON.stringify(state));
+              return dump.schedule[curDate][0].videos[0].vid;
+          }"""), "dQw4w9WgXcQ")
+
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")
     check("全域禁止選字",

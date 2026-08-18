@@ -39,6 +39,7 @@ document.addEventListener('click',e=>{
   if(a==='orderPt')   orderSheet(ptId);
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
+  if(a==='review')    reviewSheet(ptId,0);
   if(a==='delSale')   confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
     commit(()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
     toast('已刪除交易紀錄');
@@ -47,13 +48,13 @@ document.addEventListener('click',e=>{
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
     /* 複製 RUN：成員、職業、便當標記都要帶過去；
-       掉落物是「當天實際掉了什麼」的紀錄，複本不該憑空多出一份，所以清空。 */
+       掉落物與錄影連結是「這一場實際發生了什麼」的紀錄，複本不該憑空多出一份，所以清空。 */
     commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
       const copy=JSON.parse(JSON.stringify(p));
       copy.id=uid();
       copy.name=p.name+' 複本';
       copy.slots=(p.slots||[]).map(s=>({memberId:s.memberId,roleId:s.roleId??null,bento:!!s.bento}));
-      copy.drops=[];
+      copy.drops=[]; copy.videos=[];
       state.schedule[curDate].push(copy); });
   }
   if(a==='delPt'){

@@ -121,7 +121,7 @@ function renderBoard(){
     return;
   }
   grid.innerHTML=pts.map((pt,i)=>{
-    const n=pt.slots.length, full=n>=pt.capacity;
+    const n=pt.slots.length, full=n>=pt.capacity, vn=(pt.videos||[]).length;
     const pips=Array.from({length:pt.capacity},(_,j)=>{
       const on=j<n;
       /* 已填的波利依序錯開跳動時間，看起來像一隻接一隻跳過去，而不是整排同時彈 */
@@ -174,6 +174,7 @@ function renderBoard(){
       <div class="pt-foot">
         <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
         <button class="gbtn" data-act="orderPt" data-pt="${pt.id}" ${n?'':'disabled'}>排序 / 便當</button>
+        <button class="gbtn ${vn?'hasvid':''}" data-act="review" data-pt="${pt.id}">複盤${vn?`<span class="vid-n num">${vn}</span>`:''}</button>
         <button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>
         <button class="gbtn warn" data-act="delPt" data-pt="${pt.id}" style="margin-left:auto">刪除</button>
       </div>

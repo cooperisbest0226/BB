@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v45';
+const APP_VERSION='v46';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -139,7 +139,7 @@ function seed(){
     settings:{theme:'system',defaultTime:'20:00',defaultCap:12}};
 }
 
-function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[]}; }
+function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[],videos:[]}; }
 function todayKey(){ const d=new Date(); return ymd(d); }
 function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
@@ -196,6 +196,13 @@ const MIGRATIONS=[
     (p.members||[]).forEach(m=>{
       if(!m.buffs || typeof m.buffs!=='object' || Array.isArray(m.buffs)) m.buffs={};
     });
+  },
+  /* 4 → 5：每場 RUN 可以掛 YouTube 錄影連結，用來事後複盤。
+            用陣列而不是單一欄位——同一場常常有好幾個人各自錄，之後要加第二個視角不用再改結構。 */
+  p=>{
+    Object.values(p.schedule||{}).forEach(pts=>pts.forEach(pt=>{
+      if(!Array.isArray(pt.videos)) pt.videos=[];
+    }));
   },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
@@ -291,6 +298,50 @@ function benchMembers(k){ return state.members.filter(m=>m.active); }
 /* 純粹「今天一場都還沒排到」的人 —— 給統計卡片用 */
 function unassignedMembers(k){ const a=assignedIds(k); return state.members.filter(m=>m.active&&!a.has(m.id)); }
 function ensureDate(k){ if(!state.schedule[k]) state.schedule[k]=[]; }
+
+/* ── YouTube 連結 ──────────────────────────────────────────
+   手機分享出來的網址格式不只一種（youtu.be 短網址、watch?v=、直播的 /live/、Shorts），
+   所以一律解析成「影片 id + 起始秒數」再存，顯示與播放都用解析後的值重新組網址。
+   這樣做同時擋掉了 javascript: 之類的惡意網址——不是 YouTube 就直接不收，
+   畫面上也永遠不會把使用者貼進來的原始字串當成連結用。 */
+const YT_HOSTS=['youtube.com','youtube-nocookie.com','music.youtube.com','youtu.be'];
+/* 時間參數可能是純秒數（90）、帶單位（90s）或時分秒（1h2m3s） */
+function ytSeconds(t){
+  const s=String(t||'').trim();
+  if(!s) return 0;
+  if(/^\d+$/.test(s)) return Math.min(+s,86400);
+  const m=/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/i.exec(s);
+  if(!m||!(m[1]||m[2]||m[3])) return 0;
+  return Math.min((+(m[1]||0))*3600+(+(m[2]||0))*60+(+(m[3]||0)),86400);
+}
+function ytParse(raw){
+  const s=String(raw||'').trim();
+  if(!s) return null;
+  let u;
+  try{ u=new URL(/^https?:\/\//i.test(s)?s:'https://'+s); }catch(e){ return null; }
+  if(u.protocol!=='http:'&&u.protocol!=='https:') return null;
+  const host=u.hostname.replace(/^www\./i,'').replace(/^m\./i,'').toLowerCase();
+  if(!YT_HOSTS.includes(host)) return null;
+  let id='';
+  if(host==='youtu.be') id=u.pathname.slice(1).split('/')[0];
+  else if(u.pathname==='/watch') id=u.searchParams.get('v')||'';
+  else{
+    const m=/^\/(?:embed|shorts|live|v)\/([^/?#]+)/.exec(u.pathname);
+    if(m) id=m[1];
+  }
+  if(!/^[A-Za-z0-9_-]{11}$/.test(id)) return null;
+  const t=u.searchParams.get('t')||u.searchParams.get('start')||(/^#t=/.test(u.hash)?u.hash.slice(3):'');
+  return {id, start:ytSeconds(t)};
+}
+const ytThumb=id=>`https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+const ytWatch=(id,start)=>`https://www.youtube.com/watch?v=${id}${start?`&t=${start}`:''}`;
+/* nocookie 網域：沒開始播之前不會種下追蹤 cookie；rel=0 讓結束後的推薦影片限縮在同頻道 */
+const ytEmbed=(id,start)=>`https://www.youtube-nocookie.com/embed/${id}?rel=0&autoplay=1&playsinline=1${start?`&start=${start}`:''}`;
+function fmtClock(sec){
+  const s=Math.max(0,Math.floor(sec||0));
+  const h=Math.floor(s/3600), m=Math.floor(s%3600/60), ss=s%60;
+  return (h?h+':'+String(m).padStart(2,'0'):String(m))+':'+String(ss).padStart(2,'0');
+}
 
 function toast(msg){
   document.querySelectorAll('.toast').forEach(t=>t.remove());

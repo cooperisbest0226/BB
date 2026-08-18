@@ -320,7 +320,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   padding:10px 15px; font-size:12.5px; color:var(--faint); background:rgba(255,255,255,.42);
   text-align:center;
 }
-.pt-foot{display:flex; gap:7px; padding:10px 13px; border-top:1px solid var(--line-2); background:rgba(255,255,255,.45)}
+/* 按鈕多了一顆「複盤」，窄螢幕一行放不下，改為可換行（原本會被擠出卡片外） */
+.pt-foot{display:flex; flex-wrap:wrap; gap:7px; padding:10px 13px; border-top:1px solid var(--line-2); background:rgba(255,255,255,.45)}
+/* 有錄影的場次讓按鈕自己標示出來，不用點進去才知道 */
+.gbtn.hasvid{color:var(--accent); border-color:rgba(79,70,229,.32); background:var(--accent-soft)}
+.gbtn .vid-n{margin-left:5px; font-weight:700}
 
 /* small ghost button */
 .gbtn{
@@ -911,3 +915,79 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   color:rgba(255,255,255,.6); font-size:17px; line-height:1;
 }
 .updatebar-x:hover{color:#fff; background:rgba(255,255,255,.12)}
+
+/* ── 複盤：錄影播放 + 當時的陣容 ─────────────────────────────
+   播放器預設不放 iframe，只放縮圖 + 播放鍵，點下去才換成真正的播放器。 */
+.ytbox{
+  position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--r-md); overflow:hidden;
+  background:var(--surface-2); border:1px solid var(--line-2);
+  display:flex; align-items:center; justify-content:center;
+}
+.yt-thumb{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  /* YouTube 的 hqdefault 是 4:3，上下會有黑邊，放大裁掉中間那塊 16:9 */
+  transform:scale(1.35);
+}
+.ytbox.noimg .yt-thumb{display:none}
+/* 縮圖載不到（離線、或被擋廣告的擴充套件擋掉）時，播放鍵要留著——
+   影片本身通常還是播得動，把入口一起藏掉等於誤判。只在下方補一行說明。 */
+.yt-off{
+  display:none; position:absolute; left:0; right:0; bottom:0; padding:7px 12px;
+  text-align:center; font-size:11px; line-height:1.5; color:var(--muted); background:var(--surface-2);
+}
+.ytbox.noimg .yt-off{display:block}
+.ytbox.noimg .yt-at{display:none}
+.yt-play{
+  position:relative; width:58px; height:58px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; background:rgba(21,23,28,.62); backdrop-filter:blur(2px);
+  box-shadow:0 2px 14px rgba(0,0,0,.35); transition:transform .14s var(--ease), background .16s;
+}
+.yt-play svg{width:26px; height:26px; margin-left:3px}
+.yt-play:hover{background:var(--danger); transform:scale(1.06)}
+.yt-at{
+  position:absolute; left:9px; bottom:9px; padding:3px 8px; border-radius:99px;
+  font-size:11px; font-weight:600; color:#fff; background:rgba(21,23,28,.7);
+}
+.yt-frame{position:absolute; inset:0; width:100%; height:100%; border:0}
+/* 「在 YouTube 開啟」是 <a> 但長得像按鈕，去掉瀏覽器預設的底線與連結色 */
+a.gbtn{text-decoration:none; color:var(--ink-2)}
+
+/* 同一場有多個視角時的切換列 */
+.vidtabs{display:flex; gap:7px; overflow-x:auto; margin:0 0 11px; padding-bottom:2px; scrollbar-width:none}
+.vidtabs::-webkit-scrollbar{display:none}
+.vidtab{
+  flex:0 0 auto; font-size:12px; font-weight:550; padding:6px 12px; border-radius:99px;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink-2);
+}
+.vidtab[aria-pressed="true"]{color:#fff; background:var(--accent); border-color:var(--accent)}
+
+.rv-sec{font-size:11px; font-weight:650; color:var(--muted); letter-spacing:.04em; margin:18px 2px 8px}
+.rv-list{border:1px solid var(--line-2); border-radius:var(--r-md); overflow:hidden}
+.rv-row{
+  display:flex; align-items:center; gap:9px; padding:9px 12px;
+  border-bottom:1px solid var(--line-2); font-size:13px;
+}
+.rv-row:last-child{border-bottom:none}
+.rv-row.bento{background:rgba(34,197,94,.1)}
+.rv-i{flex:0 0 auto; width:18px; font-size:11px; font-weight:600; color:var(--faint)}
+.rv-nm{flex:1; min-width:0; font-weight:550; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rv-bento{
+  margin-left:6px; font-size:10px; font-weight:700; padding:1px 6px; border-radius:99px;
+  color:#15803d; background:rgba(34,197,94,.16);
+}
+.rv-buff{
+  flex:0 0 auto; max-width:38%; font-size:11px; color:var(--muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+[data-theme="dark"] .rv-bento{color:#4ade80; background:rgba(74,222,128,.16)}
+
+.vidlist{border:1px solid var(--line-2); border-radius:var(--r-md); overflow:hidden}
+.vidrow{
+  display:flex; align-items:center; gap:9px; padding:9px 12px;
+  border-bottom:1px solid var(--line-2); font-size:13px;
+}
+.vidrow:last-child{border-bottom:none}
+.vidrow-n{flex:1; min-width:0; font-weight:550; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.vidrow-id{flex:0 0 auto; font-size:11px; color:var(--faint)}
+.minibtn.warn{color:var(--danger); border-color:rgba(220,38,38,.28)}
