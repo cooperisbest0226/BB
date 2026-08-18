@@ -378,6 +378,31 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   font-feature-settings:'tnum' 1;
 }
 
+/* ── 首頁的頭部改為覆蓋層 ────────────────────────────────────
+   原本 hero / 篩選列 / 捲動區是同一個 flex column 的三個兄弟，
+   所以 hero 一縮，捲動容器的 box 就跟著變高 —— 動畫的每一格都要
+   重排整個捲動容器（並重新判定哪些卡片在畫面內），150 筆時掉幀率
+   是 8 筆時的四倍。而且容器變高會讓清單「往上跳」104px，
+   捲到一半時那個位移本身就很明顯。
+
+   改成捲動區絕對定位撐滿、用 padding-top 讓出頭部空間，
+   hero 與篩選列浮在它上面。這樣 hero 縮放時：
+     · 捲動容器的 box 完全不變 → 清單一次都不用重排
+     · 清單內容一格都不動 → 頭部只是「讓開」，露出原本被蓋住的部分
+   重排範圍從 150 張卡縮到 hero 自己的十幾個節點。 */
+#s-home{position:relative}
+#home-scroll{
+  position:absolute;inset:0;
+  /* +14px 補回 .scroll-body 原本的 padding-top，讓第一張卡與篩選列的
+     間距和改版前一致 */
+  padding-top:calc(var(--head-h,240px) + 14px);
+}
+.home-hero,#home-filter-row{position:relative;z-index:var(--z-head,20)}
+#home-filter-row{background:var(--surface)}
+/* 下拉重整的指示器定位在捲動容器內，容器現在從畫面最頂端起算，
+   不下移的話會被浮在上面的頭部整個蓋住。讓它從頭部下緣滑出。 */
+#home-scroll > .ptr{top:var(--head-h,240px)}
+
 /* ── Hero 收合 ──────────────────────────────────────────────
    hero 原本 flex-shrink:0 永久釘住 184px。捲清單時那 184px 不再工作，
    所以往下捲就把它降到約 72px：大數字讓位給 eyebrow 上的小總額，
@@ -3039,9 +3064,22 @@ function initHeroCollapse(){
   // scrollHeight / clientHeight 是會強制同步 reflow 的讀取。原本每個捲動
   // frame 都讀一次，等於捲動時把排版樹反覆算過 —— 清單越長越明顯。
   // 這兩個值只在內容或視窗改變時才會變，所以改成事件驅動地量一次就好。
+  // 捲動區的 padding-top 要正好等於「展開時」的頭部高度，內容才會從頭部
+  // 正下方開始。頭部高度會隨內容變（沒設預算、代墊說明展開、空狀態時
+  // 篩選列消失），所以每次重繪後重新量一次 —— 但只在展開狀態量，
+  // 收合時的高度不是我們要的基準。
+  const filterRow = document.getElementById('home-filter-row');
+  const setHeadH = () => {
+    if(collapsed) return;                       // 收合時量到的是縮小後的高度
+    const h = hero.offsetHeight
+            + (filterRow && filterRow.offsetParent !== null ? filterRow.offsetHeight : 0);
+    if(h > 0) sc.style.setProperty('--head-h', h + 'px');
+    return h;
+  };
   const measure = () => {
-    // 「夠不夠長」必須用展開時的容器高度來量。用當下的 clientHeight 會形成
-    // 回授迴圈：收合 → 容器變高 → 可捲距離變短 → 判定不該收合 → 展開…
+    const headH = setHeadH();
+    // clientHeight 現在是固定的（捲動區已脫離 flex 流），可捲距離要扣掉
+    // 讓給頭部的 padding，不然永遠判定「夠長」
     if(!collapsed) expandedClientH = sc.clientHeight;
     scrollable = sc.scrollHeight - expandedClientH;
   };
