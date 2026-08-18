@@ -16,7 +16,7 @@
    所有資料都在 IndexedDB，Service Worker 一律不碰。
    ══════════════════════════════════════════════════════════════════ */
 
-const VERSION      = 'v4.12.0';
+const VERSION      = 'v4.13.0';
 const SHELL_CACHE  = `expense-shell-${VERSION}`;
 const RUNTIME_CACHE= `expense-runtime-${VERSION}`;
 

@@ -136,6 +136,10 @@ input,select,textarea,button{font-family:inherit;font-size:16px}
 /* ── Base ────────────────────────────────────────────────── */
 html,body{
   height:100%;overflow:hidden;overscroll-behavior:none;
+  /* 關掉「連點兩下放大」。用 touch-action 而不是在 viewport meta 加
+     user-scalable=no —— 後者連雙指縮放一起關掉，視力需求的人就沒得放大了。
+     manipulation 只停用雙擊縮放這類非標準手勢，捲動與雙指縮放照常。 */
+  touch-action:manipulation;
   background:var(--surface);
   color:var(--text);
   font-family:'Sora',-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang TC',sans-serif;
@@ -223,6 +227,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .screen.on{display:flex}
 .scroll-body{
   flex:1;position:relative;overflow-y:auto;overflow-x:hidden;
+  touch-action:manipulation;   /* 捲動區是主要觸控面，明確關掉雙擊縮放 */
   /* 原生下拉重整是整頁 reload，會清掉檢視中的月份；改用自製的下拉重整 */
   overscroll-behavior-y:none;-webkit-overflow-scrolling:touch;
   padding:14px 16px calc(24px + var(--safe-b));min-height:0;
@@ -475,12 +480,52 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .hbud-fill.warn{background:var(--amber)}
 .hbud-fill.over{background:var(--red)}
 /* 今日應有進度：把「用了多少」變成「用得快不快」 */
+/* 原本是 2px、透明度 .55 的灰線，跟軌道底色幾乎同色 —— 看得到但看不懂。
+   加高、加深，並在上方補一個朝下的小三角當箭頭，讓它讀起來像「標記」
+   而不是軌道上的雜訊。 */
 .hbud-tick{
-  position:absolute;top:-2px;bottom:-2px;width:2px;
-  background:var(--text3);opacity:.55;border-radius:2px;
+  position:absolute;top:-4px;bottom:-4px;width:2px;
+  background:var(--text2);opacity:.75;border-radius:2px;
   transition:left .8s cubic-bezier(.4,0,.2,1);
+  z-index:3;
+}
+.hbud-tick::before{
+  content:'';position:absolute;left:50%;top:-4px;
+  width:0;height:0;margin-left:-3.5px;
+  border-left:3.5px solid transparent;
+  border-right:3.5px solid transparent;
+  border-top:4px solid var(--text2);
+  opacity:.85;
 }
 .hbud-tick[hidden]{display:none}
+/* 圖例：左右對齊，各自帶一個對應顏色的記號 */
+.hbud-legend{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-size:11px;color:var(--text2);margin-top:9px;line-height:1.3;
+  overflow:hidden;transition:opacity .18s ease;
+}
+.home-hero.collapsed .hbud-legend{height:0;opacity:0;margin:0}
+.hbud-legend b{font-family:'DM Mono',monospace;font-weight:600;margin-left:2px;color:var(--text2)}
+/* .r/.g 原本只定義在 .hbud-meta 底下，判斷語的紅綠因此吃不到 */
+.hbud-legend b.g{color:var(--green)}
+.hbud-legend b.r{color:var(--red)}
+.hbud-legend .sep{margin:0 5px;opacity:.5}
+.hbud-lg-fill,.hbud-lg-tick{display:inline-flex;align-items:center;gap:5px}
+.hbud-lg-fill[hidden],.hbud-lg-tick[hidden]{display:none}
+/* 色塊對應長條的填滿色 */
+.hbud-lg-fill::before{
+  content:'';width:9px;height:5px;border-radius:99px;
+  background:var(--green);flex-shrink:0;
+}
+.hbud-lg-fill.warn::before{background:var(--amber)}
+.hbud-lg-fill.over::before{background:var(--red)}
+/* 記號對應軌道上的刻度 */
+.hbud-lg-tick::before{
+  content:'';width:2px;height:9px;border-radius:2px;
+  background:var(--text2);opacity:.75;flex-shrink:0;
+}
+.hbud-lg-tick{color:var(--text3)}
+
 .hbud-meta{
   display:flex;align-items:baseline;gap:0;flex-wrap:wrap;
   font-size:11.5px;color:var(--text3);margin-top:7px;line-height:1.4;
@@ -1325,7 +1370,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   padding:16px 16px calc(16px + var(--safe-b));
   width:100%;max-width:440px;
   max-height:86vh;max-height:min(86dvh, calc(var(--vv-h,86dvh) - 32px));
-  overflow-y:auto;overflow-x:hidden;touch-action:pan-y;
+  overflow-y:auto;overflow-x:hidden;touch-action:pan-y pinch-zoom;
   box-shadow:var(--shadow-lg);overscroll-behavior:contain;
 }
 .dialog::-webkit-scrollbar{display:none}
@@ -1409,7 +1454,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   width:100%;max-width:480px;
   max-height:90vh;max-height:min(90dvh, var(--vv-h,90dvh));
   overflow-y:auto;overflow-x:hidden;
-  touch-action:pan-y;overscroll-behavior:contain;
+  touch-action:pan-y pinch-zoom;overscroll-behavior:contain;
   box-shadow:0 -8px 40px rgba(90,70,40,.15);
 }
 .sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px;pointer-events:none}
@@ -1636,7 +1681,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   flex:1;min-height:0;min-width:0;
   overflow-y:auto;
   overflow-x:hidden;              /* 關鍵：不再產生橫向捲動軸 */
-  touch-action:pan-y;             /* 關鍵：手指只吃上下，左右手勢直接無效 */
+  touch-action:pan-y pinch-zoom;  /* 關鍵：手指只吃上下，左右手勢直接無效 */
   padding:20px 18px calc(26px + var(--safe-b));
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;    /* 捲到底不把底下的頁面帶著跑 */
@@ -1990,6 +2035,12 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
           <div class="hbud-poli" id="h-bud-poli">
             <span class="hbud-poli-body"><i></i><i></i></span>
           </div>
+        </div>
+        <!-- 圖例：左邊解釋填滿的部分，右邊解釋刻度。用顏色對應而不是位置對應，
+             窄螢幕上不會撞在一起。 -->
+        <div class="hbud-legend" id="h-bud-legend">
+          <span class="hbud-lg-fill" id="h-bud-lg-fill"></span>
+          <span class="hbud-lg-tick" id="h-bud-lg-tick"></span>
         </div>
         <div class="hbud-meta" id="h-bud-meta"></div>
       </div>
@@ -3742,6 +3793,28 @@ function replayHeroIntro(fromZero){
 //  會清掉檢視中的月份、重跑 Service Worker、閃一下白畫面。
 //  這裡只重新查詢資料並重繪目前畫面，狀態全部保留。
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  阻擋雙擊縮放
+//  CSS 的 touch-action:manipulation 在 iOS Safari 上並不總是生效。
+//  常見的補法是無條件攔截 300ms 內的第二次 touchend，但那會把
+//  「快速連點兩個不同項目」的第二下一起吃掉（touchend preventDefault
+//  會連帶取消 click）。所以這裡多比對位置：只有兩下落在同一處
+//  （40px 內）才算縮放手勢，連點不同項目照常。
+// ══════════════════════════════════════════════════════════
+(function blockDoubleTapZoom(){
+  let lastT = 0, lastX = 0, lastY = 0;
+  document.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    if(!t) return;
+    const now = Date.now();
+    const near = Math.abs(t.clientX - lastX) < 40 && Math.abs(t.clientY - lastY) < 40;
+    if(now - lastT <= 320 && near) e.preventDefault();
+    lastT = now; lastX = t.clientX; lastY = t.clientY;
+  }, {passive:false});
+  // 有些情況瀏覽器仍會合成 dblclick，一併擋掉
+  document.addEventListener('dblclick', e => e.preventDefault(), {passive:false});
+})();
+
 (function pullRefresh(){
   const THRESH=64, MAX=92, RESIST=.5, MIN_SPIN=650;
 
@@ -4663,21 +4736,41 @@ async function rHome(){
     }));
 
     // 今日應有進度（只有看當月才有意義）
+    const lgFill = document.getElementById('h-bud-lg-fill');
+    const lgTick = document.getElementById('h-bud-lg-tick');
+    let duePct = null;
     if(isNow){
       const dim = new Date(y,m,0).getDate();
+      duePct = Math.round(Math.min(new Date().getDate()/dim*100,100));
       tick.hidden = false;
-      tick.style.left = Math.min(new Date().getDate()/dim*100,100)+'%';
-      tick.title = `今日應有進度 ${Math.round(new Date().getDate()/dim*100)}%`;
+      tick.style.left = duePct+'%';
+      tick.title = `今日應有進度 ${duePct}%`;
     }else{
       tick.hidden = true;
     }
 
-    // 一行 meta 取代原本的 92px 環 + 57px stat row
+    // 圖例：左邊說明填滿的長度，右邊說明刻度。沒有這兩行的話，
+    // 軌道上的顏色與刻度都只是「有東西」，讀不出是什麼。
+    lgFill.className = 'hbud-lg-fill'+(state?' '+state:'');
+    lgFill.innerHTML = `已用 <b>${rawPct}%</b>`;
+    if(duePct===null){
+      lgTick.hidden = true;
+    }else{
+      lgTick.hidden = false;
+      // 兩個百分比並排還是要讀者自己相減。「超前／落後」在花錢的語境下
+      // 又容易誤讀（落後其實是好事），所以直接寫成對預算的判斷。
+      const diff = rawPct - duePct;
+      const verdict = diff >= 5  ? `<b class="r">超出進度 ${diff}%</b>`
+                    : diff <= -5 ? `<b class="g">低於進度 ${-diff}%</b>`
+                                 : `<b class="g">與進度同步</b>`;
+      lgTick.innerHTML = `今日應為 <b>${duePct}%</b><span class="sep">·</span>${verdict}`;
+    }
+
+    // meta：百分比與判斷都在圖例了，這裡只留金額與節奏，維持單行
     const parts = [];
     parts.push(over
       ? `超支 <b class="r">${fmt(-remain)}</b>`
       : `剩 <b class="g">${fmt(remain)}</b>`);
-    parts.push(`<span id="h-bud-pct">${rawPct}</span>% / ${fmt(bTotal)}`);
     if(isNow && !over){
       const pace = budgetPacing(remain);
       const dp   = daysUntilPayday();
@@ -4688,8 +4781,8 @@ async function rHome(){
     }
     meta.innerHTML = parts.join('<span class="sep">·</span>');
     // 百分比與跑者同步爬升：數字與位置說的是同一件事，就該一起動
-    const pctEl = document.getElementById('h-bud-pct');
-    if(pctEl) animNum(pctEl, rawPct, v=>Math.round(v), {from:0, dur:900});
+    const pctEl = lgFill.querySelector('b');
+    if(pctEl) animNum(pctEl, rawPct, v=>Math.round(v)+'%', {from:0, dur:900});
   }
 
 
