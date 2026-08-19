@@ -1833,6 +1833,32 @@ def run(page):
                   getComputedStyle(document.documentElement).getPropertyValue('--ms-'+k).trim());
               return new Set(c).size;
           }"""), 4)
+    # 「顏色不一樣」不等於「分得出來」——藍與青只差 30 度，在細長條上是同一個顏色。
+    # 守住色相距離才擋得住日後又改回相近的配色。
+    check("任兩類的色相至少差 55 度（淺色與深色模式都要成立）",
+          page.evaluate("""() => {
+              const hue = hex => {
+                  const n = parseInt(hex.slice(1), 16);
+                  const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+                  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+                  if (!d) return 0;
+                  let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+                  return (h * 60 + 360) % 360;
+              };
+              const gap = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+              const keys = ['shard','dust','unknown','rune'];
+              const worst = [];
+              [document.documentElement.dataset.theme, 'dark', ''].slice(1).forEach(t => {
+                  const prev = document.documentElement.dataset.theme;
+                  document.documentElement.dataset.theme = t;
+                  const cs = getComputedStyle(document.documentElement);
+                  const hs = keys.map(k => hue(cs.getPropertyValue('--ms-' + k).trim()));
+                  for (let i = 0; i < hs.length; i++)
+                      for (let j = i + 1; j < hs.length; j++) worst.push(gap(hs[i], hs[j]));
+                  document.documentElement.dataset.theme = prev;
+              });
+              return Math.round(Math.min(...worst)) >= 55;
+          }"""), True)
     check("材料色避開刪除紅與瓶頸琥珀（那兩色有固定語意）",
           page.evaluate("""() => {
               const reserved = ['#dc2626', '#b45309'];

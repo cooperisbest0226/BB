@@ -8,7 +8,7 @@
    更新流程刻意不自動接管：install 不呼叫 skipWaiting，新版會停在 waiting 等使用者確認。
    使用者按下更新提示後，頁面才 postMessage({type:'SKIP_WAITING'}) 讓新版上線並重新整理。
    這樣才不會在使用者編輯到一半時，把舊的 index.html 配上新的 styles.css。 */
-const CACHE_NAME = 'star-tower-team-v49';
+const CACHE_NAME = 'star-tower-team-v50';
 const APP_SHELL = [
   './',
   './index.html',

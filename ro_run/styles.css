@@ -21,13 +21,13 @@
   --danger:#dc2626;
   --ok:#0f9d76;
   --r-lg:20px; --r-md:14px; --r-sm:9px;
-  /* 材料系列色：碎片藍 / 浮塵青 / 未知紫 / 稀微綠 / 其餘灰。
-     色相拉開讓四類一眼分得出來，但避開紅與琥珀 —— 那兩色是 --danger 與 --warn 的語意，
-     材料借用會蓋掉真正該注意的東西（刪除、瓶頸）。 */
-  --ms-shard:#2563eb;   --ms-shard-ink:#1d4ed8;   --ms-shard-soft:rgba(37,99,235,.10);    --ms-shard-line:rgba(37,99,235,.28);
-  --ms-dust:#0d9488;    --ms-dust-ink:#0f766e;    --ms-dust-soft:rgba(13,148,136,.11);    --ms-dust-line:rgba(13,148,136,.30);
-  --ms-unknown:#9333ea; --ms-unknown-ink:#7e22ce; --ms-unknown-soft:rgba(147,51,234,.10); --ms-unknown-line:rgba(147,51,234,.28);
-  --ms-rune:#15803d;    --ms-rune-ink:#166534;    --ms-rune-soft:rgba(21,128,61,.11);     --ms-rune-line:rgba(21,128,61,.30);
+  /* 材料系列色：浮塵綠 142° / 碎片藍 206° / 未知紫 270° / 稀微桃紅 334° / 其餘灰。
+     四個色相平均分配，任兩類都相距 64 度 —— 顏色能不能區分靠色相距離，不是色名不同。
+     色環上 0–140 那一段（紅、橘、琥珀）刻意讓出來，那是 --danger 與 --warn 的語意。 */
+  --ms-shard:#207ec5;   --ms-shard-ink:#1765a1;   --ms-shard-soft:rgba(32,126,197,.11);   --ms-shard-line:rgba(32,126,197,.30);
+  --ms-dust:#20c55d;    --ms-dust-ink:#17a149;    --ms-dust-soft:rgba(32,197,93,.13);     --ms-dust-line:rgba(32,197,93,.32);
+  --ms-unknown:#7320c5; --ms-unknown-ink:#5c17a1; --ms-unknown-soft:rgba(115,32,197,.11); --ms-unknown-line:rgba(115,32,197,.30);
+  --ms-rune:#c52068;    --ms-rune-ink:#a11753;    --ms-rune-soft:rgba(197,32,104,.11);    --ms-rune-line:rgba(197,32,104,.30);
   --ms-other:#8a8f9c;   --ms-other-ink:#63697a;   --ms-other-soft:rgba(138,143,156,.12);  --ms-other-line:rgba(138,143,156,.28);
   --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
   --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
@@ -57,10 +57,10 @@
   --shadow-lift:0 2px 4px rgba(0,0,0,.35), 0 18px 40px -12px rgba(0,0,0,.6);
   /* 材料系列色在深色模式要整組提亮：淺色模式的 ink 是深色文字，
      直接沿用會變成深底配深字，掉落標籤幾乎看不見。 */
-  --ms-shard:#7aa2f7;   --ms-shard-ink:#a9c4fb;   --ms-shard-soft:rgba(122,162,247,.16);  --ms-shard-line:rgba(122,162,247,.34);
-  --ms-dust:#3fd0c0;    --ms-dust-ink:#8ee6da;    --ms-dust-soft:rgba(63,208,192,.15);    --ms-dust-line:rgba(63,208,192,.32);
-  --ms-unknown:#c084fc; --ms-unknown-ink:#d8b4fe; --ms-unknown-soft:rgba(192,132,252,.16); --ms-unknown-line:rgba(192,132,252,.34);
-  --ms-rune:#4ade80;    --ms-rune-ink:#86efac;    --ms-rune-soft:rgba(74,222,128,.15);    --ms-rune-line:rgba(74,222,128,.32);
+  --ms-shard:#6cb6ef;   --ms-shard-ink:#a3d0f5;   --ms-shard-soft:rgba(108,182,239,.16);  --ms-shard-line:rgba(108,182,239,.34);
+  --ms-dust:#6cef9c;    --ms-dust-ink:#a3f5c2;    --ms-dust-soft:rgba(108,239,156,.15);   --ms-dust-line:rgba(108,239,156,.33);
+  --ms-unknown:#ad6cef; --ms-unknown-ink:#cca3f5; --ms-unknown-soft:rgba(173,108,239,.16); --ms-unknown-line:rgba(173,108,239,.34);
+  --ms-rune:#ef6ca5;    --ms-rune-ink:#f5a3c6;    --ms-rune-soft:rgba(239,108,165,.16);   --ms-rune-line:rgba(239,108,165,.34);
   --ms-other:#a8aeba;   --ms-other-ink:#c9cdd8;   --ms-other-soft:rgba(168,174,186,.15);  --ms-other-line:rgba(168,174,186,.32);
 }
 [data-theme="dark"] body::before{opacity:.5}       /* 夜空底紋在深色模式下亮度收斂一點，不然會過曝 */

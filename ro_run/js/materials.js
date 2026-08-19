@@ -15,8 +15,14 @@ let aucFrom='', aucTo='';
 const nf=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
 
 /* ── 材料系列分色 ─────────────────────────────────────────
-   分成四類各自給色：碎片（藍）／浮塵（青）／未知（紫）／稀微（綠），
+   分成四類各自給色：碎片（藍）／浮塵（綠）／未知（紫）／稀微（桃紅），
    加一個「其餘」灰色接住使用者自訂的材料。
+   四個色相在可用色環上平均分配，任兩類都相距 64 度：
+   綠 142° → 藍 206° → 紫 270° → 桃紅 334°。
+   可用範圍刻意從 140 起跳到 335 為止，把紅與琥珀那一段讓出來 ——
+   那兩色是 --danger（刪除）與 --warn（瓶頸）的語意，材料借用會蓋掉真正該注意的東西。
+   顏色能不能區分靠的是色相距離，不是色名不同：先前試過「藍／青／紫／綠」，
+   青跟綠只差 30 度，在細長條上就是同一個顏色。
    「未知的隕石碎片」與「稀微魔力符文石」以前都被歸進同一個「其餘」灰色堆裡，
    兩種完全不同的東西長得一樣；現在各自有色。
 
@@ -30,13 +36,13 @@ const nf=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const SERIES_EXCEPT=['未知的隕石碎片'];
 const MAT_SERIES=[
   {key:'shard',label:'碎片',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('碎片'),
-   color:'#2563eb', ink:'#1d4ed8', soft:'rgba(37,99,235,.10)', line:'rgba(37,99,235,.28)'},
+   color:'#207ec5', ink:'#1765a1', soft:'rgba(32,126,197,.11)', line:'rgba(32,126,197,.30)'},
   {key:'dust', label:'浮塵',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('浮塵'),
-   color:'#0d9488', ink:'#0f766e', soft:'rgba(13,148,136,.11)', line:'rgba(13,148,136,.30)'},
+   color:'#20c55d', ink:'#17a149', soft:'rgba(32,197,93,.13)', line:'rgba(32,197,93,.32)'},
   {key:'unknown',label:'未知',test:n=>n==='未知的隕石碎片',
-   color:'#9333ea', ink:'#7e22ce', soft:'rgba(147,51,234,.10)', line:'rgba(147,51,234,.28)'},
+   color:'#7320c5', ink:'#5c17a1', soft:'rgba(115,32,197,.11)', line:'rgba(115,32,197,.30)'},
   {key:'rune', label:'稀微',test:n=>n==='稀微魔力符文石',
-   color:'#15803d', ink:'#166534', soft:'rgba(21,128,61,.11)', line:'rgba(21,128,61,.30)'},
+   color:'#c52068', ink:'#a11753', soft:'rgba(197,32,104,.11)', line:'rgba(197,32,104,.30)'},
   {key:'other',label:'其餘',test:()=>true,
    color:'#8a8f9c', ink:'#63697a', soft:'rgba(138,143,156,.12)', line:'rgba(138,143,156,.28)'},
 ];
