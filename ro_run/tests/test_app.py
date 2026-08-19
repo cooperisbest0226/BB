@@ -1649,8 +1649,9 @@ def run(page):
           [1, "dQw4w9WgXcQ"])
     page.evaluate("() => closeSheet()")
     page.wait_for_timeout(150)
+    # .gbtn 是 inline-flex，inner_text 會在標籤與數量之間插入換行，視覺上仍是並排
     check("有錄影的 RUN 按鈕會標色並顯示數量",
-          page.locator('.ptcard [data-act="review"].hasvid').first.inner_text(), "複盤1")
+          page.locator('.ptcard [data-act="review"].hasvid').first.inner_text().replace("\n", ""), "複盤1")
 
     # --- 不該被帶走的地方 ---
     check("複製 RUN 不會把錄影連結一起複製",
@@ -1886,6 +1887,143 @@ def run(page):
     check("組數預設為 1 個 = 1 組（重新載入後）",
           page.evaluate("""() => [document.getElementById('matPerSet').value, matPerSet]"""),
           ["1", 1])
+
+    # ---------- PWA 強化 ----------
+    print("\n[pwa] 儲存保護、分享目標、復原、離線、觸控")
+    seed(page)
+
+    # --- 儲存持久化 ---
+    check("啟動時會向瀏覽器要求持久化儲存",
+          page.evaluate("() => typeof ensurePersistentStorage === 'function'"), True)
+    check("持久化狀態有記錄下來（true / false / null）",
+          page.evaluate("() => [true, false, null].includes(storagePersisted)"), True)
+    check("設定頁會顯示儲存保護狀態",
+          page.evaluate("""() => {
+              moreSheet();
+              const row = document.getElementById('rowPersist');
+              const txt = row ? row.textContent : '';
+              closeSheet();
+              return [!!row, txt.includes('儲存保護')];
+          }"""), [True, True])
+    check("沒取得保護時會告訴使用者怎麼辦，而不是只說失敗",
+          page.evaluate("""() => {
+              const saved = storagePersisted;
+              storagePersisted = false;
+              const t = persistStatusText();
+              storagePersisted = saved;
+              return t.includes('主畫面') || t.includes('匯出');
+          }"""), True)
+
+    # --- 單步復原 ---
+    check("刪除 RUN 後可以復原",
+          page.evaluate("""() => {
+              const before = ptsOf(curDate).length;
+              const name = ptsOf(curDate)[0].name;
+              commitUndoable('測試', () => { state.schedule[curDate] = ptsOf(curDate).slice(1); });
+              const afterDel = ptsOf(curDate).length;
+              document.querySelector('.toast-btn').click();
+              return [afterDel === before - 1,
+                      ptsOf(curDate).length === before,
+                      ptsOf(curDate)[0].name === name];
+          }"""), [True, True, True])
+    check("復原按鈕上的文字說明刪掉的是什麼",
+          page.evaluate("""() => {
+              commitUndoable('「RUN 9」', () => {});
+              const t = document.querySelector('.toast').textContent;
+              document.querySelector('.toast-btn').click();
+              return t.includes('已刪除「RUN 9」') && t.includes('復原');
+          }"""), True)
+    check("復原也會把資料寫回 localStorage，不只改記憶體",
+          page.evaluate("""() => {
+              const before = ptsOf(curDate).length;
+              commitUndoable('測試', () => { state.schedule[curDate] = []; });
+              document.querySelector('.toast-btn').click();
+              flushPersist();
+              return JSON.parse(localStorage.getItem(KEY)).schedule[curDate].length === before;
+          }"""), True)
+    check("復原只保留最後一次，不累積堆疊（v33 移除 undo 堆疊的原因）",
+          page.evaluate("() => typeof commitUndoable === 'function' && typeof window.undoStack === 'undefined'"), True)
+
+    # --- 分享目標 ---
+    check("能從分享過來的純文字裡撈出 YouTube 網址",
+          page.evaluate("""() => {
+              const raw = '快來看 https://youtu.be/dQw4w9WgXcQ?t=90 這段';
+              let parsed = null;
+              for (const u of (raw.match(/https?:\\/\\/\\S+/g) || [])) { parsed = ytParse(u); if (parsed) break; }
+              return parsed;
+          }"""), {"id": "dQw4w9WgXcQ", "start": 90})
+    check("分享面板列出當天每一場 RUN 讓人挑",
+          page.evaluate("""() => {
+              shareVideoSheet({id: 'dQw4w9WgXcQ', start: 90}, curDate);
+              const n = document.querySelectorAll('.sv-row').length;
+              const title = document.querySelector('.sheet-t').textContent;
+              closeSheet();
+              return [n === ptsOf(curDate).length, n > 0, title];
+          }"""), [True, True, "加入錄影連結"])
+    check("已經有同一支影片的場次不能重複掛",
+          page.evaluate("""() => {
+              const p = ptsOf(curDate)[0];
+              p.videos = [{id: 'v1', vid: 'dQw4w9WgXcQ', start: 0, label: ''}];
+              shareVideoSheet({id: 'dQw4w9WgXcQ', start: 90}, curDate);
+              const first = document.querySelector('.sv-row');
+              const r = [first.disabled, first.textContent.includes('已經有這支影片')];
+              closeSheet();
+              p.videos = [];
+              return r;
+          }"""), [True, True])
+
+    # --- 離線狀態 ---
+    check("有離線狀態列，且平常收著",
+          page.evaluate("""() => {
+              const el = document.getElementById('offlinebar');
+              return [!!el, el.classList.contains('in')];
+          }"""), [True, False])
+    check("離線列走文件流，不會蓋住標題列",
+          page.evaluate("""() => {
+              const el = document.getElementById('offlinebar');
+              return getComputedStyle(el).position !== 'fixed';
+          }"""), True)
+
+    # --- manifest ---
+    check("manifest 註冊了分享目標與捷徑",
+          page.evaluate("""async () => {
+              const m = await (await fetch('./manifest.webmanifest')).json();
+              return [!!m.share_target, (m.shortcuts || []).length, (m.screenshots || []).length];
+          }"""), [True, 3, 2])
+    check("捷徑帶的分頁參數都對得到實際分頁",
+          page.evaluate("""async () => {
+              const m = await (await fetch('./manifest.webmanifest')).json();
+              return m.shortcuts.every(s => {
+                  const tab = new URL(s.url, location.href).searchParams.get('tab');
+                  return !!document.querySelector('.tab[data-view="' + tab + '"]');
+              });
+          }"""), True)
+
+    # --- 觸控目標 ---
+    check("沒有實際可點高度低於 44px 的控制項",
+          page.evaluate("""() => {
+              const tooSmall = [];
+              document.querySelectorAll('button, .tab, input, select, .chip').forEach(el => {
+                  const r = el.getBoundingClientRect();
+                  if (r.width === 0 || r.height === 0) return;
+                  const after = parseFloat(getComputedStyle(el, '::after').height) || 0;
+                  if (Math.max(r.height, after) < 44) tooSmall.push(el.className.split(' ')[0] || el.tagName);
+              });
+              return [...new Set(tooSmall)];
+          }"""), [])
+    check("刪除鍵的可點範圍沒有蓋到旁邊的職業標籤",
+          page.evaluate("""() => {
+              const s = document.querySelector('.slot');
+              if (!s) return true;
+              const rp = s.querySelector('.rolepill').getBoundingClientRect();
+              const x = s.querySelector('.slot-x').getBoundingClientRect();
+              return rp.right <= x.left;
+          }"""), True)
+
+    # --- 可存取性 ---
+    check("所有輸入欄都有可讀名稱",
+          page.evaluate("""() => [...document.querySelectorAll('input, select')]
+              .filter(i => !i.labels?.length && !i.getAttribute('aria-label')).length"""), 0)
 
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")

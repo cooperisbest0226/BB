@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v50';
+const APP_VERSION='v51';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -270,6 +270,25 @@ function commit(fn){
   persist(); render();
 }
 
+/* ── 單步復原 ───────────────────────────────────────────
+   完整的 undo/redo 堆疊在 v33 移除了（每次異動都要對整包 state 做 JSON 快照比對，太重）。
+   這裡只留「最後一次破壞性操作」可以撤銷：刪除前存一份整包 JSON，
+   使用者在 toast 上按「復原」就整包還原。沒有堆疊、不記錄一般編輯，
+   成本是一次 JSON.stringify，但解決了誤刪這個真正會讓人心痛的情境。 */
+function commitUndoable(label, fn){
+  let before;
+  try{ before=JSON.stringify(state); }catch(e){ before=null; }
+  commit(fn);
+  if(before===null){ toast(`已刪除${label}`); return; }
+  toastAction(`已刪除${label}`,'復原',()=>{
+    try{
+      state=migrate(JSON.parse(before));
+      persist(); render();
+      toast('已復原');
+    }catch(e){ toast('復原失敗'); }
+  });
+}
+
 /* ── 查詢輔助 ─────────────────────────────────────────── */
 const dates=()=>Object.keys(state.schedule).sort();
 const ptsOf=k=>state.schedule[k]||[];
@@ -348,6 +367,42 @@ function toast(msg){
   const el=document.createElement('div'); el.className='toast'; el.textContent=msg;
   document.body.appendChild(el);
   setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); },1900);
+}
+
+/* 帶一顆動作按鈕的 toast，目前用在「刪除後可復原」。
+   停留時間比一般 toast 長 —— 使用者要先看懂發生什麼事、再決定要不要按。 */
+function toastAction(msg, label, fn, ms=6000){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const el=document.createElement('div'); el.className='toast toast-act';
+  const txt=document.createElement('span'); txt.textContent=msg;
+  const btn=document.createElement('button'); btn.className='toast-btn'; btn.textContent=label;
+  let done=false;
+  const close=()=>{ if(done) return; done=true;
+    el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); };
+  btn.onclick=()=>{ close(); fn(); };
+  el.append(txt,btn); document.body.appendChild(el);
+  setTimeout(close, ms);
+}
+
+/* ── 儲存持久化 ─────────────────────────────────────────
+   沒有主動要求的話，瀏覽器在裝置空間吃緊時可以直接清掉 localStorage 與 IndexedDB——
+   主資料和五份自動快照住在同一個地方，會一起消失，備份機制完全幫不上忙。
+   要求成功後這份資料就不會被自動清理，只能由使用者手動刪除。
+
+   Chrome 依「安裝與使用頻率」決定給不給；Safari 對加到主畫面的 PWA 會自動給，
+   但對一般瀏覽器分頁有「7 天沒互動就清掉」的規則——所以「裝到主畫面」很重要。 */
+let storagePersisted=null;   // true / false / null（瀏覽器不支援）
+async function ensurePersistentStorage(){
+  if(!navigator.storage||!navigator.storage.persist){ storagePersisted=null; return null; }
+  try{
+    storagePersisted=await navigator.storage.persisted();
+    if(!storagePersisted) storagePersisted=await navigator.storage.persist();
+  }catch(e){ storagePersisted=null; }
+  return storagePersisted;
+}
+/* 從主畫面（standalone）開啟，還是在瀏覽器分頁裡開？兩者的資料安全性差很多。 */
+function isStandalone(){
+  return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }

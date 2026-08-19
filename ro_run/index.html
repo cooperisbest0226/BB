@@ -45,6 +45,13 @@ try{
   </symbol>
 </svg>
 
+<!-- 離線狀態列：離線功能本身是完整的，但使用者需要知道自己現在離線，
+     否則只會覺得「YouTube 縮圖怎麼壞了」而不知道原因。 -->
+<div id="offlinebar" class="offlinebar" role="status">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 2l20 20"/><path d="M5 12.5a10 10 0 0 1 4-2.4"/><path d="M1.4 8.8a15 15 0 0 1 4.3-2.7"/><path d="M18.4 12.4A10 10 0 0 0 15 10"/><path d="M10.7 5.1a15 15 0 0 1 11.9 3.7"/><path d="M12 20h.01"/></svg>
+  <span>離線中 · 排班照常編輯與儲存，只有 YouTube 縮圖會載不到</span>
+</div>
+
 <div class="app">
   <div class="topbar">
     <div class="topbar-row">
@@ -127,7 +134,7 @@ try{
       <div class="sec"><span class="sec-t">成員</span><div class="sec-line"></div>
         <button class="gbtn accent" id="btnAddMember">＋ 新增成員</button>
       </div>
-      <div class="field"><input id="memberSearch" placeholder="搜尋名字或暱稱⋯"></div>
+      <div class="field"><input id="memberSearch" placeholder="搜尋名字或暱稱⋯" aria-label="搜尋成員"></div>
       <div id="memberList"></div>
     </div>
 
@@ -155,10 +162,10 @@ try{
     </div>
     <div class="matfilt-body" id="matFiltBody" hidden>
       <div class="field-2 mat-range">
-        <div class="field"><label>從</label><input type="date" id="matFrom"></div>
-        <div class="field"><label>到</label><input type="date" id="matTo"></div>
+        <div class="field"><label>從</label><input type="date" id="matFrom" aria-label="材料統計起始日期"></div>
+        <div class="field"><label>到</label><input type="date" id="matTo" aria-label="材料統計結束日期"></div>
       </div>
-      <div class="field"><label>場次（選填，只看特定 RUN 名稱）</label><select id="matRun"><option value="">全部</option></select></div>
+      <div class="field"><label>場次（選填，只看特定 RUN 名稱）</label><select id="matRun" aria-label="材料統計場次篩選"><option value="">全部</option></select></div>
       <div class="preset-row">
         <button class="gbtn" data-preset="today">今天</button>
         <button class="gbtn" data-preset="week">本週</button>
@@ -212,10 +219,10 @@ try{
           <label>組數
             <button class="minibtn" id="saleLoad" type="button">帶入目前組數</button>
           </label>
-          <input type="number" id="saleSets" min="0" step="1" inputmode="numeric">
+          <input type="number" id="saleSets" min="0" step="1" inputmode="numeric" aria-label="售出組數">
         </div>
         <div class="field"><label>台幣（每組）</label>
-          <input type="number" id="saleTwd" min="0" step="any" inputmode="decimal"></div>
+          <input type="number" id="saleTwd" min="0" step="any" inputmode="decimal" aria-label="每組台幣金額"></div>
       </div>
 
       <div id="saleItemFields" hidden>
@@ -228,7 +235,7 @@ try{
       </div>
 
       <div class="field"><label>遊戲 R 幣值（1 台幣 = ? R）</label>
-        <input type="number" id="saleRate" min="0" step="any" inputmode="decimal"></div>
+        <input type="number" id="saleRate" min="0" step="any" inputmode="decimal" aria-label="台幣兌遊戲幣匯率"></div>
 
       <div class="calcout" id="saleOut"></div>
       <button class="gbtn accent" id="saleAdd" style="width:100%; margin-top:12px">記錄這筆交易</button>
@@ -242,8 +249,8 @@ try{
     </button>
     <div class="matfilt-body" id="aucFiltBody" hidden>
       <div class="field-2 mat-range">
-        <div class="field"><label>從</label><input type="date" id="aucFrom"></div>
-        <div class="field"><label>到</label><input type="date" id="aucTo"></div>
+        <div class="field"><label>從</label><input type="date" id="aucFrom" aria-label="交易紀錄起始日期"></div>
+        <div class="field"><label>到</label><input type="date" id="aucTo" aria-label="交易紀錄結束日期"></div>
       </div>
       <div class="preset-row">
         <button class="gbtn" data-aucpreset="today">今天</button>

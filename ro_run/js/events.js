@@ -58,8 +58,7 @@ document.addEventListener('click',e=>{
      這裡的場次可能不是「目前這天」，所以要把日期一起帶進去。 */
   if(a==='editRunDrops') dropsSheet(ptId, btn.dataset.day);
   if(a==='delSale')   confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
-    commit(()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
-    toast('已刪除交易紀錄');
+    commitUndoable('交易紀錄',()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
   });
   if(a==='editSale')  saleSheet(id);
   if(a==='editPt')    ptSheet(ptId);
@@ -84,7 +83,7 @@ document.addEventListener('click',e=>{
       (p.videos&&p.videos.length)?`${p.videos.length} 個錄影連結`:'',
     ].filter(Boolean).join('、');
     confirmSheet(`刪除「${p.name}」？${inside?`\n含 ${inside}。`:''}`, ()=>{
-      commit(()=>{ state.schedule[curDate]=ptsOf(curDate).filter(x=>x.id!==ptId); });
+      commitUndoable(`「${p.name}」`,()=>{ state.schedule[curDate]=ptsOf(curDate).filter(x=>x.id!==ptId); });
     });
   }
   if(a==='editMember') memberSheet(id);
@@ -124,9 +123,7 @@ document.getElementById('btnDelDate').onclick=()=>{
     `含 ${pts.length} 個 RUN、${slotCount} 個排班位子${dropCount?`、${dropCount} 筆掉落紀錄`:''}${vidCount?`、${vidCount} 個錄影連結`:''}。\n`+
     `刪除後材料統計也會少掉這天的數據。`,
     ()=>{
-      commit(()=>{ delete state.schedule[target]; });
-      curDate=null; render();
-      toast(`已刪除 ${fmtDate(target)}`);
+      commitUndoable(`${fmtDate(target)} 這天的資料`,()=>{ delete state.schedule[target]; curDate=null; });
     });
 };
 document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
@@ -138,7 +135,7 @@ document.getElementById('btnNextDate').onclick=()=>{ const ks=dates(),i=ks.index
 document.getElementById('btnClearDay').onclick=()=>{
   if(!assignedIds(curDate).size) return toast('本日還沒有排班');
   confirmSheet(`清空 ${fmtDate(curDate)} 所有 RUN 的成員？RUN 本身會保留。`, ()=>{
-    commit(()=>{ ptsOf(curDate).forEach(p=>p.slots=[]); });
+    commitUndoable('本日排班',()=>{ ptsOf(curDate).forEach(p=>p.slots=[]); });
   });
 };
 
@@ -179,6 +176,46 @@ if(window.visualViewport){
    sw.js 的 install 不再自動 skipWaiting，新版會停在 waiting 狀態等使用者確認。
    偵測到有 waiting 的 worker 就在畫面底部顯示提示，使用者按了才真的換版，
    避免編輯到一半被抽換成新版（舊 index.html 配新 styles.css 的混搭狀態）。 */
+/* ── 安裝到主畫面 ─────────────────────────────────────────
+   這件事不只是方便：Safari 對一般瀏覽器分頁有「7 天沒互動就清掉 script-writable
+   storage」的規則，加到主畫面的 PWA 不受此限；Chrome 也把「是否已安裝」列入
+   要不要給持久化儲存的判斷。所以裝到主畫面 = 資料比較不容易被清掉。 */
+let installPrompt=null;
+addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();          // 擋掉瀏覽器自己的迷你提示，改由我們挑時機
+  installPrompt=e;
+  maybeShowInstallBar();
+});
+addEventListener('appinstalled',()=>{
+  installPrompt=null;
+  document.getElementById('installBar')?.remove();
+  /* 安裝後再要一次持久化——這時候拿到的機率比在分頁裡高很多 */
+  ensurePersistentStorage();
+});
+
+const INSTALL_DISMISS_KEY='star-tower-install-dismissed';
+function maybeShowInstallBar(){
+  if(!installPrompt || isStandalone()) return;
+  try{ if(localStorage.getItem(INSTALL_DISMISS_KEY)) return; }catch(e){}
+  if(document.getElementById('installBar')) return;
+  const bar=document.createElement('div');
+  bar.id='installBar'; bar.className='updatebar';
+  bar.innerHTML=`<span>加到主畫面，資料更不易被清除</span>
+    <button class="updatebar-go">安裝</button>
+    <button class="updatebar-x" aria-label="不要再顯示">×</button>`;
+  bar.querySelector('.updatebar-go').onclick=async()=>{
+    bar.querySelector('.updatebar-go').disabled=true;
+    try{ await installPrompt.prompt(); }catch(e){}
+    installPrompt=null; bar.remove();
+  };
+  bar.querySelector('.updatebar-x').onclick=()=>{
+    try{ localStorage.setItem(INSTALL_DISMISS_KEY,'1'); }catch(e){}
+    bar.remove();
+  };
+  document.body.appendChild(bar);
+  requestAnimationFrame(()=>bar.classList.add('in'));
+}
+
 let swReg=null, swReloading=false;
 
 function showUpdateBar(worker){

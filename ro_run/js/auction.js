@@ -501,8 +501,7 @@ function saleSheet(id){
     sh.querySelector('[data-s="cancel"]').onclick=closeSheet;
     sh.querySelector('[data-s="del"]').onclick=()=>{
       confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
-        commit(()=>{ state.sales=(state.sales||[]).filter(x=>x.id!==id); });
-        toast('已刪除交易紀錄');
+        commitUndoable('交易紀錄',()=>{ state.sales=(state.sales||[]).filter(x=>x.id!==id); });
       });
     };
   });

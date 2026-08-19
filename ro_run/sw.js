@@ -8,7 +8,7 @@
    更新流程刻意不自動接管：install 不呼叫 skipWaiting，新版會停在 waiting 等使用者確認。
    使用者按下更新提示後，頁面才 postMessage({type:'SKIP_WAITING'}) 讓新版上線並重新整理。
    這樣才不會在使用者編輯到一半時，把舊的 index.html 配上新的 styles.css。 */
-const CACHE_NAME = 'star-tower-team-v50';
+const CACHE_NAME = 'star-tower-team-v51';
 const APP_SHELL = [
   './',
   './index.html',
@@ -28,7 +28,10 @@ const APP_SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png'
+  './icons/apple-touch-icon.png',
+  /* manifest 的 screenshots：安裝提示框會用到，離線時也要拿得到 */
+  './icons/shot-board.png',
+  './icons/shot-stats.png'
 ];
 
 /* 複盤用的 YouTube 資源：縮圖 i.ytimg.com、播放器 youtube-nocookie.com、影片串流 googlevideo.com */

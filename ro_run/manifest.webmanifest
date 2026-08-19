@@ -9,9 +9,27 @@
   "background_color": "#eef1f7",
   "theme_color": "#eef1f7",
   "lang": "zh-Hant",
+  "categories": ["productivity", "utilities"],
   "icons": [
     { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+  ],
+  "screenshots": [
+    { "src": "./icons/shot-board.png", "sizes": "420x880", "type": "image/png", "form_factor": "narrow", "label": "陣容分配" },
+    { "src": "./icons/shot-stats.png", "sizes": "420x880", "type": "image/png", "form_factor": "narrow", "label": "材料統計" }
+  ],
+  "shortcuts": [
+    { "name": "今天的陣容", "short_name": "陣容", "url": "./?tab=board",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "材料統計", "short_name": "材料", "url": "./?tab=stats",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "拍賣紀錄", "short_name": "拍賣", "url": "./?tab=auction",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
 }

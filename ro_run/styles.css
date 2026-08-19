@@ -140,7 +140,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
 .brand-sub{font-size:11px; color:var(--faint); letter-spacing:.4px; white-space:nowrap}
 .icon-btn{
-  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+  width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
   color:var(--ink-2); background:var(--glass-2); border:1px solid var(--line-2);
   transition:background .16s, color .16s, transform .12s var(--ease);
 }
@@ -223,7 +223,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .date-actions{display:flex; align-items:center; gap:7px; margin-top:9px; flex-wrap:wrap}
 .date-actions-gap{flex:1}
 .date-actions .gbtn{padding:6px 11px; font-size:12px}
-.icon-btn.sm{width:30px; height:30px; flex:0 0 auto}
+.icon-btn.sm{width:44px; height:44px; flex:0 0 auto}
 .icon-btn.sm svg{width:15px; height:15px}
 .datechip[aria-current="true"]{
   background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.35);
@@ -329,7 +329,14 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 }
 .rolepill:active{transform:scale(.93)}
 .rolepill.empty{color:var(--faint); border-color:var(--line); background:transparent; font-weight:500}
-.slot-x{color:var(--faint); font-size:15px; line-height:1; padding:2px 3px; border-radius:5px; transition:color .16s, background .16s}
+.slot-x{
+  color:var(--faint); font-size:15px; line-height:1; border-radius:8px;
+  /* 這顆是刪除，原本只有 15×19px，要點很準才點得到。放大到 38×44 的實際尺寸，
+     不用 ::after 撐開是因為左邊緊鄰職業標籤，透明的擴張區會蓋住它，
+     變成想改職業卻把人踢掉——刪除鍵寧可自己佔位置，也不要偷別人的可點範圍。 */
+  flex:0 0 auto; width:38px; height:44px; display:grid; place-items:center;
+  transition:color .16s, background .16s;
+}
 .slot-x:hover{color:var(--danger); background:rgba(220,38,38,.08)}
 .slot-empty{
   padding:10px 15px; font-size:12.5px; color:var(--faint); background:rgba(255,255,255,.42);
@@ -339,11 +346,16 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .pt-foot{display:flex; flex-wrap:wrap; gap:7px; padding:10px 13px; border-top:1px solid var(--line-2); background:rgba(255,255,255,.45)}
 /* 有錄影的場次讓按鈕自己標示出來，不用點進去才知道 */
 .gbtn.hasvid{color:var(--accent); border-color:rgba(79,70,229,.32); background:var(--accent-soft)}
-.gbtn .vid-n{margin-left:5px; font-weight:700}
+/* .gbtn 現在是 inline-flex 且有 gap，不需要再補 margin */
+.gbtn .vid-n{font-weight:700}
 
 /* small ghost button */
+/* 觸控目標：原本 .gbtn 只有 32px 高、.icon-btn 34px，都低於 44px 的建議值，
+   單手操作時很容易點錯隔壁那顆。改用 min-height 撐開，文字仍然置中，
+   視覺上只是變得比較好按，字級與圓角都沒動。 */
 .gbtn{
-  font-size:12px; font-weight:500; color:var(--ink-2); padding:6px 11px; border-radius:8px;
+  font-size:12px; font-weight:500; color:var(--ink-2); padding:6px 13px; border-radius:10px;
+  min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:5px;
   border:1px solid var(--line); background:rgba(255,255,255,.7); transition:background .16s, border-color .16s, transform .12s var(--ease);
 }
 .gbtn:hover{background:var(--surface); border-color:var(--line)}
@@ -366,7 +378,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .bench-list{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; min-height:34px}
 .bench-list::-webkit-scrollbar{display:none}
 .chip{
-  flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:7px 12px;
+  flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:7px 12px; min-height:44px;
   background:var(--surface); border:1px solid var(--line-2); border-radius:99px; font-size:13px; font-weight:500;
   box-shadow:0 1px 2px rgba(21,23,28,.05); touch-action:pan-x; cursor:grab;
   transition:transform .14s var(--ease), box-shadow .16s, opacity .16s;
@@ -472,7 +484,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .minibtn{
   margin-left:auto; font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:99px;
   border:1px solid var(--line-2); background:var(--surface); color:var(--ink-2);
+  /* 視覺維持小尺寸，靠透明的 ::after 把可點範圍撐到 44px —— 這幾顆是塞在列表列裡的，
+     直接放大會把每一列都撐高。 */
+  position:relative;
 }
+.minibtn::after{content:''; position:absolute; left:0; right:0; top:50%; height:44px; transform:translateY(-50%)}
 .minibtn:active{transform:scale(.95)}
 .calcout{margin-top:4px; border-top:1px dashed var(--line-2); padding-top:11px}
 .calcline{display:flex; align-items:baseline; gap:8px; padding:5px 0; font-size:12px; color:var(--muted)}
@@ -1101,4 +1117,50 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 .mrun-e{
   margin-left:auto; flex:0 0 auto; font-size:10.5px; font-weight:600;
   color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:99px;
+}
+
+/* ── 離線狀態列 ─────────────────────────────────────────── */
+/* 走正常文件流而不是 fixed 覆蓋：固定在最上層會蓋住 App 標題列。
+   收合時用 max-height 壓成 0，展開時把整頁往下推。 */
+.offlinebar{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  max-height:0; overflow:hidden; padding:0 14px;
+  font-size:11.5px; font-weight:550; line-height:1.4; color:#7c2d12; background:#fde9c8;
+  transition:max-height .28s var(--ease), padding .28s var(--ease);
+}
+.offlinebar.in{max-height:60px; padding:7px 14px calc(7px + env(safe-area-inset-top))}
+.offlinebar svg{
+  flex:0 0 auto; width:14px; height:14px; fill:none; stroke:currentColor;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+}
+[data-theme="dark"] .offlinebar{color:#fde3bd; background:#4a2c0c}
+
+/* toast 上的動作按鈕（刪除後可復原） */
+.toast-act{display:flex; align-items:center; gap:12px; padding:8px 8px 8px 17px}
+.toast-btn{
+  flex:0 0 auto; min-height:32px; padding:0 13px; border-radius:99px;
+  font-size:12.5px; font-weight:650; color:var(--accent); background:#fff;
+}
+.toast-btn:active{transform:scale(.95)}
+
+/* 從別的 App 分享進來的連結：選要掛到哪一場 */
+.sv-box{max-height:180px}
+.sv-row{
+  display:flex; align-items:center; gap:10px; width:100%; padding:12px 13px;
+  min-height:44px; text-align:left; border-bottom:1px solid var(--line-2);
+  transition:background .16s;
+}
+.sv-row:last-child{border-bottom:none}
+.sv-row:active{background:var(--surface-2)}
+.sv-row.has{opacity:.5}
+.sv-n{font-size:13.5px; font-weight:600; color:var(--ink)}
+.sv-t{font-size:11.5px; color:var(--faint)}
+.sv-m{margin-left:auto; font-size:11.5px; color:var(--muted)}
+
+/* 列表列裡的標籤：視覺尺寸不動，只用透明的 ::after 把可點高度撐到 44px。
+   直接放大會讓每一列都變高，一屏看得到的成員與場次都變少。
+   只往垂直方向擴張——水平擴張會蓋到同一列相鄰的按鈕。 */
+.rolepill, .slot-buff, .droppill{position:relative}
+.rolepill::after, .slot-buff::after, .droppill::after{
+  content:''; position:absolute; left:0; right:0; top:50%; height:44px; transform:translateY(-50%);
 }

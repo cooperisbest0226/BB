@@ -115,7 +115,8 @@ function memberSheet(id){
     const del=s.querySelector('[data-s="del"]');
     if(del) del.onclick=()=>{
       confirmSheet(`刪除「${m.name}」？所有日期的排班紀錄也會一併移除。`, ()=>{
-        commit(()=>{
+        /* 這個刪除會掃過所有日期的排班，是影響範圍最大的一種，特別需要可以反悔 */
+        commitUndoable(`成員「${m.name}」`,()=>{
           state.members=state.members.filter(x=>x.id!==id);
           Object.values(state.schedule).forEach(ps=>ps.forEach(p=>{p.slots=p.slots.filter(x=>x.memberId!==id);}));
         });
@@ -170,7 +171,7 @@ function roleSheet(id, draft){
     const del=s.querySelector('[data-s="del"]');
     if(del) del.onclick=()=>{
       confirmSheet(`刪除職業「${r.name}」？已指定這個職業的人會變成未指定。`, ()=>{
-        commit(()=>{
+        commitUndoable(`職業「${r.name}」`,()=>{
           state.roles=state.roles.filter(x=>x.id!==id);
           Object.values(state.schedule).forEach(ps=>ps.forEach(p=>p.slots.forEach(sl=>{ if(sl.roleId===id) sl.roleId=null; })));
           state.members.forEach(m=>{ if(m.defaultRoleId===id) m.defaultRoleId=null; });
@@ -451,6 +452,64 @@ function reviewSheet(ptId, idx){
   });
 }
 
+/* ── 從別的 App 分享進來的 YouTube 連結 ───────────────────
+   選一天、選一場 RUN，直接掛上去。以前要複製網址、切回 App、找到那場、
+   開複盤面板、貼上——五個動作變成兩下。 */
+function shareVideoSheet(parsed, dayKey){
+  const day=dayKey||todayKey();
+  const pts=ptsOf(day);
+  const list=pts.length
+    ? `<div class="rv-list">${pts.map(pt=>{
+        const has=(pt.videos||[]).some(v=>v.vid===parsed.id);
+        return `<button class="sv-row ${has?'has':''}" data-pt="${pt.id}" ${has?'disabled':''}>
+          <span class="sv-n">${esc(pt.name)}</span>
+          <span class="sv-t num">${esc(pt.time||'')}</span>
+          <span class="sv-m">${has?'已經有這支影片':`${pt.slots.length}/${pt.capacity} 人`}</span>
+        </button>`;
+      }).join('')}</div>`
+    : `<div class="bench-empty">${fmtDate(day)} 還沒有建立任何 RUN</div>`;
+
+  sheet('加入錄影連結',`
+    <div class="ytbox sv-box">
+      <img class="yt-thumb" src="${ytThumb(parsed.id)}" alt="">
+      <div class="yt-off">載不到縮圖，可能是目前沒有連線。連結仍然會正常存起來。</div>
+      ${parsed.start?`<span class="yt-at num">從 ${fmtClock(parsed.start)} 開始</span>`:''}
+    </div>
+    <div class="field" style="margin-top:12px"><label for="svDay">日期</label>
+      <input type="date" id="svDay" value="${day}"></div>
+    <div class="field"><label>要掛到哪一場</label></div>
+    ${list}
+    <div class="field" style="margin-top:12px"><label for="svLabel">標籤（選填，例如「阿明視角」）</label>
+      <input id="svLabel" autocomplete="off" placeholder="錄影"></div>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="close">取消</button>
+    </div>`,s=>{
+    s.classList.add('sheet-tall');
+    const img=s.querySelector('.yt-thumb');
+    if(img) img.addEventListener('error',()=>img.closest('.ytbox').classList.add('noimg'));
+    /* 換日期就整個面板重畫，帶著已經填好的標籤 */
+    s.querySelector('#svDay').onchange=e=>{
+      const lbl=s.querySelector('#svLabel').value;
+      shareVideoSheet(parsed, e.target.value);
+      const nx=document.querySelector('#svLabel'); if(nx) nx.value=lbl;
+    };
+    s.querySelector('[data-s="close"]').onclick=closeSheet;
+    s.querySelectorAll('.sv-row').forEach(b=>b.onclick=()=>{
+      const label=s.querySelector('#svLabel').value.trim();
+      commit(()=>{
+        const p=ptsOf(day).find(x=>x.id===b.dataset.pt); if(!p) return;
+        p.videos=p.videos||[];
+        p.videos.push({id:uid(), vid:parsed.id, start:parsed.start, label});
+      });
+      closeSheet();
+      /* 掛完直接跳到那一天，並打開複盤面板——這樣馬上看得到結果 */
+      curDate=day; render();
+      toast('已加入錄影連結');
+      reviewSheet(b.dataset.pt, Math.max((ptsOf(day).find(x=>x.id===b.dataset.pt).videos||[]).length-1,0));
+    });
+  });
+}
+
 /* 預先知道的材料清單（星座之塔目前的掉落物項目），一開始就會出現在自動建議裡，不用等打過一次才有 */
 const KNOWN_MATERIALS=[
   '未知的隕石碎片','稀微魔力符文石',
@@ -705,6 +764,17 @@ function editDateSheet(){
   });
 }
 
+/* 儲存保護狀態的說明。這件事的後果比聽起來嚴重：沒有保護的話，
+   裝置空間吃緊時瀏覽器可以直接清掉 localStorage 與 IndexedDB，
+   主資料和五份自動快照住在同一個地方，會一起消失。 */
+function persistStatusText(){
+  if(storagePersisted===true) return '已開啟，瀏覽器不會自動清除這個 App 的資料';
+  if(storagePersisted===null) return '這個瀏覽器不支援，請定期匯出 JSON 備份';
+  return isStandalone()
+    ? '尚未取得。請多開幾次，或定期匯出 JSON 備份'
+    : '尚未取得。把 App 加到主畫面最容易拿到，否則資料可能被瀏覽器清除';
+}
+
 /* 目前 localStorage 用掉多少空間，設定頁的「資料用量」要顯示這個 */
 function storageUsageKB(){
   try{ return new Blob([localStorage.getItem(KEY)||'']).size/1024; }
@@ -739,6 +809,21 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v51', d:'2026/08/19',
+    note:'這一版針對「資料不要被瀏覽器清掉」與「手機上好不好按」做強化，功能位置沒有變動。',
+    c:[
+    ['add','向瀏覽器要求持久化儲存。沒要求的話，裝置空間吃緊時 localStorage 與自動快照可能被一起清掉——那是這個 App 唯一的資料所在地'],
+    ['add','設定頁新增「儲存保護」狀態；還沒取得時會說明怎麼處理，而不是只顯示失敗'],
+    ['add','刪除 RUN、整天、成員、職業、交易紀錄之後，可以按 toast 上的「復原」撤銷（只留最後一次，不是完整的復原堆疊）'],
+    ['add','支援從別的 App 分享 YouTube 連結進來，直接選要掛到哪一場 RUN——以前要複製網址、切回來、找到那場、貼上'],
+    ['add','離線時頂端顯示狀態列，說明排班照常可用、只有 YouTube 縮圖會載不到'],
+    ['add','可安裝時顯示「加到主畫面」提示；裝到主畫面資料比較不容易被瀏覽器清除'],
+    ['add','長按 App 圖示可直接跳到陣容、材料或拍賣'],
+    ['imp','按鈕與可點區域一律放大到 44px：卡片按鈕 32→44、日期箭頭 30→44、日期卡 36→44、成員列的刪除鍵 15×19→38×44'],
+    ['imp','職業標籤、BUFF、掉落標籤維持原本大小，改用透明區域把可點高度撐到 44px，列高不變'],
+    ['fix','成員列的刪除鍵放大後可能蓋到旁邊的職業標籤，變成想改職業卻把人踢掉；已改為各自佔位不重疊'],
+    ['fix','材料統計與拍賣的日期、金額欄位沒有可讀名稱，螢幕閱讀器唸不出來'],
+  ]},
   { v:'v50', d:'2026/08/19', c:[
     ['chg','材料四類的顏色重新分配：四個色相在色環上平均相距 64 度（綠 / 藍 / 紫 / 桃紅），先前的配色最近的兩類只差 41 度，在細長條上分不出來'],
   ]},
@@ -1006,6 +1091,14 @@ function moreSheet(){
           <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
         </span>
         <span class="settings-tx"><span class="settings-t">資料用量</span><span class="settings-d">目前約 ${storageUsageKB().toFixed(0)} KB（瀏覽器通常提供 5–10MB 空間）</span></span>
+      </div>
+      <div class="settings-row" style="cursor:default" id="rowPersist">
+        <span class="settings-ic" style="color:${storagePersisted?'#15803d':'#b45309'};background:${storagePersisted?'rgba(21,128,61,.12)':'rgba(180,83,9,.12)'}">
+          ${storagePersisted
+            ? `<svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 4.4-3.4 8.4-8 9.5-4.6-1.1-8-5.1-8-9.5V7Z"/><path d="M9 12l2 2 4-4"/></svg>`
+            : `<svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 4.4-3.4 8.4-8 9.5-4.6-1.1-8-5.1-8-9.5V7Z"/><path d="M12 9v4"/><path d="M12 16h.01"/></svg>`}
+        </span>
+        <span class="settings-tx"><span class="settings-t">儲存保護</span><span class="settings-d">${persistStatusText()}</span></span>
       </div>
       <button class="settings-row" data-s="checkUpdate">
         <span class="settings-ic" style="color:#4f46e5;background:var(--accent-soft)">
