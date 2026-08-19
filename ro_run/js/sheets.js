@@ -504,9 +504,13 @@ function bindRepeat(btn, fn){
 }
 
 /* 掉落物批次編輯：一次調整整場 RUN 的所有材料數量（新增／修改／刪除都在這裡完成）。
-   數量歸 0 就等於把那筆刪掉，不用一個一個開來刪。 */
-function dropsSheet(ptId){
-  const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
+   數量歸 0 就等於把那筆刪掉，不用一個一個開來刪。
+
+   dayKey 省略時就是目前這天（陣容頁的用法）。材料頁的場次明細會列出跨日期的場次，
+   所以要能指定是哪一天的那一場，不然改到的會是「今天剛好同 id」的場次或直接找不到。 */
+function dropsSheet(ptId, dayKey){
+  const day=dayKey||curDate;
+  const pt=ptsOf(day).find(p=>p.id===ptId); if(!pt) return;
   const work=new Map((pt.drops||[]).map(d=>[d.name,d.qty]));
   /* 預設 14 種常用材料 + 其他場次用過的自訂材料（自訂一次之後每場都選得到） */
   const names=allMaterialNames();
@@ -526,7 +530,7 @@ function dropsSheet(ptId){
   const groupsHtml=()=>groupBySeries(names).map(({s,names:ns})=>
     `<div class="dropgrp" style="${msVars(s)}">${s.label}</div>`+ns.map(rowHtml).join('')).join('');
 
-  sheet(`${pt.name} 的掉落物`,`
+  sheet(`${dayKey&&dayKey!==curDate?`${fmtDate(day)} · `:''}${pt.name} 的掉落物`,`
     <div id="dropRows">${groupsHtml()}</div>
     <div class="skillgrp">新增自訂材料</div>
     <div class="dropadd">
@@ -607,7 +611,7 @@ function dropsSheet(ptId){
     };
     s.querySelector('[data-s="save"]').onclick=()=>{
       commit(()=>{
-        const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
+        const p=ptsOf(day).find(x=>x.id===ptId); if(!p) return;
         const old=new Map((p.drops||[]).map(d=>[d.name,d]));
         p.drops=names.filter(n=>(work.get(n)||0)>0).map(n=>{
           const ex=old.get(n);
@@ -735,6 +739,25 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v48', d:'2026/08/19',
+    note:'材料頁改版：把「能組幾組、卡在哪一種」提到最上面，其餘視覺一律讓路。',
+    c:[
+    ['chg','材料頁頂部四張統計卡換成一張主結果卡：可組成組數 + 瓶頸材料 + 每日掉落走勢'],
+    ['add','新增「每場平均」——總量會隨天數一直長，平均才有跨期間的比較基準'],
+    ['add','瓶頸材料直接標在最上面，不用再切到「組數試算」往下滑才看得到'],
+    ['add','每日掉落量走勢圖，看得出這陣子是不是掉得比較差'],
+    ['chg','材料系列配色改為低彩度（碎片靛藍／浮塵青／其餘灰）；原本的紅色與刪除、警告撞色，滿版高彩度長條也蓋掉了真正該注意的瓶頸'],
+    ['imp','長條圖改用視覺層級：夠用的材料壓細退到後面，只有卡住組數的那一種加粗標琥珀色'],
+    ['imp','場次明細改為按日期收合，預設只展開最近 3 天（28 天的資料原本會攤成一萬六千像素）'],
+    ['add','場次明細可直接點開編輯掉落，不用自己切回陣容頁翻到那天那場'],
+    ['add','篩選生效時會標色並出現一鍵清除鈕，不會再把局部數字誤看成全部'],
+    ['fix','場次明細原本借用「匯出圖片」的樣式，色值寫死淺色，深色模式下是一塊突兀的淺色區塊'],
+    ['fix','材料系列色在深色模式下沒有調亮，掉落標籤的深色文字埋在深色底上幾乎看不見'],
+  ]},
+  { v:'v47', d:'2026/08/19', c:[
+    ['fix','刪除日期的確認訊息沒把錄影連結算進去，看不出會一起被刪掉'],
+    ['imp','刪除單場 RUN 時列出裡面有幾個排班位子、幾筆掉落紀錄與幾個錄影連結'],
+  ]},
   { v:'v46', d:'2026/08/18', c:[
     ['add','每場 RUN 可以掛 YouTube 錄影連結，點「複盤」就能邊看影片邊對照當時的陣容'],
     ['add','同一場可以放多個連結（不同人的視角），面板上方切換'],

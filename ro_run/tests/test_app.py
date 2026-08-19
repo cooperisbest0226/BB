@@ -1276,15 +1276,15 @@ def run(page):
         return [r.querySelector('.setrow-v').textContent, r.classList.contains('short')];
     }"""
     check("每種材料 1 個時，瓶頸材料決定可組成組數",
-          page.evaluate("""() => [...document.querySelectorAll('#setCards .stat-v')].map(e=>e.textContent)"""),
-          ["7", "1"])
+          page.evaluate("""() => document.querySelector('#matCards .mres-v').textContent.replace('組','')"""),
+          "7")
     check("瓶頸材料寫「可組 N 組」，不再寫成「缺 N」",
           page.evaluate(row, "耐力隕石碎片"), ["7 · 可組 7 組再 1", True])
     check("瓶頸那列的組數與上方可組成組數一致",
           page.evaluate("""() => {
               const r = [...document.querySelectorAll('.setrow')].find(x => x.textContent.includes('耐力隕石碎片'));
               const own = +r.querySelector('.setrow-v').textContent.match(/可組 (\\d+) 組/)[1];
-              const sets = +document.querySelector('#setCards .stat-v').textContent;
+              const sets = +document.querySelector('#matCards .mres-v').textContent.replace('組','');
               return own === sets;
           }"""), True)
     check("非瓶頸材料照自己的數量算組數，且不標成瓶頸",
@@ -1300,7 +1300,7 @@ def run(page):
     page.evaluate("() => { matPerSet = 5; renderMaterials(); }")
     page.wait_for_timeout(300)
     check("每種材料 5 個時可組成組數跟著改",
-          page.evaluate("""() => document.querySelector('#setCards .stat-v').textContent"""), "1")
+          page.evaluate("""() => document.querySelector('#matCards .mres-v').textContent.replace('組','')"""), "1")
     check("瓶頸材料 7 個、每組 5 個 → 可組 1 組，再 3 個進下一組",
           page.evaluate(row, "耐力隕石碎片"), ["7 · 可組 1 組再 3", True])
     check("數量足夠的材料不會被標成瓶頸",
@@ -1665,6 +1665,137 @@ def run(page):
               const dump = JSON.parse(JSON.stringify(state));
               return dump.schedule[curDate][0].videos[0].vid;
           }"""), "dQw4w9WgXcQ")
+
+    # --- 刪除前的警告要把錄影算進去 ---
+    check("刪除單場 RUN 會列出裡面有什麼會一起消失",
+          page.evaluate("""() => {
+              // 這場原本沒有掉落紀錄，先補一筆，才驗得到三種內容都列出來
+              ptsOf(curDate)[0].drops = [{id:'dz', name:'威力隕石碎片', qty:2}];
+              render();
+              document.querySelector('.ptcard [data-act="delPt"]').click();
+              const t = document.querySelector('.sheet p').textContent;
+              closeSheet();
+              return [t.includes('錄影連結'), t.includes('掉落紀錄'), t.includes('排班位子')];
+          }"""), [True, True, True])
+    check("刪除整天的確認訊息也會算進錄影連結",
+          page.evaluate("""() => {
+              document.getElementById('btnDelDate').click();
+              const t = document.querySelector('.sheet p').textContent;
+              closeSheet();
+              return t.includes('個錄影連結');
+          }"""), True)
+    check("沒有錄影的 RUN 不會硬寫「0 個錄影連結」",
+          page.evaluate("""() => {
+              const p = ptsOf(curDate).find(x => !(x.videos||[]).length);
+              document.querySelector('.ptcard[data-pt="'+p.id+'"] [data-act="delPt"]').click();
+              const t = document.querySelector('.sheet p').textContent;
+              closeSheet();
+              return t.includes('錄影');
+          }"""), False)
+
+    # ---------- 材料頁改版 ----------
+    print("\n[matui] 材料頁：主結果卡、瓶頸、收合明細")
+    seed(page)
+    page.evaluate("""() => {
+        const MATS=['威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
+                    '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片'];
+        state.schedule = {};
+        ['2026-08-01','2026-08-02','2026-08-03','2026-08-04','2026-08-05'].forEach((k,di) => {
+            state.schedule[k] = [{id:'p'+di, name:'RUN 1', time:'20:00', capacity:12,
+                slots:[{memberId:'m1'}],
+                // 咒數隕石浮塵刻意給少，做成唯一瓶頸
+                drops: MATS.map((n,i) => ({id:'d'+di+i, name:n, qty: n==='咒數隕石浮塵' ? 2 : 6})),
+                videos:[]}];
+        });
+        curDate='2026-08-05'; matFrom=''; matTo=''; matRunName=''; matPerSet=5; matOpenDays=null;
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(400)
+
+    check("主結果卡顯示可組成組數",
+          page.locator("#matCards .mres-v").inner_text().replace("組", ""), "2")
+    check("主結果卡點出瓶頸材料",
+          page.locator("#matCards .mres-nn").inner_text(), "咒數隕石浮塵")
+    check("瓶頸列標出還差多少進下一組",
+          "再 5 個進下一組" in page.locator("#matCards .mres-nv").inner_text(), True)
+    check("主結果卡有每場平均（總量會隨天數長，平均才有比較基準）",
+          "每場平均 68.0 個" in page.locator("#matCards .mres-meta").inner_text(), True)
+    check("舊的四張統計卡已移除",
+          page.locator("#matCards .stat").count(), 0)
+    check("組數試算頁不再重複顯示組數卡",
+          page.evaluate("() => !!document.getElementById('setCards')"), False)
+    check("兩天以上才畫每日走勢", page.locator("#matCards .spark").count(), 1)
+
+    check("只有瓶頸材料標成琥珀色",
+          page.locator("#matBars .bar-row.short").count(), 1)
+    check("標到的就是瓶頸那一種",
+          page.locator("#matBars .bar-row.short .bar-l").inner_text(), "咒數隕石浮塵")
+
+    # --- 篩選狀態看得出來 ---
+    check("沒篩選時不標色，清除鈕收著",
+          [page.locator("#matFiltBtn").get_attribute("class").find("on") >= 0,
+           page.locator("#matFiltClear").is_visible()], [False, False])
+    page.evaluate("() => { matRunName='RUN 1'; renderMaterials(); }")
+    page.wait_for_timeout(200)
+    check("篩選生效時標色且出現清除鈕",
+          ["on" in page.locator("#matFiltBtn").get_attribute("class"),
+           page.locator("#matFiltClear").is_visible()], [True, True])
+    page.click("#matFiltClear")
+    page.wait_for_timeout(300)
+    check("清除鈕一次清掉日期與場次",
+          page.evaluate("() => [matFrom, matTo, matRunName]"), ["", "", ""])
+
+    # --- 場次明細收合 ---
+    page.click('#matSeg button[data-sub="detail"]')
+    page.wait_for_timeout(400)
+    check("明細按日期分組", page.locator("#matDetail .mday").count(), 5)
+    check("預設只展開最近 3 天", page.locator("#matDetail .mday.open").count(), 3)
+    check("收合的日期不渲染場次卡",
+          page.locator("#matDetail .mday:not(.open) .mrun").count(), 0)
+    page.locator("#matDetail .mday:not(.open) .mday-h").first.click()
+    page.wait_for_timeout(300)
+    check("點日期可以展開", page.locator("#matDetail .mday.open").count(), 4)
+    page.locator("#matDetail .mday.open .mday-h").first.click()
+    page.wait_for_timeout(300)
+    check("再點一次收回去", page.locator("#matDetail .mday.open").count(), 3)
+
+    # --- 從明細直接編輯其他天的掉落 ---
+    check("明細不再借用匯出圖片的樣式",
+          page.locator("#matDetail .ex-pt").count(), 0)
+    other = page.evaluate("""() => {
+        const h = [...document.querySelectorAll('.mrun-h')].find(x => x.dataset.day !== curDate);
+        return h ? h.dataset.day : null;
+    }""")
+    check("明細裡找得到非今天的場次", other is not None and other != "2026-08-05", True)
+    page.evaluate("""() => {
+        const h = [...document.querySelectorAll('.mrun-h')].find(x => x.dataset.day !== curDate);
+        h.click();
+    }""")
+    page.wait_for_timeout(300)
+    check("跨日期編輯時面板標題會標出是哪一天",
+          page.locator(".sheet-t").inner_text().startswith(page.evaluate(f"() => fmtDate('{other}')")), True)
+    page.evaluate("""() => {
+        const s = document.querySelector('.sheet'), row = s.querySelector('.droprow');
+        const q = row.querySelector('[data-qty]');
+        q.value = '77'; q.dispatchEvent(new Event('input', {bubbles:true}));
+        s.querySelector('[data-s="save"]').click();
+    }""")
+    page.wait_for_timeout(300)
+    check("存檔改到的是目標那天",
+          page.evaluate(f"() => ptsOf('{other}').some(p => p.drops.some(d => d.qty === 77))"), True)
+    check("目前這天沒被誤改",
+          page.evaluate("() => !ptsOf(curDate).some(p => p.drops.some(d => d.qty === 77))"), True)
+    check("編輯其他天不會把畫面切走",
+          page.evaluate("() => curDate"), "2026-08-05")
+
+    # --- 系列配色 ---
+    check("材料系列色改由 CSS 變數供色（深色模式才調得動）",
+          page.evaluate("() => msVars(MAT_SERIES[0]).includes('var(--ms-shard)')"), True)
+    check("匯出圖片仍使用寫死的淺色色值（匯出一律白底）",
+          page.evaluate("() => /^#[0-9a-f]{6}$/i.test(MAT_SERIES[0].color)"), True)
+    check("碎片系列不再與刪除／警告的紅色撞色",
+          page.evaluate("() => MAT_SERIES[0].color.toLowerCase() !== '#dc2626'"), True)
 
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")

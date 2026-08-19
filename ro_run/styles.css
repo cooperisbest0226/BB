@@ -21,6 +21,11 @@
   --danger:#dc2626;
   --ok:#0f9d76;
   --r-lg:20px; --r-md:14px; --r-sm:9px;
+  /* 材料系列色：碎片靛藍 / 浮塵青 / 其餘灰，一律低彩度。
+     高彩度留給 --warn（瓶頸）與 --danger（刪除），這樣真正要注意的東西才跳得出來。 */
+  --ms-shard:#4a5f87; --ms-shard-ink:#3a4b6b; --ms-shard-soft:rgba(74,95,135,.10); --ms-shard-line:rgba(74,95,135,.26);
+  --ms-dust:#3f8792;  --ms-dust-ink:#2f6a73;  --ms-dust-soft:rgba(63,135,146,.10);  --ms-dust-line:rgba(63,135,146,.26);
+  --ms-other:#8a8f9c; --ms-other-ink:#63697a; --ms-other-soft:rgba(138,143,156,.12); --ms-other-line:rgba(138,143,156,.28);
   --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
   --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
   --ease:cubic-bezier(.32,.72,0,1);
@@ -47,6 +52,11 @@
   --ok:#34d399;
   --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -8px rgba(0,0,0,.5);
   --shadow-lift:0 2px 4px rgba(0,0,0,.35), 0 18px 40px -12px rgba(0,0,0,.6);
+  /* 材料系列色在深色模式要整組提亮：淺色模式的 ink 是深色文字，
+     直接沿用會變成深底配深字，掉落標籤幾乎看不見。 */
+  --ms-shard:#8fa6d4; --ms-shard-ink:#b9c7e8; --ms-shard-soft:rgba(143,166,212,.15); --ms-shard-line:rgba(143,166,212,.32);
+  --ms-dust:#6fc0cc;  --ms-dust-ink:#a3dde4;  --ms-dust-soft:rgba(111,192,204,.15);  --ms-dust-line:rgba(111,192,204,.32);
+  --ms-other:#a8aeba; --ms-other-ink:#c9cdd8; --ms-other-soft:rgba(168,174,186,.15); --ms-other-line:rgba(168,174,186,.32);
 }
 [data-theme="dark"] body::before{opacity:.5}       /* 夜空底紋在深色模式下亮度收斂一點，不然會過曝 */
 [data-theme="dark"] .exportwrap{background:#fff; color:#15171c}  /* 匯出圖片固定白底，見上方註解 */
@@ -991,3 +1001,95 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 .vidrow-n{flex:1; min-width:0; font-weight:550; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .vidrow-id{flex:0 0 auto; font-size:11px; color:var(--faint)}
 .minibtn.warn{color:var(--danger); border-color:rgba(220,38,38,.28)}
+
+/* ── 材料頁：主結果卡 ───────────────────────────────────────
+   取代原本四張統計卡（其中兩張幾乎永遠相同、一張近乎常數）。
+   打開這頁真正想知道的是「能組幾組」與「卡在哪一種」，所以這兩件事擺最上面。 */
+.mres{
+  background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md);
+  padding:15px 16px 13px; box-shadow:var(--shadow);
+}
+.mres-top{display:flex; align-items:flex-start; gap:12px}
+.mres-main{flex:0 0 auto}
+.mres-k{font-size:11px; color:var(--muted); font-weight:500; letter-spacing:.03em}
+.mres-v{font-size:38px; font-weight:700; letter-spacing:-1.6px; line-height:1.05; margin-top:2px}
+.mres-v small{font-size:14px; color:var(--faint); font-weight:500; letter-spacing:0; margin-left:3px}
+.mres-meta{
+  margin-left:auto; text-align:right; font-size:12px; color:var(--ink-2);
+  font-weight:550; line-height:1.7; padding-top:3px;
+}
+.mres-meta span{color:var(--muted); font-weight:500}
+/* 瓶頸列：整頁唯一用琥珀色的地方，其餘材料色都壓低彩度讓這裡跳出來 */
+.mres-neck{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px;
+  padding:9px 11px; border-radius:var(--r-sm);
+  background:rgba(180,83,9,.09); border:1px solid rgba(180,83,9,.22);
+}
+.mres-nk{
+  flex:0 0 auto; font-size:10px; font-weight:700; letter-spacing:.05em;
+  color:#fff; background:var(--warn); padding:2px 7px; border-radius:99px;
+}
+.mres-nn{font-size:13px; font-weight:650; color:var(--warn); min-width:0}
+.mres-nv{margin-left:auto; font-size:11.5px; color:var(--warn); font-weight:550; white-space:nowrap}
+[data-theme="dark"] .mres-neck{background:rgba(240,168,98,.11); border-color:rgba(240,168,98,.26)}
+[data-theme="dark"] .mres-nk{color:#2a1c0a}
+.mres-trend{margin-top:12px; padding-top:11px; border-top:1px solid var(--line-2)}
+.mres-x{display:flex; align-items:center; gap:8px; font-size:10.5px; color:var(--faint); margin-top:2px}
+.mres-hl{flex:1; text-align:center; color:var(--muted)}
+
+/* 長條圖的視覺層級：夠用的材料一律壓細、降透明度往後站，
+   只有卡住組數的那一種加粗、上琥珀色跳出來。
+   12 條同粗同飽和的長條全部接近滿格時眼睛沒有落點，這才是原本讀不出東西的主因。 */
+.matgrp .bar-track{height:5px; transition:height .2s var(--ease)}
+.matgrp .bar-fill{opacity:.45}
+.bar-row.short .bar-l{color:var(--warn); font-weight:650}
+.bar-row.short .bar-n{color:var(--warn); font-weight:700}
+.matgrp .bar-row.short .bar-track{height:9px}
+.matgrp .bar-row.short .bar-fill{background:var(--warn); opacity:1}
+
+/* 篩選生效時要看得出來 */
+.matfilt-wrap{display:flex; align-items:stretch; gap:8px; margin-bottom:14px}
+.matfilt-wrap .matfilt{flex:1; min-width:0; margin-bottom:0}
+.matfilt.on{border-color:var(--accent); background:var(--accent-soft)}
+.matfilt.on .matfilt-l,.matfilt.on .matfilt-v{color:var(--accent)}
+.matfilt-x{
+  flex:0 0 auto; width:38px; border-radius:var(--r-sm);
+  border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent);
+  font-size:19px; line-height:1; font-weight:500;
+}
+.matfilt-x:active{transform:scale(.94)}
+
+/* ── 場次明細：按日期分組收合 ─────────────────────────────
+   實測 28 天 56 場會攤成一萬六千像素，預設全部展開沒有人滑得完。 */
+.mday{margin-bottom:10px}
+.mday-h{
+  display:flex; align-items:center; gap:10px; width:100%; padding:11px 14px;
+  border-radius:var(--r-md); border:1px solid var(--line-2); background:var(--glass);
+  text-align:left; transition:background .16s;
+}
+.mday.open .mday-h{border-radius:var(--r-md) var(--r-md) 0 0; border-bottom:none}
+.mday-h:active{background:var(--surface-2)}
+.mday-d{font-size:13.5px; font-weight:600; color:var(--ink)}
+.mday-s{margin-left:auto; font-size:11.5px; color:var(--muted)}
+.mday-c{
+  flex:0 0 auto; width:15px; height:15px; stroke:var(--faint); fill:none;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .22s var(--ease);
+}
+.mday.open .mday-c{transform:rotate(180deg)}
+/* 場次卡以前直接借用 .ex-pt（那是「匯出圖片」的樣式，色值全部寫死淺色、
+   寬度固定 300px），在深色模式下會變成一塊突兀的淺色孤島。改用自己的樣式。 */
+.mrun{border:1px solid var(--line-2); border-top:none; background:var(--surface)}
+.mrun:last-child{border-radius:0 0 var(--r-md) var(--r-md)}
+/* 場次標題整條可按，直接開掉落編輯 —— 以前發現數字記錯要自己切回陣容頁翻那天 */
+.mrun-h{
+  display:flex; align-items:center; gap:9px; width:100%; padding:10px 14px;
+  text-align:left; border-bottom:1px solid var(--line-2); transition:background .16s;
+}
+.mrun-h:active{background:var(--surface-2)}
+.mrun-n{font-size:13.5px; font-weight:600; color:var(--ink)}
+.mrun-t{font-size:11.5px; color:var(--faint)}
+.mrun-g{padding:11px 14px}
+.mrun-e{
+  margin-left:auto; flex:0 0 auto; font-size:10.5px; font-weight:600;
+  color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:99px;
+}

@@ -15,21 +15,29 @@ let aucFrom='', aucTo='';
 const nf=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
 
 /* ── 材料系列分色 ─────────────────────────────────────────
-   碎片系列＝紅、浮塵系列＝藍、其餘（未知的隕石碎片、符文石之類）＝綠。
-   同一套顏色貫穿：統計頁長條圖、掉落標籤、批次編輯面板、匯出圖片。 */
-/* 名字裡雖然有「碎片／浮塵」，但不屬於六屬性系列的材料，一律歸到「其餘」 */
+   碎片＝靛藍、浮塵＝青、其餘＝灰。三種都刻意壓低彩度：
+   原本用的是純紅／純藍／純綠，紅色跟 --danger（刪除、警告）撞色，
+   整頁滿版的高彩度長條會讓人以為哪裡出問題，也蓋掉了真正該跳出來的琥珀色瓶頸。
+   飽和的警示色現在只留給「卡住組數的那幾種材料」。
+
+   這裡的字面色值只給「匯出圖片」用（匯出一律白底，不跟著深色模式走）；
+   畫面上的元素改吃 CSS 變數（見 msVars），深色模式才有辦法各自調亮。 */
 const SERIES_EXCEPT=['未知的隕石碎片'];
 const MAT_SERIES=[
   {key:'shard',label:'碎片',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('碎片'),
-   color:'#dc2626', ink:'#991b1b', soft:'rgba(220,38,38,.09)', line:'rgba(220,38,38,.26)'},
+   color:'#4a5f87', ink:'#3a4b6b', soft:'rgba(74,95,135,.10)', line:'rgba(74,95,135,.26)'},
   {key:'dust', label:'浮塵',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('浮塵'),
-   color:'#1d4ed8', ink:'#1e3a8a', soft:'rgba(29,78,216,.09)', line:'rgba(29,78,216,.26)'},
+   color:'#3f8792', ink:'#2f6a73', soft:'rgba(63,135,146,.10)', line:'rgba(63,135,146,.26)'},
   {key:'other',label:'其餘',test:()=>true,
-   color:'#0f9d76', ink:'#065f46', soft:'rgba(15,157,118,.10)', line:'rgba(15,157,118,.28)'},
+   color:'#8a8f9c', ink:'#63697a', soft:'rgba(138,143,156,.12)', line:'rgba(138,143,156,.28)'},
 ];
 function matSeries(name){ return MAT_SERIES.find(s=>s.test(name||'')) || MAT_SERIES[2]; }
-/* 給 CSS 變數用，元素只要吃 --ms / --ms-ink / --ms-soft / --ms-line 就自動變成該系列的顏色 */
-function msVars(s){ return `--ms:${s.color};--ms-ink:${s.ink};--ms-soft:${s.soft};--ms-line:${s.line}`; }
+/* 給畫面上的元素用：指向 CSS 變數而不是寫死色碼，深色模式才調得動。
+   元素只要吃 --ms / --ms-ink / --ms-soft / --ms-line 就自動變成該系列的顏色。 */
+function msVars(s){
+  return `--ms:var(--ms-${s.key});--ms-ink:var(--ms-${s.key}-ink);`+
+         `--ms-soft:var(--ms-${s.key}-soft);--ms-line:var(--ms-${s.key}-line)`;
+}
 /* 掉落標籤一律照系列排（碎片 → 浮塵 → 其餘），同系列內維持記錄順序 */
 function sortDrops(drops){
   const rank=n=>MAT_SERIES.findIndex(s=>s.key===matSeries(n).key);
@@ -76,6 +84,11 @@ function setInputValue(el, v){
   if(el.value!==next) el.value=next;
 }
 
+/* 場次明細預設只展開最近幾天，其餘收合成一行。
+   實測 28 天 56 場會產生一萬六千像素的頁面，全部攤開沒人滑得完。 */
+const MAT_DETAIL_OPEN=3;
+let matOpenDays=null;   // Set；null 代表還沒動過，套用預設
+
 function renderMaterials(){
   const runSel=document.getElementById('matRun');
   runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
@@ -83,6 +96,11 @@ function renderMaterials(){
   setInputValue(document.getElementById('matFrom'), matFrom);
   setInputValue(document.getElementById('matTo'), matTo);
   document.getElementById('matFiltText').textContent=matFilterText();
+  /* 篩選生效時要看得出來 —— 以前收合狀態下有沒有篩選長得一模一樣，
+     很容易看到一半忘了自己還開著篩選，把局部數字當成全部。 */
+  const filtering=!!(matFrom||matTo||matRunName);
+  document.getElementById('matFiltBtn').classList.toggle('on',filtering);
+  document.getElementById('matFiltClear').hidden=!filtering;
 
   const entries=[];
   Object.keys(state.schedule).sort().forEach(k=>{
@@ -90,23 +108,70 @@ function renderMaterials(){
   });
 
   const totals={}; let dropSum=0, runsWithDrops=0;
-  entries.forEach(({pt})=>{
+  const byDay={};
+  entries.forEach(({date,pt})=>{
     if(pt.drops&&pt.drops.length){
       runsWithDrops++;
-      pt.drops.forEach(d=>{ totals[d.name]=(totals[d.name]||0)+d.qty; dropSum+=d.qty; });
+      pt.drops.forEach(d=>{
+        totals[d.name]=(totals[d.name]||0)+d.qty;
+        dropSum+=d.qty;
+        byDay[date]=(byDay[date]||0)+d.qty;
+      });
     }
   });
   const matNames=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
 
-  document.getElementById('matCards').innerHTML=[
-    ['符合場次', entries.length],
-    ['有掉落的場次', runsWithDrops],
-    ['材料種類', matNames.length],
-    ['掉落總數量', dropSum],
-  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
+  /* ── 組數與瓶頸：這是打開這頁最想知道的事，所以算在最前面、擺在最上面 ── */
+  const per=Math.max(1,matPerSet);
+  setInputValue(document.getElementById('matPerSet'), per);
+  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
+  const nextNeed=(sets+1)*per;                      // 要湊到下一組，每種材料需累積到的量
+  curSets=sets;                                     // 給售出計算「帶入目前組數」用
+  /* 瓶頸：撐得起的組數等於整體組數的那幾種。可能不只一種，列出缺最多的那個當代表。 */
+  const necks=SET_RECIPE.filter(n=>Math.floor((totals[n]||0)/per)===sets)
+    .sort((a,b)=>(totals[a]||0)-(totals[b]||0));
+  const neck=necks[0], neckLack=neck?Math.max(0,nextNeed-(totals[neck]||0)):0;
+  const avgPerRun=runsWithDrops?dropSum/runsWithDrops:0;
 
-  /* 材料總計：分成 碎片／浮塵／其餘 三張卡，各自小計，長條圖用系列色 */
-  const max=Math.max(1,...matNames.map(n=>totals[n]));
+  /* 每日掉落量走勢：材料頁原本只有單一時間點的快照，看不出「這週是不是掉得比較差」。
+     只有兩天以上才畫，一個點的折線沒有意義。 */
+  const dayKeys=Object.keys(byDay).sort();
+  const trend=dayKeys.length>=2
+    ? `<div class="mres-trend">
+         ${sparkline(dayKeys.map(k=>byDay[k]),320,44,6)}
+         <div class="mres-x"><span>${fmtDate(dayKeys[0])}</span>
+           <span class="mres-hl">每日掉落量 · 最多 ${Math.max(...dayKeys.map(k=>byDay[k]))} · 最少 ${Math.min(...dayKeys.map(k=>byDay[k]))}</span>
+           <span>${fmtDate(dayKeys[dayKeys.length-1])}</span></div>
+       </div>`
+    : '';
+
+  document.getElementById('matCards').innerHTML = matNames.length
+    ? `<div class="mres">
+        <div class="mres-top">
+          <div class="mres-main">
+            <div class="mres-k">可組成</div>
+            <div class="mres-v num">${sets}<small>組</small></div>
+          </div>
+          <div class="mres-meta num">${entries.length} 場 · ${dropSum} 個<br>
+            <span>每場平均 ${avgPerRun.toFixed(1)} 個</span></div>
+        </div>
+        ${neck?`<div class="mres-neck">
+          <span class="mres-nk">瓶頸</span>
+          <span class="mres-nn">${esc(neck)}</span>
+          <span class="mres-nv num">${totals[neck]||0} 個${neckLack?` · 再 ${neckLack} 個進下一組`:''}</span>
+        </div>`:''}
+        ${trend}
+      </div>`
+    : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
+
+  /* ── 材料總計 ───────────────────────────────────────────
+     長條的基準維持「相對於最大量」—— 這是誠實的：各材料掉落量本來就接近，
+     硬換成「距離下一組」的進度基準反而更糟（瓶頸算出來是 96%，跟其他人一樣滿）。
+
+     真正的問題不在基準而在視覺層級：原本 12 條同樣粗、同樣飽和的紅藍長條全部接近滿格，
+     眼睛沒有落點，圖看起來很滿卻讀不出東西。改成夠用的材料一律壓成細的、低透明度的
+     中性色往後站，只有卡住組數的那一種用琥珀色加粗跳出來 —— 這樣一眼就看到異常值。 */
+  const gmax=Math.max(1,...matNames.map(n=>totals[n]));
   document.getElementById('matBars').innerHTML = matNames.length
     ? groupBySeries(matNames).map(({s,names})=>{
         const sum=names.reduce((a,n)=>a+totals[n],0);
@@ -114,26 +179,20 @@ function renderMaterials(){
           <div class="matgrp-h"><span class="matgrp-t">${s.label}</span>
             <span class="matgrp-k">${names.length} 種</span>
             <span class="matgrp-v num">${sum}</span></div>
-          <div class="bars">${names.map(n=>`<div class="bar-row"><span class="bar-l">${esc(n)}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${totals[n]/max*100}%"></div></div>
-            <span class="bar-n num">${totals[n]}</span></div>`).join('')}</div>
+          <div class="bars">${names.map(n=>{
+            const q=totals[n], inRecipe=SET_RECIPE.includes(n);
+            const isNeck=inRecipe&&Math.floor(q/per)===sets;
+            return `<div class="bar-row ${isNeck?'short':''}">
+              <span class="bar-l">${esc(n)}</span>
+              <div class="bar-track"><div class="bar-fill" style="width:${q/gmax*100}%"></div></div>
+              <span class="bar-n num">${q}</span></div>`;
+          }).join('')}</div>
         </div>`;
       }).join('')
     : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 
-  /* ── 組數試算 ───────────────────────────────────────── */
-  const per=Math.max(1,matPerSet);
-  setInputValue(document.getElementById('matPerSet'), per);
-  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
-  const nextNeed=(sets+1)*per;                      // 要湊到下一組，每種材料需累積到的量
-  const shortTotal=SET_RECIPE.reduce((a,n)=>a+Math.max(0,nextNeed-(totals[n]||0)),0);
-  curSets=sets;                                     // 給售出計算「帶入目前組數」用
-
-  document.getElementById('setCards').innerHTML=[
-    ['可組成組數', sets],
-    ['湊下一組還缺', shortTotal],
-  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
-
+  /* ── 組數試算：每種材料撐得起幾組 ─────────────────────
+     頂部原本那兩張「可組成組數／湊下一組還缺」統計卡已經移到主結果卡，這裡不再重複。 */
   document.getElementById('setDetail').innerHTML=groupBySeries(SET_RECIPE).map(({s,names})=>
     `<div class="matgrp" style="${msVars(s)}">
       <div class="matgrp-h"><span class="matgrp-t">${s.label}</span>
@@ -155,14 +214,32 @@ function renderMaterials(){
       }).join('')}</div>
     </div>`).join('');
 
-  const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length).sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('matDetail').innerHTML = withDrops.length
-    ? withDrops.map(({date,pt})=>`<div class="ex-pt">
-        <div class="ex-pt-h"><span class="ex-pt-n">${fmtDate(date)} ${fmtDow(date)} · ${esc(pt.name)}</span>
-          <span class="ex-pt-t">${esc(pt.time||'')}</span></div>
-        <div class="dropgrid" style="padding:11px 14px">${sortDrops(pt.drops).map(d=>
-          `<span class="droppill" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
-      </div>`).join('')
+  /* ── 場次明細：按日期分組，預設只展開最近幾天 ───────── */
+  const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length);
+  const days=[...new Set(withDrops.map(e=>e.date))].sort((a,b)=>b.localeCompare(a));
+  if(matOpenDays===null) matOpenDays=new Set(days.slice(0,MAT_DETAIL_OPEN));
+  document.getElementById('matDetail').innerHTML = days.length
+    ? days.map(k=>{
+        const list=withDrops.filter(e=>e.date===k);
+        const qty=list.reduce((a,e)=>a+e.pt.drops.reduce((b,d)=>b+d.qty,0),0);
+        const open=matOpenDays.has(k);
+        return `<div class="mday ${open?'open':''}">
+          <button class="mday-h" data-act="matDay" data-day="${k}" aria-expanded="${open}">
+            <span class="mday-d">${fmtDate(k)} ${fmtDow(k)}</span>
+            <span class="mday-s num">${list.length} 場 · ${qty} 個</span>
+            <svg class="mday-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          ${open?list.map(({date,pt})=>`<div class="mrun">
+            <button class="mrun-h" data-act="editRunDrops" data-pt="${pt.id}" data-day="${date}">
+              <span class="mrun-n">${esc(pt.name)}</span>
+              <span class="mrun-t num">${esc(pt.time||'')}</span>
+              <span class="mrun-e">編輯</span>
+            </button>
+            <div class="dropgrid mrun-g">${sortDrops(pt.drops).map(d=>
+              `<span class="droppill" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
+          </div>`).join(''):''}
+        </div>`;
+      }).join('')
     : `<div class="bench-empty">這個範圍還沒有掉落紀錄</div>`;
 
   renderSales();

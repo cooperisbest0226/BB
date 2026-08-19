@@ -40,6 +40,15 @@ document.addEventListener('click',e=>{
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
   if(a==='review')    reviewSheet(ptId,0);
+  /* 材料頁的場次明細：展開／收合某一天 */
+  if(a==='matDay'){
+    const k=btn.dataset.day;
+    if(matOpenDays.has(k)) matOpenDays.delete(k); else matOpenDays.add(k);
+    renderMaterials();
+  }
+  /* 在明細發現數字記錯時直接改，不用自己切回陣容頁翻到那天那場。
+     這裡的場次可能不是「目前這天」，所以要把日期一起帶進去。 */
+  if(a==='editRunDrops') dropsSheet(ptId, btn.dataset.day);
   if(a==='delSale')   confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
     commit(()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
     toast('已刪除交易紀錄');
@@ -59,7 +68,14 @@ document.addEventListener('click',e=>{
   }
   if(a==='delPt'){
     const p=ptsOf(curDate).find(x=>x.id===ptId);
-    confirmSheet(`刪除「${p.name}」？`, ()=>{
+    /* 只寫「刪除 RUN 1？」看不出裡面有什麼會一起消失——掉落紀錄會連帶影響材料統計，
+       錄影連結刪了也救不回來，所以在確認訊息裡直接列出來。 */
+    const inside=[
+      p.slots.length?`${p.slots.length} 個排班位子`:'',
+      (p.drops&&p.drops.length)?`${p.drops.length} 筆掉落紀錄`:'',
+      (p.videos&&p.videos.length)?`${p.videos.length} 個錄影連結`:'',
+    ].filter(Boolean).join('、');
+    confirmSheet(`刪除「${p.name}」？${inside?`\n含 ${inside}。`:''}`, ()=>{
       commit(()=>{ state.schedule[curDate]=ptsOf(curDate).filter(x=>x.id!==ptId); });
     });
   }
@@ -94,9 +110,10 @@ document.getElementById('btnDelDate').onclick=()=>{
   const pts=ptsOf(target);
   const slotCount=pts.reduce((a,p)=>a+p.slots.length,0);
   const dropCount=pts.reduce((a,p)=>a+((p.drops&&p.drops.length)||0),0);
+  const vidCount=pts.reduce((a,p)=>a+((p.videos&&p.videos.length)||0),0);
   confirmSheet(
     `刪除 ${fmtDate(target)}（${fmtDow(target)}）這天的所有資料？\n`+
-    `含 ${pts.length} 個 RUN、${slotCount} 個排班位子${dropCount?`、${dropCount} 筆掉落紀錄`:''}。\n`+
+    `含 ${pts.length} 個 RUN、${slotCount} 個排班位子${dropCount?`、${dropCount} 筆掉落紀錄`:''}${vidCount?`、${vidCount} 個錄影連結`:''}。\n`+
     `刪除後材料統計也會少掉這天的數據。`,
     ()=>{
       commit(()=>{ delete state.schedule[target]; });

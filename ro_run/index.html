@@ -144,11 +144,15 @@ try{
     <div class="sec"><span class="sec-t">材料統計</span><div class="sec-line"></div></div>
 
     <!-- 篩選條件平常收起來，只留一行摘要，需要調整才展開 -->
-    <button class="matfilt" id="matFiltBtn" aria-expanded="false" aria-controls="matFiltBody">
-      <span class="matfilt-l">篩選</span>
-      <span class="matfilt-v" id="matFiltText">全部日期 · 全部場次</span>
-      <svg class="matfilt-c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-    </button>
+    <div class="matfilt-wrap">
+      <button class="matfilt" id="matFiltBtn" aria-expanded="false" aria-controls="matFiltBody">
+        <span class="matfilt-l">篩選</span>
+        <span class="matfilt-v" id="matFiltText">全部日期 · 全部場次</span>
+        <svg class="matfilt-c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <!-- 有篩選才出現：不用展開面板就能一鍵回到全部 -->
+      <button class="matfilt-x" id="matFiltClear" aria-label="清除篩選" hidden>×</button>
+    </div>
     <div class="matfilt-body" id="matFiltBody" hidden>
       <div class="field-2 mat-range">
         <div class="field"><label>從</label><input type="date" id="matFrom"></div>
@@ -163,7 +167,10 @@ try{
       </div>
     </div>
 
-    <div class="statgrid" id="matCards" style="margin-bottom:16px"></div>
+    <!-- 主結果卡：可組成幾組 + 瓶頸是哪一種 + 每日掉落走勢。
+         原本這裡是四張統計卡，但「符合場次／有掉落的場次」幾乎永遠相同、
+         「材料種類」近乎常數，四張大卡只傳達一個有用數字卻吃掉近四分之一首屏。 -->
+    <div id="matCards" style="margin-bottom:16px"></div>
 
     <!-- 三塊內容改成子分頁切換，一次只看一件事 -->
     <div class="subseg" role="tablist" id="matSeg">
@@ -182,7 +189,6 @@ try{
         <input type="number" id="matPerSet" min="1" value="5">
         <label for="matPerSet">個 = 1 組</label>
       </div>
-      <div class="statgrid" id="setCards" style="margin-bottom:16px"></div>
       <div id="setDetail"></div>
     </div>
 

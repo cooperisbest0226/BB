@@ -360,6 +360,12 @@ document.getElementById('matPerSet').oninput=e=>{ matPerSet=Math.max(1,parseInt(
 /* 只綁材料篩選裡的那四顆。原本用全域 [data-preset]，會連 PT 計算的星數快捷鈕
    （data-preset="0,5,5,3,5"）一起綁上，按 825PT 會順手把材料篩選重設成「全部」。 */
 document.querySelectorAll('#matFiltBody [data-preset]').forEach(b=>b.onclick=()=>applyMatPreset(b.dataset.preset));
+/* 一鍵回到「全部」：不用展開篩選面板再逐項清掉 */
+document.getElementById('matFiltClear').onclick=()=>{
+  matFrom=''; matTo=''; matRunName='';
+  renderMaterials();
+  toast('已清除篩選');
+};
 
 /* 篩選展開／收合 */
 function bindFilterToggle(btnId, bodyId){
