@@ -452,13 +452,11 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .home-hero.collapsed .hero-mini-tot{opacity:1}
 .hero-eyebrow-tag{transition:opacity .18s ease}
 .home-hero.collapsed .hero-eyebrow-tag{opacity:0}
-/* 收合時訂閱條與代墊說明一起讓位 */
-.home-hero.collapsed .sub-chip,
-.home-hero.collapsed .hero-deduct-badge,
-.home-hero.collapsed .hero-deduct-note{
+/* 收合時訂閱條一起讓位 */
+.home-hero.collapsed .sub-chip{
   height:0;opacity:0;margin:0;padding:0;overflow:hidden;pointer-events:none;
 }
-.sub-chip,.hero-deduct-badge{transition:height .26s ease,opacity .18s ease,margin .26s ease,padding .26s ease}
+.sub-chip{transition:height .26s ease,opacity .18s ease,margin .26s ease,padding .26s ease}
 
 @media (prefers-reduced-motion:reduce){
   .home-hero,.home-hero *{transition-duration:.01ms !important}
@@ -771,23 +769,6 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .hero-subline .o{color:var(--orange)}
 .hero-subline .sep{color:var(--text3);margin:0 6px}
 
-/* ── Proxy-deduction badge — tap to unfold the formula ───── */
-.hero-deduct-badge{
-  display:inline-flex;align-items:center;gap:4px;
-  position:relative;
-  background:var(--orange-lt);color:var(--orange-dk);
-  border:0.5px solid rgba(212,120,48,.25);
-  border-radius:99px;padding:3px 10px;
-  font-size:11px;font-weight:600;white-space:nowrap;
-  font-family:inherit;cursor:pointer;
-}
-.hero-deduct-badge::before{   /* 隱形命中區，視覺尺寸不變 */
-  content:'';position:absolute;left:0;right:0;top:50%;
-  height:44px;transform:translateY(-50%);
-}
-.hero-deduct-badge::after{content:'▾';font-size:9px;display:inline-block;transition:transform .2s}
-.hero-deduct-badge.open::after{transform:rotate(180deg)}
-.hero-deduct-note{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.55}
 
 /* Horizontally scrollable variant for longer preset rows */
 .filter-row.scroll{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
@@ -1225,12 +1206,6 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   padding:52px 0;width:100%;
 }
 .donut-legend{width:100%;margin-top:4px}
-
-/* ── Donut: proxy-exclusion footnote (replaces the two stat tiles) ── */
-.donut-deduct{
-  width:100%;text-align:center;font-size:11px;color:var(--text3);
-  margin:2px 0 6px;letter-spacing:.02em;
-}
 
 /* ── Merged category row: composition + budget in one list ───
    Line 1 answers "how much / what share", line 2 answers "how am I doing
@@ -2019,12 +1994,6 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <!-- 付款狀態：已繳可由 total−未繳 推得，只留需要行動的那一半 -->
       <div class="hero-subline" id="h-subline">—</div>
 
-      <!-- Proxy deduction: badge only; the formula stays folded until tapped -->
-      <button class="hero-deduct-badge" id="h-deduct-btn" type="button"
-              style="display:none" onclick="toggleDeduct()"
-              aria-expanded="false" aria-controls="h-deduct-note"></button>
-      <div class="hero-deduct-note" id="h-deduct-note" style="display:none" aria-live="polite"></div>
-
       <!-- 預算：92px 的環只編碼一個純量，改用共用同一條水平軸的細長條。
            track 上的 tick 標出「今天應該用到哪」，把比例變成判斷。 -->
       <div class="hbud" id="h-bud-wrap">
@@ -2161,7 +2130,6 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         </div>
         <div class="donut-outer">
           <div class="donut-wrap" id="donut-wrap"></div>
-          <div class="donut-deduct" id="donut-deduct" style="display:none"></div>
           <div class="donut-legend" id="donut-legend"></div>
         </div>
         <div id="cat-extra"></div>
@@ -2287,7 +2255,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.14.0 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.15.0 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/18</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -2341,7 +2309,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
         <label class="radio-opt"><input type="radio" name="itype" id="rt-advance" value="advance" onchange="onTypeChange()"> 代墊款</label>
       </div>
     </div>
-    <div class="adv-hint-box" id="adv-hint" style="display:none"><p>代墊款：先代替他人支付，待對方償還。不計入個人支出，以橘色獨立追蹤。</p></div>
+    <div class="adv-hint-box" id="adv-hint" style="display:none"><p>代墊款：先代替他人支付，待對方償還。金額仍計入支出總額（錢已經付出去了），只用橘色與收回狀態單獨追蹤。</p></div>
     <div class="field"><label>類別</label><select id="f-cat" onchange="onCatChange()" aria-label="費用類別"></select></div>
     <div class="field"><label>項目名稱</label><input id="f-name" type="text" placeholder="例：中國信託信用卡費" autocomplete="off"></div>
     <div class="field" id="f-payee-wrap" style="display:none">
@@ -2370,7 +2338,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <!-- Proxy split section: collapsed by default, expanded via toggle only -->
     <div class="field" id="f-proxy-section" style="display:none">
       <div class="proxy-section-note">
-        帳單中包含的代墊費用，儲存後自動拆分為獨立代墊記錄，並從個人費用中扣除。
+        帳單中包含的代墊費用，儲存後自動拆分為獨立代墊記錄，用橘色與收回狀態單獨追蹤；金額仍計入支出總額，不會因為拆分而變少。
       </div>
       <div id="proxy-rows"></div>
       <button type="button" class="proxy-add-btn" onclick="addProxyRow()" id="proxy-add-btn">
@@ -4553,11 +4521,6 @@ function applyAdvVisibility(){
   const show=advOn()?'':'none';
   [['f-type-wrap',show],['fv',show]]
     .forEach(([id,v])=>{const el=document.getElementById(id); if(el)el.style.display=v;});
-  if(!advOn()){   // clear the hero badge immediately, whatever screen we're on
-    const b=document.getElementById('h-deduct-btn'), n=document.getElementById('h-deduct-note');
-    if(b){b.style.display='none';b.classList.remove('open');}
-    if(n)n.style.display='none';
-  }
   const chk=document.getElementById('feat-adv-chk'); if(chk)chk.checked=advOn();
   const sub=document.getElementById('adv-feat-sub');
   if(sub)sub.textContent=advOn()?'已啟用 · 可記錄代墊與帳單拆分':'已停用 · 介面不顯示代墊相關項目';
@@ -4606,33 +4569,6 @@ function cycleLength(){
   return Math.max(1,Math.round((mk(t.getFullYear(),t.getMonth()+1)-mk(t.getFullYear(),t.getMonth()))/86400000));
 }
 
-// ── Proxy deduction note ────────────────────────────────
-// Renders as a small badge; the arithmetic stays folded until tapped.
-//   advTotal : sum of ALL advance items this period (the full exclusion amount)
-//   personal : personal expense total already shown in h-tot
-function _setDeductNote(advTotal, personal){
-  const btn=document.getElementById('h-deduct-btn');
-  const note=document.getElementById('h-deduct-note');
-  if(!btn||!note) return;
-  if(advOn() && advTotal>0){
-    btn.style.display='';
-    btn.textContent=`代墊 ${fmt(advTotal)} 已排除`;
-    note.textContent=`總流出 ${fmt(personal+advTotal)} − 代墊 ${fmt(advTotal)} = 個人支出 ${fmt(personal)}`;
-    note.style.display=btn.classList.contains('open')?'':'none';
-  }else{
-    btn.style.display='none';
-    note.style.display='none';
-  }
-}
-function toggleDeduct(){
-  const btn=document.getElementById('h-deduct-btn');
-  const note=document.getElementById('h-deduct-note');
-  if(!btn||!note) return;
-  const open=btn.classList.toggle('open');
-  btn.setAttribute('aria-expanded',open);
-  note.style.display=open?'':'none';
-}
-
 // ── Home list scope: 待處理 (default) vs 全部 ──────────────
 let homeView='todo';
 function setHomeView(v){
@@ -4668,15 +4604,17 @@ async function rHome(){
   _lastHomeYm=key;
   const items = await getByYM(key);
 
-  // Personal expense = total outflow − proxy payments. When 代墊 is switched
-  // off the proxy bucket is simply empty, so every figure below still adds up.
+  // 代墊款只是「有沒有收回」的注記，不是排除項——錢已經付出去了，
+  // 實際花費本來就是這麼多，收回與否不改變這件事。
+  // 所以 total／paid 都把代墊款算進去；代墊款本身視為「一律已付出」
+  // （已付出 ≠ 已收回，收回與否只影響下面的「待收」提示，不影響加總）。
   const normal  = items.filter(x => x.itype !== 'advance');
   const advance = advOn() ? items.filter(x => x.itype === 'advance') : [];
 
-  const total    = normal.reduce((s,x)=>s+x.amount,0);
-  const paid     = normal.filter(x=>x.paid===1).reduce((s,x)=>s+x.amount,0);
-  const unpaid   = total-paid;
   const advTotal = advance.reduce((s,x)=>s+x.amount,0);
+  const total    = normal.reduce((s,x)=>s+x.amount,0) + advTotal;
+  const paid     = normal.filter(x=>x.paid===1).reduce((s,x)=>s+x.amount,0) + advTotal;
+  const unpaid   = total-paid;
   const advUnrecItems = advance.filter(x=>x.recovered!==1);
   const advUnrec = advUnrecItems.reduce((s,x)=>s+x.amount,0);
 
@@ -4707,7 +4645,6 @@ async function rHome(){
     : `全部已繳 <b class="g">${fmt(paid)}</b>`;
   if(advOn()&&advUnrec>0) sub+=`<span class="sep">·</span>待收 <b class="o">${fmt(advUnrec)}</b>`;
   document.getElementById('h-subline').innerHTML=sub;
-  _setDeductNote(advTotal,total);
 
   // ── Budget bar ──────────────────────────────────────────────────────
   const bTotal=budStore.total||0;
@@ -5138,7 +5075,8 @@ async function rList(){
     const hdr=document.createElement('div');
     hdr.className='date-grp-hdr';
     const label=dateKey==='__no_date__'?'未設定日期':fmtDateHdr(dateKey);
-    const subtotal=groupItems.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+    // 代墊款只是收回狀態的注記，金額仍算「花了多少」，這裡不再排除
+    const subtotal=groupItems.reduce((s,x)=>s+x.amount,0);
     hdr.innerHTML=`<span>${label}</span>${subtotal>0?`<span class="date-grp-subtotal">${fmt(subtotal)}</span>`:''}`;
     frag.appendChild(hdr);
     groupItems.forEach(x=>{
@@ -5157,9 +5095,9 @@ async function rList(){
     });
   });
 
-  const totalAmt=items.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+  const totalAmt=items.reduce((s,x)=>s+x.amount,0);
   const foot=document.createElement('div');foot.className='list-footer';
-  foot.textContent=`共 ${items.length} 筆　個人支出 ${fmt(totalAmt)}`;
+  foot.textContent=`共 ${items.length} 筆　支出合計 ${fmt(totalAmt)}`;
   frag.appendChild(foot);
   el.appendChild(frag);
 }
@@ -5176,10 +5114,12 @@ function _last6(y,m){
   return {ymKeys, capRange:`${ymKeys[0].replace('-','/')} → ${ymKeys[5].replace('-','/')}`};
 }
 
-// cat -> [monthly totals] aligned to ymKeys; advances (代墊款) excluded
+// cat -> [monthly totals] aligned to ymKeys。
+// 代墊款只是收回狀態的注記，一樣算進分類金額——不然這個分類的預算
+// 進度會漏掉一部分實際花費，跟首頁的加總對不起來。
 function _trendByCat(items,ymKeys){
   const map={};
-  items.filter(x=>x.itype!=='advance').forEach(x=>{
+  items.forEach(x=>{
     const i=ymKeys.indexOf(x.ym); if(i<0)return;
     (map[x.cat]=map[x.cat]||new Array(ymKeys.length).fill(0))[i]+=x.amount;
   });
@@ -5683,22 +5623,13 @@ async function rChart(){
   const rangeItems = await getByRange(ymKeys[0], ymKeys[5]);
   const trendByCat = _trendByCat(rangeItems, ymKeys);
   const items = rangeItems.filter(x=>x.ym===key);
-  const normal=items.filter(x=>x.itype!=='advance');
-  // 代墊功能關閉時視為沒有代墊，扣除說明才不會殘留
-  const advance=advOn()?items.filter(x=>x.itype==='advance'):[];
+  // 代墊款只是收回狀態的注記，甜甜圖與分類金額都照樣算進去——它跟一般
+  // 費用一樣是真的花出去的錢，沒理由在圖表上憑空消失。
+  const donutItems = items;
 
-  const catMap={};normal.forEach(x=>catMap[x.cat]=(catMap[x.cat]||0)+x.amount);
+  const catMap={};donutItems.forEach(x=>catMap[x.cat]=(catMap[x.cat]||0)+x.amount);
   const cats=Object.keys(catMap),vals=cats.map(c=>catMap[c]);
   const total=vals.reduce((s,v)=>s+v,0);
-  // Advances are excluded from every personal figure on this page
-  const advTotal = advance.reduce((s,x)=>s+x.amount, 0);
-
-  // 代墊排除額改成甜甜圈下方一行小字，取代原本兩塊統計磚
-  const dEl=document.getElementById('donut-deduct');
-  if(dEl){
-    if(advTotal>0){dEl.style.display='';dEl.textContent=`已排除代墊 ${fmt(advTotal)}（未計入個人支出）`;}
-    else{dEl.style.display='none';dEl.textContent='';}
-  }
 
   // Donut data — colors keyed to getCats() index so a category keeps its
   // colour from month to month even as the ranking changes.
@@ -5710,7 +5641,7 @@ async function rChart(){
 
   // Items behind each slice, for the expandable legend detail
   const itemsByCat={};
-  normal.forEach(x=>(itemsByCat[x.cat]=itemsByCat[x.cat]||[]).push(x));
+  donutItems.forEach(x=>(itemsByCat[x.cat]=itemsByCat[x.cat]||[]).push(x));
 
   const segEls=renderDonutChart(sorted, total);
   renderCatRows({sorted,total,itemsByCat,trendByCat,capRange,y,m,segEls});
@@ -5750,22 +5681,16 @@ async function rChartRange(){
     if(ymKeys.length>60)break; // safety cap: 5 years
   }
 
-  // Fetch all items in range — separate personal from proxy up front
+  // 代墊款只是收回狀態的注記，不再從範圍統計裡剔除——月支出、月均、
+  // 最高月份都照實際花費算，不會因為切到含代墊的月份就悄悄變小。
   const items   = await getByRange(fromKey, toKey);
-  const normal  = items.filter(x => x.itype !== 'advance');  // personal only
-  const advItems= advOn()?items.filter(x => x.itype === 'advance'):[]; // proxy / reimbursable
 
-  // Personal monthly totals (budget & chart use this — never includes proxy)
-  const monthTotals    = ymKeys.map(k => normal.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
-  // Proxy monthly totals (for deduction transparency in summary)
-  const advMonthTotals = ymKeys.map(k => advItems.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
+  const monthTotals = ymKeys.map(k => items.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
 
   const allCatMap={};
-  normal.forEach(x=>allCatMap[x.cat]=(allCatMap[x.cat]||0)+x.amount);
+  items.forEach(x=>allCatMap[x.cat]=(allCatMap[x.cat]||0)+x.amount);
 
-  // Summary stats — grandTotal is PERSONAL only
   const grandTotal   = monthTotals.reduce((s,v)=>s+v,0);
-  const grandAdvTotal= advMonthTotals.reduce((s,v)=>s+v,0);
   const activeMths   = monthTotals.filter(v=>v>0).length;
   const avgMth       = ymKeys.length>0?grandTotal/ymKeys.length:0; // Bug 2: divide by full range, not just active months
   const maxMth       = Math.max(...monthTotals,0);
@@ -5773,18 +5698,10 @@ async function rChartRange(){
   // 地標出一個根本沒有支出的月份。沒有支出就沒有最高月份。
   const maxMthKey    = maxMth>0 ? (ymKeys[monthTotals.indexOf(maxMth)]||'—') : '—';
 
-  // Build summary — deduction tile only shown when proxy items exist in range
-  const deductTile = grandAdvTotal>0
-    ? `<div class="range-sum-tile">
-         <div class="range-sum-lbl">代墊已排除</div>
-         <div class="range-sum-val o">${fmt(grandAdvTotal)}</div>
-       </div>`
-    : '';
   document.getElementById('range-summary').innerHTML=
-    `<div class="range-sum-tile"><div class="range-sum-lbl">個人支出</div><div class="range-sum-val r">${fmt(grandTotal)}</div></div>`+
+    `<div class="range-sum-tile"><div class="range-sum-lbl">支出合計</div><div class="range-sum-val r">${fmt(grandTotal)}</div></div>`+
     `<div class="range-sum-tile"><div class="range-sum-lbl">月均（÷${ymKeys.length}）</div><div class="range-sum-val">${fmt(Math.round(avgMth))}</div></div>`+
-    deductTile+
-    (grandAdvTotal===0?`<div class="range-sum-tile"><div class="range-sum-lbl">最高月份</div><div class="range-sum-val r">${maxMthKey}</div></div>`:'');
+    `<div class="range-sum-tile"><div class="range-sum-lbl">最高月份</div><div class="range-sum-val r">${maxMthKey}</div></div>`;
 
   // X-axis labels: shorten if many months
   const labels=ymKeys.map(k=>{
@@ -5806,7 +5723,7 @@ async function rChartRange(){
   const cv=document.getElementById('range-chart');
   const noticeEl=document.getElementById('chart-notice');
   noticeEl.innerHTML='';
-  if(!normal.length){
+  if(!items.length){
     cv.style.display='none';
     cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
   }else if(!chartLibReady()){
@@ -6024,7 +5941,8 @@ async function renderYearCompare(){
   const monthsIn=yr=>yr<nowY?12:(yr>nowY?0:cm());
 
   document.getElementById('range-summary').innerHTML=selYears.map(yr=>{
-    const t=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance')
+    // 代墊款不再從年度統計裡剔除，理由同月統計
+    const t=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-'))
                .reduce((s,x)=>s+x.amount,0);
     return `<div class="range-sum-tile"><div class="range-sum-lbl">${yr} 年支出</div><div class="range-sum-val r">${fmt(t)}</div></div>`;
   }).join('');
@@ -6044,7 +5962,7 @@ async function renderYearCompare(){
   const datasets=selYears.map(yr=>{
     const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
     const data=Array.from({length:12},(_,i)=>{const k=ymStr(yr,i+1);
-      return all.filter(x=>x.ym===k&&x.itype!=='advance').reduce((s,x)=>s+x.amount,0);});
+      return all.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0);});
     return{label:yr+'年',data,borderColor:pal.line,backgroundColor:pal.fill,borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:true,tension:.38};
   });
   if(areaChart){areaChart.destroy();areaChart=null;}
@@ -6067,7 +5985,7 @@ async function renderYearCompare(){
   const statsEl=document.getElementById('trend-stats');
   statsEl.innerHTML=selYears.map(yr=>{
     const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
-    const yTotal=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')&&x.itype!=='advance')
+    const yTotal=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-'))
                     .reduce((s,x)=>s+x.amount,0);
     const n=monthsIn(yr)||1;
     return `<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均（÷${n}）</div><div class="stat-val">${fmt(yTotal/n)}</div></div>`;
@@ -6239,7 +6157,7 @@ function renderCalDetail(){
   const el=document.getElementById('cal-detail');
   if(!_calSel){
     const n=_calCache.length;
-    const sum=_calCache.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+    const sum=_calCache.reduce((s,x)=>s+x.amount,0);
     el.innerHTML=n
       ? `<div class="cal-detail-hdr"><span>本月付款 ${n} 筆</span><span class="cal-detail-sum">${fmt(sum)}</span></div>
          <div class="cal-hint" style="border-top:none;margin-top:0;padding-top:4px">點選有標記的日期查看明細</div>`
@@ -6249,7 +6167,7 @@ function renderCalDetail(){
   const list=_calCache.filter(x=>x.date===_calSel).sort((a,b)=>b.amount-a.amount);
   const d=new Date(_calSel+'T00:00:00');
   const wd=['日','一','二','三','四','五','六'][d.getDay()];
-  const sum=list.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0);
+  const sum=list.reduce((s,x)=>s+x.amount,0);
   el.innerHTML=
     `<div class="cal-detail-hdr">
        <span>${d.getMonth()+1}月${d.getDate()}日 週${wd}　${list.length} 筆</span>
@@ -6262,12 +6180,14 @@ function renderCalUndated(key){
   const el=document.getElementById('cal-undated');
   const undated=[];   // 歸屬於本月但沒有繳費日
   return getByYM(key).then(items=>{
+    // advOn() 為關時完全不顯示代墊項目（功能開關的可見性判斷，
+    // 跟下面加總要不要排除代墊金額是兩件事，不要混在一起改）
     items.filter(x=>!x.date&&(advOn()||x.itype!=='advance')).forEach(x=>undated.push(x));
     if(!undated.length){el.innerHTML='';return;}
     el.innerHTML=
       `<div class="cal-detail-hdr" style="margin-top:4px">
          <span>未排定日期 ${undated.length} 筆</span>
-         <span class="cal-detail-sum">${fmt(undated.filter(x=>x.itype!=='advance').reduce((s,x)=>s+x.amount,0))}</span>
+         <span class="cal-detail-sum">${fmt(undated.reduce((s,x)=>s+x.amount,0))}</span>
        </div>`+undated.sort((a,b)=>b.amount-a.amount).map(_calRowHTML).join('');
   });
 }
@@ -7282,6 +7202,10 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.15.0', d:'2026/08/18', c:[
+    ['chg','代墊款不再從支出總額中排除；金額一律計入首頁、圖表、行事曆、分類預算等所有加總，只用「已收回／未收回」單獨注記，不影響任何統計數字'],
+    ['rm','移除首頁「代墊 $X 已排除」與圖表「已排除代墊」的說明徽章／文字，因為已無排除行為可解釋'],
+  ]},
   { v:'v4.14.0', d:'2026/08/18', c:[
     ['chg','首頁預算改用細長條＋跑者動畫取代原本的圓環與統計列，同高度下多顯示約 2 倍清單內容'],
     ['add','預算長條加上「本月已過 X%」刻度與圖例，一眼比對花錢進度與時間進度，並標出超出／低於進度多少'],
