@@ -46,6 +46,14 @@ document.addEventListener('click',e=>{
     if(matOpenDays.has(k)) matOpenDays.delete(k); else matOpenDays.add(k);
     renderMaterials();
   }
+  /* 一次展開／收合全部日期。展開時只加入「目前範圍內」的日期，
+     不去動範圍外的既有狀態，切回其他篩選時原本開著的那幾天還在。 */
+  if(a==='matDayAll'){
+    const keys=[...document.querySelectorAll('#matDetail .mday-h')].map(x=>x.dataset.day);
+    if(btn.dataset.all==='close') keys.forEach(k=>matOpenDays.delete(k));
+    else keys.forEach(k=>matOpenDays.add(k));
+    renderMaterials();
+  }
   /* 在明細發現數字記錯時直接改，不用自己切回陣容頁翻到那天那場。
      這裡的場次可能不是「目前這天」，所以要把日期一起帶進去。 */
   if(a==='editRunDrops') dropsSheet(ptId, btn.dataset.day);

@@ -15,23 +15,33 @@ let aucFrom='', aucTo='';
 const nf=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
 
 /* ── 材料系列分色 ─────────────────────────────────────────
-   碎片＝靛藍、浮塵＝青、其餘＝灰。三種都刻意壓低彩度：
-   原本用的是純紅／純藍／純綠，紅色跟 --danger（刪除、警告）撞色，
-   整頁滿版的高彩度長條會讓人以為哪裡出問題，也蓋掉了真正該跳出來的琥珀色瓶頸。
-   飽和的警示色現在只留給「卡住組數的那幾種材料」。
+   分成四類各自給色：碎片（藍）／浮塵（青）／未知（紫）／稀微（綠），
+   加一個「其餘」灰色接住使用者自訂的材料。
+   「未知的隕石碎片」與「稀微魔力符文石」以前都被歸進同一個「其餘」灰色堆裡，
+   兩種完全不同的東西長得一樣；現在各自有色。
+
+   色相刻意拉開讓四類一眼分得出來，但避開紅色與琥珀色 ——
+   那兩個色在這個 App 裡有固定語意（--danger 刪除、--warn 瓶頸），
+   材料色借用會讓真正該注意的東西失去辨識度。
 
    這裡的字面色值只給「匯出圖片」用（匯出一律白底，不跟著深色模式走）；
    畫面上的元素改吃 CSS 變數（見 msVars），深色模式才有辦法各自調亮。 */
+/* 名字裡雖然有「碎片」，但不屬於六屬性系列的材料，要排除在碎片系列之外 */
 const SERIES_EXCEPT=['未知的隕石碎片'];
 const MAT_SERIES=[
   {key:'shard',label:'碎片',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('碎片'),
-   color:'#4a5f87', ink:'#3a4b6b', soft:'rgba(74,95,135,.10)', line:'rgba(74,95,135,.26)'},
+   color:'#2563eb', ink:'#1d4ed8', soft:'rgba(37,99,235,.10)', line:'rgba(37,99,235,.28)'},
   {key:'dust', label:'浮塵',test:n=>!SERIES_EXCEPT.includes(n)&&n.includes('浮塵'),
-   color:'#3f8792', ink:'#2f6a73', soft:'rgba(63,135,146,.10)', line:'rgba(63,135,146,.26)'},
+   color:'#0d9488', ink:'#0f766e', soft:'rgba(13,148,136,.11)', line:'rgba(13,148,136,.30)'},
+  {key:'unknown',label:'未知',test:n=>n==='未知的隕石碎片',
+   color:'#9333ea', ink:'#7e22ce', soft:'rgba(147,51,234,.10)', line:'rgba(147,51,234,.28)'},
+  {key:'rune', label:'稀微',test:n=>n==='稀微魔力符文石',
+   color:'#15803d', ink:'#166534', soft:'rgba(21,128,61,.11)', line:'rgba(21,128,61,.30)'},
   {key:'other',label:'其餘',test:()=>true,
    color:'#8a8f9c', ink:'#63697a', soft:'rgba(138,143,156,.12)', line:'rgba(138,143,156,.28)'},
 ];
-function matSeries(name){ return MAT_SERIES.find(s=>s.test(name||'')) || MAT_SERIES[2]; }
+/* 找不到時退回最後一項（「其餘」）。這裡不能寫死索引 —— 系列數量會變。 */
+function matSeries(name){ return MAT_SERIES.find(s=>s.test(name||'')) || MAT_SERIES[MAT_SERIES.length-1]; }
 /* 給畫面上的元素用：指向 CSS 變數而不是寫死色碼，深色模式才調得動。
    元素只要吃 --ms / --ms-ink / --ms-soft / --ms-line 就自動變成該系列的顏色。 */
 function msVars(s){
@@ -65,7 +75,7 @@ const SET_RECIPE=[
   '威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
   '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片',
 ];
-let matPerSet=5;
+let matPerSet=1;
 
 /* 篩選摘要（收合狀態下那一行字） */
 function matFilterText(){
@@ -218,8 +228,17 @@ function renderMaterials(){
   const withDrops=entries.filter(e=>e.pt.drops&&e.pt.drops.length);
   const days=[...new Set(withDrops.map(e=>e.date))].sort((a,b)=>b.localeCompare(a));
   if(matOpenDays===null) matOpenDays=new Set(days.slice(0,MAT_DETAIL_OPEN));
+  /* 只算「目前這個範圍裡」的展開數 —— 換篩選之後 matOpenDays 可能還留著
+     不在範圍內的日期，拿整個 Set 的大小去比會判斷錯按鈕該顯示展開還是收合。 */
+  const openCount=days.filter(k=>matOpenDays.has(k)).length;
+  const allOpen=days.length>0&&openCount===days.length;
   document.getElementById('matDetail').innerHTML = days.length
-    ? days.map(k=>{
+    ? `<div class="mday-bar">
+        <span class="mday-bar-t num">${days.length} 天 · ${withDrops.length} 場</span>
+        <button class="gbtn" data-act="matDayAll" data-all="${allOpen?'close':'open'}">
+          ${allOpen?'全部收合':'全部展開'}</button>
+      </div>`+
+      days.map(k=>{
         const list=withDrops.filter(e=>e.date===k);
         const qty=list.reduce((a,e)=>a+e.pt.drops.reduce((b,d)=>b+d.qty,0),0);
         const open=matOpenDays.has(k);

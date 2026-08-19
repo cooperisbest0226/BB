@@ -1760,6 +1760,33 @@ def run(page):
     page.wait_for_timeout(300)
     check("再點一次收回去", page.locator("#matDetail .mday.open").count(), 3)
 
+    # --- 一鍵全部展開／收合 ---
+    check("工具列顯示天數與場數摘要",
+          page.locator("#matDetail .mday-bar-t").inner_text(), "5 天 · 5 場")
+    check("沒有全開時按鈕是「全部展開」",
+          page.locator("#matDetail [data-act='matDayAll']").inner_text().strip(), "全部展開")
+    page.click("#matDetail [data-act='matDayAll']")
+    page.wait_for_timeout(400)
+    check("按一下全部展開", page.locator("#matDetail .mday.open").count(), 5)
+    check("全開後按鈕換成「全部收合」",
+          page.locator("#matDetail [data-act='matDayAll']").inner_text().strip(), "全部收合")
+    page.click("#matDetail [data-act='matDayAll']")
+    page.wait_for_timeout(400)
+    check("再按一下全部收合", page.locator("#matDetail .mday.open").count(), 0)
+    check("全收合時不渲染任何場次卡", page.locator("#matDetail .mrun").count(), 0)
+    check("按鈕字樣換回「全部展開」",
+          page.locator("#matDetail [data-act='matDayAll']").inner_text().strip(), "全部展開")
+    # 全開後縮小篩選範圍，按鈕要照「目前範圍」判斷，不能被範圍外的日期影響
+    page.click("#matDetail [data-act='matDayAll']")
+    page.wait_for_timeout(300)
+    page.evaluate("() => { matFrom='2026-08-01'; matTo='2026-08-03'; renderMaterials(); }")
+    page.wait_for_timeout(300)
+    check("縮小篩選後仍正確判斷為全開",
+          [page.locator("#matDetail .mday").count(),
+           page.locator("#matDetail [data-act='matDayAll']").inner_text().strip()], [3, "全部收合"])
+    page.evaluate("() => { matFrom=''; matTo=''; renderMaterials(); }")
+    page.wait_for_timeout(300)
+
     # --- 從明細直接編輯其他天的掉落 ---
     check("明細不再借用匯出圖片的樣式",
           page.locator("#matDetail .ex-pt").count(), 0)
@@ -1790,12 +1817,49 @@ def run(page):
           page.evaluate("() => curDate"), "2026-08-05")
 
     # --- 系列配色 ---
+    check("材料分成四類各自給色，另有「其餘」接住自訂材料",
+          page.evaluate("() => MAT_SERIES.map(s => [s.key, s.label])"),
+          [["shard", "碎片"], ["dust", "浮塵"], ["unknown", "未知"],
+           ["rune", "稀微"], ["other", "其餘"]])
+    check("四種材料各自落到正確系列",
+          page.evaluate("""() => ['威力隕石碎片','威力隕石浮塵','未知的隕石碎片','稀微魔力符文石','自訂材料']
+              .map(n => matSeries(n).key)"""),
+          ["shard", "dust", "unknown", "rune", "other"])
+    check("未知與稀微不再被歸進同一堆灰色",
+          page.evaluate("() => matSeries('未知的隕石碎片').key !== matSeries('稀微魔力符文石').key"), True)
+    check("四類的顏色互不相同",
+          page.evaluate("""() => {
+              const c = ['shard','dust','unknown','rune'].map(k =>
+                  getComputedStyle(document.documentElement).getPropertyValue('--ms-'+k).trim());
+              return new Set(c).size;
+          }"""), 4)
+    check("材料色避開刪除紅與瓶頸琥珀（那兩色有固定語意）",
+          page.evaluate("""() => {
+              const reserved = ['#dc2626', '#b45309'];
+              return MAT_SERIES.every(s => !reserved.includes(s.color.toLowerCase()));
+          }"""), True)
     check("材料系列色改由 CSS 變數供色（深色模式才調得動）",
           page.evaluate("() => msVars(MAT_SERIES[0]).includes('var(--ms-shard)')"), True)
     check("匯出圖片仍使用寫死的淺色色值（匯出一律白底）",
           page.evaluate("() => /^#[0-9a-f]{6}$/i.test(MAT_SERIES[0].color)"), True)
-    check("碎片系列不再與刪除／警告的紅色撞色",
-          page.evaluate("() => MAT_SERIES[0].color.toLowerCase() !== '#dc2626'"), True)
+    check("找不到系列時退回最後一項，不寫死索引",
+          page.evaluate("() => matSeries('完全沒見過的東西').key"), "other")
+    check("掉落編輯面板也照四類分段",
+          page.evaluate("""() => {
+              dropsSheet(ptsOf(curDate)[0].id);
+              const g = [...document.querySelectorAll('.dropgrp')].map(e => e.textContent);
+              closeSheet();
+              return g;
+          }"""), ["碎片", "浮塵", "未知", "稀微"])
+
+    # --- 組數預設 ---
+    # matPerSet 是工作階段變數，前面的測試改過它，直接讀當下的值驗不到「預設」。
+    # 重新載入頁面才是使用者第一次開啟時看到的狀態。
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    check("組數預設為 1 個 = 1 組（重新載入後）",
+          page.evaluate("""() => [document.getElementById('matPerSet').value, matPerSet]"""),
+          ["1", 1])
 
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")

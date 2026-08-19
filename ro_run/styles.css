@@ -21,11 +21,14 @@
   --danger:#dc2626;
   --ok:#0f9d76;
   --r-lg:20px; --r-md:14px; --r-sm:9px;
-  /* 材料系列色：碎片靛藍 / 浮塵青 / 其餘灰，一律低彩度。
-     高彩度留給 --warn（瓶頸）與 --danger（刪除），這樣真正要注意的東西才跳得出來。 */
-  --ms-shard:#4a5f87; --ms-shard-ink:#3a4b6b; --ms-shard-soft:rgba(74,95,135,.10); --ms-shard-line:rgba(74,95,135,.26);
-  --ms-dust:#3f8792;  --ms-dust-ink:#2f6a73;  --ms-dust-soft:rgba(63,135,146,.10);  --ms-dust-line:rgba(63,135,146,.26);
-  --ms-other:#8a8f9c; --ms-other-ink:#63697a; --ms-other-soft:rgba(138,143,156,.12); --ms-other-line:rgba(138,143,156,.28);
+  /* 材料系列色：碎片藍 / 浮塵青 / 未知紫 / 稀微綠 / 其餘灰。
+     色相拉開讓四類一眼分得出來，但避開紅與琥珀 —— 那兩色是 --danger 與 --warn 的語意，
+     材料借用會蓋掉真正該注意的東西（刪除、瓶頸）。 */
+  --ms-shard:#2563eb;   --ms-shard-ink:#1d4ed8;   --ms-shard-soft:rgba(37,99,235,.10);    --ms-shard-line:rgba(37,99,235,.28);
+  --ms-dust:#0d9488;    --ms-dust-ink:#0f766e;    --ms-dust-soft:rgba(13,148,136,.11);    --ms-dust-line:rgba(13,148,136,.30);
+  --ms-unknown:#9333ea; --ms-unknown-ink:#7e22ce; --ms-unknown-soft:rgba(147,51,234,.10); --ms-unknown-line:rgba(147,51,234,.28);
+  --ms-rune:#15803d;    --ms-rune-ink:#166534;    --ms-rune-soft:rgba(21,128,61,.11);     --ms-rune-line:rgba(21,128,61,.30);
+  --ms-other:#8a8f9c;   --ms-other-ink:#63697a;   --ms-other-soft:rgba(138,143,156,.12);  --ms-other-line:rgba(138,143,156,.28);
   --shadow:0 1px 2px rgba(21,23,28,.05), 0 8px 24px -8px rgba(21,23,28,.12);
   --shadow-lift:0 2px 4px rgba(21,23,28,.06), 0 18px 40px -12px rgba(21,23,28,.22);
   --ease:cubic-bezier(.32,.72,0,1);
@@ -54,9 +57,11 @@
   --shadow-lift:0 2px 4px rgba(0,0,0,.35), 0 18px 40px -12px rgba(0,0,0,.6);
   /* 材料系列色在深色模式要整組提亮：淺色模式的 ink 是深色文字，
      直接沿用會變成深底配深字，掉落標籤幾乎看不見。 */
-  --ms-shard:#8fa6d4; --ms-shard-ink:#b9c7e8; --ms-shard-soft:rgba(143,166,212,.15); --ms-shard-line:rgba(143,166,212,.32);
-  --ms-dust:#6fc0cc;  --ms-dust-ink:#a3dde4;  --ms-dust-soft:rgba(111,192,204,.15);  --ms-dust-line:rgba(111,192,204,.32);
-  --ms-other:#a8aeba; --ms-other-ink:#c9cdd8; --ms-other-soft:rgba(168,174,186,.15); --ms-other-line:rgba(168,174,186,.32);
+  --ms-shard:#7aa2f7;   --ms-shard-ink:#a9c4fb;   --ms-shard-soft:rgba(122,162,247,.16);  --ms-shard-line:rgba(122,162,247,.34);
+  --ms-dust:#3fd0c0;    --ms-dust-ink:#8ee6da;    --ms-dust-soft:rgba(63,208,192,.15);    --ms-dust-line:rgba(63,208,192,.32);
+  --ms-unknown:#c084fc; --ms-unknown-ink:#d8b4fe; --ms-unknown-soft:rgba(192,132,252,.16); --ms-unknown-line:rgba(192,132,252,.34);
+  --ms-rune:#4ade80;    --ms-rune-ink:#86efac;    --ms-rune-soft:rgba(74,222,128,.15);    --ms-rune-line:rgba(74,222,128,.32);
+  --ms-other:#a8aeba;   --ms-other-ink:#c9cdd8;   --ms-other-soft:rgba(168,174,186,.15);  --ms-other-line:rgba(168,174,186,.32);
 }
 [data-theme="dark"] body::before{opacity:.5}       /* 夜空底紋在深色模式下亮度收斂一點，不然會過曝 */
 [data-theme="dark"] .exportwrap{background:#fff; color:#15171c}  /* 匯出圖片固定白底，見上方註解 */
@@ -1041,7 +1046,7 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
    只有卡住組數的那一種加粗、上琥珀色跳出來。
    12 條同粗同飽和的長條全部接近滿格時眼睛沒有落點，這才是原本讀不出東西的主因。 */
 .matgrp .bar-track{height:5px; transition:height .2s var(--ease)}
-.matgrp .bar-fill{opacity:.45}
+.matgrp .bar-fill{opacity:.72}
 .bar-row.short .bar-l{color:var(--warn); font-weight:650}
 .bar-row.short .bar-n{color:var(--warn); font-weight:700}
 .matgrp .bar-row.short .bar-track{height:9px}
@@ -1061,6 +1066,10 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 
 /* ── 場次明細：按日期分組收合 ─────────────────────────────
    實測 28 天 56 場會攤成一萬六千像素，預設全部展開沒有人滑得完。 */
+/* 明細頂端的工具列：天數摘要 + 一鍵全部展開／收合 */
+.mday-bar{display:flex; align-items:center; gap:10px; margin:0 2px 11px}
+.mday-bar-t{font-size:11.5px; color:var(--muted); font-weight:550}
+.mday-bar .gbtn{margin-left:auto}
 .mday{margin-bottom:10px}
 .mday-h{
   display:flex; align-items:center; gap:10px; width:100%; padding:11px 14px;
