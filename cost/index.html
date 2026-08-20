@@ -307,6 +307,25 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   transition:background var(--t-fast);
 }
 .hero-mnav:active{background:var(--surface3)}
+
+/* ── 月份切換的觸控目標 ──────────────────────────────────────────
+   視覺上這三顆是 26px 高的小控制項，符合 hero 的緊湊感；但 26×26 遠低於
+   44px 的觸控下限，箭頭尤其容易點不到。用隱形的 ::after 把命中區撐到
+   44px，視覺尺寸完全不變（本來就有 .hero-deduct-badge 用過這個手法）。
+
+   水平方向刻意做成不對稱，避免三個命中區互相搶點擊：
+     ‹ 往左吃掉卡片的 18px 內距（34→19），往右只吃 3px 的間隙
+     月份本身 94.5px 已經夠寬，只需要加高
+     › 往右吃空白區，往左同樣只吃 3px
+   量測後三塊各為 44px 寬且彼此留 1px 不重疊。 */
+.hero-mnav,.hero-ymbtn{position:relative}
+.hero-mnav::after,.hero-ymbtn::after{
+  content:'';position:absolute;top:50%;height:44px;
+  transform:translateY(-50%);
+}
+.hero-ymbtn::after{left:0;right:0}
+.hero-mnav.prev::after{left:-15px;right:-3px}
+.hero-mnav.next::after{left:-3px;right:-15px}
 .hero-ymbtn{
   height:26px;padding:0 7px 0 8px;
   display:flex;align-items:center;gap:3px;
@@ -1977,12 +1996,12 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
       <!-- Eyebrow — 月份選擇器本身就標示了正在檢視哪個月，不用再寫「本月」 -->
       <div class="hero-eyebrow">
-        <button class="hero-mnav" onclick="shiftM(-1)" aria-label="上個月">&#8249;</button>
+        <button class="hero-mnav prev" onclick="shiftM(-1)" aria-label="上個月">&#8249;</button>
         <button class="hero-ymbtn" id="h-ymbtn" onclick="openMonthPicker()" aria-label="選擇月份">
           <span id="h-ymlbl">—</span>
           <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <button class="hero-mnav" onclick="shiftM(1)" aria-label="下個月">&#8250;</button>
+        <button class="hero-mnav next" onclick="shiftM(1)" aria-label="下個月">&#8250;</button>
         <span class="hero-eyebrow-tag" id="h-period">個人支出</span>
         <!-- 收合後大數字讓位，總額改由這裡承接（純交叉淡入，不動版面） -->
         <span class="hero-mini-tot" id="h-mini-tot" aria-hidden="true"></span>
@@ -2255,9 +2274,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.15.0 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.18.0 <span class="app-info-chev">›</span></span>
         </div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/08/18</span></div>
+        <div class="app-info-row"><span>建置日期</span><span>2026/08/20</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -2802,6 +2821,17 @@ const DEF_REM={enabled:true,showOverdue:true,showDueSoon:true,dueSoonDays:3,show
 
 // ── State ────────────────────────────────────────────────
 let DB, editId=null, areaChart=null, listFilter='all', _savedScroll=0, focusStack=[];
+
+// ── 資料庫就緒信號 ────────────────────────────────────────────────
+// openDB() 的 promise 存成共用變數，讓「非主線」的初始化也能等它。
+//
+// 起因：SW 註冊那條線掛在 window.load 上，跟 openDB() 是兩條各自獨立的
+// 時序線，誰先完成沒有保證。它原本直接呼叫 rSettings()，而
+// rSettings → refreshBackupStatus → getAllSnaps → snapStore() 會碰
+// DB.transaction —— DB 還沒指派時整個拋 TypeError。
+// 實測純開機（完全沒有資料）6 次有 2 次中獎，壞掉的正好是「備份狀態」，
+// 記帳工具裡最不該靜默失敗的一塊。
+let dbReady = null;
 let dirty={home:true,list:true,chart:true};
 let budStore=JSON.parse(localStorage.getItem('ep_bud_v2')||'{"byIdx":{},"total":0}');
 let userCats=JSON.parse(localStorage.getItem('ep_cats')||'null');
@@ -3930,15 +3960,79 @@ function openDB(){
       DB=e.target.result;
       // 另一個分頁觸發升級時，舊連線會擋住它；主動關閉並提示重載，
       // 否則兩邊都停在半升級狀態。
-      DB.onversionchange=()=>{ DB.close(); DB=null; alert('資料庫已在其他分頁更新，請重新載入此頁。'); };
+      DB.onversionchange=()=>markDbDead('資料庫已在其他分頁更新。請重新載入此頁以繼續使用；你已記錄的資料不受影響。');
       res();
     };
-    r.onerror=()=>rej(r.error);
+    r.onerror=()=>rej(r.error||new Error('資料庫無法開啟'));
     // 舊分頁佔著資料庫時 open 會無限期停在 blocked，畫面停在空白
-    r.onblocked=()=>rej(new Error('資料庫被其他分頁佔用，請關閉其他開啟中的「費用管理」分頁後重試'));
+    r.onblocked=()=>rej(new Error('資料庫被其他分頁佔用。請關閉其他開啟中的「費用管理」分頁後重試。'));
+    // 保險絲：極少數情況三個事件一個都不觸發（瀏覽器 bug、儲存層卡住），
+    // 沒有這道防線畫面就永遠停在空白，使用者完全不知道發生什麼事。
+    setTimeout(()=>rej(new Error('資料庫開啟逾時。請重新載入；若持續發生，請關閉其他分頁後再試。')), 15000);
   });
 }
-const store=m=>DB.transaction('items',m).objectStore('items');
+
+// ── 連線失效後的守門員 ────────────────────────────────────────────
+// onversionchange（另一個分頁升級了資料庫）會把連線關掉。原本的處理是
+// DB=null 之後跳一個 alert() —— 但 alert 只是擋一下，使用者按掉之後頁面
+// 還活著，接下來每一個動作都會踩到 DB.transaction 的
+// 「Cannot read properties of undefined」，畫面毫無反應也沒有任何說明。
+//
+// 改成：連線一失效就記下原因並直接顯示需要重新載入的畫面，同時讓所有
+// store 存取拋出讀得懂的錯誤，而不是 undefined 的 TypeError。
+let dbDead = null;                 // 非 null 即為失效原因
+
+function markDbDead(reason){
+  if(dbDead) return;               // 只處理一次
+  dbDead = reason;
+  try{ if(DB) DB.close(); }catch{}
+  DB = null;
+  showFatalDbError(new Error(reason), '資料庫連線已中斷');
+}
+
+// 所有 store 存取的共同入口。失效時給出可讀的原因，
+// 而不是讓 undefined.transaction 拋一個看不懂的 TypeError。
+function requireDB(){
+  if(dbDead) throw new Error(dbDead);
+  if(!DB)    throw new Error('資料庫尚未就緒');
+  return DB;
+}
+
+// ── 資料庫開不起來時的最後一道畫面 ────────────────────────────────
+// 原本 openDB().then(...) 沒有 .catch()：開庫失敗時整個初始化鏈靜靜中斷，
+// 使用者看到的是一片空白。上面 onblocked 那句寫得很清楚的提示
+// （「請關閉其他分頁」）因此從來沒有機會傳到任何人眼前。
+function showFatalDbError(err, title){
+  console.error(title || '資料庫無法開啟：', err);
+  const msg = (err && err.message) ? err.message : '資料庫無法開啟。';
+  if(document.getElementById('fatal-db')) return;   // 只顯示一次
+  const el = document.createElement('div');
+  el.id = 'fatal-db';
+  el.setAttribute('role','alertdialog');
+  el.setAttribute('aria-modal','true');
+  el.setAttribute('aria-labelledby','fatal-db-t');
+  el.style.cssText =
+    'position:fixed;inset:0;z-index:99999;background:#EDE8DF;color:#2E2B27;'+
+    "font-family:'Sora',-apple-system,BlinkMacSystemFont,'PingFang TC',sans-serif;"+
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;'+
+    'text-align:center;padding:32px 28px;gap:14px';
+  el.innerHTML =
+    '<div style="font-size:34px;line-height:1">⚠️</div>'+
+    '<h1 id="fatal-db-t" style="font-size:17px;font-weight:600;margin:0"></h1>'+
+    '<p style="font-size:14px;line-height:1.65;color:#6B6762;margin:0;max-width:19em"></p>'+
+    '<p style="font-size:12.5px;line-height:1.6;color:#8A857E;margin:2px 0 0;max-width:19em">'+
+      '你已經記錄的資料仍在裝置上，不會因為這個錯誤而遺失。</p>'+
+    '<button type="button" style="margin-top:8px;background:#2E9E72;color:#fff;border:0;'+
+      'border-radius:99px;padding:11px 26px;font-size:14px;font-weight:600;font-family:inherit;'+
+      'cursor:pointer;min-height:44px">重新載入</button>';
+  // 標題與訊息都用 textContent 塞，避免任何錯誤字串被當成 HTML 解析
+  el.querySelector('h1').textContent = title || '無法開啟資料庫';
+  el.querySelector('p').textContent = msg;
+  el.querySelector('button').addEventListener('click', ()=>location.reload());
+  document.body.appendChild(el);
+  el.querySelector('button').focus();
+}
+const store=m=>requireDB().transaction('items',m).objectStore('items');
 
 // BUGFIX: 原本每個 helper 只綁 onsuccess。IndexedDB 失敗（配額用盡、資料損壞、
 // 交易被中止）時 promise 永遠不會 settle，於是 `await putItem(...)` 就卡在那裡：
@@ -3994,14 +4088,14 @@ const putItem=async item=>{
 const delItem=async id=>{ await idbWrite(store('readwrite').delete(id)); invalidateAll(); };
 
 // ── 訂閱 store（獨立於 items，不參與任何金額統計）─────────
-const subStore=m=>DB.transaction('subs',m).objectStore('subs');
+const subStore=m=>requireDB().transaction('subs',m).objectStore('subs');
 const getAllSubs=()=>idbReq(subStore('readonly').getAll()).then(r=>r||[]).catch(()=>[]);
 const getSubById=id=>idbReq(subStore('readonly').get(id)).then(r=>r||null).catch(()=>null);
 const putSub=x=>idbWrite(subStore('readwrite').put(x));
 const delSub=id=>idbWrite(subStore('readwrite').delete(id));
 
 // ── 自動快照 store（App 內備份，獨立於一切統計）──────────────────
-const snapStore=m=>DB.transaction('snapshots',m).objectStore('snapshots');
+const snapStore=m=>requireDB().transaction('snapshots',m).objectStore('snapshots');
 const getAllSnaps=()=>idbReq(snapStore('readonly').getAll()).then(r=>r||[]).catch(()=>[]);
 const putSnap=x=>idbWrite(snapStore('readwrite').put(x));
 const delSnap=ts=>idbWrite(snapStore('readwrite').delete(ts));
@@ -4373,9 +4467,26 @@ let _remAutoShownOn='';
 
 const remDismissedToday=()=>remDismissed===today();
 
+// ── 桌面圖示角標 ──────────────────────────────────────────────────
+// 提醒目前只在 App 開著時才看得見。Badging API 讓「有幾筆待處理」直接
+// 留在主畫面圖示上，關掉 App 也還在 —— 對帳單提醒工具來說，這是投報率
+// 最高的一步（不需要推播權限，也不需要背景同步）。
+//
+// 需要已安裝成 PWA 才會生效（iOS 16.4+ 加到主畫面後支援）；其他環境
+// 這個 API 不存在，整段自動變成無操作，不影響任何既有行為。
+// 數字刻意跟畫面上的分頁角標用同一個 n，兩邊不會各說各話。
+function updateAppBadge(n){
+  if(!('setAppBadge' in navigator)) return;
+  try{
+    if(n>0) navigator.setAppBadge(n).catch(()=>{});
+    else    navigator.clearAppBadge().catch(()=>{});
+  }catch{}
+}
+
 async function refreshRems(){
   _remCache = await buildRems();
   const n=_remCache.length;
+  updateAppBadge(n);        // 提醒功能關閉時 buildRems 回空陣列 → n=0 → 角標清掉
 
   const badge=document.getElementById('remind-badge');
   if(badge){
@@ -4582,7 +4693,10 @@ function setHomeView(v){
 
 // ── HOME ─────────────────────────────────────────────────
 let _lastHomeYm=null;
-async function rHome(){
+// opts.skipList：只重算統計（hero、預算條、篩選鈕計數、提醒），不動清單 DOM。
+// 勾選核取方塊時用得上 —— 那個動作只改變「已繳/未繳」的分配，總額、預算
+// 百分比、卡片位置都沒變，重建 154 個節點是白做工。
+async function rHome(opts={}){
   diag('rHome');
   dirty.home=false;
   renderSubChip();
@@ -4735,6 +4849,9 @@ async function rHome(){
   const prevItems=items.length ? [] : await getByYM(ymStr(prevY,prevM));
   document.getElementById('copy-wrap').innerHTML=(!items.length&&prevItems.length)
     ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到 ${m} 月？</p><span>複製</span></div>`:'';
+
+  // 統計到此為止都已更新完畢。skipList 的呼叫端自己負責維護清單 DOM。
+  if(opts.skipList) return;
 
   const el=document.getElementById('home-list');
   const filterRow=document.getElementById('home-filter-row');
@@ -7154,6 +7271,12 @@ async function swDiagnosis() {
 if (swState === 'pending') {
   window.addEventListener('load', async () => {
     await registerSW();
+
+    // rSettings() 會讀 snapshots store，所以一定要等資料庫就緒。
+    // 這裡是跟 openDB() 平行的另一條時序線，不能假設它已經完成。
+    try { await dbReady; }
+    catch { return; }        // 開庫失敗已由 showFatalDbError 接手，不必再畫設定頁
+
     rSettings();                                  // 讓設定頁的狀態列反映結果
 
     // 回到前景時順手查一次更新
@@ -7202,6 +7325,19 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.18.0', d:'2026/08/20', c:[
+    ['imp','勾選核取方塊不再重建整份清單。「全部」檢視下卡片留在原地、零節點異動；「待處理」下只移除該張卡並就地更新底部小計。150 筆時每次勾選的主執行緒工作量從約 129ms 降到約 17ms'],
+    ['fix','另一個分頁升級資料庫後，本頁連線失效卻只跳一個可關閉的 alert，關掉之後每個操作都會拋出看不懂的錯誤且畫面毫無反應。改為直接顯示需要重新載入的說明畫面，並讓所有資料存取拋出可讀的原因'],
+  ]},
+  { v:'v4.17.0', d:'2026/08/20', c:[
+    ['add','待處理提醒的筆數會顯示在桌面圖示的角標上，關掉 App 也看得到（需加到主畫面；iOS 16.4+ 支援）。數字與畫面上的分頁角標一致，提醒功能關閉時自動清除'],
+    ['fix','月份切換的三個控制項觸控範圍只有 26px 高，箭頭尤其容易點不到。命中區加大到 44px，視覺尺寸維持不變'],
+  ]},
+  { v:'v4.16.0', d:'2026/08/19', c:[
+    ['fix','開機時「備份狀態」有機率整塊渲染失敗（實測純開機 6 次中 2 次）。Service Worker 註冊與開啟資料庫是兩條獨立的時序線，前者完成較快時會在資料庫就緒前存取快照，導致錯誤被靜默吞掉'],
+    ['fix','資料庫開啟失敗時只會停在空白畫面。現在會顯示明確原因與「重新載入」；其中「被其他分頁佔用」的提示原本就寫好了，卻從來沒有機會顯示出來'],
+    ['add','資料庫開啟逾時 15 秒的保險絲，避免極少數情況下永遠停在空白畫面'],
+  ]},
   { v:'v4.15.0', d:'2026/08/18', c:[
     ['chg','代墊款不再從支出總額中排除；金額一律計入首頁、圖表、行事曆、分類預算等所有加總，只用「已收回／未收回」單獨注記，不影響任何統計數字'],
     ['rm','移除首頁「代墊 $X 已排除」與圖表「已排除代墊」的說明徽章／文字，因為已無排除行為可解釋'],
@@ -7422,7 +7558,8 @@ document.addEventListener('visibilitychange', async () => {
 });
 
 // ── Init ─────────────────────────────────────────────────
-openDB().then(async ()=>{
+dbReady = openDB();
+dbReady.then(async ()=>{
   buildSelects();
   refreshCatSel();
   await initAdvanceFeature();   // decides visibility before the first paint
@@ -7536,9 +7673,43 @@ openDB().then(async ()=>{
         ? (checked?'已收回，點擊取消':'未收回，點擊標記收回')
         : (checked?'已繳，點擊取消':'未繳，點擊標記繳納'));
 
-      // Home shows only 待處理 by default, so a full re-render is both simpler
-      // and correct — the item just ticked off drops out of the list.
-      if(activeScreen==='home') rHome();
+      // ── 清單更新：分兩種情況，不再一律整份重建 ──────────────────────
+      // 上面那段精準修補了這張卡的 4 個節點，原本下一行卻無條件呼叫 rHome()
+      // 把整份清單砍掉重畫，等於白做工（實測 150 筆會重新插入 154 個節點）。
+      //
+      // 真正需要重建的只有「待處理」檢視：勾掉的項目必須從清單上消失。
+      // 「全部」檢視下它只是換個顏色留在原地，卡片本身已經修補好了，
+      // 只要重算上方統計即可。
+      if(activeScreen==='home'){
+        const list = document.getElementById('home-list');
+        if(homeView==='todo'){
+          // 這一筆要離開清單。整份重建太貴，只移除這一張卡；
+          // 但移除後若清單空了，就得換成「都處理完了」的空狀態 ——
+          // 那個分支交回給完整的 rHome() 處理。
+          const rest = [...list.querySelectorAll('.icard')].filter(c => c !== card);
+          if(!rest.length){
+            await rHome();                    // 需要渲染空狀態
+          }else{
+            card.remove();
+            // 清單底部的「待處理 N 筆　合計 X」也在 #home-list 裡，
+            // 只移除卡片的話它會停在舊數字。金額一律讀 data-amt 的原始整數，
+            // 不去 parse 已經格式化過的文字。
+            const foot = list.querySelector('.list-footer');
+            if(foot){
+              const sum = rest.reduce((t,c)=>t + (+c.dataset.amt||0), 0);
+              foot.textContent = `待處理 ${rest.length} 筆　合計 ${fmt(sum)}`;
+            }
+            await rHome({skipList:true});     // 只更新統計
+          }
+        }else if(isAdv){
+          // 「全部」檢視頂端的代墊橫幅會隨未收回筆數增減，甚至整條出現／消失。
+          // 這種增刪比單純改數字麻煩，而切換代墊收回本來就不常見，
+          // 這一支就走完整重建，正確性優先。
+          await rHome();
+        }else{
+          await rHome({skipList:true});        // 卡片留在原地，統計要更新
+        }
+      }
 
       toast(isAdv ? (checked?'已標記收回 ✓':'已取消收回')
                   : (checked?'已標記繳納 ✓':'已取消繳納'));
@@ -7694,6 +7865,15 @@ openDB().then(async ()=>{
   if(action === 'add')       setTimeout(() => openForm(null), 120);
   else if(action === 'list') showS('list');
   if(action) history.replaceState(null, '', location.pathname);
+}).catch(err => {
+  // 用 DB 有沒有被指派來區分兩種失敗，訊息才不會張冠李戴：
+  //   DB 還是 undefined → 真的開不起來，顯示致命畫面
+  //   DB 已就緒         → 是後續初始化的錯，App 大致可用，不該蓋掉整個畫面
+  if (!DB) showFatalDbError(err);
+  else {
+    console.error('初始化時發生錯誤：', err);
+    try { toast('初始化時發生錯誤，部分畫面可能不正常'); } catch {}
+  }
 });
 
 </script>
