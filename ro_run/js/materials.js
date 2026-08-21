@@ -257,7 +257,7 @@ function renderMaterials(){
           ${open?list.map(({date,pt})=>`<div class="mrun">
             <button class="mrun-h" data-act="editRunDrops" data-pt="${pt.id}" data-day="${date}">
               <span class="mrun-n">${esc(pt.name)}</span>
-              <span class="mrun-t num">${esc(pt.time||'')}</span>
+              <span class="mrun-t num">${esc(dayTime(date))}</span>
               <span class="mrun-e">編輯</span>
             </button>
             <div class="dropgrid mrun-g">${sortDrops(pt.drops).map(d=>

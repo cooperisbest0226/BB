@@ -116,6 +116,10 @@ function renderDates(){
 function renderBoard(){
   const grid=document.getElementById('ptGrid'), pts=ptsOf(curDate);
   document.getElementById('boardLabel').textContent=`${fmtDate(curDate)} ${fmtDow(curDate)} · ${pts.length} RUN`;
+  /* 時間一天一個，顯示在這一排；每張卡片再各印一次只是重複的雜訊 */
+  const dt=document.getElementById('btnDayTime');
+  dt.textContent=dayTime(curDate)||'設定時間';
+  dt.classList.toggle('unset', !dayTime(curDate));
   if(!pts.length){
     grid.innerHTML=`<div class="emptystate"><b>這天還沒有 RUN</b>先建一個 RUN，再把待分配的成員拖進來。</div>`;
     return;
@@ -155,7 +159,6 @@ function renderBoard(){
       <div class="pt-head">
         <div class="pt-id">
           <div class="pt-name">${esc(pt.name)}</div>
-          <div class="pt-time num">${esc(pt.time||'未設定時間')}</div>
         </div>
         <div class="pt-count num ${full?'full':''}"><b>${n}</b><span>/${pt.capacity}</span></div>
       </div>

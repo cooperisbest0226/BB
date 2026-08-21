@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v51';
+const APP_VERSION='v52';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -135,11 +135,12 @@ function roJobIdByName(name){
 // 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
 function seed(){
   const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
-  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[],
+  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[],dayTimes:{},
     settings:{theme:'system',defaultTime:'20:00',defaultCap:12}};
 }
 
-function mkPt(name,time,cap){ return {id:uid(),name,time,capacity:cap,slots:[],drops:[],videos:[]}; }
+/* 時間不再屬於單場 RUN，改由 dayTimes 依日期保管（見 5→6 遷移） */
+function mkPt(name,cap){ return {id:uid(),name,capacity:cap,slots:[],drops:[],videos:[]}; }
 function todayKey(){ const d=new Date(); return ymd(d); }
 function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
@@ -203,6 +204,23 @@ const MIGRATIONS=[
     Object.values(p.schedule||{}).forEach(pts=>pts.forEach(pt=>{
       if(!Array.isArray(pt.videos)) pt.videos=[];
     }));
+  },
+  /* 5 → 6：時間從「每場各自一個」改成「一天一個」。
+            同一天的 RUN 本來就是同一個時段開，分開存只是讓人每建一場都要再填一次，
+            要改時間還得一場一場改，漏掉一場就對不起來。
+
+            這是有損轉換：某天原本各場填了不同時間的話，只能留一個。
+            取該天第一個有填時間的 RUN——那通常是主場次，也是使用者最先設定的那一個。 */
+  p=>{
+    p.dayTimes=p.dayTimes||{};
+    Object.keys(p.schedule||{}).forEach(k=>{
+      const pts=p.schedule[k]||[];
+      if(p.dayTimes[k]===undefined){
+        const first=pts.find(pt=>pt.time&&String(pt.time).trim());
+        p.dayTimes[k]=first?String(first.time).trim():'';
+      }
+      pts.forEach(pt=>{ delete pt.time; });   // 不留第二份真相
+    });
   },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
@@ -316,7 +334,14 @@ function countRuns(k,memberId){ return ptsOf(k).reduce((n,p)=>n+(p.slots.some(s=
 function benchMembers(k){ return state.members.filter(m=>m.active); }
 /* 純粹「今天一場都還沒排到」的人 —— 給統計卡片用 */
 function unassignedMembers(k){ const a=assignedIds(k); return state.members.filter(m=>m.active&&!a.has(m.id)); }
-function ensureDate(k){ if(!state.schedule[k]) state.schedule[k]=[]; }
+function ensureDate(k){
+  if(!state.schedule[k]) state.schedule[k]=[];
+  state.dayTimes=state.dayTimes||{};
+  if(state.dayTimes[k]===undefined) state.dayTimes[k]=state.settings.defaultTime||'';
+}
+/* 這一天的集合時間。整份程式只從這裡取時間，不再有 pt.time。 */
+function dayTime(k){ return (state.dayTimes&&state.dayTimes[k])||''; }
+function setDayTime(k,v){ state.dayTimes=state.dayTimes||{}; state.dayTimes[k]=String(v||'').trim(); }
 
 /* ── YouTube 連結 ──────────────────────────────────────────
    手機分享出來的網址格式不只一種（youtu.be 短網址、watch?v=、直播的 /live/、Shorts），

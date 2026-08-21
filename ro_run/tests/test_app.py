@@ -30,12 +30,14 @@ def seed(page):
         state.members.push({id:'m1',name:'小明',active:true});
         state.members.push({id:'m2',name:'小華',active:true});
         state.members.push({id:'m3',name:'小美',active:true});
+        // 時間屬於整天（schemaVersion 6 起），不再掛在單場 RUN 上
+        state.dayTimes = {'2026-08-01':'19:00', '2026-08-05':'21:00'};
         state.schedule['2026-08-01'] = [
-            {id:'ptA', name:'RUN A1', time:'19:00', capacity:5,
+            {id:'ptA', name:'RUN A1', capacity:5,
              slots:[{memberId:'m1'}], drops:[{id:'d1',name:'威力隕石碎片',qty:3}]}
         ];
         state.schedule['2026-08-05'] = [
-            {id:'ptB', name:'RUN B1', time:'21:00', capacity:10,
+            {id:'ptB', name:'RUN B1', capacity:10,
              slots:[{memberId:'m1'},{memberId:'m2'},{memberId:'m3'}], drops:[]}
         ];
         curDate = '2026-08-05';
@@ -1075,7 +1077,7 @@ def run(page):
     # 塞夠多資料讓陣容頁可以往下捲
     page.evaluate("""() => {
         for (let i = 0; i < 12; i++)
-            state.schedule['2026-08-05'].push({id:'sp'+i, name:'RUN '+i, time:'21:00',
+            state.schedule['2026-08-05'].push({id:'sp'+i, name:'RUN '+i,
                 capacity:12, slots:[{memberId:'m1'}], drops:[]});
         persist(); render();
     }""")
@@ -1361,10 +1363,18 @@ def run(page):
     page.wait_for_timeout(150)
     page.click('button:has-text("新增 RUN")')
     page.wait_for_timeout(200)
-    check("新增 RUN 表單帶入新的預設時間",
-          page.eval_on_selector('input[name="time"]', "el => el.value"), "21:30")
+    check("新增 RUN 表單不再有時間欄位（時間屬於整天）",
+          page.locator('.sheet input[name="time"]').count(), 0)
+    check("新增 RUN 表單會說明時間在哪裡改",
+          "日期列" in page.locator(".sheet .fieldnote").inner_text(), True)
     check("新增 RUN 表單帶入新的預設人數上限",
           page.eval_on_selector('input[name="cap"]', "el => el.value"), "6")
+    page.evaluate("() => closeSheet()")
+    page.wait_for_timeout(150)
+    check("預設時間改為套用在新建立的日期上",
+          page.evaluate("() => { delete state.schedule['2026-12-25']; if (state.dayTimes) delete state.dayTimes['2026-12-25']; ensureDate('2026-12-25'); return dayTime('2026-12-25'); }"), "21:30")
+    page.click('button:has-text("新增 RUN")')
+    page.wait_for_timeout(200)
     page.evaluate("() => closeSheet()")
     page.wait_for_timeout(150)
 
@@ -1702,7 +1712,7 @@ def run(page):
                     '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片'];
         state.schedule = {};
         ['2026-08-01','2026-08-02','2026-08-03','2026-08-04','2026-08-05'].forEach((k,di) => {
-            state.schedule[k] = [{id:'p'+di, name:'RUN 1', time:'20:00', capacity:12,
+            state.schedule[k] = [{id:'p'+di, name:'RUN 1', capacity:12,
                 slots:[{memberId:'m1'}],
                 // 咒數隕石浮塵刻意給少，做成唯一瓶頸
                 drops: MATS.map((n,i) => ({id:'d'+di+i, name:n, qty: n==='咒數隕石浮塵' ? 2 : 6})),
@@ -2000,14 +2010,16 @@ def run(page):
           }"""), True)
 
     # --- 觸控目標 ---
+    # 用 offsetHeight 而不是 getBoundingClientRect：RUN 卡片有進場動畫（含 scale），
+    # 動畫途中量 rect 會拿到被縮放過的高度，測試就會時好時壞。offsetHeight 是版面高度，不受 transform 影響。
+    page.wait_for_timeout(600)
     check("沒有實際可點高度低於 44px 的控制項",
           page.evaluate("""() => {
               const tooSmall = [];
               document.querySelectorAll('button, .tab, input, select, .chip').forEach(el => {
-                  const r = el.getBoundingClientRect();
-                  if (r.width === 0 || r.height === 0) return;
+                  if (!el.offsetWidth || !el.offsetHeight) return;
                   const after = parseFloat(getComputedStyle(el, '::after').height) || 0;
-                  if (Math.max(r.height, after) < 44) tooSmall.push(el.className.split(' ')[0] || el.tagName);
+                  if (Math.max(el.offsetHeight, after) < 44) tooSmall.push(el.className.split(' ')[0] || el.tagName);
               });
               return [...new Set(tooSmall)];
           }"""), [])
@@ -2024,6 +2036,101 @@ def run(page):
     check("所有輸入欄都有可讀名稱",
           page.evaluate("""() => [...document.querySelectorAll('input, select')]
               .filter(i => !i.labels?.length && !i.getAttribute('aria-label')).length"""), 0)
+
+    # ---------- 時間一天一個 ----------
+    print("\n[daytime] 集合時間統一與圖片分享")
+    seed(page)
+
+    check("時間存在 dayTimes，RUN 上不留第二份",
+          page.evaluate("""() => [!!state.dayTimes, ptsOf(curDate).some(p => 'time' in p)]"""),
+          [True, False])
+    check("新建的 RUN 不帶時間欄位",
+          page.evaluate("() => 'time' in mkPt('RUN X', 12)"), False)
+    check("舊資料遷移時取該天第一個有填時間的 RUN",
+          page.evaluate("""() => {
+              const old = {schemaVersion: 5, members: [], roles: [], sales: [],
+                  schedule: {'2026-01-01': [
+                      {id:'a', name:'RUN 1', time:'',      slots:[], drops:[], videos:[]},
+                      {id:'b', name:'RUN 2', time:'22:00', slots:[], drops:[], videos:[]},
+                      {id:'c', name:'RUN 3', time:'23:00', slots:[], drops:[], videos:[]}]}};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [m.dayTimes['2026-01-01'],
+                      m.schedule['2026-01-01'].every(p => !('time' in p))];
+          }"""), ["22:00", True])
+    check("整天都沒填時間時遷移成空字串，不會變 undefined",
+          page.evaluate("""() => {
+              const old = {schemaVersion: 5, members: [], roles: [], sales: [],
+                  schedule: {'2026-02-02': [{id:'a', name:'RUN 1', slots:[], drops:[], videos:[]}]}};
+              return migrate(old).dayTimes['2026-02-02'];
+          }"""), "")
+
+    page.evaluate("() => { setDayTime(curDate, '20:30'); render(); }")
+    page.wait_for_timeout(200)
+    check("時間顯示在日期列上", page.locator("#btnDayTime").inner_text(), "20:30")
+    check("RUN 卡片不再各印一次時間",
+          page.evaluate("() => !!document.querySelector('.ptcard .pt-time')"), False)
+    page.evaluate("() => { setDayTime(curDate, ''); render(); }")
+    page.wait_for_timeout(200)
+    check("沒設定時間時按鈕會提示去設定",
+          [page.locator("#btnDayTime").inner_text(),
+           "unset" in page.locator("#btnDayTime").get_attribute("class")], ["設定時間", True])
+
+    check("改一次時間，當天所有 RUN 一起生效",
+          page.evaluate("""() => {
+              setDayTime(curDate, '21:00');
+              // 同一天的每一場都讀到同一個時間
+              return ptsOf(curDate).every(() => dayTime(curDate) === '21:00');
+          }"""), True)
+    check("不同日期的時間互不影響",
+          page.evaluate("""() => {
+              setDayTime('2026-08-01', '19:00');
+              setDayTime('2026-08-05', '23:00');
+              return [dayTime('2026-08-01'), dayTime('2026-08-05')];
+          }"""), ["19:00", "23:00"])
+    check("時間會跟著備份一起走",
+          page.evaluate("""() => {
+              flushPersist();
+              return JSON.parse(localStorage.getItem(KEY)).dayTimes['2026-08-01'];
+          }"""), "19:00")
+
+    # --- 匯出圖片 ---
+    page.evaluate("() => { curDate = '2026-08-01'; setDayTime(curDate, '19:00'); render(); }")
+    page.wait_for_timeout(200)
+    check("匯出圖片的標題帶當天時間",
+          page.evaluate("""() => {
+              buildExportNode([curDate]);
+              const h = document.querySelector('#exportWrap .ex-h').textContent;
+              document.getElementById('exportHost').innerHTML = '';
+              return h.includes('19:00');
+          }"""), True)
+    check("匯出圖片的 RUN 卡片不再重複印時間",
+          page.evaluate("""() => {
+              buildExportNode([curDate]);
+              const n = document.querySelectorAll('#exportWrap .ex-pt-t').length;
+              document.getElementById('exportHost').innerHTML = '';
+              return n;
+          }"""), 0)
+    check("CSV 的時間欄改讀當天時間",
+          page.evaluate("""() => {
+              let captured = null;
+              const orig = window.download;
+              window.download = blob => { captured = blob; };
+              exportCsv(['2026-08-01']);
+              window.download = orig;
+              return captured ? captured.text() : null;
+          }""").__contains__("19:00"), True)
+
+    # --- 分享只帶圖片 ---
+    check("分享時只帶檔案，不附文字訊息",
+          page.evaluate("""async () => {
+              let keys = null;
+              const oc = navigator.canShare, os = navigator.share;
+              navigator.canShare = () => true;
+              navigator.share = async d => { keys = Object.keys(d).sort(); };
+              await exportImage([curDate]);
+              navigator.canShare = oc; navigator.share = os;
+              return keys;
+          }"""), ["files"])
 
     # ---------- 手勢鎖定 ----------
     print("\n[gesture] 長按選字鎖定")

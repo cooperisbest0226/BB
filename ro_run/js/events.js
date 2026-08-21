@@ -127,6 +127,10 @@ document.getElementById('btnDelDate').onclick=()=>{
     });
 };
 document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
+document.getElementById('btnDayTime').onclick=()=>{
+  if(!curDate) return toast('請先選一個日期');
+  dayTimeSheet();
+};
 document.getElementById('btnAddMember').onclick=()=>memberSheet(null);
 document.getElementById('memberSearch').oninput=renderMembers;
 document.getElementById('btnPrevDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i>0){curDate=ks[i-1];render();} };

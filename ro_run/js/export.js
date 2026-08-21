@@ -48,9 +48,10 @@ function ptExportBlock(pt){
       (r?`<span class="ex-rl" style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)}">${esc(r.name)}</span>`
          :`<span class="ex-rl" style="color:#a8aec0;border-color:#e6e8ef">未指定</span>`)+`</div>`;
   }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
+  /* 時間不再逐場印：一天共用一個時間，印在上方的日期標題就好，
+     每張卡片重複同一個時間只是佔位置。 */
   return `<div class="ex-pt">
     <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
-      <span class="ex-pt-t">${esc(pt.time||'')}</span>
       <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
     ${rows}
     ${exDrops(pt)}
@@ -66,13 +67,13 @@ function buildExportNode(ks){
     const pts=ptsOf(k);
     const cols=pts.map(ptExportBlock).join('');
     const dayHead=ks.length>1
-      ? `<div class="ex-day">${fmtDate(k)}（${DOW[parseYmd(k).getDay()]}） · ${pts.length} RUN · ${pts.reduce((a,p)=>a+p.slots.length,0)} 人</div>`
+      ? `<div class="ex-day">${fmtDate(k)}（${DOW[parseYmd(k).getDay()]}）${dayTime(k)?` · ${esc(dayTime(k))}`:''} · ${pts.length} RUN · ${pts.reduce((a,p)=>a+p.slots.length,0)} 人</div>`
       : '';
     return dayHead+`<div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>`;
   }).join('');
   const host=document.getElementById('exportHost');
   host.innerHTML=`<div class="exportwrap" id="exportWrap">
-    <div class="ex-h">${rangeLabel(ks)} 陣容分配</div>
+    <div class="ex-h">${rangeLabel(ks)} 陣容分配${ks.length===1&&dayTime(ks[0])?` · ${esc(dayTime(ks[0]))}`:''}</div>
     <div class="ex-sub">${ks.length>1?`${ks.length} 天 · `:''}${totalPts} RUN · 出席 ${totalSlots} 人 · 產出於 ${fmtNow()}</div>
     ${body}
   </div>`;
@@ -89,7 +90,9 @@ async function exportImage(ks){
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
     const file=new File([blob],`陣容分配_${fileStamp(ks)}.png`,{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      try{ await navigator.share({files:[file],title:'陣容分配'}); }
+      /* 只帶檔案，不帶 title／text：帶了的話 LINE 之類的 App 會在圖片旁邊
+         附一段文字訊息，貼到群組就變成「圖片 + 一行字」。這裡只要圖片。 */
+      try{ await navigator.share({files:[file]}); }
       catch(err){ if(err.name!=='AbortError') download(blob,file.name); }
     } else download(blob,file.name);
   }catch(err){ console.error(err); toast('圖片產出失敗，請再試一次'); }
@@ -103,10 +106,10 @@ function exportCsv(ks){
     ptsOf(k).forEach(pt=>{
       pt.slots.forEach(s=>{
         const m=memberById(s.memberId), r=roleById(s.roleId);
-        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'',m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
+        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,dayTime(k),m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
       });
       if(pt.drops&&pt.drops.length){
-        rows.push([fmtDate(k),fmtDow(k),pt.name,pt.time||'','','','','',
+        rows.push([fmtDate(k),fmtDow(k),pt.name,dayTime(k),'','','','',
           pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
       }
     });

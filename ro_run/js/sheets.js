@@ -317,13 +317,12 @@ function expansionRoleSheet(){
 }
 
 function ptSheet(id){
-  const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,time:state.settings.defaultTime,capacity:state.settings.defaultCap};
+  const pt=id?ptsOf(curDate).find(p=>p.id===id):{name:`RUN ${ptsOf(curDate).length+1}`,capacity:state.settings.defaultCap};
+  /* 這裡沒有時間欄位——時間屬於整天，在日期標題那排改，一改全天的 RUN 一起變。 */
   sheet(id?'編輯 RUN':'新增 RUN',`
     <div class="field"><label>RUN 名稱</label><input name="name" value="${esc(pt.name)}"></div>
-    <div class="field-2">
-      <div class="field"><label>時間</label><input name="time" value="${esc(pt.time)}" placeholder="20:00"></div>
-      <div class="field"><label>人數上限</label><input name="cap" type="number" min="1" max="30" value="${pt.capacity}"></div>
-    </div>
+    <div class="field"><label>人數上限</label><input name="cap" type="number" min="1" max="30" value="${pt.capacity}"></div>
+    <p class="fieldnote">集合時間是 ${fmtDate(curDate)} 全天共用的 ${dayTime(curDate)?`<b>${esc(dayTime(curDate))}</b>`:'（尚未設定）'}，在上方日期列的時間按鈕調整。</p>
     <div class="sheet-foot">
       <button class="gbtn" data-s="cancel">取消</button>
       <button class="gbtn accent" data-s="save">儲存</button>
@@ -332,10 +331,29 @@ function ptSheet(id){
       const name=val(s,'name')||'PT';
       const cap=Math.max(1,Math.min(30,parseInt(val(s,'cap'))||12));
       commit(()=>{
-        if(id){ const p=ptsOf(curDate).find(x=>x.id===id); Object.assign(p,{name,time:val(s,'time'),capacity:cap});
+        if(id){ const p=ptsOf(curDate).find(x=>x.id===id); Object.assign(p,{name,capacity:cap});
           if(p.slots.length>cap) p.slots=p.slots.slice(0,cap); }
-        else { ensureDate(curDate); state.schedule[curDate].push({...mkPt(name,val(s,'time'),cap)}); }
+        else { ensureDate(curDate); state.schedule[curDate].push({...mkPt(name,cap)}); }
       });
+      closeSheet();
+    };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+
+/* 一天一個集合時間。改這裡等於改當天所有 RUN。 */
+function dayTimeSheet(){
+  const n=ptsOf(curDate).length;
+  sheet(`${fmtDate(curDate)} 的集合時間`,`
+    <div class="field"><label for="dtVal">時間</label>
+      <input id="dtVal" value="${esc(dayTime(curDate))}" placeholder="20:00" autocomplete="off"></div>
+    <p class="fieldnote">這一天的 ${n} 場 RUN 共用同一個時間。留空表示尚未決定。</p>
+    <div class="sheet-foot">
+      <button class="gbtn" data-s="cancel">取消</button>
+      <button class="gbtn accent" data-s="save">儲存</button>
+    </div>`,s=>{
+    s.querySelector('[data-s="save"]').onclick=()=>{
+      commit(()=>{ ensureDate(curDate); setDayTime(curDate, s.querySelector('#dtVal').value); });
       closeSheet();
     };
     s.querySelector('[data-s="cancel"]').onclick=closeSheet;
@@ -463,7 +481,7 @@ function shareVideoSheet(parsed, dayKey){
         const has=(pt.videos||[]).some(v=>v.vid===parsed.id);
         return `<button class="sv-row ${has?'has':''}" data-pt="${pt.id}" ${has?'disabled':''}>
           <span class="sv-n">${esc(pt.name)}</span>
-          <span class="sv-t num">${esc(pt.time||'')}</span>
+          <span class="sv-t num">${esc(dayTime(day))}</span>
           <span class="sv-m">${has?'已經有這支影片':`${pt.slots.length}/${pt.capacity} 人`}</span>
         </button>`;
       }).join('')}</div>`
@@ -731,7 +749,7 @@ function dateSheet(){
       commit(()=>{
         state.schedule[k]= (copy&&from&&state.schedule[from])
           ? JSON.parse(JSON.stringify(ptsOf(from))).map(p=>({...p,id:uid(),drops:[]}))
-          : [mkPt('RUN 1',state.settings.defaultTime,state.settings.defaultCap)];
+          : [mkPt('RUN 1',state.settings.defaultCap)];
       });
       curDate=k; closeSheet(); render();
     };
@@ -809,6 +827,15 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v52', d:'2026/08/21',
+    note:'時間從「每場各填一次」改成「一天一個」。同一天的 RUN 本來就是同一個時段開。',
+    c:[
+    ['chg','集合時間改為一天一個，顯示在日期列上，點一下就能改；改一次當天所有 RUN 一起生效'],
+    ['chg','新增 RUN 時不用再填時間，卡片上也不再各印一次重複的時段'],
+    ['chg','匯出圖片的標題改成「日期 · 陣容分配 · 時間」，每張 RUN 卡片不再重複印時間'],
+    ['chg','分享圖片時只帶圖片，不再附文字訊息——貼到 LINE 群組不會變成「圖片 + 一行字」'],
+    ['imp','資料結構升到第 6 版。舊資料若某天各場填了不同時間，取該天第一個有填的當作全天時間'],
+  ]},
   { v:'v51', d:'2026/08/19',
     note:'這一版針對「資料不要被瀏覽器清掉」與「手機上好不好按」做強化，功能位置沒有變動。',
     c:[

@@ -93,6 +93,8 @@ try{
       <button class="gbtn warn" id="btnDelDate">刪除</button>
     </div>
     <div class="sec"><span class="sec-t" id="boardLabel">RUN</span><div class="sec-line"></div>
+      <!-- 集合時間是整天共用的，所以擺在日期這一排，不在每張 RUN 卡片上重複 -->
+      <button class="gbtn" id="btnDayTime" aria-label="設定這一天的集合時間">20:00</button>
       <button class="gbtn" id="btnAddPt">＋ 新增 RUN</button>
     </div>
     <div class="ptgrid" id="ptGrid"></div>
