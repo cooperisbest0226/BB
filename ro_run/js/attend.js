@@ -167,6 +167,13 @@ bindFilterToggle('attFiltBtn','attFiltBody');
    ══════════════════════════════════════════════════════════ */
 const toCents=twd=>Math.round((Number(twd)||0)*100);
 
+/* 全部場次的 id 索引。歸屬場次可以跨天之後，就不能再靠 ptsOf(交易日期) 去找了。 */
+function runIndex(){
+  const m=new Map();
+  dates().forEach(k=>ptsOf(k).forEach(pt=>m.set(pt.id,{pt,date:k})));
+  return m;
+}
+
 function splitStats(from,to,cur){
   cur=cur||'TWD';
   /* 幣別是硬條件：台幣跟 R 幣沒有共同單位，丟進同一個池子分出來的金額毫無意義。
@@ -179,39 +186,48 @@ function splitStats(from,to,cur){
   sales.forEach(s=>{ totalCents+=toCents(saleAmounts(s).amt); });
 
   /* 第一步：把每一筆錢攤到場次上（單位：分） */
+  const idx=runIndex();
   const runPool=new Map();          // ptId -> 分
-  let orphanCents=0;                // 那天根本沒有場次，沒有人可以歸屬
+  let orphanCents=0;                // 找不到任何場次可以歸屬
   const addPool=(id,c)=>runPool.set(id,(runPool.get(id)||0)+c);
 
   sales.forEach(s=>{
     const cents=toCents(saleAmounts(s).amt);
     if(cents<=0) return;
-    const pts=ptsOf(s.date||'');
-    const bound=s.runId&&pts.find(p=>p.id===s.runId);
-    if(bound){ addPool(bound.id,cents); return; }
-    /* 未指定：平均分攤給那天的場次。場次本身也除不盡的話，
-       零頭直接進公基金，不要偷偷塞給第一場。 */
-    if(!pts.length){ orphanCents+=cents; return; }
-    const each=Math.floor(cents/pts.length);
-    pts.forEach(p=>addPool(p.id,each));
-    orphanCents+=cents-each*pts.length;
+    /* 指定的場次可以跨天、可以多場：材料本來就是累積好幾場才一次賣掉的。
+       已經被刪掉的場次要濾掉，不然那份錢會攤給一個不存在的 id 然後消失。 */
+    let targets=(Array.isArray(s.runIds)?s.runIds:[])
+      .map(id=>idx.get(id)).filter(Boolean).map(e=>e.pt);
+    /* 沒指定就退回原本的語意：當天所有場次平均分攤 */
+    if(!targets.length) targets=ptsOf(s.date||'');
+    if(!targets.length){ orphanCents+=cents; return; }
+    /* 攤到場次也可能除不盡，零頭直接進公基金，不要偷偷塞給第一場 */
+    const each=Math.floor(cents/targets.length);
+    targets.forEach(p=>addPool(p.id,each));
+    orphanCents+=cents-each*targets.length;
   });
 
-  /* 第二步：每一場各自分給那場的人 */
+  /* 第二步：每一場各自分給那場的人。
+     這裡直接走 runPool 而不是照日期迭代 —— 日期區間篩的是「收入」，不是「場次」。
+     七月賣掉的材料可能是六月打的，那筆錢本來就該回到六月那場的人身上。 */
   const per=new Map();              // memberId -> 分
+  const runsPer=new Map();          // memberId -> 實際分到錢的場次數
   let fundCents=orphanCents, wipedCents=0, sharedRuns=0;
-  dates().filter(k=>(!from||k>=from)&&(!to||k<=to)).forEach(k=>{
-    ptsOf(k).forEach(pt=>{
-      const pool=runPool.get(pt.id)||0;
-      if(pool<=0) return;
-      if(isWipe(pt)){ wipedCents+=pool; fundCents+=pool; return; }
-      const ids=[...new Set(pt.slots.map(x=>x.memberId).filter(Boolean))];
-      if(!ids.length){ fundCents+=pool; return; }   // 有錢沒人，只能進公基金
-      sharedRuns++;
-      const each=Math.floor(pool/ids.length);
-      ids.forEach(id=>per.set(id,(per.get(id)||0)+each));
-      fundCents+=pool-each*ids.length;
+  runPool.forEach((pool,ptId)=>{
+    if(pool<=0) return;
+    const e=idx.get(ptId);
+    if(!e){ fundCents+=pool; return; }
+    const pt=e.pt;
+    if(isWipe(pt)){ wipedCents+=pool; fundCents+=pool; return; }
+    const ids=[...new Set(pt.slots.map(x=>x.memberId).filter(Boolean))];
+    if(!ids.length){ fundCents+=pool; return; }   // 有錢沒人，只能進公基金
+    sharedRuns++;
+    const each=Math.floor(pool/ids.length);
+    ids.forEach(id=>{
+      per.set(id,(per.get(id)||0)+each);
+      runsPer.set(id,(runsPer.get(id)||0)+1);
     });
+    fundCents+=pool-each*ids.length;
   });
 
   /* 第三步：每人無條件捨去到整數元，被捨掉的角分進公基金 */
@@ -222,11 +238,10 @@ function splitStats(from,to,cur){
   }).sort((a,b)=>b.twd-a.twd ||
       memberName(a.memberId).localeCompare(memberName(b.memberId),'zh-Hant'));
 
-  /* 份數（成功場數）只是拿來顯示的，金額不是用它算出來的——
-     一場的單價會因為那場有幾個人而不同，用「總額 ÷ 總份數」回推對不起來。 */
-  const att=attendanceStats(from,to);
-  const clearedBy=new Map(att.rows.map(r=>[r.memberId,r.cleared]));
-  rows.forEach(r=>r.shares=clearedBy.get(r.memberId)||0);
+  /* 場次數是「實際分到錢的場次」，不是「這段期間的通關場次」。
+     兩者會不一樣：有些場次的材料還沒賣掉，有些場次跨在區間外但材料是這段期間賣的。
+     顯示前者才跟旁邊的金額對得起來——看到「分潤 3 場」卻拿到四場的錢會讓人以為算錯。 */
+  rows.forEach(r=>r.shares=runsPer.get(r.memberId)||0);
 
   return {
     rows,
@@ -292,7 +307,7 @@ function renderSplit(){
         <span class="attrow-n">${esc(memberName(r.memberId))}</span>
         <span class="splamt num">${nf(r.twd)}</span>
       </div>
-      <div class="attrow-sub"><span class="attpill">通關 ${r.shares} 場</span></div>
+      <div class="attrow-sub"><span class="attpill">分潤 ${r.shares} 場</span></div>
     </div>
   </div>`).join('');
 }
@@ -311,14 +326,69 @@ document.querySelectorAll('#splFiltBody [data-splpreset]').forEach(b=>b.onclick=
 document.getElementById('splFiltClear').onclick=()=>{ splFrom=''; splTo=''; renderSplit(); };
 bindFilterToggle('splFiltBtn','splFiltBody');
 
-/* 記錄交易時的「歸屬場次」下拉：只列今天的場次。
-   交易是當下記的，跨日的情況去成交紀錄裡改日期時再一起改。 */
+/* ── 歸屬場次選擇器 ─────────────────────────────────────
+   一開始做成「只列今天場次」的下拉，那是錯的：材料是累積好幾場、好幾天
+   才一次賣掉的，賣出當天常常根本沒排場次，下拉整個是空的。
+   改成可跨天複選的核取清單。不用 <select multiple> 是因為它在手機上
+   要長按拖曳，實際上按不動。 */
+let saleRunIds=[];        // 新增交易表單目前選中的場次
+
+function runPickSummary(ids){
+  if(!ids.length) return '未指定（當天平均分攤）';
+  const idx=runIndex();
+  if(ids.length===1){
+    const e=idx.get(ids[0]);
+    return e ? `${fmtDate(e.date)} ${e.pt.name}` : '已選 1 場';
+  }
+  const days=new Set(ids.map(id=>idx.get(id)).filter(Boolean).map(e=>e.date));
+  return `已選 ${ids.length} 場${days.size>1?` · 跨 ${days.size} 天`:''}`;
+}
+
+/* 清單是懶建的：資料用久了會累積幾百天，每次渲染拍賣頁都重建一次
+   幾百組 DOM 是實打實的負擔，所以只有展開時才產生。 */
+function runPickBodyHTML(ids){
+  const ks=dates().filter(k=>ptsOf(k).length).reverse();   // 新的在上面
+  if(!ks.length) return `<div class="bench-empty" style="padding:12px">還沒有任何場次</div>`;
+  return ks.map(k=>`<div class="rp-day">
+    <div class="rp-d">${fmtDate(k)} ${fmtDow(k)}</div>
+    ${ptsOf(k).map(p=>`<label class="rp-r${isWipe(p)?' wiped':''}">
+      <input type="checkbox" value="${p.id}"${ids.includes(p.id)?' checked':''}>
+      <span class="rp-n">${esc(p.name)}${isWipe(p)?' · 翻車':''}</span>
+      <em class="rp-c">${p.slots.length} 人</em>
+    </label>`).join('')}
+  </div>`).join('');
+}
+
+/* 把一組「按鈕 + 收合清單」接起來。新增表單與編輯 sheet 共用，
+   免得兩邊各寫一份、之後只改到其中一邊。 */
+function bindRunPicker(root, getIds, setIds){
+  const btn=root.querySelector('[data-rp="btn"]');
+  const body=root.querySelector('[data-rp="body"]');
+  const paint=()=>{ btn.textContent=runPickSummary(getIds()); };
+  btn.onclick=()=>{
+    const open=btn.getAttribute('aria-expanded')==='true';
+    if(open){ btn.setAttribute('aria-expanded','false'); body.hidden=true; return; }
+    body.innerHTML=runPickBodyHTML(getIds())+
+      `<button type="button" class="minibtn rp-clear" data-rp="clear">清除選擇</button>`;
+    body.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.onchange=()=>{
+      const cur=getIds().filter(x=>x!==cb.value);
+      if(cb.checked) cur.push(cb.value);
+      setIds(cur); paint();
+    });
+    body.querySelector('[data-rp="clear"]').onclick=()=>{
+      setIds([]); paint();
+      body.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=false);
+    };
+    btn.setAttribute('aria-expanded','true'); body.hidden=false;
+  };
+  paint();
+}
+
 function renderSaleRunOptions(){
-  const sel=document.getElementById('saleRun');
-  const keep=sel.value;
-  const pts=ptsOf(todayKey());
-  sel.innerHTML=`<option value="">未指定（當天平均分攤）</option>`+
-    pts.map(p=>`<option value="${p.id}">${esc(p.name)}${isWipe(p)?'（翻車）':''}</option>`).join('');
-  sel.value=pts.some(p=>p.id===keep)?keep:'';
+  /* 已經被刪掉的場次要濾掉，不然摘要會顯示一個對不到東西的數字 */
+  const idx=runIndex();
+  saleRunIds=saleRunIds.filter(id=>idx.has(id));
+  const root=document.getElementById('saleRunPick');
+  bindRunPicker(root, ()=>saleRunIds, v=>{ saleRunIds=v; });
 }
 document.getElementById('splShare').onclick=()=>exportSplitImage();

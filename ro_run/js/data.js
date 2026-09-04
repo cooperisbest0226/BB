@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v57';
+const APP_VERSION='v58';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -259,6 +259,17 @@ const MIGRATIONS=[
       (Array.isArray(s.items)?s.items:[]).forEach(it=>{
         it.price=Number(it.twd)||0; delete it.twd;
       });
+    });
+  },
+  /* 9 → 10：歸屬場次從一場改成可以多場，而且可以跨天。
+            原本只能綁「同一天的一場」，但材料本來就是累積好幾場、好幾天才一次賣掉的，
+            賣出當天甚至常常沒有排場次 —— 下拉是空的，等於這個欄位根本用不了。
+            改成 runIds 陣列：一筆交易的錢平均攤到選中的每一場，再各自分給那場的人。
+            空陣列維持原本的語意（未指定 = 當天所有場次平均分攤）。 */
+  p=>{
+    (p.sales||[]).forEach(s=>{
+      s.runIds = Array.isArray(s.runIds) ? s.runIds : (s.runId ? [s.runId] : []);
+      delete s.runId;
     });
   },
 ];

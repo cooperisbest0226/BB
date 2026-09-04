@@ -275,8 +275,10 @@ try{
       </div>
 
       <!-- 歸屬場次：同一天排兩場、成員不一樣的時候，不綁場次就分不出這筆錢該給誰 -->
-      <div class="field"><label>歸屬場次（今天）</label>
-        <select id="saleRun" aria-label="這筆交易算哪一場"><option value="">未指定（當天平均分攤）</option></select></div>
+      <div class="field" id="saleRunPick"><label>歸屬場次（可跨天複選）</label>
+        <button type="button" class="runpick" data-rp="btn" aria-expanded="false">未指定（當天平均分攤）</button>
+        <div class="runpick-body" data-rp="body" hidden></div>
+      </div>
 
       <div class="calcout" id="saleOut"></div>
       <button class="gbtn accent" id="saleAdd" style="width:100%; margin-top:12px">記錄這筆交易</button>

@@ -426,7 +426,7 @@ document.getElementById('saleItemAdd').onclick=()=>{
 };
 
 document.getElementById('saleAdd').onclick=()=>{
-  const runId=document.getElementById('saleRun').value||'';
+  const runIds=saleRunIds.slice();
   const cur=aucCur;
   if(saleMode==='item'){
     const items=saleDraftItems
@@ -434,14 +434,14 @@ document.getElementById('saleAdd').onclick=()=>{
       .filter(it=>it.name&&it.qty>0);
     if(!items.length)                    return toast('請至少填一列有名稱與數量的材料');
     if(items.some(it=>it.price<=0))      return toast('每一列都要填單價');
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'item',cur,sets:0,price:0,runId,items}); });
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'item',cur,sets:0,price:0,runIds,items}); });
     saleDraftItems=[{name:'',qty:'',price:''}];
     renderSaleItemRows(true);
   } else {
     const sets=Number(saleSets)||0, price=Number(salePrice)||0;
     if(sets<=0)   return toast('請先填組數');
     if(price<=0)  return toast(`請先填每組${curLabel(cur)}`);
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,runId,items:[]}); });
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,runIds,items:[]}); });
   }
   toast('已記錄這筆交易');
 };
@@ -468,7 +468,10 @@ function saleSheet(id){
         <option value="TWD"${saleCur(s)==='TWD'?' selected':''}>台幣</option>
         <option value="R"${saleCur(s)==='R'?' selected':''}>R 幣</option>
       </select></div>
-    <div class="field"><label>歸屬場次</label><select name="runId" aria-label="這筆交易算哪一場"></select></div>
+    <div class="field" id="editRunPick"><label>歸屬場次（可跨天複選）</label>
+      <button type="button" class="runpick" data-rp="btn" aria-expanded="false">未指定</button>
+      <div class="runpick-body" data-rp="body" hidden></div>
+    </div>
     ${body}
     <div class="sheet-foot">
       <button class="gbtn warn" data-s="del">刪除</button>
@@ -497,36 +500,29 @@ function saleSheet(id){
       rowHost.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ work.splice(+b.dataset.del,1); paintRows(); });
     }
     paintRows();
-    /* 場次選單跟著日期走：改成別天之後，原本那天的場次已經不是合法選項了，
-       留著會存進一個對不到任何場次的 runId，分潤時只會被當成未指定，很難查。 */
-    const runSel=sh.querySelector('[name="runId"]');
-    function paintRuns(){
-      const d=sh.querySelector('[name="date"]').value||s.date;
-      const pts=ptsOf(d);
-      runSel.innerHTML=`<option value="">未指定（當天平均分攤）</option>`+
-        pts.map(p=>`<option value="${p.id}">${esc(p.name)}${isWipe(p)?'（翻車）':''}</option>`).join('');
-      runSel.value=pts.some(p=>p.id===s.runId)?s.runId:'';
-    }
-    paintRuns();
-    sh.querySelector('[name="date"]').onchange=paintRuns;
+    /* 在暫存副本上改，按取消就整份丟掉。場次清單不再跟著交易日期走 ——
+       跨天複選之後，交易日期跟場次日期本來就沒有從屬關係了。 */
+    let workRunIds=(Array.isArray(s.runIds)?s.runIds:[]).slice();
+    bindRunPicker(sh.querySelector('#editRunPick'),
+                  ()=>workRunIds, v=>{ workRunIds=v; });
     const addBtn=sh.querySelector('[data-s="addRow"]');
     if(addBtn) addBtn.onclick=()=>{ work.push({name:'',qty:'',twd:''}); paintRows(); };
 
     sh.querySelector('[data-s="save"]').onclick=()=>{
       const date=sh.querySelector('[name="date"]').value||s.date;
-      const runId=runSel.value||'';
+      const runIds=workRunIds.slice();
       const cur=sh.querySelector('[name="cur"]').value==='R'?'R':'TWD';
       if(item){
         const items=work.map(it=>({name:(it.name||'').trim(), qty:Number(it.qty)||0, price:Number(it.price)||0}))
                         .filter(it=>it.name&&it.qty>0);
         if(!items.length)               return toast('請至少填一列有名稱與數量的材料');
         if(items.some(it=>it.price<=0)) return toast('每一列都要填單價');
-        commit(()=>{ Object.assign(s,{date,cur,runId,items}); });
+        commit(()=>{ Object.assign(s,{date,cur,runIds,items}); });
       } else {
         const sets=Number(val(sh,'sets'))||0, price=Number(val(sh,'price'))||0;
         if(sets<=0)  return toast('請先填組數');
         if(price<=0) return toast('請先填每組價格');
-        commit(()=>{ Object.assign(s,{date,sets,price,cur,runId}); });
+        commit(()=>{ Object.assign(s,{date,sets,price,cur,runIds}); });
       }
       closeSheet();
       toast('已更新交易明細');

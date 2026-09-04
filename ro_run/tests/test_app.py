@@ -2481,8 +2481,8 @@ def run(page):
             };
             state.dayTimes = {'2026-07-01':'21:00','2026-07-02':'21:00'};
             state.sales = [
-              {id:'s1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'r1', items:[]},
-              {id:'s2', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:600, runId:'r2', items:[]}
+              {id:'s1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['r1'], items:[]},
+              {id:'s2', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:600, runIds:['r2'], items:[]}
             ];
             curDate = '2026-07-02'; splFrom = ''; splTo = '';
             persist(); render();
@@ -2504,7 +2504,7 @@ def run(page):
 
     check("未指定場次的舊交易，平均分攤給那天所有場次",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'', items:[]}];
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:[], items:[]}];
               const st = splitStats('','');
               const by = {};
               st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
@@ -2513,21 +2513,21 @@ def run(page):
 
     check("翻車場的收入不分潤，整筆進公基金並單獨列出",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runId:'r3', items:[]}];
+              state.sales = [{id:'s9', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runIds:['r3'], items:[]}];
               const st = splitStats('','');
               return [st.rows.length, st.wipedTwd, st.fundTwd, st.totalTwd, st.balanced];
           }"""), [0, 900, 900, 900, True])
 
     check("那天根本沒有場次的交易，列為無法歸屬",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-12-25', mode:'set', cur:'TWD', sets:1, price:500, runId:'', items:[]}];
+              state.sales = [{id:'s9', date:'2026-12-25', mode:'set', cur:'TWD', sets:1, price:500, runIds:[], items:[]}];
               const st = splitStats('','');
               return [st.orphanTwd, st.fundTwd, st.rows.length, st.balanced];
           }"""), [500, 500, 0, True])
 
     check("runId 指到已經被刪掉的場次時，退回當天平均分攤而不是整筆消失",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'已刪除的場次', items:[]}];
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['已刪除的場次'], items:[]}];
               const st = splitStats('','');
               return [st.rows.length, st.totalTwd - st.fundTwd, st.balanced];
           }"""), [3, 1000, True])
@@ -2535,7 +2535,7 @@ def run(page):
     check("除不盡時無條件捨去，零頭進公基金，帳仍然平",
           page.evaluate("""() => {
               // 1000 給 RUN 2 的兩個人除得盡；1001 給 RUN 1 的兩個人會剩 1
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1001, runId:'r1', items:[]}];
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1001, runIds:['r1'], items:[]}];
               const st = splitStats('','');
               const by = {};
               st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
@@ -2544,7 +2544,7 @@ def run(page):
 
     check("金額有小數時用分計算，不會出現浮點誤差少一塊錢",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:0.03, runId:'r1', items:[]}];
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:0.03, runIds:['r1'], items:[]}];
               const st = splitStats('','');
               // 3 分給 2 個人 = 各 1 分，都不到 1 元，全部被捨去進公基金
               return [st.rows.every(r => r.twd === 0), st.fundTwd, st.balanced];
@@ -2554,7 +2554,7 @@ def run(page):
           page.evaluate("""() => {
               state.schedule['2026-07-01'][0].slots =
                   ['m1','m2','m3'].map(x => ({memberId:x}));
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:70000000, runId:'r1', items:[]}];
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:70000000, runIds:['r1'], items:[]}];
               const st = splitStats('','');
               state.schedule['2026-07-01'][0].slots =
                   ['m1','m2'].map(x => ({memberId:x}));
@@ -2565,8 +2565,8 @@ def run(page):
     check("日期區間會夾住分潤範圍",
           page.evaluate("""() => {
               state.sales = [
-                {id:'a', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'r1', items:[]},
-                {id:'b', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runId:'r3', items:[]}];
+                {id:'a', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['r1'], items:[]},
+                {id:'b', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runIds:['r3'], items:[]}];
               const st = splitStats('2026-07-01','2026-07-01');
               return [st.saleCount, st.totalTwd, st.wipedTwd];
           }"""), [1, 1000, 0])
@@ -2601,7 +2601,7 @@ def run(page):
 
     check("有翻車收入時多一行說明它去哪了",
           page.evaluate("""() => {
-              state.sales.push({id:'sw', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runId:'r3', items:[]});
+              state.sales.push({id:'sw', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runIds:['r3'], items:[]});
               renderSplit();
               const n = document.querySelector('#splCard .splnote');
               state.sales.pop(); renderSplit();
@@ -2646,32 +2646,151 @@ def run(page):
     page.click('#aucSeg [data-sub="asales"]')
     page.wait_for_timeout(250)
 
-    check("記錄交易的下拉會列出今天的場次，預設未指定",
+    # 回歸：原本只列「今天」的場次，賣出當天沒排場次就整個空的。
+    # 材料是累積好幾天才一次賣掉的，清單必須跨天。
+    check("場次清單會列出所有有場次的日子，不是只有今天",
           page.evaluate("""() => {
-              curDate = '2026-07-01';
-              state.schedule[todayKey()] = state.schedule['2026-07-01'];
+              saleRunIds = [];
               renderSaleRunOptions();
-              const sel = document.getElementById('saleRun');
-              return [sel.value, [...sel.options].map(o => o.textContent)];
-          }"""),
-          ["", ["未指定（當天平均分攤）", "RUN 1", "RUN 2"]])
+              document.querySelector('#saleRunPick [data-rp="btn"]').click();
+              const days = [...document.querySelectorAll('#saleRunPick .rp-d')]
+                  .map(e => e.textContent.trim());
+              const runs = [...document.querySelectorAll('#saleRunPick .rp-n')]
+                  .map(e => e.textContent.trim());
+              return [days.length, runs.length, days[0]];
+          }"""), [2, 3, "07/02 週四"])   # 新的日子排在最上面
 
-    check("翻車的場次在下拉裡會標出來，避免不小心綁到不分潤的場次",
+    check("預設未指定，摘要說明會退回當天平均分攤",
+          page.evaluate("""() => document.querySelector('#saleRunPick [data-rp="btn"]')
+              .textContent.trim()"""), "未指定（當天平均分攤）")
+
+    check("跨天勾選多場，摘要會標出場數與跨了幾天",
           page.evaluate("""() => {
-              state.schedule[todayKey()][0].wipe = true;
-              renderSaleRunOptions();
-              const t = [...document.getElementById('saleRun').options].map(o => o.textContent);
-              state.schedule[todayKey()][0].wipe = false;
-              return t[1];
-          }"""), "RUN 1（翻車）")
+              const cbs = [...document.querySelectorAll('#saleRunPick input[type="checkbox"]')];
+              cbs[0].checked = true; cbs[0].dispatchEvent(new Event('change'));
+              cbs[2].checked = true; cbs[2].dispatchEvent(new Event('change'));
+              return [saleRunIds.length,
+                      document.querySelector('#saleRunPick [data-rp="btn"]').textContent.trim()];
+          }"""), [2, "已選 2 場 · 跨 2 天"])
 
-    check("7→8 遷移替舊交易補上空的 runId",
+    # 清單是新到舊，所以 cbs[0] 是 07/02 的場次、cbs[2] 是 07/01 的 RUN 2
+    check("只選一場時摘要直接寫出日期與場次名",
+          page.evaluate("""() => {
+              const cbs = [...document.querySelectorAll('#saleRunPick input[type="checkbox"]')];
+              cbs[0].checked = false; cbs[0].dispatchEvent(new Event('change'));
+              return document.querySelector('#saleRunPick [data-rp="btn"]').textContent.trim();
+          }"""), "07/01 RUN 2")
+
+    check("翻車的場次照樣可選但會標出來（那場的材料還是賣得掉，只是分不到錢）",
+          page.evaluate("""() => {
+              state.schedule['2026-07-02'][0].wipe = true;
+              document.querySelector('#saleRunPick [data-rp="btn"]').click();  // 收合
+              document.querySelector('#saleRunPick [data-rp="btn"]').click();  // 重新展開才會重建
+              const wiped = [...document.querySelectorAll('#saleRunPick .rp-r.wiped .rp-n')]
+                  .map(e => e.textContent.trim());
+              state.schedule['2026-07-02'][0].wipe = false;
+              return wiped;
+          }"""), ["RUN 1 · 翻車"])
+
+    check("清除選擇一次清空",
+          page.evaluate("""() => {
+              document.querySelector('#saleRunPick [data-rp="clear"]').click();
+              return [saleRunIds.length,
+                      document.querySelector('#saleRunPick [data-rp="btn"]').textContent.trim()];
+          }"""), [0, "未指定（當天平均分攤）"])
+
+    check("已刪除的場次會從選擇中被濾掉，摘要不會出現對不到的數字",
+          page.evaluate("""() => {
+              saleRunIds = ['r1', '不存在的場次'];
+              renderSaleRunOptions();
+              return saleRunIds;
+          }"""), ["r1"])
+
+    check("一筆交易攤到多場時，每場再各自分給那場的人",
+          page.evaluate("""() => {
+              // r1 = 小明+小華，r2 = 小華+小美；1200 攤成兩場各 600，再各自對半分
+              state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
+                              sets:1, price:1200, runIds:['r1','r2'], items:[]}];
+              const st = splitStats('','','TWD');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [by['小明'], by['小華'], by['小美'], st.fundTwd, st.balanced];
+          }"""), [300, 600, 300, 0, True])
+
+    check("場次數算的是實際分到錢的場次，跟金額對得起來",
+          page.evaluate("""() => {
+              const st = splitStats('','','TWD');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.shares);
+              return [by['小華'], by['小明']];
+          }"""), [2, 1])
+
+    check("七月賣掉六月打的材料：錢回到六月那場的人身上，不受區間影響",
+          page.evaluate("""() => {
+              state.sales = [{id:'s1', date:'2026-07-02', mode:'set', cur:'TWD',
+                              sets:1, price:1000, runIds:['r1'], items:[]}];
+              // 區間只框住交易當天，但 r1 是 07-01 的場次
+              const st = splitStats('2026-07-02','2026-07-02','TWD');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [st.totalTwd, by['小明'], by['小華'], st.balanced];
+          }"""), [1000, 500, 500, True])
+
+    # --- 編輯既有交易：修正歸屬場次 ---
+    check("編輯交易時用的是同一個跨天複選器，並帶出原本選的場次",
+          page.evaluate("""() => {
+              state.sales = [{id:'e1', date:'2026-07-02', mode:'set', cur:'TWD',
+                              sets:1, price:900, runIds:['r1'], items:[]}];
+              persist(); renderSales();
+              document.querySelector('#saleList [data-act="editSale"]').click();
+              const btn = document.querySelector('#editRunPick [data-rp="btn"]');
+              return [!!btn, btn.textContent.trim()];
+          }"""), [True, "07/01 RUN 1"])
+
+    check("改完場次按儲存會寫回 runIds",
+          page.evaluate("""() => {
+              document.querySelector('#editRunPick [data-rp="btn"]').click();
+              const cbs = [...document.querySelectorAll('#editRunPick input[type="checkbox"]')];
+              cbs.forEach(cb => { if (!cb.checked) { cb.checked = true;
+                                                     cb.dispatchEvent(new Event('change')); } });
+              document.querySelector('.sheet [data-s="save"]').click();
+              return state.sales[0].runIds.length;
+          }"""), 3)
+
+    check("按取消不會動到已存的紀錄",
+          page.evaluate("""() => {
+              const before = state.sales[0].runIds.slice();
+              document.querySelector('#saleList [data-act="editSale"]').click();
+              document.querySelector('#editRunPick [data-rp="btn"]').click();
+              const cb = document.querySelector('#editRunPick input[type="checkbox"]');
+              cb.checked = false; cb.dispatchEvent(new Event('change'));
+              document.querySelector('.sheet [data-s="cancel"]').click();
+              return [before.length, state.sales[0].runIds.length];
+          }"""), [3, 3])
+
+    check("修正後的歸屬立刻反映到分潤上",
+          page.evaluate("""() => {
+              const before = splitStats('','','TWD').rows.length;
+              state.sales[0].runIds = ['r1'];
+              const after = splitStats('','','TWD');
+              const by = {};
+              after.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [before, after.rows.length, by['小明'], by['小華'], after.balanced];
+          }"""), [3, 2, 450, 450, True])
+
+    # schemaVersion:7 的資料還是舊欄位名（twd/rate），要一路跑過 8→9 與 9→10
+    check("7→10 全鏈：補 runId、換成 cur/price、再包成 runIds 陣列",
           page.evaluate("""() => {
               const old = {schemaVersion:7, members:[], roles:[], dayTimes:{}, schedule:{},
-                  sales:[{id:'x', date:'2026-01-01', mode:'set', cur:'TWD', sets:1, price:100, items:[]}]};
+                  sales:[{id:'x', date:'2026-01-01', mode:'set', sets:1, twd:100, rate:2, items:[]},
+                         {id:'y', date:'2026-01-02', mode:'set', sets:1, twd:50, rate:2,
+                          runId:'r9', items:[]}]};
               const m = migrate(JSON.parse(JSON.stringify(old)));
-              return [typeof m.sales[0].runId, m.sales[0].runId, m.schemaVersion === SCHEMA_VERSION];
-          }"""), ["string", "", True])
+              return [m.sales[0].cur, m.sales[0].price,
+                      Array.isArray(m.sales[0].runIds), m.sales[0].runIds.length,
+                      m.sales[1].runIds, m.sales[0].runId === undefined,
+                      m.schemaVersion === SCHEMA_VERSION];
+          }"""), ["TWD", 100, True, 0, ["r9"], True, True])
 
     seed(page)
 
@@ -2680,9 +2799,9 @@ def run(page):
     seed(page)
     page.evaluate("""() => {
         state.sales = [
-          {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:2, price:1000, runId:'', items:[]},
-          {id:'t2', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:1500, runId:'', items:[]},
-          {id:'r1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:80000000, runId:'', items:[]}];
+          {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:2, price:1000, runIds:[], items:[]},
+          {id:'t2', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:1500, runIds:[], items:[]},
+          {id:'r1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:80000000, runIds:[], items:[]}];
         aucCur = 'TWD'; aucFrom = ''; aucTo = ''; splFrom = ''; splTo = '';
         persist(); render();
     }""")
@@ -2692,9 +2811,9 @@ def run(page):
     check("8→9 遷移把 twd/rate 換成 cur/price，換算率不保留",
           page.evaluate("""() => {
               const old = {schemaVersion:8, members:[], roles:[], schedule:{}, dayTimes:{},
-                  sales:[{id:'z', date:'2026-01-01', mode:'set', sets:3, twd:100, rate:2, runId:'',
+                  sales:[{id:'z', date:'2026-01-01', mode:'set', sets:3, twd:100, rate:2, runIds:[],
                           items:[]},
-                         {id:'y', date:'2026-01-02', mode:'item', sets:0, twd:0, rate:2, runId:'',
+                         {id:'y', date:'2026-01-02', mode:'item', sets:0, twd:0, rate:2, runIds:[],
                           items:[{name:'威力隕石碎片', qty:5, twd:10}]}]};
               const m = migrate(JSON.parse(JSON.stringify(old)));
               return [m.sales[0].cur, m.sales[0].price, m.sales[0].twd === undefined,
@@ -2757,8 +2876,8 @@ def run(page):
                                       slots: ids.map(x => ({memberId:x}))});
         state.schedule = {'2026-07-01':[ mk('r1','RUN 1', ['m1','m2']) ]};
         state.sales = [
-          {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'r1', items:[]},
-          {id:'x1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:60000000, runId:'r1', items:[]}];
+          {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['r1'], items:[]},
+          {id:'x1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:60000000, runIds:['r1'], items:[]}];
         persist(); render();
     }""")
     page.wait_for_timeout(200)

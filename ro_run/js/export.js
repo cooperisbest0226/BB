@@ -121,7 +121,7 @@ function buildSplitExportNode(){
   const rows=st.rows.map((r,i)=>`<div class="ex-sp-r">
     <span class="ex-sp-i">${i+1}</span>
     <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
-    <span class="ex-sp-s">通關 ${r.shares} 場</span>
+    <span class="ex-sp-s">分潤 ${r.shares} 場</span>
     <span class="ex-sp-a">${nf(r.twd)}</span>
   </div>`).join('');
   const notes=[

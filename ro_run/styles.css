@@ -1309,3 +1309,32 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 /* 12px 的小藥丸高度不到 44px，用透明 ::after 補可點範圍，不撐開標題列 */
 .curseg button::after{content:''; position:absolute; left:0; right:0; top:50%; height:44px; transform:translateY(-50%)}
 .curseg button[aria-selected="true"]{background:var(--surface); color:var(--accent); box-shadow:var(--shadow)}
+
+/* ── 歸屬場次選擇器 ───────────────────────────────────────
+   不用 <select multiple>：手機上要長按拖曳才選得動，實際上按不動。
+   改成收合式核取清單，展開時才建 DOM（用久了會累積幾百天的場次）。 */
+.runpick{
+  width:100%; text-align:left; cursor:pointer;
+  padding:11px 13px; border-radius:var(--r-md);
+  border:1px solid var(--line-2); background:var(--surface);
+  font-size:14px; color:var(--ink); font-family:inherit;
+}
+.runpick[aria-expanded="true"]{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.runpick-body{
+  margin-top:7px; max-height:260px; overflow-y:auto;
+  border:1px solid var(--line-2); border-radius:var(--r-md); background:var(--surface-2);
+  padding:6px;
+}
+.rp-day+.rp-day{margin-top:4px; padding-top:6px; border-top:1px dashed var(--line-2)}
+.rp-d{font-size:11px; font-weight:650; color:var(--faint); padding:4px 6px}
+.rp-r{
+  display:flex; align-items:center; gap:9px; cursor:pointer;
+  padding:9px 8px; border-radius:8px; min-height:40px;
+}
+.rp-r:active{background:var(--surface)}
+.rp-r input{width:17px; height:17px; accent-color:var(--accent); flex:0 0 auto}
+.rp-n{flex:1; font-size:13px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+/* 翻車場照樣可選（那場的材料還是賣得掉），但要看得出來——選了也分不到錢 */
+.rp-r.wiped .rp-n{color:var(--danger)}
+.rp-c{font-size:11px; color:var(--faint); font-style:normal; flex:0 0 auto}
+.rp-clear{margin:6px 0 2px 6px}
