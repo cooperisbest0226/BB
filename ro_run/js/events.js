@@ -36,6 +36,13 @@ document.addEventListener('click',e=>{
   }
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
   if(a==='toggleBento') commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); const s=p.slots[i]; s.bento=!s.bento; });
+  /* 翻車標記：直接切換不跳確認。誤按的代價只是再按一次，
+     跟刪除那種要 confirmSheet 的操作不同層級。 */
+  if(a==='toggleWipe'){
+    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) p.wipe=!p.wipe; });
+    const p=ptsOf(curDate).find(x=>x.id===ptId);
+    toast(p&&p.wipe?`${p.name} 已標記為翻車`:`${p?p.name:''} 已改回通關`);
+  }
   if(a==='orderPt')   orderSheet(ptId);
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
@@ -64,13 +71,14 @@ document.addEventListener('click',e=>{
   if(a==='editPt')    ptSheet(ptId);
   if(a==='dupPt'){
     /* 複製 RUN：成員、職業、便當標記都要帶過去；
-       掉落物與錄影連結是「這一場實際發生了什麼」的紀錄，複本不該憑空多出一份，所以清空。 */
+       掉落物、錄影連結與翻車標記都是「這一場實際發生了什麼」的紀錄，
+       複本是還沒打的場次，不該憑空繼承一份結果，所以一律清空。 */
     commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(!p) return;
       const copy=JSON.parse(JSON.stringify(p));
       copy.id=uid();
       copy.name=p.name+' 複本';
       copy.slots=(p.slots||[]).map(s=>({memberId:s.memberId,roleId:s.roleId??null,bento:!!s.bento}));
-      copy.drops=[]; copy.videos=[];
+      copy.drops=[]; copy.videos=[]; copy.wipe=false;
       state.schedule[curDate].push(copy); });
   }
   if(a==='delPt'){

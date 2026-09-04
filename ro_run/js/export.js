@@ -50,8 +50,13 @@ function ptExportBlock(pt){
   }).join('') : `<div class="ex-row"><span class="ex-nm" style="color:#a8aec0">（無人）</span></div>`;
   /* 時間不再逐場印：一天共用一個時間，印在上方的日期標題就好，
      每張卡片重複同一個時間只是佔位置。 */
-  return `<div class="ex-pt">
-    <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>
+  /* 翻車在圖片上要一眼看得到——貼到群組時大家是用滑的，不會逐張比對。
+     色值一律寫死淺色：匯出圖固定白底，不能跟著使用者的深色模式走。 */
+  const wipeTag=isWipe(pt)
+    ? `<span class="ex-pt-w">翻車</span>`
+    : '';
+  return `<div class="ex-pt${isWipe(pt)?' wiped':''}">
+    <div class="ex-pt-h"><span class="ex-pt-n">${esc(pt.name)}</span>${wipeTag}
       <span class="ex-pt-c">${pt.slots.length}/${pt.capacity}</span></div>
     ${rows}
     ${exDrops(pt)}
@@ -62,19 +67,22 @@ function buildExportNode(ks){
   ks=ks&&ks.length?ks:[curDate];
   const totalPts=ks.reduce((a,k)=>a+ptsOf(k).length,0);
   const totalSlots=ks.reduce((a,k)=>a+ptsOf(k).reduce((b,p)=>b+p.slots.length,0),0);
+  /* 翻車數只在「真的有翻車」時才印。沒翻車的那天多一句「翻車 0」是噪音，
+     而且會讓人以為這個欄位一定要看。 */
+  const totalWipe=ks.reduce((a,k)=>a+ptsOf(k).filter(isWipe).length,0);
   /* 多天時每天各自一個標題段落，單天則維持原本沒有日期小標的乾淨版面 */
   const body=ks.map(k=>{
     const pts=ptsOf(k);
     const cols=pts.map(ptExportBlock).join('');
     const dayHead=ks.length>1
-      ? `<div class="ex-day">${fmtDate(k)}（${DOW[parseYmd(k).getDay()]}）${dayTime(k)?` · ${esc(dayTime(k))}`:''} · ${pts.length} RUN · ${pts.reduce((a,p)=>a+p.slots.length,0)} 人</div>`
+      ? `<div class="ex-day">${fmtDate(k)}（${DOW[parseYmd(k).getDay()]}）${dayTime(k)?` · ${esc(dayTime(k))}`:''} · ${pts.length} RUN · ${pts.reduce((a,p)=>a+p.slots.length,0)} 人${pts.filter(isWipe).length?` · 翻車 ${pts.filter(isWipe).length}`:''}</div>`
       : '';
     return dayHead+`<div class="ex-cols">${cols||'<div class="ex-sub">這天還沒有 RUN</div>'}</div>`;
   }).join('');
   const host=document.getElementById('exportHost');
   host.innerHTML=`<div class="exportwrap" id="exportWrap">
     <div class="ex-h">${rangeLabel(ks)} 陣容分配${ks.length===1&&dayTime(ks[0])?` · ${esc(dayTime(ks[0]))}`:''}</div>
-    <div class="ex-sub">${ks.length>1?`${ks.length} 天 · `:''}${totalPts} RUN · 出席 ${totalSlots} 人 · 產出於 ${fmtNow()}</div>
+    <div class="ex-sub">${ks.length>1?`${ks.length} 天 · `:''}${totalPts} RUN · 出席 ${totalSlots} 人${totalWipe?` · 翻車 ${totalWipe}`:''} · 產出於 ${fmtNow()}</div>
     ${body}
   </div>`;
   return document.getElementById('exportWrap');
@@ -101,15 +109,15 @@ async function exportImage(ks){
 
 function exportCsv(ks){
   ks=ks&&ks.length?ks:[curDate];
-  const rows=[['日期','星期','RUN','時間','成員','職業','BUFF','便當','掉落物']];
+  const rows=[['日期','星期','RUN','結果','時間','成員','職業','BUFF','便當','掉落物']];
   ks.forEach(k=>{
     ptsOf(k).forEach(pt=>{
       pt.slots.forEach(s=>{
         const m=memberById(s.memberId), r=roleById(s.roleId);
-        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,dayTime(k),m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
+        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,isWipe(pt)?'翻車':'通關',dayTime(k),m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
       });
       if(pt.drops&&pt.drops.length){
-        rows.push([fmtDate(k),fmtDow(k),pt.name,dayTime(k),'','','','',
+        rows.push([fmtDate(k),fmtDow(k),pt.name,isWipe(pt)?'翻車':'通關',dayTime(k),'','','','',
           pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
       }
     });

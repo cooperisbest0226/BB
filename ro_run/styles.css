@@ -240,6 +240,24 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
   animation:rise .4s var(--ease) both;
 }
 .ptcard.drop-on{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft), var(--shadow-lift)}
+/* ── 翻車標記 ─────────────────────────────────────────────
+   標記在標題列而不是功能鈕那一排：它描述「這場的結果」，不是一個動作。
+   翻車卡整張壓一層極淡的紅並把左緣加粗，滑一長串場次時不用逐張讀徽章
+   就看得出哪幾場出事；但飽和度刻意壓低，避免翻車多的那幾天整頁變成紅牆。 */
+.ptcard.wiped{border-color:color-mix(in srgb, var(--danger) 34%, var(--line-2)); box-shadow:inset 3px 0 0 var(--danger), var(--shadow)}
+.wipetag{
+  flex:0 0 auto; font-size:10.5px; font-weight:650; line-height:1;
+  padding:3px 8px; border-radius:99px; letter-spacing:.2px;
+  border:1px solid var(--line-2); background:var(--surface-2); color:var(--faint);
+  transition:color .16s, border-color .16s, background .16s, transform .12s var(--ease);
+  position:relative;
+}
+/* 徽章本體只有 19px 高，直接撐到 44px 會把整條標題列推開。沿用 .minibtn 的做法：
+   用一個置中的透明 ::after 把可點範圍補到 44px，版面高度不變。
+   左右只放 6px —— 再多會蓋到左邊的 RUN 名稱那一塊。 */
+.wipetag::after{content:''; position:absolute; left:-6px; right:-6px; top:50%; height:44px; transform:translateY(-50%)}
+.wipetag.on{color:var(--danger); border-color:color-mix(in srgb, var(--danger) 40%, transparent); background:color-mix(in srgb, var(--danger) 11%, transparent)}
+.wipetag:active{transform:scale(.93)}
 .pt-head{display:flex; align-items:flex-start; gap:10px; padding:14px 15px 0}
 .pt-id{min-width:0; flex:1}
 .pt-name{font-size:15.5px; font-weight:650; letter-spacing:-.2px; display:flex; align-items:center; gap:7px}
@@ -861,6 +879,14 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .ex-pt-n{font-size:15px; font-weight:650; color:#15171c}
 .ex-pt-t{font-size:11.5px; color:#7b8194}
 .ex-pt-c{margin-left:auto; font-size:13px; font-weight:600; color:#3d434f}
+/* 匯出圖片一律白底，這裡不能用 --danger 之類的主題變數，色值必須寫死淺色 */
+.ex-pt.wiped{border-color:#f2c2c2}
+.ex-pt.wiped .ex-pt-h{background:#fdf1f1; border-bottom-color:#f2c2c2}
+.ex-pt-w{
+  font-size:10.5px; font-weight:700; line-height:1; letter-spacing:.3px;
+  color:#b91c1c; background:#fbe0e0; border:1px solid #f0bcbc;
+  padding:3px 7px; border-radius:99px;
+}
 .ex-row{display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid #f0f1f6}
 .ex-row.bento{background:rgba(34,197,94,.13)}
 .ex-row:last-child{border-bottom:none}
@@ -1113,6 +1139,12 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 .mrun-h:active{background:var(--surface-2)}
 .mrun-n{font-size:13.5px; font-weight:600; color:var(--ink)}
 .mrun-t{font-size:11.5px; color:var(--faint)}
+/* 明細是事後回頭核對數字的地方；掉落少得反常時要能立刻看出那場是翻車，而不是記錯 */
+.mrun-w{
+  flex:0 0 auto; font-size:10px; font-weight:650; line-height:1; padding:2px 6px; border-radius:99px;
+  color:var(--danger); border:1px solid color-mix(in srgb, var(--danger) 38%, transparent);
+  background:color-mix(in srgb, var(--danger) 10%, transparent);
+}
 .mrun-g{padding:11px 14px}
 .mrun-e{
   margin-left:auto; flex:0 0 auto; font-size:10.5px; font-weight:600;

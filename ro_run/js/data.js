@@ -4,11 +4,11 @@
 /* ══════════════════════════════════════════════════════════
    星座塔團隊 — 資料模型
    state = { members, roles, schedule:{ 'YYYY-MM-DD': [pt,...] } }
-   pt    = { id, name, time, capacity, slots:[{memberId, roleId}] }
+   pt    = { id, name, capacity, wipe, slots:[{memberId, roleId}], drops, videos }
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v52';
+const APP_VERSION='v53';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -140,7 +140,7 @@ function seed(){
 }
 
 /* 時間不再屬於單場 RUN，改由 dayTimes 依日期保管（見 5→6 遷移） */
-function mkPt(name,cap){ return {id:uid(),name,capacity:cap,slots:[],drops:[],videos:[]}; }
+function mkPt(name,cap){ return {id:uid(),name,capacity:cap,slots:[],drops:[],videos:[],wipe:false}; }
 function todayKey(){ const d=new Date(); return ymd(d); }
 function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseYmd(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
@@ -221,6 +221,17 @@ const MIGRATIONS=[
       }
       pts.forEach(pt=>{ delete pt.time; });   // 不留第二份真相
     });
+  },
+  /* 6 → 7：每場 RUN 加「翻車」標記，用來算成功率與之後的分潤基準。
+            用布林而不是三態（未記錄／成功／翻車）是刻意的取捨：
+            三態雖然對舊資料誠實，但等於要求每一場都額外按一次「成功」才會進統計，
+            實務上沒有人會回頭補，統計會長期卡在「大部分未記錄」。
+            改成預設成功、只手動標翻車 —— 翻車是少數事件，記錄成本落在少數場次上。
+            代價是遷移前的舊場次一律被當成功，成功率在早期會偏高，這是已知且接受的。 */
+  p=>{
+    Object.values(p.schedule||{}).forEach(pts=>pts.forEach(pt=>{
+      if(typeof pt.wipe!=='boolean') pt.wipe=false;
+    }));
   },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
@@ -310,6 +321,10 @@ function commitUndoable(label, fn){
 /* ── 查詢輔助 ─────────────────────────────────────────── */
 const dates=()=>Object.keys(state.schedule).sort();
 const ptsOf=k=>state.schedule[k]||[];
+/* 翻車與否只認 pt.wipe 這一個真相來源；沒有標記就是成功（見 6→7 遷移的取捨說明）。
+   包成函式是因為之後的出場統計與分潤試算都要問同一個問題，不想在三個檔案各寫一次 !!pt.wipe。 */
+const isWipe=pt=>!!(pt&&pt.wipe);
+const isCleared=pt=>!isWipe(pt);
 const memberById=id=>state.members.find(m=>m.id===id);
 const roleById=id=>state.roles.find(r=>r.id===id);
 const sortedRoles=()=>[...state.roles].sort((a,b)=>a.order-b.order);

@@ -2144,6 +2144,177 @@ def run(page):
               i.remove(); return v;
           }"""), "text")
 
+    # ---------- 翻車標記 ----------
+    print("\n[wipe] 翻車標記")
+    # seed() 每天只有一場，隔離性測不出來；這裡在同一天補第二場，
+    # 而且讓它有掉落物，後面的場次明細才會列到它（明細只列有掉落的場次）。
+    def seed_two_runs():
+        seed(page)
+        page.evaluate("""() => {
+            state.schedule[curDate].push({
+                id:'ptC', name:'RUN B2', capacity:8, wipe:false, videos:[],
+                slots:[{memberId:'m2'}],
+                drops:[{id:'d9', name:'威力隕石碎片', qty:2}]});
+            persist(); render();
+        }""")
+        page.wait_for_timeout(150)
+
+    seed_two_runs()
+
+    check("6→7 遷移會替舊場次補上 wipe=false",
+          page.evaluate("""() => {
+              const old = {schemaVersion:6, members:[], roles:[], sales:[], dayTimes:{},
+                  schedule:{'2026-01-01':[{id:'a',name:'RUN 1',capacity:12,slots:[],drops:[],videos:[]}]}};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              const pt = m.schedule['2026-01-01'][0];
+              return [typeof pt.wipe, pt.wipe, m.schemaVersion === SCHEMA_VERSION];
+          }"""), ["boolean", False, True])
+
+    check("已標記翻車的資料再跑一次遷移不會被覆蓋回去",
+          page.evaluate("""() => {
+              const old = {schemaVersion:6, members:[], roles:[], sales:[], dayTimes:{},
+                  schedule:{'2026-01-01':[{id:'a',name:'RUN 1',capacity:12,wipe:true,slots:[],drops:[],videos:[]}]}};
+              return migrate(JSON.parse(JSON.stringify(old))).schedule['2026-01-01'][0].wipe;
+          }"""), True)
+
+    check("新建的 RUN 預設是通關",
+          page.evaluate("() => mkPt('RUN X', 12).wipe"), False)
+
+    check("isWipe / isCleared 互為反面，未標記視為通關",
+          page.evaluate("""() => {
+              const a = {wipe:true}, b = {wipe:false}, c = {};
+              return [isWipe(a), isCleared(a), isWipe(b), isWipe(c), isCleared(c)];
+          }"""), [True, False, False, False, True])
+
+    check("卡片預設顯示「通關」徽章且未按下",
+          page.evaluate("""() => {
+              const t = document.querySelector('.ptcard .wipetag');
+              return [t.textContent.trim(), t.getAttribute('aria-pressed'),
+                      t.classList.contains('on')];
+          }"""), ["通關", "false", False])
+
+    # 直接點徽章，確認是真的走事件委派而不是只有函式可用
+    page.click(".ptcard .wipetag")
+    page.wait_for_timeout(120)
+
+    check("點徽章後資料與畫面同步變成翻車",
+          page.evaluate("""() => {
+              const t = document.querySelector('.ptcard .wipetag');
+              return [ptsOf(curDate)[0].wipe, t.textContent.trim(),
+                      t.getAttribute('aria-pressed'), t.classList.contains('on'),
+                      document.querySelector('.ptcard').classList.contains('wiped')];
+          }"""), [True, "翻車", "true", True, True])
+
+    check("翻車標記有寫進 localStorage，不是只改了畫面",
+          page.evaluate("""() => {
+              flushPersist();
+              const saved = JSON.parse(localStorage.getItem(KEY));
+              return saved.schedule[curDate][0].wipe;
+          }"""), True)
+
+    check("只影響被點的那一場，同一天其他場不動",
+          page.evaluate("() => ptsOf(curDate).map(p => !!p.wipe)"),
+          page.evaluate("() => ptsOf(curDate).map((p,i) => i === 0)"))
+
+    page.click(".ptcard .wipetag")
+    page.wait_for_timeout(120)
+    check("再點一次改回通關",
+          page.evaluate("""() => {
+              const t = document.querySelector('.ptcard .wipetag');
+              return [ptsOf(curDate)[0].wipe, t.textContent.trim(),
+                      document.querySelector('.ptcard').classList.contains('wiped')];
+          }"""), [False, "通關", False])
+
+    check("複製 RUN 不會把翻車標記帶到複本",
+          page.evaluate("""() => {
+              const src = ptsOf(curDate)[0];
+              src.wipe = true;
+              const before = ptsOf(curDate).length;
+              document.querySelector('.ptcard [data-act="dupPt"]').click();
+              const pts = ptsOf(curDate);
+              return [pts.length === before + 1, pts[pts.length - 1].wipe, src.wipe];
+          }"""), [True, False, True])
+
+    # ---------- 翻車標記：匯出 ----------
+    print("\n[wipe] 匯出圖片與 CSV 標示")
+    seed_two_runs()
+    page.evaluate("() => { ptsOf(curDate)[0].wipe = true; persist(); render(); }")
+    page.wait_for_timeout(100)
+
+    check("匯出節點只有翻車那一場帶標籤",
+          page.evaluate("""() => {
+              buildExportNode([curDate]);
+              const cards = [...document.querySelectorAll('#exportHost .ex-pt')];
+              const r = [cards.length > 1,
+                         cards.map(c => !!c.querySelector('.ex-pt-w')),
+                         cards.map(c => c.classList.contains('wiped'))];
+              document.getElementById('exportHost').innerHTML = '';
+              return r;
+          }"""), [True, [True, False], [True, False]])
+
+    check("匯出圖片的翻車樣式是寫死淺色，不會跟著深色模式翻掉",
+          page.evaluate("""() => {
+              const prev = document.documentElement.getAttribute('data-theme');
+              document.documentElement.setAttribute('data-theme', 'dark');
+              buildExportNode([curDate]);
+              const tag = document.querySelector('#exportHost .ex-pt-w');
+              const c = getComputedStyle(tag).color;
+              document.getElementById('exportHost').innerHTML = '';
+              if (prev) document.documentElement.setAttribute('data-theme', prev);
+              else document.documentElement.removeAttribute('data-theme');
+              return c;
+          }"""), "rgb(185, 28, 28)")
+
+    check("摘要列在有翻車時才印翻車數",
+          page.evaluate("""() => {
+              buildExportNode([curDate]);
+              const withWipe = document.querySelector('#exportHost .ex-sub').textContent.includes('翻車 1');
+              ptsOf(curDate)[0].wipe = false;
+              buildExportNode([curDate]);
+              const without = document.querySelector('#exportHost .ex-sub').textContent.includes('翻車');
+              ptsOf(curDate)[0].wipe = true;
+              document.getElementById('exportHost').innerHTML = '';
+              return [withWipe, without];
+          }"""), [True, False])
+
+    check("CSV 多了結果欄，且逐列標出通關／翻車",
+          page.evaluate("""() => {
+              const rows = [['日期','星期','RUN','結果','時間','成員','職業','BUFF','便當','掉落物']];
+              ptsOf(curDate).forEach(pt => pt.slots.forEach(s => {
+                  const m = memberById(s.memberId);
+                  if (m) rows.push([pt.name, isWipe(pt) ? '翻車' : '通關']);
+              }));
+              return [rows[0][3], rows[1][1], rows[rows.length - 1][1]];
+          }"""), ["結果", "翻車", "通關"])
+
+    # ---------- 翻車標記：材料頁明細 ----------
+    print("\n[wipe] 場次明細標示")
+    # 明細只列有掉落物的場次，所以把翻車標記換到有掉落的 ptC 上
+    page.evaluate("""() => {
+        ptsOf(curDate).forEach(p => { p.wipe = (p.id === 'ptC'); });
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(200)
+    page.click('#matSeg button[data-sub="detail"]')
+    page.wait_for_timeout(400)
+    page.evaluate("() => { matOpenDays.add(curDate); renderMaterials(); }")
+    page.wait_for_timeout(200)
+
+    wiped_name = page.evaluate("() => ptsOf(curDate).find(isWipe).name")
+    check("材料頁的場次明細會標出翻車那一場",
+          page.evaluate("""() => {
+              const runs = [...document.querySelectorAll('#matDetail .mrun')];
+              const marked = runs.filter(r => r.querySelector('.mrun-w'));
+              return [runs.length > 0, marked.length,
+                      marked.map(r => r.querySelector('.mrun-n').textContent.trim())];
+          }"""), [True, 1, [wiped_name]])
+
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(200)
+
+    seed(page)
+
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)

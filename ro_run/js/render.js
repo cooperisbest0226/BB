@@ -155,10 +155,17 @@ function renderBoard(){
         <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
       </div>`;
     }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
-    return `<div class="ptcard" data-drop="pt" data-pt="${pt.id}" style="animation-delay:${i*45}ms">
+    /* 翻車標記直接做在標題列而不是下面那排功能鈕：它是「這場的結果」，
+       跟編輯／複製／刪除那種動作不同性質，混在一起按錯的代價也不一樣。 */
+    const wiped=isWipe(pt);
+    return `<div class="ptcard ${wiped?'wiped':''}" data-drop="pt" data-pt="${pt.id}" style="animation-delay:${i*45}ms">
       <div class="pt-head">
         <div class="pt-id">
-          <div class="pt-name">${esc(pt.name)}</div>
+          <div class="pt-name">${esc(pt.name)}
+            <button class="wipetag ${wiped?'on':''}" data-act="toggleWipe" data-pt="${pt.id}"
+              aria-pressed="${wiped}" title="${wiped?'點一下改回通關':'點一下標記為翻車'}"
+            >${wiped?'翻車':'通關'}</button>
+          </div>
         </div>
         <div class="pt-count num ${full?'full':''}"><b>${n}</b><span>/${pt.capacity}</span></div>
       </div>

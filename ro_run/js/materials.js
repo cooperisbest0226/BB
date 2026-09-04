@@ -257,6 +257,7 @@ function renderMaterials(){
           ${open?list.map(({date,pt})=>`<div class="mrun">
             <button class="mrun-h" data-act="editRunDrops" data-pt="${pt.id}" data-day="${date}">
               <span class="mrun-n">${esc(pt.name)}</span>
+              ${isWipe(pt)?'<span class="mrun-w">翻車</span>':''}
               <span class="mrun-t num">${esc(dayTime(date))}</span>
               <span class="mrun-e">編輯</span>
             </button>
