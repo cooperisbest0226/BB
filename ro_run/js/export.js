@@ -88,15 +88,16 @@ function buildExportNode(ks){
   return document.getElementById('exportWrap');
 }
 
-async function exportImage(ks){
-  ks=ks&&ks.length?ks:[curDate];
+/* 產圖 + 分享的流程本身跟畫什麼無關（陣容、分潤都走這裡），
+   所以只留一份：呼叫端負責把節點畫好，這裡負責截圖、分享、清乾淨。 */
+async function shareNodeAsImage(build, filename){
   if(typeof html2canvas==='undefined') return toast('圖片元件尚未載入完成，請稍候再試');
   toast('產出中⋯');
-  const node=buildExportNode(ks);
+  const node=build();
   try{
     const canvas=await html2canvas(node,{backgroundColor:'#ffffff',scale:2,useCORS:true});
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
-    const file=new File([blob],`陣容分配_${fileStamp(ks)}.png`,{type:'image/png'});
+    const file=new File([blob],filename,{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       /* 只帶檔案，不帶 title／text：帶了的話 LINE 之類的 App 會在圖片旁邊
          附一段文字訊息，貼到群組就變成「圖片 + 一行字」。這裡只要圖片。 */
@@ -105,6 +106,47 @@ async function exportImage(ks){
     } else download(blob,file.name);
   }catch(err){ console.error(err); toast('圖片產出失敗，請再試一次'); }
   finally{ document.getElementById('exportHost').innerHTML=''; }
+}
+
+async function exportImage(ks){
+  ks=ks&&ks.length?ks:[curDate];
+  return shareNodeAsImage(()=>buildExportNode(ks), `陣容分配_${fileStamp(ks)}.png`);
+}
+
+/* 分潤結果圖：貼到群組是要讓人自己對帳的，所以每人金額之外，
+   總收入、已分配、公基金三個數字一定要在同一張圖上，加起來才驗得起來。 */
+function buildSplitExportNode(){
+  const st=splitStats(splFrom,splTo,aucCur);
+  const range=(splFrom||splTo) ? splFilterText() : '全部日期';
+  const rows=st.rows.map((r,i)=>`<div class="ex-sp-r">
+    <span class="ex-sp-i">${i+1}</span>
+    <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
+    <span class="ex-sp-s">通關 ${r.shares} 場</span>
+    <span class="ex-sp-a">${nf(r.twd)}</span>
+  </div>`).join('');
+  const notes=[
+    st.wipedTwd>0?`翻車場收入 ${nf(st.wipedTwd)} 不分潤，已計入公基金`:'',
+    st.orphanTwd>0?`${nf(st.orphanTwd)} 無場次可歸屬，已計入公基金`:'',
+  ].filter(Boolean).map(t=>`<div class="ex-sp-note">${t}</div>`).join('');
+  const host=document.getElementById('exportHost');
+  host.innerHTML=`<div class="exportwrap" id="exportWrap">
+    <div class="ex-h">分潤試算（${curLabel(st.cur)}） · ${esc(range)}</div>
+    <div class="ex-sub">${st.saleCount} 筆交易 · ${st.rows.length} 人可分 · 產出於 ${fmtNow()}</div>
+    <div class="ex-sp-sum">
+      <span><b>${nf(st.totalTwd)}</b>總收入</span>
+      <span><b>${nf(st.totalTwd-st.fundTwd)}</b>已分配</span>
+      <span><b>${nf(st.fundTwd)}</b>公基金</span>
+    </div>
+    <div class="ex-sp">${rows}</div>
+    ${notes}
+    <div class="ex-sp-note">每人金額無條件捨去到整數，零頭計入公基金</div>
+  </div>`;
+  return document.getElementById('exportWrap');
+}
+
+async function exportSplitImage(){
+  const tag=(splFrom||splTo)?`${splFrom||'起'}_${splTo||'今'}`:'全部';
+  return shareNodeAsImage(buildSplitExportNode, `分潤試算_${aucCur==='R'?'R幣':'台幣'}_${tag}.png`);
 }
 
 function exportCsv(ks){

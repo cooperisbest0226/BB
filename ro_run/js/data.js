@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v53';
+const APP_VERSION='v57';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -232,6 +232,34 @@ const MIGRATIONS=[
     Object.values(p.schedule||{}).forEach(pts=>pts.forEach(pt=>{
       if(typeof pt.wipe!=='boolean') pt.wipe=false;
     }));
+  },
+  /* 7 → 8：交易紀錄可以指定「這筆算哪一場」。
+            同一天排兩場、成員不完全一樣的時候，收入不綁場次就分不出誰該拿。
+            舊資料一律留空 = 未指定，由分潤那邊當成「當天所有場次平均分攤」，
+            這樣遷移前的紀錄不會整批失效，也不用回頭一筆一筆補。 */
+  p=>{
+    (p.sales||[]).forEach(s=>{ if(typeof s.runId!=='string') s.runId=''; });
+  },
+  /* 8 → 9：一筆交易只會是「收台幣」或「收 R 幣」其中一種，不再兩個欄位並存。
+            原本每筆都存 twd（台幣金額）+ rate（1 台幣 = ? R）算出 R 幣等值，
+            等於逼使用者每筆都填一個換算率，而且統計沒辦法混著算：
+            台幣 32,000/組 跟 R 幣 8 億/組 放同一條走勢線上完全沒有意義。
+
+            欄位順便從 twd 改名 price：它現在裝的是「該筆幣別的金額」，
+            繼續叫 twd 而裡面放 R 幣，遲早會有人（包括之後的我）看錯。
+
+            舊資料兩種都有，但資料本身分不出哪筆是哪種（twd 一直是主要金額，
+            rate 只是換算顯示），所以一律先當台幣，由使用者在編輯畫面逐筆改。
+            換算率不保留：它是推算用的，留著只會讓人以為那是這筆交易的一部分。 */
+  p=>{
+    (p.sales||[]).forEach(s=>{
+      s.cur='TWD';
+      s.price=Number(s.twd)||0;
+      delete s.twd; delete s.rate;
+      (Array.isArray(s.items)?s.items:[]).forEach(it=>{
+        it.price=Number(it.twd)||0; delete it.twd;
+      });
+    });
   },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;

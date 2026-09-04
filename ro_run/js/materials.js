@@ -6,7 +6,10 @@
    ══════════════════════════════════════════════════════════ */
 let matFrom='', matTo='', matRunName='';
 /* 售出計算：curSets 由組數試算算出，用來「帶入目前組數」；台幣與 R 幣值記住上次輸入省得每次重打 */
-let curSets=0, saleSets=null, saleTwd=null, saleRate=null;
+let curSets=0, saleSets=null, salePrice=null;
+/* 拍賣頁目前顯示的幣別。一筆交易只會是台幣或 R 幣，沒有換算，
+   所以統計、走勢、行情、分潤全部一次只看一種。 */
+let aucCur='TWD';
 /* 記錄中的交易草稿：模式與單品明細列。明細列在按下「記錄這筆交易」前都只是試算，不進 state。 */
 let saleMode='set', saleDraftItems=[];
 /* 成交紀錄的日期區間篩選（空字串＝不限） */

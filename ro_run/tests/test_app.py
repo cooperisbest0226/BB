@@ -70,8 +70,9 @@ def run(page):
                            sales:[{id:'z',date:'2026-01-01',sets:3,twd:100,rate:2}]};
               const m = migrate(JSON.parse(JSON.stringify(old)));
               return [m.sales[0].mode, Array.isArray(m.sales[0].items), m.sales[0].items.length,
-                      m.sales[0].sets, m.sales[0].twd];
-          }"""), ["set", True, 0, 3, 100])
+                      m.sales[0].sets, m.sales[0].price, m.sales[0].cur,
+                      m.sales[0].twd === undefined, m.sales[0].rate === undefined];
+          }"""), ["set", True, 0, 3, 100, "TWD", True, True])
     check("已經是單品的交易不會被改回整組",          page.evaluate("""() => {
               const old = {schemaVersion:2, members:[],roles:[],schedule:{},
                            sales:[{id:'z',date:'2026-01-01',mode:'item',rate:2,
@@ -177,7 +178,7 @@ def run(page):
           }"""), True)
     check("列數沒變時仍會更新小計",
           page.evaluate("""() => {
-              saleDraftItems[0] = {name:'威力隕石碎片', qty:4, twd:25};
+              saleDraftItems[0] = {name:'威力隕石碎片', qty:4, price:25};
               renderSaleItemRows();
               return document.querySelector('.itemrow-s').textContent;
           }"""), "100")
@@ -189,7 +190,7 @@ def run(page):
                       document.querySelector('#saleItemRows [data-f="name"]') !== input];
           }"""), [2, True])
     page.evaluate("""() => {
-        saleDraftItems = [{name:'', qty:'', twd:''}];   // 還原草稿，不要污染後面的拍賣測試
+        saleDraftItems = [{name:'', qty:'', price:''}];   // 還原草稿，不要污染後面的拍賣測試
         renderSaleItemRows(true);
     }""")
     page.click('#saleModeSeg [data-mode="set"]')
@@ -236,8 +237,7 @@ def run(page):
     page.click('.tab[data-view="auction"]')
     page.wait_for_timeout(150)
     page.fill("#saleSets", "5")
-    page.fill("#saleTwd", "100")
-    page.fill("#saleRate", "2")
+    page.fill("#salePrice", "100")
     page.click("#saleAdd")
     page.wait_for_timeout(200)
     check("新增交易", page.evaluate("() => state.sales.length"), 1)
@@ -245,11 +245,11 @@ def run(page):
     page.click(".salerow-edit")
     page.wait_for_timeout(200)
     page.fill('input[name="sets"]', "9")
-    page.fill('input[name="twd"]', "150")
+    page.fill('input[name="price"]', "150")
     page.click('[data-s="save"]')
     page.wait_for_timeout(200)
     check("編輯交易",
-          page.evaluate("() => [state.sales[0].sets, state.sales[0].twd]"), [9, 150])
+          page.evaluate("() => [state.sales[0].sets, state.sales[0].price]"), [9, 150])
 
     page.click(".salerow-edit")
     page.wait_for_timeout(200)
@@ -276,19 +276,19 @@ def run(page):
                                   document.querySelectorAll('#saleTrend .spark').length]"""),
           [True, 0])
 
-    load_sales([{"id": "a1", "date": "2026-08-05", "sets": 10, "twd": 100, "rate": 2}])
+    load_sales([{"id": "a1", "date": "2026-08-05", "cur": "TWD", "sets": 10, "price": 100}])
     check("只有一筆時不畫走勢圖",
           page.evaluate("() => document.querySelectorAll('#saleTrend .spark').length"), 0)
     check("只有一筆時仍列出該筆成交",
           page.evaluate("() => document.querySelectorAll('#saleList .auccard').length"), 1)
 
     six = [
-        {"id": "b1", "date": "2026-05-12", "sets": 6,  "twd": 110, "rate": 2.1},
-        {"id": "b2", "date": "2026-06-03", "sets": 10, "twd": 98,  "rate": 2.0},
-        {"id": "b3", "date": "2026-06-21", "sets": 8,  "twd": 125, "rate": 2.2},
-        {"id": "b4", "date": "2026-07-09", "sets": 12, "twd": 140, "rate": 2.15},
-        {"id": "b5", "date": "2026-07-28", "sets": 5,  "twd": 132, "rate": 2.3},
-        {"id": "b6", "date": "2026-08-05", "sets": 14, "twd": 155, "rate": 2.4},
+        {"id": "b1", "date": "2026-05-12", "cur": "TWD", "sets": 6, "price": 110},
+        {"id": "b2", "date": "2026-06-03", "cur": "TWD", "sets": 10, "price": 98},
+        {"id": "b3", "date": "2026-06-21", "cur": "TWD", "sets": 8, "price": 125},
+        {"id": "b4", "date": "2026-07-09", "cur": "TWD", "sets": 12, "price": 140},
+        {"id": "b5", "date": "2026-07-28", "cur": "TWD", "sets": 5, "price": 132},
+        {"id": "b6", "date": "2026-08-05", "cur": "TWD", "sets": 14, "price": 155},
     ]
     load_sales(six)
     check("成交紀錄依月份分成四堆",
@@ -308,14 +308,14 @@ def run(page):
     check("每筆成交都有品項編號",
           page.evaluate("""() => [...document.querySelectorAll('.auc-lot')].map(e=>e.textContent)"""),
           ["#6", "#5", "#4", "#3", "#2", "#1"])
-    check("成交卡片顯示組數／每組價／幣值",
+    check("成交卡片顯示組數與每組價（換算率已隨幣別拆分移除）",
           page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')[0]
               .querySelectorAll('.auc-chip')].map(e=>e.textContent)"""),
-          ["14 組", "每組 155", "幣值 2.4"])
+          ["14 組", "每組 155"])
 
-    check("平均每組台幣用加權算（總台幣 ÷ 總組數）",
+    check("平均每組價用加權算（總額 ÷ 總組數）",
           page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
-              .find(c => c.querySelector('.stat-k').textContent === '平均每組台幣')
+              .find(c => c.querySelector('.stat-k').textContent === '平均每組')
               .querySelector('.stat-v').textContent"""), "130")
     check("高於／低於均價的標記分別出現",
           page.evaluate("""() => [document.querySelectorAll('.auc-badge.up').length,
@@ -342,7 +342,7 @@ def run(page):
           }"""), 100.0)
 
     # 超過六個月只留最近六個月
-    many = [{"id": f"c{i}", "date": f"2026-{m:02d}-10", "sets": 5, "twd": 100 + i, "rate": 2}
+    many = [{"id": f"c{i}", "date": f"2026-{m:02d}-10", "cur": "TWD", "sets": 5, "price": 100 + i}
             for i, m in enumerate(range(1, 9))]
     load_sales(many)
     check("月度長條最多只顯示近六個月",
@@ -353,8 +353,8 @@ def run(page):
 
     # 編輯過日期的紀錄要照日期排，但品項編號沿用當初記錄的先後
     load_sales([
-        {"id": "d1", "date": "2026-08-20", "sets": 5, "twd": 100, "rate": 2},
-        {"id": "d2", "date": "2026-08-02", "sets": 5, "twd": 100, "rate": 2},
+        {"id": "d1", "date": "2026-08-20", "cur": "TWD", "sets": 5, "price": 100},
+        {"id": "d2", "date": "2026-08-02", "cur": "TWD", "sets": 5, "price": 100},
     ])
     check("日期被改過也照日期排序，編號不跟著跳動",
           page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')].map(c => [
@@ -365,17 +365,17 @@ def run(page):
     # ---------- 拍賣：單品出售 ----------
     print("\n[auction] 單品出售與單品行情")
     mixed = [
-        {"id": "m1", "date": "2026-06-03", "mode": "set", "sets": 10, "twd": 100, "rate": 2,
+        {"id": "m1", "date": "2026-06-03", "mode": "set", "cur": "TWD", "sets": 10, "price": 100,
          "items": []},
-        {"id": "m2", "date": "2026-07-09", "mode": "item", "sets": 0, "twd": 0, "rate": 2,
-         "items": [{"name": "威力隕石碎片", "qty": 20, "twd": 10},
-                   {"name": "耐力隕石浮塵", "qty": 10, "twd": 8}]},
-        {"id": "m3", "date": "2026-08-05", "mode": "item", "sets": 0, "twd": 0, "rate": 2,
-         "items": [{"name": "威力隕石碎片", "qty": 30, "twd": 20}]},
+        {"id": "m2", "date": "2026-07-09", "mode": "item", "cur": "TWD", "sets": 0, "price": 0,
+         "items": [{"name": "威力隕石碎片", "qty": 20, "price": 10},
+                   {"name": "耐力隕石浮塵", "qty": 10, "price": 8}]},
+        {"id": "m3", "date": "2026-08-05", "mode": "item", "cur": "TWD", "sets": 0, "price": 0,
+         "items": [{"name": "威力隕石碎片", "qty": 30, "price": 20}]},
     ]
     load_sales(mixed)
     check("單品交易的總額為各列數量 × 單價相加",
-          page.evaluate("() => [saleAmounts(state.sales[1]).twd, saleAmounts(state.sales[2]).twd]"),
+          page.evaluate("() => [saleAmounts(state.sales[1]).amt, saleAmounts(state.sales[2]).amt]"),
           [280, 600])
     check("累計售出組數只算整組交易",
           page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
@@ -385,9 +385,9 @@ def run(page):
           page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
               .find(c => c.querySelector('.stat-k').textContent === '累計售出單品')
               .querySelector('.stat-v').textContent"""), "60")
-    check("平均每組台幣不被單品交易稀釋",
+    check("平均每組價不被單品交易稀釋",
           page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
-              .find(c => c.querySelector('.stat-k').textContent === '平均每組台幣')
+              .find(c => c.querySelector('.stat-k').textContent === '平均每組')
               .querySelector('.stat-v').textContent"""), "100")
     check("單品交易的卡片標成單品，不比較每組均價",
           page.evaluate("""() => {
@@ -398,7 +398,7 @@ def run(page):
     check("單品卡片把每種材料列成標籤",
           page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')[1]
               .querySelectorAll('.auc-chip')].map(e=>e.textContent)"""),
-          ["威力隕石碎片 ×20 @10", "耐力隕石浮塵 ×10 @8", "幣值 2"])
+          ["威力隕石碎片 ×20 @10", "耐力隕石浮塵 ×10 @8"])
 
     check("單品行情依材料統計，依成交額由大到小",
           page.evaluate("() => [...document.querySelectorAll('.quote-n')].map(e=>e.textContent)"),
@@ -437,7 +437,7 @@ def run(page):
 
     page.fill('#saleItemRows [data-f="name"]', "智慧隕石浮塵")
     page.fill('#saleItemRows [data-f="qty"]', "6")
-    page.fill('#saleItemRows [data-f="twd"]', "25")
+    page.fill('#saleItemRows [data-f="price"]', "25")
     page.wait_for_timeout(150)
     check("明細列即時算出小計",
           page.evaluate("() => document.querySelector('.itemrow-s').textContent"), "150")
@@ -446,7 +446,7 @@ def run(page):
     check("記錄單品交易會存成 mode='item'",
           page.evaluate("""() => {
               const s = state.sales[state.sales.length-1];
-              return [s.mode, s.items.length, s.items[0].name, s.items[0].qty, s.items[0].twd];
+              return [s.mode, s.items.length, s.items[0].name, s.items[0].qty, s.items[0].price];
           }"""), ["item", 1, "智慧隕石浮塵", 6, 25])
     check("記錄後明細列清空成一列空白",
           page.evaluate("""() => document.querySelectorAll('#saleItemRows .itemrow').length"""), 1)
@@ -454,7 +454,7 @@ def run(page):
     page.click('#saleModeSeg [data-mode="set"]')
     page.wait_for_timeout(200)
     check("每組台幣沿用上一筆整組交易，不會被單品交易的 0 蓋掉",
-          page.evaluate("() => document.getElementById('saleTwd').value"), "100")
+          page.evaluate("() => document.getElementById('salePrice').value"), "100")
 
     # ---------- 拍賣：日期區間篩選 ----------
     print("\n[auction] 成交紀錄日期區間篩選")
@@ -484,7 +484,7 @@ def run(page):
           "07/01 — 07/31")
     check("累計卡片跟著篩選走",
           page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
-              .find(c => c.querySelector('.stat-k').textContent === '累計總台幣')
+              .find(c => c.querySelector('.stat-k').textContent === '累計總額')
               .querySelector('.stat-v').textContent"""), "280")
     check("單品行情也跟著篩選走",
           page.evaluate("() => [...document.querySelectorAll('.quote-n')].map(e=>e.textContent)"),
@@ -709,14 +709,15 @@ def run(page):
 
     page.click('.tab[data-view="members"]')
     page.wait_for_timeout(200)
-    check("成員頁有兩個子分頁，成員列表在前",
+    check("成員頁有三個子分頁，成員列表在前",
           page.evaluate("""() => [...document.querySelectorAll('#memberSeg [data-sub]')]
               .map(b => [b.dataset.sub, b.textContent])"""),
-          [["mlist", "成員列表"], ["mroles", "職業設定"]])
+          [["mlist", "成員列表"], ["mroles", "職業設定"], ["mattend", "出場統計"]])
     check("進入成員頁預設顯示成員列表",
           page.evaluate("""() => [document.getElementById('sub-mlist').classList.contains('active'),
-                                  document.getElementById('sub-mroles').classList.contains('active')]"""),
-          [True, False])
+                                  document.getElementById('sub-mroles').classList.contains('active'),
+                                  document.getElementById('sub-mattend').classList.contains('active')]"""),
+          [True, False, False])
     check("成員搜尋框可用", page.locator("#memberSearch").is_visible(), True)
 
     page.click('#memberSeg [data-sub="mroles"]')
@@ -750,7 +751,7 @@ def run(page):
     page.click('.tab[data-view="auction"]')
     page.wait_for_timeout(250)
     check("拍賣頁顯示售出試算欄位",
-          page.evaluate("""() => ['saleSets','saleTwd','saleRate','saleAdd','saleList']
+          page.evaluate("""() => ['saleSets','salePrice','saleAdd','saleList']
               .every(id => !!document.getElementById(id))"""), True)
     check("拍賣頁的售出區塊確實在拍賣分頁底下",
           page.evaluate("""() => !!document.getElementById('view-auction')
@@ -1043,18 +1044,19 @@ def run(page):
               const inline = [...document.querySelectorAll('script:not([src])')];
               return inline.every(s => s.textContent.length < 2000);   // 只剩 head 那段防閃色的小程式
           }"""), True)
-    check("主程式依固定順序載入 10 個檔案",
+    check("主程式依固定順序載入 11 個檔案",
           page.evaluate("""() => [...document.querySelectorAll('script[src^="./js/"]')]
               .map(s => s.getAttribute('src').replace('./js/','').replace('.js',''))"""),
-          ["data", "render", "materials", "auction", "assign",
+          ["data", "render", "materials", "auction", "attend", "assign",
            "sheets", "export", "events", "calc", "main"])
     check("拆檔後仍共用同一個全域範圍",
           page.evaluate("""() => {
               // 這幾個分別定義在不同檔案裡，彼此看得到才代表拆檔沒有切斷相依
               return [typeof state, typeof commit, typeof renderBoard,
                       typeof renderMaterials, typeof saleAmounts, typeof assign,
-                      typeof sheet, typeof exportJson, typeof renderCalc];
-          }"""), ["object"] + ["function"] * 8)
+                      typeof sheet, typeof exportJson, typeof renderCalc,
+                      typeof attendanceStats];
+          }"""), ["object"] + ["function"] * 9)
     check("跨檔案的常數也讀得到",
           page.evaluate("""() => [typeof APP_VERSION, typeof SCHEMA_VERSION,
                                   typeof SNAP_KEEP, typeof VIEW_IDS, typeof ATTRS]"""),
@@ -1066,7 +1068,7 @@ def run(page):
     check("Service Worker 會預先快取全部主程式檔案",
           page.evaluate("""async () => {
               const src = await (await fetch('./sw.js')).text();
-              return ['data','render','materials','auction','assign',
+              return ['data','render','materials','auction','attend','assign',
                       'sheets','export','events','calc','main']
                   .every(n => src.includes(`./js/${n}.js`));
           }"""), True)
@@ -2312,6 +2314,479 @@ def run(page):
 
     page.click('.tab[data-view="board"]')
     page.wait_for_timeout(200)
+
+    seed(page)
+
+    # ---------- 出場統計 ----------
+    print("\n[attend] 出場統計")
+
+    def seed_attend():
+        """三天、四場、三個人，翻車與出場次數各不相同，排行才驗得出來。"""
+        seed(page)
+        page.evaluate("""() => {
+            state.members.push({id:'m4', name:'沒排到的人', active:true});
+            state.dayTimes = {'2026-07-01':'21:00','2026-07-02':'21:00','2026-07-03':'21:00'};
+            const mk = (id,name,wipe,ids) => ({id, name, capacity:12, wipe, videos:[], drops:[],
+                                               slots: ids.map(x => ({memberId:x}))});
+            state.schedule = {
+              '2026-07-01':[ mk('a1','RUN 1', false, ['m1','m2','m3']) ],
+              '2026-07-02':[ mk('b1','RUN 1', true,  ['m1','m2']),
+                             mk('b2','RUN 2', false, ['m1','m3']) ],
+              '2026-07-03':[ mk('c1','RUN 1', false, ['m1']) ]
+            };
+            curDate = '2026-07-03';
+            attFrom = ''; attTo = '';
+            persist(); render();
+        }""")
+        page.wait_for_timeout(150)
+
+    seed_attend()
+
+    check("統計把出場、通關、翻車分開算",
+          page.evaluate("""() => {
+              const s = attendanceStats('', '');
+              const by = {};
+              s.rows.forEach(r => by[memberName(r.memberId)] = [r.runs, r.cleared, r.wiped]);
+              return [s.runs, s.wiped, s.days, by['小明'], by['小華'], by['小美']];
+          }"""), [4, 1, 3, [4, 3, 1], [2, 1, 1], [2, 2, 0]])
+
+    check("排行以成功場為準，跟之後的分潤順序一致",
+          page.evaluate("""() => attendanceStats('','').rows.map(r => memberName(r.memberId))"""),
+          ["小明", "小美", "小華"])
+
+    check("同一場重複佔兩個位子只算一次（分潤是按份數分的）",
+          page.evaluate("""() => {
+              const pt = state.schedule['2026-07-03'][0];
+              pt.slots.push({memberId:'m1'});
+              const r = attendanceStats('2026-07-03','2026-07-03').rows
+                          .find(x => x.memberId === 'm1');
+              pt.slots.pop();
+              return [r.runs, r.cleared];
+          }"""), [1, 1])
+
+    check("沒出場的成員不會出現在 rows 裡",
+          page.evaluate("""() => attendanceStats('','').rows.some(r => r.memberId === 'm4')"""),
+          False)
+
+    check("日期區間會夾住統計範圍",
+          page.evaluate("""() => {
+              const s = attendanceStats('2026-07-02','2026-07-02');
+              return [s.runs, s.wiped, s.days, s.rows.length];
+          }"""), [2, 1, 1, 3])
+
+    check("成員被刪掉之後，他的出場紀錄還原得出名字",
+          page.evaluate("""() => {
+              const keep = state.members;
+              state.members = keep.filter(m => m.id !== 'm3');
+              const n = memberName('m3');
+              state.members = keep;
+              return n;
+          }"""), "（已刪除成員）")
+
+    # --- 畫面 ---
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(200)
+    page.click('#memberSeg [data-sub="mattend"]')
+    page.wait_for_timeout(300)
+
+    check("摘要卡先給場次規模，再給成功率",
+          page.evaluate("""() => [
+              document.querySelector('#attCard .attsum-t').textContent.trim(),
+              document.querySelector('#attCard .attsum-r').textContent.trim()]"""),
+          ["3 天 · 4 場", "75%"])
+
+    check("每個出場的人一列，順序與統計一致",
+          page.evaluate("""() => [...document.querySelectorAll('#attList .attrow-n')]
+              .map(e => e.textContent.trim())"""),
+          ["小明", "小美", "小華"])
+
+    check("翻車 0 的人不掛翻車標籤",
+          page.evaluate("""() => [...document.querySelectorAll('#attList .attrow')]
+              .map(r => !!r.querySelector('.attpill.bad'))"""),
+          [True, False, True])
+
+    check("軌道長度是出場、以出場最多的人為基準",
+          page.evaluate("""() => [...document.querySelectorAll('#attList .attrow-bar')]
+              .map(b => b.style.width)"""),
+          ["100%", "50%", "50%"])
+
+    check("填滿的部分是通關，露出的尾巴就是翻車",
+          page.evaluate("""() => [...document.querySelectorAll('#attList .attrow-fill')]
+              .map(f => f.style.width)"""),
+          ["75%", "100%", "50%"])
+
+    check("沒出場的人另外列成缺席名單",
+          page.evaluate("""() => {
+              const a = document.querySelector('#attList .attabs');
+              return [!!a, a.querySelector('b').textContent.trim(),
+                      [...a.querySelectorAll('span')].map(s => s.textContent.trim())];
+          }"""), [True, "1 人這段期間沒有出場", ["沒排到的人"]])
+
+    # --- 篩選 ---
+    page.click("#attFiltBtn")
+    page.wait_for_timeout(150)
+    page.fill("#attFrom", "2026-07-02")
+    page.fill("#attTo", "2026-07-02")
+    page.wait_for_timeout(300)
+
+    check("改日期會重算並在收合狀態下標示出來",
+          page.evaluate("""() => [
+              document.getElementById('attFiltText').textContent.trim(),
+              document.getElementById('attFiltBtn').classList.contains('on'),
+              document.getElementById('attFiltClear').hidden,
+              document.querySelector('#attCard .attsum-t').textContent.trim()]"""),
+          ["07/02", True, False, "1 天 · 2 場"])
+
+    page.click("#attFiltClear")
+    page.wait_for_timeout(300)
+    check("清除鈕一次回到全部日期",
+          page.evaluate("""() => [attFrom, attTo,
+              document.querySelector('#attCard .attsum-t').textContent.trim()]"""),
+          ["", "", "3 天 · 4 場"])
+
+    check("範圍內沒有場次時給空狀態而不是空白頁",
+          page.evaluate("""() => {
+              attFrom = '2030-01-01'; attTo = '2030-01-02'; renderAttend();
+              const r = [!!document.querySelector('#attList .emptystate'),
+                         document.getElementById('attCard').innerHTML.trim() === ''];
+              attFrom = ''; attTo = ''; renderAttend();
+              return r;
+          }"""), [True, True])
+
+    check("翻車標記改了之後，統計跟著變",
+          page.evaluate("""() => {
+              const before = attendanceStats('','').wiped;
+              state.schedule['2026-07-03'][0].wipe = true;
+              const after = attendanceStats('','');
+              const m1 = after.rows.find(r => r.memberId === 'm1');
+              state.schedule['2026-07-03'][0].wipe = false;
+              return [before, after.wiped, m1.runs, m1.cleared, m1.wiped];
+          }"""), [1, 2, 4, 2, 2])
+
+    seed(page)
+
+    # ---------- 分潤試算 ----------
+    print("\n[split] 分潤試算")
+
+    def seed_split():
+        """一天兩場（成員不同）＋一天翻車場，才測得出歸屬與翻車規則。"""
+        seed(page)
+        page.evaluate("""() => {
+            const mk = (id,name,wipe,ids) => ({id, name, capacity:12, wipe, videos:[], drops:[],
+                                               slots: ids.map(x => ({memberId:x}))});
+            state.schedule = {
+              '2026-07-01':[ mk('r1','RUN 1', false, ['m1','m2']),
+                             mk('r2','RUN 2', false, ['m2','m3']) ],
+              '2026-07-02':[ mk('r3','RUN 1', true,  ['m1','m2','m3']) ]
+            };
+            state.dayTimes = {'2026-07-01':'21:00','2026-07-02':'21:00'};
+            state.sales = [
+              {id:'s1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'r1', items:[]},
+              {id:'s2', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:600, runId:'r2', items:[]}
+            ];
+            curDate = '2026-07-02'; splFrom = ''; splTo = '';
+            persist(); render();
+        }""")
+        page.wait_for_timeout(150)
+
+    seed_split()
+
+    check("綁定場次的收入只分給那場的人",
+          page.evaluate("""() => {
+              const st = splitStats('','');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [st.totalTwd, by['小明'], by['小華'], by['小美'], st.fundTwd];
+          }"""), [1600, 500, 800, 300, 0])
+
+    check("每人金額加總 + 公基金 === 總收入",
+          page.evaluate("() => splitStats('','').balanced"), True)
+
+    check("未指定場次的舊交易，平均分攤給那天所有場次",
+          page.evaluate("""() => {
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'', items:[]}];
+              const st = splitStats('','');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [by['小明'], by['小華'], by['小美'], st.fundTwd, st.balanced];
+          }"""), [250, 500, 250, 0, True])
+
+    check("翻車場的收入不分潤，整筆進公基金並單獨列出",
+          page.evaluate("""() => {
+              state.sales = [{id:'s9', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runId:'r3', items:[]}];
+              const st = splitStats('','');
+              return [st.rows.length, st.wipedTwd, st.fundTwd, st.totalTwd, st.balanced];
+          }"""), [0, 900, 900, 900, True])
+
+    check("那天根本沒有場次的交易，列為無法歸屬",
+          page.evaluate("""() => {
+              state.sales = [{id:'s9', date:'2026-12-25', mode:'set', cur:'TWD', sets:1, price:500, runId:'', items:[]}];
+              const st = splitStats('','');
+              return [st.orphanTwd, st.fundTwd, st.rows.length, st.balanced];
+          }"""), [500, 500, 0, True])
+
+    check("runId 指到已經被刪掉的場次時，退回當天平均分攤而不是整筆消失",
+          page.evaluate("""() => {
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'已刪除的場次', items:[]}];
+              const st = splitStats('','');
+              return [st.rows.length, st.totalTwd - st.fundTwd, st.balanced];
+          }"""), [3, 1000, True])
+
+    check("除不盡時無條件捨去，零頭進公基金，帳仍然平",
+          page.evaluate("""() => {
+              // 1000 給 RUN 2 的兩個人除得盡；1001 給 RUN 1 的兩個人會剩 1
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1001, runId:'r1', items:[]}];
+              const st = splitStats('','');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [by['小明'], by['小華'], st.fundTwd, st.balanced];
+          }"""), [500, 500, 1, True])
+
+    check("金額有小數時用分計算，不會出現浮點誤差少一塊錢",
+          page.evaluate("""() => {
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:0.03, runId:'r1', items:[]}];
+              const st = splitStats('','');
+              // 3 分給 2 個人 = 各 1 分，都不到 1 元，全部被捨去進公基金
+              return [st.rows.every(r => r.twd === 0), st.fundTwd, st.balanced];
+          }"""), [True, 0.03, True])
+
+    check("大額除以奇數人時不會因為浮點誤差少算",
+          page.evaluate("""() => {
+              state.schedule['2026-07-01'][0].slots =
+                  ['m1','m2','m3'].map(x => ({memberId:x}));
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:70000000, runId:'r1', items:[]}];
+              const st = splitStats('','');
+              state.schedule['2026-07-01'][0].slots =
+                  ['m1','m2'].map(x => ({memberId:x}));
+              return [st.rows.map(r => r.twd), st.fundTwd, st.balanced];
+          }"""), [[23333333, 23333333, 23333333], 1, True])
+    # 每人被捨去 0.33 元共 0.99，加上場次層級除不盡剩的 0.01，公基金剛好 1 元
+
+    check("日期區間會夾住分潤範圍",
+          page.evaluate("""() => {
+              state.sales = [
+                {id:'a', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'r1', items:[]},
+                {id:'b', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runId:'r3', items:[]}];
+              const st = splitStats('2026-07-01','2026-07-01');
+              return [st.saleCount, st.totalTwd, st.wipedTwd];
+          }"""), [1, 1000, 0])
+
+    # --- 畫面 ---
+    seed_split()
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(250)
+    page.click('#aucSeg [data-sub="asplit"]')
+    page.wait_for_timeout(300)
+
+    check("拍賣頁有兩個子分頁，成交紀錄在前",
+          page.evaluate("""() => [...document.querySelectorAll('#aucSeg [data-sub]')]
+              .map(b => [b.dataset.sub, b.textContent])"""),
+          [["asales", "成交紀錄"], ["asplit", "分潤試算"]])
+
+    check("摘要卡把總收入、已分配、公基金三個數字都印出來",
+          page.evaluate("""() => [
+              document.querySelector('#splCard .attsum-r').textContent.trim(),
+              [...document.querySelectorAll('#splCard .attsum-k b')].map(b => b.textContent.trim())]"""),
+          ["1,600", ["1,600", "0"]])
+
+    check("每人一列，金額由大到小",
+          page.evaluate("""() => [...document.querySelectorAll('#splList .splrow')]
+              .map(r => [r.querySelector('.attrow-n').textContent.trim(),
+                         r.querySelector('.splamt').textContent.trim()])"""),
+          [["小華", "800"], ["小明", "500"], ["小美", "300"]])
+
+    check("公基金 0 的時候那一行還是要印，讓人自己驗算加總",
+          page.evaluate("""() => document.querySelector('#splCard').textContent.includes('公基金')"""),
+          True)
+
+    check("有翻車收入時多一行說明它去哪了",
+          page.evaluate("""() => {
+              state.sales.push({id:'sw', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runId:'r3', items:[]});
+              renderSplit();
+              const n = document.querySelector('#splCard .splnote');
+              state.sales.pop(); renderSplit();
+              return [!!n, n.textContent.includes('翻車'), n.textContent.includes('公基金')];
+          }"""), [True, True, True])
+
+    check("沒有交易時給空狀態並收起匯出鈕",
+          page.evaluate("""() => {
+              splFrom = '2030-01-01'; splTo = '2030-01-02'; renderSplit();
+              const r = [!!document.querySelector('#splList .emptystate'),
+                         document.getElementById('splShare').hidden];
+              splFrom = ''; splTo = ''; renderSplit();
+              return r;
+          }"""), [True, True])
+
+    # --- 匯出圖片 ---
+    check("分潤圖把三個數字放在同一張圖上，加起來驗得起來",
+          page.evaluate("""() => {
+              buildSplitExportNode();
+              const sum = [...document.querySelectorAll('#exportHost .ex-sp-sum b')]
+                  .map(b => b.textContent.trim());
+              const names = [...document.querySelectorAll('#exportHost .ex-sp-n')]
+                  .map(e => e.textContent.trim());
+              const foot = document.querySelectorAll('#exportHost .ex-sp-note').length;
+              document.getElementById('exportHost').innerHTML = '';
+              return [sum, names, foot];
+          }"""), [["1,600", "1,600", "0"], ["小華", "小明", "小美"], 1])
+
+    check("分潤圖的色值寫死淺色，深色模式下不會翻掉",
+          page.evaluate("""() => {
+              const prev = document.documentElement.getAttribute('data-theme');
+              document.documentElement.setAttribute('data-theme', 'dark');
+              buildSplitExportNode();
+              const c = getComputedStyle(document.querySelector('#exportHost .ex-sp-a')).color;
+              document.getElementById('exportHost').innerHTML = '';
+              if (prev) document.documentElement.setAttribute('data-theme', prev);
+              else document.documentElement.removeAttribute('data-theme');
+              return c;
+          }"""), "rgb(21, 23, 28)")
+
+    # --- 歸屬場次欄位 ---
+    page.click('#aucSeg [data-sub="asales"]')
+    page.wait_for_timeout(250)
+
+    check("記錄交易的下拉會列出今天的場次，預設未指定",
+          page.evaluate("""() => {
+              curDate = '2026-07-01';
+              state.schedule[todayKey()] = state.schedule['2026-07-01'];
+              renderSaleRunOptions();
+              const sel = document.getElementById('saleRun');
+              return [sel.value, [...sel.options].map(o => o.textContent)];
+          }"""),
+          ["", ["未指定（當天平均分攤）", "RUN 1", "RUN 2"]])
+
+    check("翻車的場次在下拉裡會標出來，避免不小心綁到不分潤的場次",
+          page.evaluate("""() => {
+              state.schedule[todayKey()][0].wipe = true;
+              renderSaleRunOptions();
+              const t = [...document.getElementById('saleRun').options].map(o => o.textContent);
+              state.schedule[todayKey()][0].wipe = false;
+              return t[1];
+          }"""), "RUN 1（翻車）")
+
+    check("7→8 遷移替舊交易補上空的 runId",
+          page.evaluate("""() => {
+              const old = {schemaVersion:7, members:[], roles:[], dayTimes:{}, schedule:{},
+                  sales:[{id:'x', date:'2026-01-01', mode:'set', cur:'TWD', sets:1, price:100, items:[]}]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [typeof m.sales[0].runId, m.sales[0].runId, m.schemaVersion === SCHEMA_VERSION];
+          }"""), ["string", "", True])
+
+    seed(page)
+
+    # ---------- 幣別拆分 ----------
+    print("\n[cur] 台幣／R 幣拆分")
+    seed(page)
+    page.evaluate("""() => {
+        state.sales = [
+          {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:2, price:1000, runId:'', items:[]},
+          {id:'t2', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:1500, runId:'', items:[]},
+          {id:'r1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:80000000, runId:'', items:[]}];
+        aucCur = 'TWD'; aucFrom = ''; aucTo = ''; splFrom = ''; splTo = '';
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(350)
+
+    check("8→9 遷移把 twd/rate 換成 cur/price，換算率不保留",
+          page.evaluate("""() => {
+              const old = {schemaVersion:8, members:[], roles:[], schedule:{}, dayTimes:{},
+                  sales:[{id:'z', date:'2026-01-01', mode:'set', sets:3, twd:100, rate:2, runId:'',
+                          items:[]},
+                         {id:'y', date:'2026-01-02', mode:'item', sets:0, twd:0, rate:2, runId:'',
+                          items:[{name:'威力隕石碎片', qty:5, twd:10}]}]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [m.sales[0].cur, m.sales[0].price, m.sales[0].twd === undefined,
+                      m.sales[0].rate === undefined,
+                      m.sales[1].items[0].price, m.sales[1].items[0].twd === undefined];
+          }"""), ["TWD", 100, True, True, 10, True])
+
+    check("成交紀錄只列出目前幣別的交易",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard .auc-t')]
+              .map(e => e.textContent.trim())"""),
+          ["1,500", "2,000"])
+
+    check("統計卡的金額只加總目前幣別",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
+              .map(c => [c.querySelector('.stat-k').textContent,
+                         c.querySelector('.stat-v').textContent])
+              .find(([k]) => k === '累計總額')[1]"""), "3,500")
+
+    check("換算率那張卡已經不存在了",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat-k')]
+              .map(e => e.textContent).includes('累計總 R 幣')"""), False)
+
+    # --- 切到 R 幣 ---
+    page.click('#aucCurSeg [data-cur="R"]')
+    page.wait_for_timeout(350)
+
+    check("切幣別後整頁跟著換：紀錄、統計、欄位標籤",
+          page.evaluate("""() => [
+              aucCur,
+              [...document.querySelectorAll('#saleList .auccard .auc-t')].map(e => e.textContent.trim()),
+              [...document.querySelectorAll('#saleCards .stat-k')].map(e => e.textContent)
+                  .filter(t => t.startsWith('累計總額')),
+              document.getElementById('salePriceLabel').textContent.trim(),
+              [...document.querySelectorAll('#aucCurSeg [data-cur]')]
+                  .map(b => b.getAttribute('aria-selected'))]"""),
+          ["R", ["80,000,000"], ["累計總額"], "每組價格（R 幣）", ["false", "true"]])
+
+    check("成交卡片的單位標的是那筆自己的幣別",
+          page.evaluate("""() => document.querySelector('#saleList .auccard .auc-u').textContent.trim()"""),
+          "R 幣")
+
+    # 切幣別時 salePrice 會被清成 null，接著由 renderSales 重新沿用「該幣別」上一筆的價格。
+    # 重點不是欄位變空，而是絕不能留著台幣的數字——那會記成一筆差好幾個數量級的 R 幣交易。
+    check("切幣別後每組價格重新沿用該幣別上一筆，不會殘留台幣數字",
+          page.evaluate("() => document.getElementById('salePrice').value"), "80000000")
+
+    check("新記錄的交易帶的是目前選的幣別",
+          page.evaluate("""() => {
+              document.getElementById('saleSets').value = '2';
+              salePrice = '5000000'; saleSets = '2';
+              document.getElementById('saleAdd').click();
+              const s = state.sales[state.sales.length - 1];
+              state.sales.pop(); persist();
+              return [s.cur, s.price, s.sets];
+          }"""), ["R", 5000000, 2])
+
+    # --- 分潤跟著幣別走 ---
+    page.evaluate("""() => {
+        const mk = (id,name,ids) => ({id, name, capacity:12, wipe:false, videos:[], drops:[],
+                                      slots: ids.map(x => ({memberId:x}))});
+        state.schedule = {'2026-07-01':[ mk('r1','RUN 1', ['m1','m2']) ]};
+        state.sales = [
+          {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runId:'r1', items:[]},
+          {id:'x1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:60000000, runId:'r1', items:[]}];
+        persist(); render();
+    }""")
+    page.wait_for_timeout(200)
+
+    check("兩種幣別各自成池，不會混在一起分",
+          page.evaluate("""() => {
+              const t = splitStats('','','TWD'), r = splitStats('','','R');
+              return [t.totalTwd, t.rows.map(x => x.twd), t.balanced,
+                      r.totalTwd, r.rows.map(x => x.twd), r.balanced];
+          }"""), [1000, [500, 500], True, 60000000, [30000000, 30000000], True])
+
+    check("分潤頁顯示的是目前幣別的池子",
+          page.evaluate("""() => {
+              aucCur = 'R'; renderSplit();
+              const a = document.querySelector('#splCard .attsum-r').textContent.trim();
+              aucCur = 'TWD'; renderSplit();
+              const b = document.querySelector('#splCard .attsum-r').textContent.trim();
+              return [a, b];
+          }"""), ["60,000,000", "1,000"])
+
+    check("分潤圖的標題標明幣別，貼到群組不會被誤讀",
+          page.evaluate("""() => {
+              aucCur = 'R'; buildSplitExportNode();
+              const h = document.querySelector('#exportHost .ex-h').textContent.trim();
+              document.getElementById('exportHost').innerHTML = '';
+              aucCur = 'TWD'; renderSplit();
+              return h.includes('R 幣');
+          }"""), True)
 
     seed(page)
 

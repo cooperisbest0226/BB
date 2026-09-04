@@ -44,10 +44,10 @@ function ensureMaterials(){
 }
 function renderView(v){
   if(v==='board'){ renderDates(); renderBoard(); renderBench(); }
-  else if(v==='members'){ renderMembers(); renderRoles(); }
+  else if(v==='members'){ renderMembers(); renderRoles(); renderAttend(); }
   else if(v==='stats'){ ensureMaterials(); }
   /* 材料掃描的結尾會順便叫 renderSales()，所以沒重算時才需要自己補一次 */
-  else if(v==='auction'){ if(!ensureMaterials()) renderSales(); }
+  else if(v==='auction'){ if(!ensureMaterials()) renderSales(); renderSaleRunOptions(); renderSplit(); }
   viewDirty[v]=false;
 }
 function renderActiveView(){

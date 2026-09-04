@@ -130,6 +130,7 @@ try{
     <div class="subseg" role="tablist" id="memberSeg" style="margin-top:4px">
       <button role="tab" aria-selected="true"  data-sub="mlist">成員列表</button>
       <button role="tab" aria-selected="false" data-sub="mroles">職業設定</button>
+      <button role="tab" aria-selected="false" data-sub="mattend">出場統計</button>
     </div>
 
     <div class="subview active" id="sub-mlist">
@@ -145,6 +146,32 @@ try{
         <div id="roleHeaderActions"></div>
       </div>
       <div id="roleList"></div>
+    </div>
+
+    <div class="subview" id="sub-mattend">
+      <!-- 篩選沿用材料頁那一套收合式的樣式，同一個 App 裡不要有第二種篩選長相 -->
+      <div class="matfilt-wrap">
+        <button class="matfilt" id="attFiltBtn" aria-expanded="false" aria-controls="attFiltBody">
+          <span class="matfilt-l">期間</span>
+          <span class="matfilt-v" id="attFiltText">全部日期</span>
+          <svg class="matfilt-c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <button class="matfilt-x" id="attFiltClear" aria-label="清除期間篩選" hidden>×</button>
+      </div>
+      <div class="matfilt-body" id="attFiltBody" hidden>
+        <div class="field-2 mat-range">
+          <div class="field"><label>從</label><input type="date" id="attFrom" aria-label="出場統計起始日期"></div>
+          <div class="field"><label>到</label><input type="date" id="attTo" aria-label="出場統計結束日期"></div>
+        </div>
+        <div class="preset-row">
+          <button class="gbtn" data-preset="today">今天</button>
+          <button class="gbtn" data-preset="week">本週</button>
+          <button class="gbtn" data-preset="month">本月</button>
+          <button class="gbtn" data-preset="all">全部</button>
+        </div>
+      </div>
+      <div id="attCard" style="margin-bottom:14px"></div>
+      <div id="attList"></div>
     </div>
   </section>
 
@@ -208,8 +235,19 @@ try{
 
   <!-- 拍賣：材料售出的試算與長期成交紀錄 -->
   <section class="view" id="view-auction">
-    <div class="sec"><span class="sec-t">拍賣</span><div class="sec-line"></div></div>
+    <div class="sec"><span class="sec-t">拍賣</span><div class="sec-line"></div>
+      <div class="curseg" role="tablist" id="aucCurSeg" aria-label="幣別">
+        <button role="tab" aria-selected="true"  data-cur="TWD">台幣</button>
+        <button role="tab" aria-selected="false" data-cur="R">R 幣</button>
+      </div>
+    </div>
 
+    <div class="subseg" role="tablist" id="aucSeg" style="margin-bottom:14px">
+      <button role="tab" aria-selected="true"  data-sub="asales">成交紀錄</button>
+      <button role="tab" aria-selected="false" data-sub="asplit">分潤試算</button>
+    </div>
+
+    <div class="subview active" id="sub-asales">
     <div class="salebox">
       <div class="subseg" role="tablist" id="saleModeSeg" style="margin-bottom:13px">
         <button role="tab" aria-selected="true"  data-mode="set">整組出售</button>
@@ -223,8 +261,8 @@ try{
           </label>
           <input type="number" id="saleSets" min="0" step="1" inputmode="numeric" aria-label="售出組數">
         </div>
-        <div class="field"><label>台幣（每組）</label>
-          <input type="number" id="saleTwd" min="0" step="any" inputmode="decimal" aria-label="每組台幣金額"></div>
+        <div class="field"><label id="salePriceLabel">每組價格（台幣）</label>
+          <input type="number" id="salePrice" min="0" step="any" inputmode="decimal" aria-label="每組價格"></div>
       </div>
 
       <div id="saleItemFields" hidden>
@@ -236,8 +274,9 @@ try{
         <datalist id="matNameList"></datalist>
       </div>
 
-      <div class="field"><label>遊戲 R 幣值（1 台幣 = ? R）</label>
-        <input type="number" id="saleRate" min="0" step="any" inputmode="decimal" aria-label="台幣兌遊戲幣匯率"></div>
+      <!-- 歸屬場次：同一天排兩場、成員不一樣的時候，不綁場次就分不出這筆錢該給誰 -->
+      <div class="field"><label>歸屬場次（今天）</label>
+        <select id="saleRun" aria-label="這筆交易算哪一場"><option value="">未指定（當天平均分攤）</option></select></div>
 
       <div class="calcout" id="saleOut"></div>
       <button class="gbtn accent" id="saleAdd" style="width:100%; margin-top:12px">記錄這筆交易</button>
@@ -272,6 +311,33 @@ try{
 
     <div class="sec" style="margin-top:16px"><span class="sec-t">成交紀錄</span><div class="sec-line"></div></div>
     <div id="saleList"></div>
+    </div>
+
+    <div class="subview" id="sub-asplit">
+      <div class="matfilt-wrap">
+        <button class="matfilt" id="splFiltBtn" aria-expanded="false" aria-controls="splFiltBody">
+          <span class="matfilt-l">期間</span>
+          <span class="matfilt-v" id="splFiltText">全部日期</span>
+          <svg class="matfilt-c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <button class="matfilt-x" id="splFiltClear" aria-label="清除期間篩選" hidden>×</button>
+      </div>
+      <div class="matfilt-body" id="splFiltBody" hidden>
+        <div class="field-2 mat-range">
+          <div class="field"><label>從</label><input type="date" id="splFrom" aria-label="分潤起始日期"></div>
+          <div class="field"><label>到</label><input type="date" id="splTo" aria-label="分潤結束日期"></div>
+        </div>
+        <div class="preset-row">
+          <button class="gbtn" data-splpreset="today">今天</button>
+          <button class="gbtn" data-splpreset="week">本週</button>
+          <button class="gbtn" data-splpreset="month">本月</button>
+          <button class="gbtn" data-splpreset="all">全部</button>
+        </div>
+      </div>
+      <div id="splCard" style="margin-bottom:14px"></div>
+      <div id="splList"></div>
+      <button class="gbtn accent" id="splShare" style="width:100%; margin-top:14px">匯出圖片</button>
+    </div>
   </section>
 </div>
 
@@ -313,6 +379,7 @@ try{
 <script src="./js/render.js"></script>
 <script src="./js/materials.js"></script>
 <script src="./js/auction.js"></script>
+<script src="./js/attend.js"></script>
 <script src="./js/assign.js"></script>
 <script src="./js/sheets.js"></script>
 <script src="./js/export.js"></script>

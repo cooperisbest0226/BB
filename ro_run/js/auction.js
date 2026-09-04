@@ -3,26 +3,30 @@
    請維持 index.html 裡的 <script> 排列順序。 */
 /* ── 售出計算 ─────────────────────────────────────────────
    兩種模式：
-   - 整組出售（set）：組數 × 每組台幣 = 總台幣
-   - 單品出售（item）：每列 數量 × 單價，全部加總 = 總台幣
-   兩者都再乘上遊戲 R 幣值換算成 R 幣。
+   - 整組出售（set）：組數 × 每組價格 = 總額
+   - 單品出售（item）：每列 數量 × 單價，全部加總 = 總額
+   每筆交易只有一種幣別（台幣或 R 幣），依當初實際怎麼成交的記錄，不做換算。
    「單一材料的歷史均價」只從單品交易算 —— 整組賣的總價沒辦法誠實拆到個別材料上，
    硬分攤出來的單價是推算的假數字，長期拿它當基準會誤導。 */
 function isItemSale(s){ return s.mode==='item'; }
 function saleItems(s){ return Array.isArray(s.items)?s.items:[]; }
-function itemAmount(it){ return (Number(it.qty)||0)*(Number(it.twd)||0); }
+function itemAmount(it){ return (Number(it.qty)||0)*(Number(it.price)||0); }
 function saleAmounts(s){
-  const twd = isItemSale(s)
+  const amt = isItemSale(s)
     ? saleItems(s).reduce((a,it)=>a+itemAmount(it),0)
-    : (Number(s.sets)||0)*(Number(s.twd)||0);
-  return {twd, r:twd*(Number(s.rate)||0)};
+    : (Number(s.sets)||0)*(Number(s.price)||0);
+  return {amt};
 }
+/* 幣別。舊碼可能沒有這個欄位（理論上遷移都補過了），一律退回台幣而不是丟錯，
+   因為分潤與統計寧可少算一筆也不該整頁掛掉。 */
+function saleCur(s){ return s&&s.cur==='R' ? 'R' : 'TWD'; }
+function curLabel(c){ return c==='R' ? 'R 幣' : '台幣'; }
 /* 單品交易沒有「組數」的概念，累計組數只算整組交易 */
 function saleSetCount(s){ return isItemSale(s) ? 0 : (Number(s.sets)||0); }
 function saleItemQty(s){ return isItemSale(s) ? saleItems(s).reduce((a,it)=>a+(Number(it.qty)||0),0) : 0; }
 
 /* 每組成交價（單價）。走勢圖與「高於／低於均價」都用這個值比，只對整組交易有意義。 */
-function saleUnit(s){ return Number(s.twd)||0; }
+function saleUnit(s){ return Number(s.price)||0; }
 function saleMonth(s){ return (s.date||'').slice(0,7); }
 function fmtMonth(mk){ const [y,m]=mk.split('-'); return `${y} 年 ${Number(m)} 月`; }
 
@@ -61,9 +65,12 @@ function vsAvg(unit, avg){
   return pct>0 ? ['up',`高於均價 ${pct.toFixed(0)}%`] : ['down',`低於均價 ${Math.abs(pct).toFixed(0)}%`];
 }
 
-/* 日期區間篩選：空字串代表那一端不設限 */
+/* 日期區間 + 幣別篩選：空字串代表那一端不設限。
+   幣別是硬條件，不是可選的篩選 —— 台幣與 R 幣沒有共同單位，
+   混在同一組統計裡算出來的均價與走勢都是假的。 */
 function aucMatches(s){
   const d=s.date||'';
+  if(saleCur(s)!==aucCur) return false;
   if(aucFrom && d<aucFrom) return false;
   if(aucTo   && d>aucTo)   return false;
   return true;
@@ -97,7 +104,7 @@ function renderSaleItemRows(force){
       <input class="itemrow-q num" type="number" min="0" step="1" inputmode="numeric"
              data-f="qty" data-i="${i}" placeholder="數量" value="${esc(String(it.qty??''))}">
       <input class="itemrow-p num" type="number" min="0" step="any" inputmode="decimal"
-             data-f="twd" data-i="${i}" placeholder="單價" value="${esc(String(it.twd??''))}">
+             data-f="price" data-i="${i}" placeholder="單價" value="${esc(String(it.price??''))}">
       <span class="itemrow-s num">${nf(itemAmount(it))}</span>
       <button class="salerow-x" data-itemdel="${i}" aria-label="刪除這一列">×</button>
     </div>`).join('');
@@ -132,34 +139,31 @@ function paintItemRowTotals(){
 /* 目前草稿的試算輸出（兩種模式共用） */
 function paintSaleOut(){
   const draft = saleMode==='item'
-    ? {mode:'item', items:saleDraftItems, rate:saleRate}
-    : {mode:'set', sets:saleSets, twd:saleTwd, rate:saleRate};
+    ? {mode:'item', items:saleDraftItems}
+    : {mode:'set', sets:saleSets, price:salePrice};
   const a=saleAmounts(draft);
   const src = saleMode==='item'
     ? `${saleDraftItems.filter(it=>itemAmount(it)>0).length} 項明細`
-    : `${nf(saleSets)} 組 × ${nf(saleTwd)}`;
-  document.getElementById('saleOut').innerHTML=`
-    <div class="calcline">總台幣 <em>${src}</em><b>${nf(a.twd)}</b></div>
-    <div class="calcline r">總遊戲 R 幣 <em>${nf(a.twd)} × ${nf(saleRate)}</em><b>${nf(a.r)}</b></div>`;
+    : `${nf(saleSets)} 組 × ${nf(salePrice)}`;
+  document.getElementById('saleOut').innerHTML=
+    `<div class="calcline">總額 <em>${src}</em><b>${nf(a.amt)}</b></div>`;
 }
 
 function renderSales(){
   const all=state.sales||[];
-  const last=all[all.length-1];
-  /* 沒動過的欄位：組數跟著目前可組成的組數走，台幣／R 幣值沿用上一筆。
-     「每組台幣」要沿用上一筆「整組」交易 —— 單品交易的 twd 是 0，抓到它會讓欄位變成 0。 */
-  const lastSet=[...all].reverse().find(x=>!isItemSale(x));
-  if(saleSets===null) saleSets=curSets;
-  if(saleTwd===null)  saleTwd = lastSet ? lastSet.twd : '';
-  if(saleRate===null) saleRate= last ? last.rate : '';
+  /* 沒動過的欄位：組數跟著目前可組成的組數走，每組價格沿用上一筆。
+     沿用的對象要同時滿足兩個條件：是「整組」交易（單品交易的 price 是 0，
+     抓到它欄位會變成 0），而且是「同一個幣別」（切到 R 幣卻帶入台幣價格更糟）。 */
+  const lastSet=[...all].reverse().find(x=>!isItemSale(x)&&saleCur(x)===aucCur);
+  if(saleSets===null)  saleSets=curSets;
+  if(salePrice===null) salePrice = lastSet ? lastSet.price : '';
 
-  const setsEl=document.getElementById('saleSets');
-  const twdEl=document.getElementById('saleTwd');
-  const rateEl=document.getElementById('saleRate');
-  setInputValue(setsEl, saleSets);
-  setInputValue(twdEl,  saleTwd);
-  setInputValue(rateEl, saleRate);
+  setInputValue(document.getElementById('saleSets'), saleSets);
+  setInputValue(document.getElementById('salePrice'), salePrice);
+  document.getElementById('salePriceLabel').textContent=`每組價格（${curLabel(aucCur)}）`;
   document.getElementById('saleLoad').textContent=`帶入目前組數 ${curSets}`;
+  document.querySelectorAll('#aucCurSeg [data-cur]').forEach(b=>
+    b.setAttribute('aria-selected',String(b.dataset.cur===aucCur)));
 
   document.querySelectorAll('#saleModeSeg [data-mode]').forEach(b=>
     b.setAttribute('aria-selected',String(b.dataset.mode===saleMode)));
@@ -174,20 +178,21 @@ function renderSales(){
   document.getElementById('aucFiltText').textContent=aucFilterLabel();
   const sales=all.filter(aucMatches);
 
-  /* 累計。平均每組台幣用「加權」算（總台幣 ÷ 總組數），不是把每筆單價直接平均 ——
+  /* 累計。平均每組價用「加權」算（總額 ÷ 總組數），不是把每筆單價直接平均 ——
      賣 100 組跟賣 1 組對均價的影響本來就不該一樣。 */
   const sum=sales.reduce((o,s)=>{ const x=saleAmounts(s);
-    o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); o.twd+=x.twd; o.r+=x.r; return o; },{sets:0,qty:0,twd:0,r:0});
+    o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); o.amt+=x.amt; return o; },{sets:0,qty:0,amt:0});
   const setSales=sales.filter(s=>!isItemSale(s));
-  const setTwd=setSales.reduce((a,s)=>a+saleAmounts(s).twd,0);
-  const avgUnit = sum.sets ? setTwd/sum.sets : 0;
+  const setAmt=setSales.reduce((a,s)=>a+saleAmounts(s).amt,0);
+  const avgUnit = sum.sets ? setAmt/sum.sets : 0;
+  /* 卡片標籤不重複幣別：頁面上方的幣別切換已經說了現在在看哪一種，
+     每張卡再掛一次「（台幣）」只是把標籤撐長。 */
   document.getElementById('saleCards').innerHTML=[
     ['交易次數', nf(sales.length)],
     ['累計售出組數', nf(sum.sets)],
     ['累計售出單品', nf(sum.qty)],
-    ['累計總台幣', nf(sum.twd)],
-    ['累計總 R 幣', nf(sum.r)],
-    ['平均每組台幣', nf(Math.round(avgUnit))],
+    ['累計總額', nf(sum.amt)],
+    ['平均每組', nf(Math.round(avgUnit))],
   ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
 
   renderSaleTrend(sales, setSales, avgUnit);
@@ -213,7 +218,7 @@ function renderSaleTrend(sales, setSales, avgUnit){
         <div class="trend-h">
           <div class="trend-hm">
             <div class="trend-k">最近一次整組成交價</div>
-            <div class="trend-v num">${nf(saleUnit(latest))}<small>台幣 / 組</small></div>
+            <div class="trend-v num">${nf(saleUnit(latest))}<small>${curLabel(aucCur)} / 組</small></div>
           </div>
           <span class="trend-badge ${cls}">${txt}</span>
         </div>
@@ -233,7 +238,7 @@ function renderSaleTrend(sales, setSales, avgUnit){
   sales.forEach(s=>{ const k=saleMonth(s); if(!k) return;
     const x=saleAmounts(s);
     byMon[k]=byMon[k]||{twd:0,n:0};
-    byMon[k].twd+=x.twd; byMon[k].n++; });
+    byMon[k].twd+=x.amt; byMon[k].n++; });
   const mons=Object.keys(byMon).sort().slice(-6);
   const mmax=Math.max(1,...mons.map(k=>byMon[k].twd));
 
@@ -258,7 +263,7 @@ function materialQuotes(sales){
   salesByDate(sales.filter(isItemSale)).forEach(({s})=>{
     saleItems(s).forEach(it=>{
       const name=(it.name||'').trim();
-      const qty=Number(it.qty)||0, unit=Number(it.twd)||0;
+      const qty=Number(it.qty)||0, unit=Number(it.price)||0;
       if(!name||qty<=0) return;
       const e=q[name]=q[name]||{name,qty:0,twd:0,n:0,lastUnit:0,lastDate:''};
       e.qty+=qty; e.twd+=qty*unit; e.n++;
@@ -308,7 +313,7 @@ function renderSaleLedger(sales, avgUnit){
   host.innerHTML=keys.map(k=>{
     const rows=groups[k].slice().reverse();             // 月份內也是新的在前
     const mt=rows.reduce((o,{s})=>{ const x=saleAmounts(s);
-      o.twd+=x.twd; o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); return o; },{twd:0,sets:0,qty:0});
+      o.twd+=x.amt; o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); return o; },{twd:0,sets:0,qty:0});
     const bits=[`${rows.length} 筆`];
     if(mt.sets) bits.push(`${nf(mt.sets)} 組`);
     if(mt.qty)  bits.push(`${nf(mt.qty)} 個單品`);
@@ -324,10 +329,9 @@ function renderSaleLedger(sales, avgUnit){
                               : vsAvg(saleUnit(s), avgUnit);
         const chips = item
           ? saleItems(s).filter(i=>(i.name||'').trim()&&Number(i.qty)>0)
-              .map(i=>`<span class="auc-chip" style="${msVars(matSeries(i.name))}">${esc(i.name)} ×${nf(i.qty)} @${nf(i.twd)}</span>`)
+              .map(i=>`<span class="auc-chip" style="${msVars(matSeries(i.name))}">${esc(i.name)} ×${nf(i.qty)} @${nf(i.price)}</span>`)
           : [`<span class="auc-chip">${nf(s.sets)} 組</span>`,
-             `<span class="auc-chip">每組 ${nf(s.twd)}</span>`];
-        chips.push(`<span class="auc-chip">幣值 ${nf(s.rate)}</span>`);
+             `<span class="auc-chip">每組 ${nf(s.price)}</span>`];
         return `<div class="auccard">
           <div class="auc-top">
             <span class="auc-lot num ${item?'item':''}">#${lot}</span>
@@ -337,8 +341,7 @@ function renderSaleLedger(sales, avgUnit){
             <button class="salerow-x" data-act="delSale" data-id="${s.id}" aria-label="刪除這筆交易">×</button>
           </div>
           <div class="auc-mid">
-            <span class="auc-t num">${nf(x.twd)}</span><span class="auc-u">台幣</span>
-            <span class="auc-r num">${nf(x.r)} R</span>
+            <span class="auc-t num">${nf(x.amt)}</span><span class="auc-u">${curLabel(saleCur(s))}</span>
           </div>
           <div class="auc-foot">${chips.join('')}</div>
         </div>`;
@@ -394,39 +397,51 @@ document.getElementById('aucTo').onchange  =e=>{ aucTo=e.target.value;   renderS
 
 /* 售出計算：欄位即時重算，不進 undo 堆疊（還沒按記錄的都只是試算） */
 const saleLive=(id,set)=>document.getElementById(id).oninput=e=>{ set(e.target.value); renderSales(); };
-saleLive('saleSets', v=>saleSets=v);
-saleLive('saleTwd',  v=>saleTwd=v);
-saleLive('saleRate', v=>saleRate=v);
+saleLive('saleSets',  v=>saleSets=v);
+saleLive('salePrice', v=>salePrice=v);
+
+/* 幣別切換：整個拍賣頁（統計、走勢、行情、成交紀錄、分潤）都跟著換。
+   切換時把「每組價格」清成 null，讓它重新沿用該幣別上一筆的價格 ——
+   留著台幣的數字再按記錄，就會記成一筆金額差好幾個數量級的 R 幣交易。 */
+document.querySelectorAll('#aucCurSeg [data-cur]').forEach(b=>b.onclick=()=>{
+  if(aucCur===b.dataset.cur) return;
+  aucCur=b.dataset.cur;
+  salePrice=null;
+  saleDraftItems.forEach(it=>it.price='');
+  renderSaleItemRows(true);
+  renderSales(); renderSplit();
+});
 document.getElementById('saleLoad').onclick=()=>{ saleSets=curSets; renderSales(); };
 
 /* 整組 / 單品模式切換 */
 document.querySelectorAll('#saleModeSeg [data-mode]').forEach(b=>b.onclick=()=>{
   saleMode=b.dataset.mode;
-  if(saleMode==='item'&&!saleDraftItems.length) saleDraftItems=[{name:'',qty:'',twd:''}];
+  if(saleMode==='item'&&!saleDraftItems.length) saleDraftItems=[{name:'',qty:'',price:''}];
   renderSaleItemRows(true);
   renderSales();
 });
 document.getElementById('saleItemAdd').onclick=()=>{
-  saleDraftItems.push({name:'',qty:'',twd:''});
+  saleDraftItems.push({name:'',qty:'',price:''});
   renderSaleItemRows(true); paintSaleOut();
 };
 
 document.getElementById('saleAdd').onclick=()=>{
-  const rate=Number(saleRate)||0;
+  const runId=document.getElementById('saleRun').value||'';
+  const cur=aucCur;
   if(saleMode==='item'){
     const items=saleDraftItems
-      .map(it=>({name:(it.name||'').trim(), qty:Number(it.qty)||0, twd:Number(it.twd)||0}))
+      .map(it=>({name:(it.name||'').trim(), qty:Number(it.qty)||0, price:Number(it.price)||0}))
       .filter(it=>it.name&&it.qty>0);
     if(!items.length)                    return toast('請至少填一列有名稱與數量的材料');
-    if(items.some(it=>it.twd<=0))        return toast('每一列都要填單價');
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'item',sets:0,twd:0,rate,items}); });
-    saleDraftItems=[{name:'',qty:'',twd:''}];
+    if(items.some(it=>it.price<=0))      return toast('每一列都要填單價');
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'item',cur,sets:0,price:0,runId,items}); });
+    saleDraftItems=[{name:'',qty:'',price:''}];
     renderSaleItemRows(true);
   } else {
-    const sets=Number(saleSets)||0, twd=Number(saleTwd)||0;
-    if(sets<=0)  return toast('請先填組數');
-    if(twd<=0)   return toast('請先填每組台幣');
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',sets,twd,rate,items:[]}); });
+    const sets=Number(saleSets)||0, price=Number(salePrice)||0;
+    if(sets<=0)   return toast('請先填組數');
+    if(price<=0)  return toast(`請先填每組${curLabel(cur)}`);
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,runId,items:[]}); });
   }
   toast('已記錄這筆交易');
 };
@@ -436,7 +451,7 @@ function saleSheet(id){
   const s=(state.sales||[]).find(x=>x.id===id); if(!s) return;
   const item=isItemSale(s);
   /* 在暫存副本上編輯，按取消就整份丟掉，不會動到已存的紀錄 */
-  const work=saleItems(s).map(it=>({name:it.name||'',qty:it.qty??'',twd:it.twd??''}));
+  const work=saleItems(s).map(it=>({name:it.name||'',qty:it.qty??'',price:it.price??''}));
 
   const body = item
     ? `<div class="itemhead"><span>材料明細</span>
@@ -444,12 +459,17 @@ function saleSheet(id){
        <div id="editItemRows"></div>
        <datalist id="editMatList">${allMaterialNames().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`
     : `<div class="field"><label>組數</label><input name="sets" type="number" min="0" step="1" inputmode="numeric" value="${esc(String(s.sets))}"></div>
-       <div class="field"><label>台幣（每組）</label><input name="twd" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.twd))}"></div>`;
+       <div class="field"><label>每組價格</label><input name="price" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.price))}"></div>`;
 
   sheet(item?'編輯單品交易':'編輯整組交易',`
     <div class="field"><label>日期</label><input name="date" type="date" value="${esc(s.date)}"></div>
+    <div class="field"><label>幣別</label>
+      <select name="cur" aria-label="這筆交易的幣別">
+        <option value="TWD"${saleCur(s)==='TWD'?' selected':''}>台幣</option>
+        <option value="R"${saleCur(s)==='R'?' selected':''}>R 幣</option>
+      </select></div>
+    <div class="field"><label>歸屬場次</label><select name="runId" aria-label="這筆交易算哪一場"></select></div>
     ${body}
-    <div class="field"><label>遊戲 R 幣值（1 台幣 = ? R）</label><input name="rate" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.rate))}"></div>
     <div class="sheet-foot">
       <button class="gbtn warn" data-s="del">刪除</button>
       <button class="gbtn" data-s="cancel">取消</button>
@@ -462,7 +482,7 @@ function saleSheet(id){
         <div class="itemrow" style="${msVars(matSeries(it.name||''))}">
           <input class="itemrow-n" list="editMatList" data-f="name" data-i="${i}" placeholder="材料名稱" value="${esc(it.name)}">
           <input class="itemrow-q num" type="number" min="0" step="1" inputmode="numeric" data-f="qty" data-i="${i}" placeholder="數量" value="${esc(String(it.qty))}">
-          <input class="itemrow-p num" type="number" min="0" step="any" inputmode="decimal" data-f="twd" data-i="${i}" placeholder="單價" value="${esc(String(it.twd))}">
+          <input class="itemrow-p num" type="number" min="0" step="any" inputmode="decimal" data-f="price" data-i="${i}" placeholder="單價" value="${esc(String(it.price))}">
           <span class="itemrow-s num">${nf(itemAmount(it))}</span>
           <button class="salerow-x" data-del="${i}" aria-label="刪除這一列">×</button>
         </div>`).join('')
@@ -477,23 +497,36 @@ function saleSheet(id){
       rowHost.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ work.splice(+b.dataset.del,1); paintRows(); });
     }
     paintRows();
+    /* 場次選單跟著日期走：改成別天之後，原本那天的場次已經不是合法選項了，
+       留著會存進一個對不到任何場次的 runId，分潤時只會被當成未指定，很難查。 */
+    const runSel=sh.querySelector('[name="runId"]');
+    function paintRuns(){
+      const d=sh.querySelector('[name="date"]').value||s.date;
+      const pts=ptsOf(d);
+      runSel.innerHTML=`<option value="">未指定（當天平均分攤）</option>`+
+        pts.map(p=>`<option value="${p.id}">${esc(p.name)}${isWipe(p)?'（翻車）':''}</option>`).join('');
+      runSel.value=pts.some(p=>p.id===s.runId)?s.runId:'';
+    }
+    paintRuns();
+    sh.querySelector('[name="date"]').onchange=paintRuns;
     const addBtn=sh.querySelector('[data-s="addRow"]');
     if(addBtn) addBtn.onclick=()=>{ work.push({name:'',qty:'',twd:''}); paintRows(); };
 
     sh.querySelector('[data-s="save"]').onclick=()=>{
       const date=sh.querySelector('[name="date"]').value||s.date;
-      const rate=Number(val(sh,'rate'))||0;
+      const runId=runSel.value||'';
+      const cur=sh.querySelector('[name="cur"]').value==='R'?'R':'TWD';
       if(item){
-        const items=work.map(it=>({name:(it.name||'').trim(), qty:Number(it.qty)||0, twd:Number(it.twd)||0}))
+        const items=work.map(it=>({name:(it.name||'').trim(), qty:Number(it.qty)||0, price:Number(it.price)||0}))
                         .filter(it=>it.name&&it.qty>0);
-        if(!items.length)             return toast('請至少填一列有名稱與數量的材料');
-        if(items.some(it=>it.twd<=0)) return toast('每一列都要填單價');
-        commit(()=>{ Object.assign(s,{date,rate,items}); });
+        if(!items.length)               return toast('請至少填一列有名稱與數量的材料');
+        if(items.some(it=>it.price<=0)) return toast('每一列都要填單價');
+        commit(()=>{ Object.assign(s,{date,cur,runId,items}); });
       } else {
-        const sets=Number(val(sh,'sets'))||0, twd=Number(val(sh,'twd'))||0;
-        if(sets<=0) return toast('請先填組數');
-        if(twd<=0)  return toast('請先填每組台幣');
-        commit(()=>{ Object.assign(s,{date,sets,twd,rate}); });
+        const sets=Number(val(sh,'sets'))||0, price=Number(val(sh,'price'))||0;
+        if(sets<=0)  return toast('請先填組數');
+        if(price<=0) return toast('請先填每組價格');
+        commit(()=>{ Object.assign(s,{date,sets,price,cur,runId}); });
       }
       closeSheet();
       toast('已更新交易明細');
@@ -521,5 +554,6 @@ function bindSeg(segId, viewHost){
 }
 bindSeg('matSeg','view-stats');      // 材料總計 / 組數試算 / 場次明細
 bindSeg('memberSeg','view-members'); // 成員列表 / 職業設定
+bindSeg('aucSeg','view-auction');    // 成交紀錄 / 分潤試算
 
 
