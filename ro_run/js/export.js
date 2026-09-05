@@ -118,12 +118,19 @@ async function exportImage(ks){
 function buildSplitExportNode(){
   const st=splitStats(splFrom,splTo,aucCur);
   const range=(splFrom||splTo) ? splFilterText() : '全部日期';
-  const rows=st.rows.map((r,i)=>`<div class="ex-sp-r">
-    <span class="ex-sp-i">${i+1}</span>
-    <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
-    <span class="ex-sp-s">分潤 ${r.shares} 場</span>
-    <span class="ex-sp-a">${nf(r.twd)}</span>
-  </div>`).join('');
+  /* 圖上標出誰領過了：貼到群組最常被問的就是「我領了沒」，
+     讓大家自己看比一個一個回答快。 */
+  const paidCount=st.rows.filter(r=>findPayout(r.memberId,splFrom,splTo,aucCur)).length;
+  const rows=st.rows.map((r,i)=>{
+    const p=findPayout(r.memberId,splFrom,splTo,aucCur);
+    return `<div class="ex-sp-r">
+      <span class="ex-sp-i">${i+1}</span>
+      <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
+      <span class="ex-sp-s">分潤 ${r.shares} 場</span>
+      ${p?`<span class="ex-sp-p">已領</span>`:''}
+      <span class="ex-sp-a">${nf(r.twd)}</span>
+    </div>`;
+  }).join('');
   const notes=[
     st.unassignedCount?`另有 ${st.unassignedCount} 筆共 ${nf(st.unassignedTwd)} 尚未指定歸屬場次，未列入`:'',
   ].filter(Boolean).map(t=>`<div class="ex-sp-note">${t}</div>`).join('');
@@ -134,7 +141,7 @@ function buildSplitExportNode(){
     <div class="ex-sp-sum">
       <span><b>${nf(st.totalTwd)}</b>總收入</span>
       <span><b>${st.sharedRuns}</b>場有收入</span>
-      <span><b>${st.rows.length}</b>人分潤</span>
+      <span><b>${paidCount}/${st.rows.length}</b>人已領</span>
     </div>
     <div class="ex-sp">${rows}</div>
     ${notes}

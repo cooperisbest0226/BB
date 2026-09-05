@@ -65,6 +65,7 @@ function renderAttend(){
   const filtering=!!(attFrom||attTo);
   document.getElementById('attFiltBtn').classList.toggle('on',filtering);
   document.getElementById('attFiltClear').hidden=!filtering;
+  paintPresets('#attFiltBody', attFrom, attTo, 'preset');
 
   const {rows,runs,wiped,days}=attendanceStats(attFrom,attTo);
   const cleared=runs-wiped;
@@ -134,11 +135,7 @@ function renderAttend(){
 
 /* ── 日期區間篩選 ───────────────────────────────────────── */
 function applyAttPreset(p){
-  const t=todayKey();
-  if(p==='today'){ attFrom=t; attTo=t; }
-  else if(p==='week'){ const d=parseYmd(t); const dow=(d.getDay()+6)%7; attFrom=shiftDate(t,-dow); attTo=shiftDate(t,6-dow); }
-  else if(p==='month'){ attFrom=t.slice(0,8)+'01'; const d=parseYmd(t); attTo=shiftDate(attFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1); }
-  else { attFrom=''; attTo=''; }
+  [attFrom,attTo]=presetRange(p);
   renderAttend();
 }
 document.getElementById('attFrom').onchange=e=>{ attFrom=e.target.value; renderAttend(); };
@@ -298,6 +295,7 @@ function renderSplit(){
   const filtering=!!(splFrom||splTo);
   document.getElementById('splFiltBtn').classList.toggle('on',filtering);
   document.getElementById('splFiltClear').hidden=!filtering;
+  paintPresets('#splFiltBody', splFrom, splTo, 'splpreset');
 
   const st=splitStats(splFrom,splTo,aucCur);
   const card=document.getElementById('splCard'), host=document.getElementById('splList');
@@ -320,35 +318,50 @@ function renderSplit(){
 
   /* 沒有公基金了：收入全數分完，加總精確等於總收入。
      所以摘要改成講「幾場有收入、幾人分潤」，那才是使用者要確認的事。 */
+  /* 領取進度放在摘要裡：發錢發到一半關掉 App 再打開，
+     第一眼要看得到「還有幾個人沒領」，而不是自己一列一列數。 */
+  const paid=st.rows.filter(r=>findPayout(r.memberId,splFrom,splTo,aucCur));
+  const paidSum=paid.reduce((a,r)=>a+r.twd,0);
   card.innerHTML=`<div class="attsum">
     <div class="attsum-h">
       <span class="attsum-t">${st.saleCount} 筆${curLabel(aucCur)}交易 · ${st.sharedRuns} 場有收入</span>
       <span class="attsum-r num">${nf(st.totalTwd)}</span>
     </div>
     <div class="attsum-b">
-      <span class="attsum-k"><b class="num">${st.rows.length}</b> 人分潤</span>
-      <span class="attsum-k">全數分配，加總等於總收入</span>
+      <span class="attsum-k"><b class="num">${paid.length}/${st.rows.length}</b> 人已領</span>
+      <span class="attsum-k"><b class="num">${nf(st.totalTwd-paidSum)}</b> 待發</span>
     </div>
+    ${st.rows.length&&paid.length===st.rows.length
+      ? `<div class="splnote done">這段期間的分潤都發完了</div>`:''}
   </div>`;
 
-  host.innerHTML=warn+st.rows.map((r,i)=>`<div class="attrow splrow">
-    <span class="attrow-i num">${i+1}</span>
-    <div class="attrow-m">
-      <div class="attrow-top">
-        <span class="attrow-n">${esc(memberName(r.memberId))}</span>
-        <span class="splamt num">${nf(r.twd)}</span>
+  host.innerHTML=warn+st.rows.map((r,i)=>{
+    const p=findPayout(r.memberId,splFrom,splTo,aucCur);
+    /* 發錢之後才補記交易的話，試算金額會跟當初發出去的不一樣。
+       這種差額一定要講，不然對帳時只會看到一個對不起來的數字。 */
+    const diff=p ? r.twd-p.twd : 0;
+    return `<div class="attrow splrow${p?' paid':''}">
+      <span class="attrow-i num">${i+1}</span>
+      <div class="attrow-m">
+        <div class="attrow-top">
+          <span class="attrow-n">${esc(memberName(r.memberId))}</span>
+          <span class="splamt num">${nf(r.twd)}</span>
+        </div>
+        <div class="attrow-sub">
+          <span class="attpill">分潤 ${r.shares} 場</span>
+          ${diff?`<span class="attpill bad">已發 ${nf(p.twd)}，差 ${nf(Math.abs(diff))}</span>`:''}
+          <button class="paidbtn${p?' on':''}" data-pay="${r.memberId}" data-amt="${r.twd}"
+            aria-pressed="${!!p}">${p?'✓ 已領':'標記已領'}</button>
+        </div>
       </div>
-      <div class="attrow-sub"><span class="attpill">分潤 ${r.shares} 場</span></div>
-    </div>
-  </div>`).join('');
+    </div>`;
+  }).join('');
+  host.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>
+    togglePayout(b.dataset.pay, Number(b.dataset.amt)||0));
 }
 
 function applySplPreset(p){
-  const t=todayKey();
-  if(p==='today'){ splFrom=t; splTo=t; }
-  else if(p==='week'){ const d=parseYmd(t); const dow=(d.getDay()+6)%7; splFrom=shiftDate(t,-dow); splTo=shiftDate(t,6-dow); }
-  else if(p==='month'){ splFrom=t.slice(0,8)+'01'; const d=parseYmd(t); splTo=shiftDate(splFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1); }
-  else { splFrom=''; splTo=''; }
+  [splFrom,splTo]=presetRange(p);
   renderSplit();
 }
 document.getElementById('splFrom').onchange=e=>{ splFrom=e.target.value; renderSplit(); };
@@ -415,11 +428,46 @@ function bindRunPicker(root, getIds, setIds){
   paint();
 }
 
-function renderSaleRunOptions(){
+function renderSaleRunOptions(collapse){
   /* 已經被刪掉的場次要濾掉，不然摘要會顯示一個對不到東西的數字 */
   const idx=runIndex();
   saleRunIds=saleRunIds.filter(id=>idx.has(id));
   const root=document.getElementById('saleRunPick');
+  /* 記完一筆之後要把展開中的勾選一起收掉。只清 saleRunIds 而不收面板的話，
+     畫面上那些勾還在，看起來像是「還沒清掉」。 */
+  if(collapse){
+    const btn=root.querySelector('[data-rp="btn"]'), body=root.querySelector('[data-rp="body"]');
+    btn.setAttribute('aria-expanded','false'); body.hidden=true; body.innerHTML='';
+  }
   bindRunPicker(root, ()=>saleRunIds, v=>{ saleRunIds=v; });
 }
 document.getElementById('splShare').onclick=()=>exportSplitImage();
+
+/* ── 領取紀錄 ─────────────────────────────────────────────
+   分潤算出來只是第一步，錢還要一個一個發。中間最常斷掉的就是「我發到誰了」，
+   尤其是拖到隔天才發完的時候。所以每個人可以單獨標記已領。
+
+   一筆紀錄綁住「誰 + 哪一段場次期間 + 哪種幣別」。換一個期間就是另一次結算，
+   標記自然不會沿用過去 —— 這是刻意的，不是漏掉。
+
+   金額也一起存：之後如果又補記了那段期間的交易，試算金額會變動，
+   但「當初實際發出去多少」不該跟著被改寫。兩個數字不一樣的時候要講出來，
+   那通常代表有一筆交易是在發錢之後才補進去的。 */
+function payoutKey(memberId,from,to,cur){
+  return `${memberId}|${from||''}|${to||''}|${cur}`;
+}
+function findPayout(memberId,from,to,cur){
+  const k=payoutKey(memberId,from,to,cur);
+  return (state.payouts||[]).find(x=>payoutKey(x.memberId,x.from,x.to,x.cur)===k)||null;
+}
+function togglePayout(memberId,twd){
+  const from=splFrom, to=splTo, cur=aucCur;
+  const hit=findPayout(memberId,from,to,cur);
+  commit(()=>{
+    state.payouts=state.payouts||[];
+    if(hit) state.payouts=state.payouts.filter(x=>x!==hit);
+    else state.payouts.push({id:uid(), memberId, from:from||'', to:to||'', cur, twd, ts:Date.now()});
+  });
+  renderSplit();
+  toast(hit?`${memberName(memberId)} 已取消領取標記`:`${memberName(memberId)} 標記為已領`);
+}

@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v60';
+const APP_VERSION='v61';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -135,7 +135,7 @@ function roJobIdByName(name){
 // 全新安裝時的預設狀態：不帶任何示範成員／RUN，職業清單直接套用四轉職業
 function seed(){
   const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
-  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[],dayTimes:{},
+  return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[],payouts:[],dayTimes:{},
     settings:{theme:'system',defaultTime:'20:00',defaultCap:12}};
 }
 
@@ -272,6 +272,12 @@ const MIGRATIONS=[
       delete s.runId;
     });
   },
+  /* 10 → 11：新增領取紀錄。分潤算出來之後，錢還要一個一個發出去，
+            中間常常斷在「我發到誰了」——尤其是隔天才發完的時候。
+            一筆紀錄綁住「誰、哪一段場次期間、哪種幣別、發了多少」，
+            金額一起存下來是刻意的：之後如果又補記了那段期間的交易，
+            試算金額會變，但實際發出去的數字不該跟著被改寫。 */
+  p=>{ if(!Array.isArray(p.payouts)) p.payouts=[]; },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
 

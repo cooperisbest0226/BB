@@ -176,6 +176,7 @@ function renderSales(){
   setInputValue(document.getElementById('aucFrom'), aucFrom);
   setInputValue(document.getElementById('aucTo'), aucTo);
   document.getElementById('aucFiltText').textContent=aucFilterLabel();
+  paintPresets('#aucFiltBody', aucFrom, aucTo, 'aucpreset');
   const sales=all.filter(aucMatches);
 
   /* 累計。平均每組價用「加權」算（總額 ÷ 總組數），不是把每筆單價直接平均 ——
@@ -349,12 +350,39 @@ function renderSaleLedger(sales, avgUnit){
     </div>`;
   }).join('');
 }
-function applyMatPreset(p){
+/* ── 日期快捷鈕 ───────────────────────────────────────────
+   四個篩選面板（材料、成交紀錄、出場統計、分潤）用的是同一套「今天／本週／本月／全部」。
+   原本各自寫一份，四份都要記得改；抽成共用的之後只有一個真相來源。 */
+function presetRange(p){
   const t=todayKey();
-  if(p==='today'){ matFrom=t; matTo=t; }
-  else if(p==='week'){ const d=parseYmd(t); const dow=(d.getDay()+6)%7; matFrom=shiftDate(t,-dow); matTo=shiftDate(t,6-dow); }
-  else if(p==='month'){ matFrom=t.slice(0,8)+'01'; const d=parseYmd(t); matTo=shiftDate(matFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1); }
-  else { matFrom=''; matTo=''; }
+  if(p==='today') return [t,t];
+  if(p==='week'){ const dow=(parseYmd(t).getDay()+6)%7; return [shiftDate(t,-dow), shiftDate(t,6-dow)]; }
+  if(p==='month'){
+    const from=t.slice(0,8)+'01', d=parseYmd(t);
+    return [from, shiftDate(from, new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1)];
+  }
+  return ['',''];
+}
+/* 目前的起訖日剛好等於哪一顆快捷鈕。手動挑的日期不會對到任何一顆，回傳 null，
+   這時四顆都不亮 —— 亮一顆不相干的比都不亮更誤導。 */
+function matchPreset(from,to){
+  return ['today','week','month','all'].find(p=>{
+    const [a,b]=presetRange(p);
+    return a===(from||'') && b===(to||'');
+  }) || null;
+}
+/* 把選中的那顆標起來。沒有這個的話，收合面板只看得到日期，
+   看不出「本週」是不是還套著。 */
+function paintPresets(sel, from, to, attr){
+  const hit=matchPreset(from,to);
+  document.querySelectorAll(`${sel} [data-${attr}]`).forEach(b=>{
+    const on=b.dataset[attr]===hit;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',String(on));
+  });
+}
+function applyMatPreset(p){
+  [matFrom,matTo]=presetRange(p);
   renderMaterials();
 }
 document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderMaterials(); };document.getElementById('matTo').onchange=e=>{ matTo=e.target.value; renderMaterials(); };
@@ -384,11 +412,7 @@ bindFilterToggle('aucFiltBtn','aucFiltBody');
 
 /* 成交紀錄的日期區間篩選 */
 function applyAucPreset(p){
-  const t=todayKey();
-  if(p==='today'){ aucFrom=t; aucTo=t; }
-  else if(p==='week'){ const d=parseYmd(t); const dow=(d.getDay()+6)%7; aucFrom=shiftDate(t,-dow); aucTo=shiftDate(t,6-dow); }
-  else if(p==='month'){ aucFrom=t.slice(0,8)+'01'; const d=parseYmd(t); aucTo=shiftDate(aucFrom,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-1); }
-  else { aucFrom=''; aucTo=''; }
+  [aucFrom,aucTo]=presetRange(p);
   renderSales();
 }
 document.querySelectorAll('#aucFiltBody [data-aucpreset]').forEach(b=>b.onclick=()=>applyAucPreset(b.dataset.aucpreset));
@@ -443,6 +467,12 @@ document.getElementById('saleAdd').onclick=()=>{
     if(price<=0)  return toast(`請先填每組${curLabel(cur)}`);
     commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,runIds,items:[]}); });
   }
+  /* 記完就把表單清乾淨。留著上一筆的組數與歸屬場次最危險：
+     下一筆很容易在沒注意的情況下沿用舊的歸屬，而那直接決定錢分給誰。
+     saleSets 設成 null 是讓它退回預設（帶入目前可組成的組數），
+     價格則是真的清空 —— 寧可每次重打，也不要記到一個沒看過的數字。 */
+  saleSets=null; salePrice=''; saleRunIds=[];
+  renderSales(); renderSaleRunOptions(true);
   toast('已記錄這筆交易');
 };
 

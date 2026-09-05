@@ -1361,3 +1361,36 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
   font-size:12px; line-height:1.75; color:var(--muted);
 }
 .splwarn b{display:block; font-size:12.5px; font-weight:650; color:var(--warn); margin-bottom:3px}
+
+/* 日期快捷鈕的選中狀態。收合起來只看得到日期字串，
+   看不出「本週」是不是還套著——不標的話等於每次都要自己心算對照。 */
+.preset-row .gbtn.on{
+  color:var(--accent); font-weight:650;
+  border-color:color-mix(in srgb, var(--accent) 45%, transparent);
+  background:var(--accent-soft);
+}
+
+/* ── 領取標記 ─────────────────────────────────────────────
+   發錢常常是分好幾次發完的，關掉 App 再回來要看得出發到哪了。 */
+.paidbtn{
+  margin-left:auto; flex:0 0 auto; cursor:pointer; position:relative;
+  font-size:10.5px; font-weight:650; line-height:1; padding:5px 10px; border-radius:99px;
+  border:1px solid var(--line-2); background:var(--surface-2); color:var(--muted);
+  transition:color .16s, border-color .16s, background .16s, transform .12s var(--ease);
+}
+.paidbtn::after{content:''; position:absolute; left:-6px; right:-6px; top:50%; height:44px; transform:translateY(-50%)}
+.paidbtn:active{transform:scale(.94)}
+.paidbtn.on{
+  color:var(--ok); border-color:color-mix(in srgb, var(--ok) 42%, transparent);
+  background:color-mix(in srgb, var(--ok) 12%, transparent);
+}
+/* 已領的整列壓低存在感，剩下沒發的才是要處理的事 */
+.splrow.paid{background:var(--surface-2); border-style:dashed}
+.splrow.paid .splamt,.splrow.paid .attrow-n{color:var(--faint)}
+.splnote.done{color:var(--ok); border-top-color:color-mix(in srgb, var(--ok) 30%, transparent)}
+/* 匯出圖固定白底，色值一律寫死不吃主題變數 */
+.ex-sp-p{
+  font-size:10px; font-weight:700; line-height:1; letter-spacing:.3px;
+  color:#0a7a5c; background:#dff5ec; border:1px solid #b6e3d3;
+  padding:3px 6px; border-radius:99px;
+}

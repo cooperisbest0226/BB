@@ -453,8 +453,14 @@ def run(page):
 
     page.click('#saleModeSeg [data-mode="set"]')
     page.wait_for_timeout(200)
-    check("每組台幣沿用上一筆整組交易，不會被單品交易的 0 蓋掉",
-          page.evaluate("() => document.getElementById('salePrice').value"), "100")
+    # 記錄完就清空：留著上一筆的組數與歸屬場次最危險，
+    # 下一筆很容易在沒注意的情況下沿用舊的歸屬，而那直接決定錢分給誰。
+    check("記錄完一筆之後，組數、價格、歸屬場次都清乾淨",
+          page.evaluate("""() => [document.getElementById('salePrice').value,
+              saleRunIds.length,
+              document.querySelector('#saleRunPick [data-rp="btn"]').textContent.trim(),
+              document.querySelector('#saleRunPick [data-rp="body"]').hidden]"""),
+          ["", 0, "未指定（當天平均分攤）", True])
 
     # ---------- 拍賣：日期區間篩選 ----------
     print("\n[auction] 成交紀錄日期區間篩選")
@@ -2601,7 +2607,7 @@ def run(page):
               document.querySelector('#splCard .attsum-r').textContent.trim(),
               document.querySelector('#splCard .attsum-t').textContent.trim(),
               [...document.querySelectorAll('#splCard .attsum-k b')].map(b => b.textContent.trim())]"""),
-          ["1,600", "2 筆台幣交易 · 2 場有收入", ["3"]])
+          ["1,600", "2 筆台幣交易 · 2 場有收入", ["0/3", "1,600"]])
 
     check("每人一列，金額由大到小",
           page.evaluate("""() => [...document.querySelectorAll('#splList .splrow')]
@@ -2615,7 +2621,7 @@ def run(page):
               const t = document.querySelector('#splCard').textContent;
               const sum = [...document.querySelectorAll('#splList .splamt')]
                   .reduce((a,e) => a + Number(e.textContent.replace(/,/g,'')), 0);
-              return [t.includes('公基金'), t.includes('加總等於總收入'), sum];
+              return [t.includes('公基金'), t.includes('待發'), sum];
           }"""), [False, True, 1600])
 
     check("指到翻車場的收入會變成未歸屬警示，而不是靜靜進公基金",
@@ -2669,7 +2675,7 @@ def run(page):
               const foot = document.querySelectorAll('#exportHost .ex-sp-note').length;
               document.getElementById('exportHost').innerHTML = '';
               return [sum, names, foot];
-          }"""), [["1,600", "2", "3"], ["小華", "小明", "小美"], 1])
+          }"""), [["1,600", "2", "0/3"], ["小華", "小明", "小美"], 1])
 
     check("分潤圖的色值寫死淺色，深色模式下不會翻掉",
           page.evaluate("""() => {
@@ -2924,7 +2930,7 @@ def run(page):
     check("每一筆更新紀錄都有日期與至少一條變更，標籤都是合法的",
           page.evaluate("""() => {
               const ok = ['add','fix','imp','chg','rm'];
-              return CHANGELOG.every(e => /^\d{4}\/\d{2}\/\d{2}$/.test(e.d)
+              return CHANGELOG.every(e => /^[0-9]{4}\\/[0-9]{2}\\/[0-9]{2}$/.test(e.d)
                   && Array.isArray(e.c) && e.c.length > 0
                   && e.c.every(([tag, txt]) => ok.includes(tag) && txt.length > 0));
           }"""), True)
@@ -2934,6 +2940,153 @@ def run(page):
               const have = new Set(CHANGELOG.map(e => e.v));
               return ['v53','v54','v55','v56','v57','v59','v60'].filter(v => !have.has(v));
           }"""), [])
+
+    # ---------- 領取紀錄 ----------
+    print("\n[payout] 分潤領取標記")
+    seed_split()
+    page.evaluate("""() => {
+        state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
+                        sets:1, price:1000, runIds:['r1'], items:[]}];
+        state.payouts = []; splFrom = ''; splTo = ''; aucCur = 'TWD';
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(250)
+    page.click('#aucSeg [data-sub="asplit"]')
+    page.wait_for_timeout(350)
+
+    check("10→11 遷移補上空的領取紀錄清單",
+          page.evaluate("""() => {
+              const old = {schemaVersion:10, members:[], roles:[], schedule:{}, dayTimes:{}, sales:[]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [Array.isArray(m.payouts), m.payouts.length,
+                      m.schemaVersion === SCHEMA_VERSION];
+          }"""), [True, 0, True])
+
+    check("預設沒有人領過，摘要顯示待發等於總收入",
+          page.evaluate("""() => [
+              [...document.querySelectorAll('#splCard .attsum-k b')].map(b => b.textContent.trim()),
+              [...document.querySelectorAll('#splList .paidbtn')].map(b => b.textContent.trim())]"""),
+          [["0/2", "1,000"], ["標記已領", "標記已領"]])
+
+    page.locator("#splList .paidbtn").first.click()
+    page.wait_for_timeout(300)
+
+    check("標記已領會存成紀錄，並記下當時發出去的金額",
+          page.evaluate("""() => {
+              const p = state.payouts[0];
+              return [state.payouts.length, p.cur, p.from, p.to, p.twd,
+                      p.memberId === splitStats('','','TWD').rows[0].memberId];
+          }"""), [1, "TWD", "", "", 500, True])
+
+    check("已領的那一列會標起來，摘要跟著更新",
+          page.evaluate("""() => [
+              document.querySelector('#splList .splrow').classList.contains('paid'),
+              document.querySelector('#splList .paidbtn').textContent.trim(),
+              [...document.querySelectorAll('#splCard .attsum-k b')].map(b => b.textContent.trim())]"""),
+          [True, "✓ 已領", ["1/2", "500"]])
+
+    page.locator("#splList .paidbtn").nth(1).click()
+    page.wait_for_timeout(300)
+    check("全部發完會另外提示",
+          page.evaluate("""() => [
+              !!document.querySelector('#splCard .splnote.done'),
+              document.querySelector('#splCard .splnote.done').textContent.includes('發完')]"""),
+          [True, True])
+
+    check("再點一次可以取消標記",
+          page.evaluate("""() => {
+              document.querySelector('#splList .paidbtn').click();
+              return [state.payouts.length,
+                      document.querySelector('#splList .splrow').classList.contains('paid')];
+          }"""), [1, False])
+
+    check("換一個期間就是另一次結算，標記不會沿用過去",
+          page.evaluate("""() => {
+              const all = [...document.querySelectorAll('#splList .paidbtn')]
+                  .map(b => b.textContent.trim());
+              splFrom = '2026-07-01'; splTo = '2026-07-01'; renderSplit();
+              const ranged = [...document.querySelectorAll('#splList .paidbtn')]
+                  .map(b => b.textContent.trim());
+              splFrom = ''; splTo = ''; renderSplit();
+              return [all.includes('✓ 已領'), ranged.every(t => t === '標記已領')];
+          }"""), [True, True])
+
+    check("發錢之後才補記交易，會標出試算金額與實際發出去的差額",
+          page.evaluate("""() => {
+              // 已領的那位當初拿 500，現在補一筆交易讓試算變成 750
+              state.sales.push({id:'s2', date:'2026-07-01', mode:'set', cur:'TWD',
+                                sets:1, price:500, runIds:['r1'], items:[]});
+              renderSplit();
+              const pill = document.querySelector('#splList .splrow.paid .attpill.bad');
+              const kept = state.payouts[0].twd;
+              state.sales.pop(); renderSplit();
+              return [!!pill, pill.textContent.includes('已發 500'),
+                      pill.textContent.includes('差 250'), kept];
+          }"""), [True, True, True, 500])
+
+    check("匯出圖也標出已領，摘要改成幾人已領",
+          page.evaluate("""() => {
+              buildSplitExportNode();
+              const sum = [...document.querySelectorAll('#exportHost .ex-sp-sum b')]
+                  .map(b => b.textContent.trim());
+              const paid = document.querySelectorAll('#exportHost .ex-sp-p').length;
+              document.getElementById('exportHost').innerHTML = '';
+              return [sum[2], paid];
+          }"""), ["1/2", 1])
+
+    # ---------- 日期快捷鈕選中狀態 ----------
+    print("\n[preset] 日期快捷鈕")
+
+    check("按下本月會把那顆標起來，其他三顆不亮",
+          page.evaluate("""() => {
+              applySplPreset('month');
+              return [...document.querySelectorAll('#splFiltBody [data-splpreset]')]
+                  .map(b => [b.dataset.splpreset, b.classList.contains('on'),
+                             b.getAttribute('aria-pressed')]);
+          }"""),
+          [["today", False, "false"], ["week", False, "false"],
+           ["month", True, "true"], ["all", False, "false"]])
+
+    check("手動挑一段不對應任何快捷鈕的日期時，四顆都不亮",
+          page.evaluate("""() => {
+              splFrom = '2026-03-03'; splTo = '2026-03-09'; renderSplit();
+              const on = [...document.querySelectorAll('#splFiltBody [data-splpreset].on')].length;
+              splFrom = ''; splTo = ''; renderSplit();
+              return on;
+          }"""), 0)
+
+    check("清空日期等於「全部」，那一顆會亮",
+          page.evaluate("""() => document.querySelector('#splFiltBody [data-splpreset="all"]')
+              .classList.contains('on')"""), True)
+
+    check("四個篩選面板吃同一套快捷鈕邏輯",
+          page.evaluate("""() => {
+              const t = todayKey();
+              return [presetRange('today')[0] === t, matchPreset(t, t),
+                      matchPreset('', ''), matchPreset('2026-03-03', '2026-03-09')];
+          }"""), [True, "today", "all", None])
+
+    check("材料頁與成交紀錄的快捷鈕也會標示選中",
+          page.evaluate("""() => {
+              applyMatPreset('week');  applyAucPreset('today');
+              const pick = (sel, attr) => [...document.querySelectorAll(`${sel} [data-${attr}].on`)]
+                  .map(b => b.dataset[attr]);
+              const r = [pick('#matFiltBody','preset'), pick('#aucFiltBody','aucpreset')];
+              applyMatPreset('all'); applyAucPreset('all');
+              return r;
+          }"""), [["week"], ["today"]])
+
+    check("出場統計的快捷鈕同樣會標示",
+          page.evaluate("""() => {
+              applyAttPreset('month');
+              const on = [...document.querySelectorAll('#attFiltBody [data-preset].on')]
+                  .map(b => b.dataset.preset);
+              applyAttPreset('all');
+              return on;
+          }"""), ["month"])
+
+    seed(page)
 
     # ---------- 幣別拆分 ----------
     print("\n[cur] 台幣／R 幣拆分")

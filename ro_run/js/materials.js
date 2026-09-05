@@ -120,6 +120,7 @@ function renderMaterials(){
   const filtering=!!(matFrom||matTo||matRunName);
   document.getElementById('matFiltBtn').classList.toggle('on',filtering);
   document.getElementById('matFiltClear').hidden=!filtering;
+  paintPresets('#matFiltBody', matFrom, matTo, 'preset');
 
   const entries=[];
   Object.keys(state.schedule).sort().forEach(k=>{
