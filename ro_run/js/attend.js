@@ -176,20 +176,27 @@ function runIndex(){
 
 function splitStats(from,to,cur){
   cur=cur||'TWD';
+  const idx=runIndex();
   /* 幣別是硬條件：台幣跟 R 幣沒有共同單位，丟進同一個池子分出來的金額毫無意義。
      兩種幣別各自成池、各自平帳，頁面一次只呈現一種。 */
-  const inRange=s=>{ const d=s.date||'';
-    return saleCur(s)===cur && (!from||d>=from) && (!to||d<=to); };
-  const sales=(state.sales||[]).filter(inRange);
+  const sales=(state.sales||[]).filter(s=>saleCur(s)===cur);
+  const inRange=d=>(!from||d>=from)&&(!to||d<=to);
 
-  let totalCents=0;
-  sales.forEach(s=>{ totalCents+=toCents(saleAmounts(s).amt); });
-
-  /* 第一步：把每一筆錢攤到場次上（單位：分） */
-  const idx=runIndex();
+  /* 第一步：把每一筆錢攤到場次上（單位：分）。
+     這裡「不」先套日期區間 —— 區間要篩的是場次，不是交易。
+     九月賣掉八月打的材料，那筆錢屬於八月那幾場；材料什麼時候掛上拍賣場
+     是記帳的時間點，不該決定它算哪個月的分潤。 */
   const runPool=new Map();          // ptId -> 分
-  let orphanCents=0;                // 找不到任何場次可以歸屬
-  const addPool=(id,c)=>runPool.set(id,(runPool.get(id)||0)+c);
+  const runSales=new Map();         // ptId -> Set(交易 id)，用來算區間內有幾筆交易
+  /* 完全掛不到任何場次的交易。這種錢不屬於任何一段「場次期間」，
+     所以不併進任何區間的總額，也不偷偷倒進公基金 —— 那會讓某個期間
+     莫名其妙多出一筆錢。改成單獨列出來提醒使用者回去指定歸屬。 */
+  let unassignedCents=0, unassignedCount=0;
+  const addPool=(id,c,sid)=>{
+    runPool.set(id,(runPool.get(id)||0)+c);
+    if(!runSales.has(id)) runSales.set(id,new Set());
+    runSales.get(id).add(sid);
+  };
 
   sales.forEach(s=>{
     const cents=toCents(saleAmounts(s).amt);
@@ -198,28 +205,33 @@ function splitStats(from,to,cur){
        已經被刪掉的場次要濾掉，不然那份錢會攤給一個不存在的 id 然後消失。 */
     let targets=(Array.isArray(s.runIds)?s.runIds:[])
       .map(id=>idx.get(id)).filter(Boolean).map(e=>e.pt);
-    /* 沒指定就退回原本的語意：當天所有場次平均分攤 */
-    if(!targets.length) targets=ptsOf(s.date||'');
-    if(!targets.length){ orphanCents+=cents; return; }
-    /* 攤到場次也可能除不盡，零頭直接進公基金，不要偷偷塞給第一場 */
-    const each=Math.floor(cents/targets.length);
-    targets.forEach(p=>addPool(p.id,each));
-    orphanCents+=cents-each*targets.length;
+    /* 沒指定就退回「當天平均分攤」，但只攤給通關的場次。
+       翻車那場沒有掉落物、什麼也沒貢獻，讓它跟著吃一份等於把當天
+       五分之一的收入丟進公基金，其他四場實際打完的人白白少拿。 */
+    if(!targets.length) targets=ptsOf(s.date||'').filter(isCleared);
+    if(!targets.length){ unassignedCents+=cents; unassignedCount++; return; }
+    /* 除不盡的分不做「零頭進公基金」：那個零頭沒有日期，套區間時會算不平。
+       改成一分一分發給前幾場，每一分都落在某一場身上，帳自然對得起來。
+       偏差上限是每場 1 分，可以忽略。 */
+    const base=Math.floor(cents/targets.length);
+    let rem=cents-base*targets.length;
+    targets.forEach(p=>{ addPool(p.id, base+(rem-->0?1:0), s.id); });
   });
 
-  /* 第二步：每一場各自分給那場的人。
-     這裡直接走 runPool 而不是照日期迭代 —— 日期區間篩的是「收入」，不是「場次」。
-     七月賣掉的材料可能是六月打的，那筆錢本來就該回到六月那場的人身上。 */
+  /* 第二步：只取「區間內的場次」，各自分給那場的人 */
   const per=new Map();              // memberId -> 分
   const runsPer=new Map();          // memberId -> 實際分到錢的場次數
-  let fundCents=orphanCents, wipedCents=0, sharedRuns=0;
+  const saleIds=new Set();
+  let totalCents=0, fundCents=0, wipedCents=0, sharedRuns=0;
   runPool.forEach((pool,ptId)=>{
-    if(pool<=0) return;
     const e=idx.get(ptId);
-    if(!e){ fundCents+=pool; return; }
-    const pt=e.pt;
-    if(isWipe(pt)){ wipedCents+=pool; fundCents+=pool; return; }
-    const ids=[...new Set(pt.slots.map(x=>x.memberId).filter(Boolean))];
+    if(!e || !inRange(e.date)) return;
+    (runSales.get(ptId)||[]).forEach(id=>saleIds.add(id));
+    totalCents+=pool;
+    if(pool<=0) return;
+    /* 明確被選中的翻車場：錢不會憑空消失，整筆進公基金並單獨列出來 */
+    if(isWipe(e.pt)){ wipedCents+=pool; fundCents+=pool; return; }
+    const ids=[...new Set(e.pt.slots.map(x=>x.memberId).filter(Boolean))];
     if(!ids.length){ fundCents+=pool; return; }   // 有錢沒人，只能進公基金
     sharedRuns++;
     const each=Math.floor(pool/ids.length);
@@ -249,8 +261,9 @@ function splitStats(from,to,cur){
     totalTwd:totalCents/100,
     fundTwd:fundCents/100,
     wipedTwd:wipedCents/100,
-    orphanTwd:orphanCents/100,
-    saleCount:sales.length,
+    saleCount:saleIds.size,
+    unassignedTwd:unassignedCents/100,
+    unassignedCount,
     sharedRuns,
     /* 帳一定要平：每人金額加總 + 公基金 === 總收入。測試盯著這條。 */
     balanced:rows.reduce((a,r)=>a+r.twd*100,0)+fundCents===totalCents,
@@ -278,9 +291,18 @@ function renderSplit(){
   const card=document.getElementById('splCard'), host=document.getElementById('splList');
   document.getElementById('splShare').hidden=!st.rows.length;
 
+  /* 沒指定歸屬、當天又沒有通關場次的交易，掛不到任何一段期間上。
+     這種錢最容易被漏掉：畫面只會顯示「沒有交易」，但錢其實躺在那裡。
+     一定要主動講出來，而且要講清楚怎麼修。 */
+  const warn = st.unassignedCount
+    ? `<div class="splwarn"><b>${st.unassignedCount} 筆交易還沒指定歸屬場次</b>
+        共 ${nf(st.unassignedTwd)}，因為找不到對應的場次，不會出現在任何期間的分潤裡。
+        到「成交紀錄」點那幾筆的編輯鈕，把歸屬場次選起來就會納入計算。</div>`
+    : '';
+
   if(!st.saleCount){
     card.innerHTML='';
-    host.innerHTML=`<div class="emptystate"><b>這個範圍沒有${curLabel(aucCur)}交易</b>換一個期間或幣別，或先到「成交紀錄」記幾筆。</div>`;
+    host.innerHTML=warn+`<div class="emptystate"><b>這個場次期間沒有${curLabel(aucCur)}收入</b>換一個期間或幣別，或先到「成交紀錄」記幾筆。</div>`;
     return;
   }
 
@@ -297,10 +319,9 @@ function renderSplit(){
       <span class="attsum-k"><b class="num">${nf(st.fundTwd)}</b> 公基金</span>
     </div>
     ${st.wipedTwd>0?`<div class="splnote">其中 ${nf(st.wipedTwd)} 來自翻車場，依規則不分潤，已計入公基金</div>`:''}
-    ${st.orphanTwd>0?`<div class="splnote">其中 ${nf(st.orphanTwd)} 那天沒有任何場次可歸屬，已計入公基金</div>`:''}
   </div>`;
 
-  host.innerHTML=st.rows.map((r,i)=>`<div class="attrow splrow">
+  host.innerHTML=warn+st.rows.map((r,i)=>`<div class="attrow splrow">
     <span class="attrow-i num">${i+1}</span>
     <div class="attrow-m">
       <div class="attrow-top">

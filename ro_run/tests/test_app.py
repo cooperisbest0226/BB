@@ -2518,12 +2518,16 @@ def run(page):
               return [st.rows.length, st.wipedTwd, st.fundTwd, st.totalTwd, st.balanced];
           }"""), [0, 900, 900, 900, True])
 
-    check("那天根本沒有場次的交易，列為無法歸屬",
+    # 掛不到任何場次的交易不併進任何期間，也不倒進公基金——
+    # 那會讓某個期間莫名多出一筆錢。改成單獨列出來提醒使用者回去指定。
+    check("那天沒有場次的交易列為未歸屬，不併進總額也不進公基金",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-12-25', mode:'set', cur:'TWD', sets:1, price:500, runIds:[], items:[]}];
-              const st = splitStats('','');
-              return [st.orphanTwd, st.fundTwd, st.rows.length, st.balanced];
-          }"""), [500, 500, 0, True])
+              state.sales = [{id:'s9', date:'2026-12-25', mode:'set', cur:'TWD', sets:1,
+                              price:500, runIds:[], items:[]}];
+              const st = splitStats('','','TWD');
+              return [st.unassignedCount, st.unassignedTwd, st.totalTwd,
+                      st.fundTwd, st.rows.length, st.saleCount, st.balanced];
+          }"""), [1, 500, 0, 0, 0, 0, True])
 
     check("runId 指到已經被刪掉的場次時，退回當天平均分攤而不是整筆消失",
           page.evaluate("""() => {
@@ -2608,14 +2612,33 @@ def run(page):
               return [!!n, n.textContent.includes('翻車'), n.textContent.includes('公基金')];
           }"""), [True, True, True])
 
+    check("有未歸屬的交易時，就算該期間沒收入也要講出來並說明怎麼修",
+          page.evaluate("""() => {
+              const keep = state.sales;
+              // 記帳日當天沒有場次、又沒指定歸屬 —— 錢在那裡但掛不到任何期間
+              state.sales = [{id:'u1', date:'2026-12-25', mode:'set', cur:'TWD', sets:1,
+                              price:5000, runIds:[], items:[]}];
+              splFrom = '2026-07-01'; splTo = '2026-07-31'; renderSplit();
+              const w = document.querySelector('#splList .splwarn');
+              const r = [!!w, w.textContent.includes('5,000'),
+                         w.textContent.includes('歸屬場次'),
+                         !!document.querySelector('#splList .emptystate')];
+              state.sales = keep; splFrom = ''; splTo = ''; renderSplit();
+              return r;
+          }"""), [True, True, True, True])
+
     check("沒有交易時給空狀態並收起匯出鈕",
           page.evaluate("""() => {
               splFrom = '2030-01-01'; splTo = '2030-01-02'; renderSplit();
+              const btn = document.getElementById('splShare');
+              /* 只驗 .hidden 屬性會漏掉真正的問題：自訂 display 的元件
+                 （.gbtn 是 inline-flex）會蓋掉瀏覽器預設的 [hidden]{display:none}，
+                 屬性設了但按鈕還在畫面上。所以要量實際算出來的樣式。 */
               const r = [!!document.querySelector('#splList .emptystate'),
-                         document.getElementById('splShare').hidden];
+                         btn.hidden, getComputedStyle(btn).display];
               splFrom = ''; splTo = ''; renderSplit();
               return r;
-          }"""), [True, True])
+          }"""), [True, True, "none"])
 
     # --- 匯出圖片 ---
     check("分潤圖把三個數字放在同一張圖上，加起來驗得起來",
@@ -2725,16 +2748,55 @@ def run(page):
               return [by['小華'], by['小明']];
           }"""), [2, 1])
 
-    check("七月賣掉六月打的材料：錢回到六月那場的人身上，不受區間影響",
+    # 區間篩的是「場次日期」不是「交易日期」：材料常常隔幾天才賣掉，
+    # 讓記帳時間點決定那筆錢算哪個月是沒有道理的。
+    check("07/02 賣掉 07/01 打的材料，算在 07/01 那一天",
           page.evaluate("""() => {
               state.sales = [{id:'s1', date:'2026-07-02', mode:'set', cur:'TWD',
                               sets:1, price:1000, runIds:['r1'], items:[]}];
-              // 區間只框住交易當天，但 r1 是 07-01 的場次
-              const st = splitStats('2026-07-02','2026-07-02','TWD');
+              const onRunDay  = splitStats('2026-07-01','2026-07-01','TWD');
+              const onSaleDay = splitStats('2026-07-02','2026-07-02','TWD');
               const by = {};
-              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
-              return [st.totalTwd, by['小明'], by['小華'], st.balanced];
-          }"""), [1000, 500, 500, True])
+              onRunDay.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [onRunDay.totalTwd, by['小明'], by['小華'], onRunDay.balanced,
+                      onSaleDay.totalTwd, onSaleDay.rows.length];
+          }"""), [1000, 500, 500, True, 0, 0])
+
+    check("未指定歸屬時，翻車場不吃掉那一份（其他場次照樣有掉落物）",
+          page.evaluate("""() => {
+              // 07-01 兩場都通關，先確認基準
+              state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
+                              sets:1, price:1000, runIds:[], items:[]}];
+              const both = splitStats('2026-07-01','2026-07-01','TWD');
+              // 把 RUN 2 標成翻車：1000 應該全部給 RUN 1，而不是有一半進公基金
+              state.schedule['2026-07-01'][1].wipe = true;
+              const one = splitStats('2026-07-01','2026-07-01','TWD');
+              const by = {};
+              one.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              state.schedule['2026-07-01'][1].wipe = false;
+              return [both.fundTwd, one.fundTwd, one.wipedTwd,
+                      by['小明'], by['小華'], one.balanced];
+          }"""), [0, 0, 0, 500, 500, True])
+
+    check("明確選中翻車場才會把錢送進公基金，並且標示出來",
+          page.evaluate("""() => {
+              state.schedule['2026-07-01'][1].wipe = true;
+              state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
+                              sets:1, price:900, runIds:['r2'], items:[]}];
+              const st = splitStats('2026-07-01','2026-07-01','TWD');
+              state.schedule['2026-07-01'][1].wipe = false;
+              return [st.rows.length, st.wipedTwd, st.fundTwd, st.balanced];
+          }"""), [0, 900, 900, True])
+
+    check("攤到多場除不盡時一分一分發完，不會有分數消失",
+          page.evaluate("""() => {
+              // 1000.01 元 = 100001 分，攤到 2 場：50001 / 50000
+              state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
+                              sets:1, price:1000.01, runIds:['r1','r2'], items:[]}];
+              const st = splitStats('2026-07-01','2026-07-01','TWD');
+              return [st.totalTwd, st.balanced,
+                      st.rows.reduce((a,r) => a + r.twd, 0) + st.fundTwd];
+          }"""), [1000.01, True, 1000.01])
 
     # --- 編輯既有交易：修正歸屬場次 ---
     check("編輯交易時用的是同一個跨天複選器，並帶出原本選的場次",
@@ -2777,6 +2839,37 @@ def run(page):
               after.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
               return [before, after.rows.length, by['小明'], by['小華'], after.balanced];
           }"""), [3, 2, 450, 450, True])
+
+    # 回報情境：一天五場，只有一場翻車且沒掉落物，其他四場都成功。
+    # 那一場不該吃掉五分之一的收入。
+    check("一天五場只有一場翻車：收入只攤給四場通關，公基金是 0",
+          page.evaluate("""() => {
+              const mk = (id,n,w,ids) => ({id, name:n, capacity:12, wipe:w, videos:[], drops:[],
+                                           slots: ids.map(x => ({memberId:x}))});
+              state.schedule = {'2026-06-10':[
+                  mk('f1','RUN 1', false, ['m1','m2']), mk('f2','RUN 2', false, ['m1','m3']),
+                  mk('f3','RUN 3', true,  ['m2','m3']),          // 翻車、沒掉落物
+                  mk('f4','RUN 4', false, ['m1','m2']), mk('f5','RUN 5', false, ['m2','m3'])]};
+              state.sales = [{id:'s1', date:'2026-06-10', mode:'set', cur:'TWD',
+                              sets:1, price:5000, runIds:[], items:[]}];
+              const st = splitStats('2026-06-10','2026-06-10','TWD');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
+              return [st.totalTwd, st.fundTwd, st.wipedTwd,
+                      by['小明'], by['小華'], by['小美'], st.balanced];
+          }"""),
+          # 5000 ÷ 4 場 = 1250/場；小明在 f1,f2,f4 → 1875，小華在 f1,f4,f5 → 1875，小美在 f2,f5 → 1250
+          [5000, 0, 0, 1875, 1875, 1250, True])
+
+    # 五場全翻 → 未指定歸屬時找不到任何通關場次 → 整筆變成「未歸屬」，
+    # 不會被塞進公基金充數。使用者可以自己決定要不要手動指定到翻車場。
+    check("五場全部翻車時，未指定歸屬的收入會列為未歸屬並提醒",
+          page.evaluate("""() => {
+              state.schedule['2026-06-10'].forEach(pt => pt.wipe = true);
+              const st = splitStats('2026-06-10','2026-06-10','TWD');
+              return [st.rows.length, st.fundTwd, st.totalTwd,
+                      st.unassignedCount, st.unassignedTwd, st.balanced];
+          }"""), [0, 0, 0, 1, 5000, True])
 
     # schemaVersion:7 的資料還是舊欄位名（twd/rate），要一路跑過 8→9 與 9→10
     check("7→10 全鏈：補 runId、換成 cur/price、再包成 runIds 陣列",

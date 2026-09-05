@@ -318,7 +318,7 @@ try{
     <div class="subview" id="sub-asplit">
       <div class="matfilt-wrap">
         <button class="matfilt" id="splFiltBtn" aria-expanded="false" aria-controls="splFiltBody">
-          <span class="matfilt-l">期間</span>
+          <span class="matfilt-l">場次期間</span>
           <span class="matfilt-v" id="splFiltText">全部日期</span>
           <svg class="matfilt-c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -329,6 +329,9 @@ try{
           <div class="field"><label>從</label><input type="date" id="splFrom" aria-label="分潤起始日期"></div>
           <div class="field"><label>到</label><input type="date" id="splTo" aria-label="分潤結束日期"></div>
         </div>
+        <!-- 講清楚篩的是哪個日期：材料常常是隔了幾天才賣掉的，
+             不寫的話使用者會照「交易日期」去猜，然後撈不到東西 -->
+        <div class="splhint">依<b>場次日期</b>篩選。九月賣掉八月打的材料，算在八月那幾場。</div>
         <div class="preset-row">
           <button class="gbtn" data-splpreset="today">今天</button>
           <button class="gbtn" data-splpreset="week">本週</button>

@@ -126,7 +126,7 @@ function buildSplitExportNode(){
   </div>`).join('');
   const notes=[
     st.wipedTwd>0?`翻車場收入 ${nf(st.wipedTwd)} 不分潤，已計入公基金`:'',
-    st.orphanTwd>0?`${nf(st.orphanTwd)} 無場次可歸屬，已計入公基金`:'',
+    st.unassignedCount?`另有 ${st.unassignedCount} 筆共 ${nf(st.unassignedTwd)} 尚未指定歸屬場次，未列入`:'',
   ].filter(Boolean).map(t=>`<div class="ex-sp-note">${t}</div>`).join('');
   const host=document.getElementById('exportHost');
   host.innerHTML=`<div class="exportwrap" id="exportWrap">

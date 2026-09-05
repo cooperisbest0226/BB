@@ -470,6 +470,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .matfilt[aria-expanded="true"] .matfilt-c{transform:rotate(180deg)}
 .matfilt-body{margin:-4px 0 14px; animation:rise .26s var(--ease) both}
 .matfilt-body[hidden]{display:none}
+/* 任何自訂 display 的元件都會蓋掉瀏覽器預設的 [hidden]{display:none}。
+   已經被 .matfilt-body 與 .gbtn 各踩過一次，所以放一條全域的兜底規則，
+   不要再每加一個元件就重新發現一次。 */
+[hidden]{display:none !important}
 
 .subseg{display:flex; gap:2px; background:rgba(21,23,28,.045); padding:3px; border-radius:11px; margin:0 0 16px}
 .subseg button{
@@ -1338,3 +1342,22 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 .rp-r.wiped .rp-n{color:var(--danger)}
 .rp-c{font-size:11px; color:var(--faint); font-style:normal; flex:0 0 auto}
 .rp-clear{margin:6px 0 2px 6px}
+
+/* 分潤區間篩的是場次日期不是交易日期，這件事一定要寫在旁邊 —— 
+   否則使用者會照交易日期去選，然後以為篩選壞了 */
+.splhint{
+  margin-top:9px; padding:9px 11px; border-radius:8px;
+  background:var(--surface-2); border:1px dashed var(--line-2);
+  font-size:11.5px; line-height:1.7; color:var(--muted);
+}
+.splhint b{color:var(--ink); font-weight:650}
+
+/* 未歸屬的交易：錢在那裡但掛不到任何期間上，畫面卻只會顯示「沒有交易」。
+   這是最容易被漏掉的一種狀況，所以要主動講，而且要講清楚怎麼修。 */
+.splwarn{
+  margin-bottom:12px; padding:12px 14px; border-radius:var(--r-md);
+  border:1px solid color-mix(in srgb, var(--warn) 38%, transparent);
+  background:color-mix(in srgb, var(--warn) 9%, transparent);
+  font-size:12px; line-height:1.75; color:var(--muted);
+}
+.splwarn b{display:block; font-size:12.5px; font-weight:650; color:var(--warn); margin-bottom:3px}
