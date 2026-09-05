@@ -1394,3 +1394,10 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
   color:#0a7a5c; background:#dff5ec; border:1px solid #b6e3d3;
   padding:3px 6px; border-radius:99px;
 }
+
+/* 賣掉的材料不可能再組一次，所以「可組成」是扣除後的數字。
+   把扣除過程寫出來，不然使用者只會看到一個對不上掉落總量的數字。 */
+.mres-sold{
+  margin-top:11px; padding-top:10px; border-top:1px dashed var(--line-2);
+  font-size:11.5px; line-height:1.7; color:var(--muted);
+}

@@ -120,15 +120,18 @@ function buildSplitExportNode(){
   const range=(splFrom||splTo) ? splFilterText() : '全部日期';
   /* 圖上標出誰領過了：貼到群組最常被問的就是「我領了沒」，
      讓大家自己看比一個一個回答快。 */
-  const paidCount=st.rows.filter(r=>findPayout(r.memberId,splFrom,splTo,aucCur)).length;
+  /* 圖上印的是「待領」——貼到群組要回答的問題是「我還可以領多少」。
+     已經領完的人標出來，不用一個一個回覆。 */
+  const dueOf=r=>r.twd-paidAmount(r.memberId,splFrom,splTo,aucCur);
+  const paidCount=st.rows.filter(r=>dueOf(r)<=0).length;
   const rows=st.rows.map((r,i)=>{
-    const p=findPayout(r.memberId,splFrom,splTo,aucCur);
+    const due=dueOf(r), got=r.twd-due;
     return `<div class="ex-sp-r">
       <span class="ex-sp-i">${i+1}</span>
       <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
-      <span class="ex-sp-s">分潤 ${r.shares} 場</span>
-      ${p?`<span class="ex-sp-p">已領</span>`:''}
-      <span class="ex-sp-a">${nf(r.twd)}</span>
+      <span class="ex-sp-s">${got?`應得 ${nf(r.twd)} · 已領 ${nf(got)}`:`分潤 ${r.shares} 場`}</span>
+      ${due<=0?`<span class="ex-sp-p">已領完</span>`:''}
+      <span class="ex-sp-a">${nf(due)}</span>
     </div>`;
   }).join('');
   const notes=[
@@ -141,11 +144,11 @@ function buildSplitExportNode(){
     <div class="ex-sp-sum">
       <span><b>${nf(st.totalTwd)}</b>總收入</span>
       <span><b>${st.sharedRuns}</b>場有收入</span>
-      <span><b>${paidCount}/${st.rows.length}</b>人已領</span>
+      <span><b>${paidCount}/${st.rows.length}</b>人領完</span>
     </div>
     <div class="ex-sp">${rows}</div>
     ${notes}
-    <div class="ex-sp-note">收入全數分配，每人金額加總等於總收入</div>
+    <div class="ex-sp-note">金額為扣除已領之後的待領數字；收入全數分配，不留公基金</div>
   </div>`;
   return document.getElementById('exportWrap');
 }

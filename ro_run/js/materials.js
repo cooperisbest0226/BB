@@ -144,13 +144,36 @@ function renderMaterials(){
   /* ── 組數與瓶頸：這是打開這頁最想知道的事，所以算在最前面、擺在最上面 ── */
   const per=Math.max(1,matPerSet);
   setInputValue(document.getElementById('matPerSet'), per);
-  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
+
+  /* 已經賣掉的材料要扣掉。「可組成 N 組」問的是現在還能組幾組，
+     賣出去的那幾組不可能再組一次 —— 不扣的話，賣完之後拍賣頁的
+     「帶入目前組數」還會一直帶入舊的數字，很容易重複記一筆不存在的交易。
+     整組交易按配方換算回材料，單品交易直接扣掉那種材料。 */
+  const sold={}; let soldSets=0, soldItemQty=0;
+  (state.sales||[]).forEach(sale=>{
+    if(!saleInDateRange(sale,matFrom,matTo)) return;
+    if(isItemSale(sale)){
+      saleItems(sale).forEach(it=>{
+        const n=(it.name||'').trim(), q=Number(it.qty)||0;
+        /* 單品賣掉的材料不分在不在配方裡都要扣：不在配方裡的雖然不影響組數，
+           但 sold 這份帳之後可能有別的用途，少記一種就會不一致。 */
+        if(n){ sold[n]=(sold[n]||0)+q; soldItemQty+=q; }
+      });
+    } else {
+      const k=Number(sale.sets)||0;
+      if(k>0){ soldSets+=k; SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*per); }
+    }
+  });
+  const remain=n=>Math.max(0,(totals[n]||0)-(sold[n]||0));
+
+  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor(remain(n)/per)));
   const nextNeed=(sets+1)*per;                      // 要湊到下一組，每種材料需累積到的量
   curSets=sets;                                     // 給售出計算「帶入目前組數」用
+  const grossSets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
   /* 瓶頸：撐得起的組數等於整體組數的那幾種。可能不只一種，列出缺最多的那個當代表。 */
-  const necks=SET_RECIPE.filter(n=>Math.floor((totals[n]||0)/per)===sets)
-    .sort((a,b)=>(totals[a]||0)-(totals[b]||0));
-  const neck=necks[0], neckLack=neck?Math.max(0,nextNeed-(totals[neck]||0)):0;
+  const necks=SET_RECIPE.filter(n=>Math.floor(remain(n)/per)===sets)
+    .sort((a,b)=>remain(a)-remain(b));
+  const neck=necks[0], neckLack=neck?Math.max(0,nextNeed-remain(neck)):0;
   const avgPerRun=runsWithDrops?dropSum/runsWithDrops:0;
 
   /* 每日掉落量走勢：材料頁原本只有單一時間點的快照，看不出「這週是不是掉得比較差」。
@@ -175,10 +198,18 @@ function renderMaterials(){
           <div class="mres-meta num">${entries.length} 場 · ${dropSum} 個<br>
             <span>每場平均 ${avgPerRun.toFixed(1)} 個</span></div>
         </div>
+        ${soldSets||soldItemQty?`<div class="mres-sold">
+          掉落夠組 ${grossSets} 組，已售出 ${
+            [soldSets?`${soldSets} 組`:'', soldItemQty?`${soldItemQty} 個單品`:'']
+              .filter(Boolean).join("與 ")
+          }，扣掉之後還能組 ${sets} 組
+        </div>`:''}
         ${neck?`<div class="mres-neck">
           <span class="mres-nk">瓶頸</span>
           <span class="mres-nn">${esc(neck)}</span>
-          <span class="mres-nv num">${totals[neck]||0} 個${neckLack?` · 再 ${neckLack} 個進下一組`:''}</span>
+          <!-- 印剩餘量而不是掉落總量：neckLack 是拿剩餘量算的，
+               兩個數字來源不一致的話會出現「16 個卻只差 1 個進下一組」這種矛盾 -->
+          <span class="mres-nv num">${remain(neck)} 個${neckLack?` · 再 ${neckLack} 個進下一組`:''}</span>
         </div>`:''}
         ${trend}
       </div>`
@@ -201,7 +232,9 @@ function renderMaterials(){
             <span class="matgrp-v num">${sum}</span></div>
           <div class="bars">${names.map(n=>{
             const q=totals[n], inRecipe=SET_RECIPE.includes(n);
-            const isNeck=inRecipe&&Math.floor(q/per)===sets;
+            /* 長條顯示的是掉落總量（這一區就叫「材料總計」），
+               但瓶頸標記要用扣掉已售之後的量算，才跟上方的「可組成」一致。 */
+            const isNeck=inRecipe&&Math.floor(remain(n)/per)===sets;
             return `<div class="bar-row ${isNeck?'short':''}">
               <span class="bar-l">${esc(n)}</span>
               <div class="bar-track"><div class="bar-fill" style="width:${q/gmax*100}%"></div></div>
@@ -217,9 +250,10 @@ function renderMaterials(){
     `<div class="matgrp" style="${msVars(s)}">
       <div class="matgrp-h"><span class="matgrp-t">${s.label}</span>
         <span class="matgrp-k">${names.length} 種</span>
-        <span class="matgrp-v num">${names.reduce((a,n)=>a+(totals[n]||0),0)}</span></div>
+        <span class="matgrp-v num">${names.reduce((a,n)=>a+remain(n),0)}</span></div>
       <div class="bars">${names.map(n=>{
-        const q=totals[n]||0, own=Math.floor(q/per), lack=Math.max(0,nextNeed-q);
+        /* 這一區問的是「還能組幾組」，所以用扣掉已售之後的剩餘量 */
+        const q=remain(n), own=Math.floor(q/per), lack=Math.max(0,nextNeed-q);
         /* 卡住整體組數的那幾種（木桶效應的短板）標成琥珀色，一眼看出瓶頸。
 
            這裡寫「可組 N 組」而不是「缺 N／已足」：lack 算的是「湊到下一組還差多少」，

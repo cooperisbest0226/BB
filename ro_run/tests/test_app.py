@@ -2972,19 +2972,20 @@ def run(page):
     page.locator("#splList .paidbtn").first.click()
     page.wait_for_timeout(300)
 
-    check("標記已領會存成紀錄，並記下當時發出去的金額",
+    check("標記已領記下的是當下還差的金額",
           page.evaluate("""() => {
               const p = state.payouts[0];
               return [state.payouts.length, p.cur, p.from, p.to, p.twd,
                       p.memberId === splitStats('','','TWD').rows[0].memberId];
           }"""), [1, "TWD", "", "", 500, True])
 
-    check("已領的那一列會標起來，摘要跟著更新",
+    check("領完的那一列會標起來，待領歸零，摘要跟著更新",
           page.evaluate("""() => [
               document.querySelector('#splList .splrow').classList.contains('paid'),
               document.querySelector('#splList .paidbtn').textContent.trim(),
+              document.querySelector('#splList .splamt').textContent.trim(),
               [...document.querySelectorAll('#splCard .attsum-k b')].map(b => b.textContent.trim())]"""),
-          [True, "✓ 已領", ["1/2", "500"]])
+          [True, "✓ 已領", "0", ["1/2", "500"]])
 
     page.locator("#splList .paidbtn").nth(1).click()
     page.wait_for_timeout(300)
@@ -3001,39 +3002,195 @@ def run(page):
                       document.querySelector('#splList .splrow').classList.contains('paid')];
           }"""), [1, False])
 
-    check("換一個期間就是另一次結算，標記不會沿用過去",
+    # 這是這一版的重點：窄期間發過的錢，在更大的期間裡要被扣掉，
+    # 而不是重新顯示一次全額。
+    check("窄期間發過的錢，在更大的期間裡會被扣掉",
           page.evaluate("""() => {
-              const all = [...document.querySelectorAll('#splList .paidbtn')]
-                  .map(b => b.textContent.trim());
+              state.payouts = [];
+              // 只結算 07-01 那一天，先發掉一半
               splFrom = '2026-07-01'; splTo = '2026-07-01'; renderSplit();
-              const ranged = [...document.querySelectorAll('#splList .paidbtn')]
-                  .map(b => b.textContent.trim());
+              const dayDue = splitStats(splFrom, splTo, 'TWD').rows[0];
+              togglePayout(dayDue.memberId, dayDue.twd);
+              // 換成全部日期：同一個人應該只剩下差額
               splFrom = ''; splTo = ''; renderSplit();
-              return [all.includes('✓ 已領'), ranged.every(t => t === '標記已領')];
-          }"""), [True, True])
+              const all = splitStats('', '', 'TWD').rows
+                  .find(r => r.memberId === dayDue.memberId);
+              const got = paidAmount(dayDue.memberId, '', '', 'TWD');
+              const shown = [...document.querySelectorAll('#splList .splrow')]
+                  .find(el => el.querySelector('.attrow-n').textContent.trim()
+                              === memberName(dayDue.memberId))
+                  .querySelector('.splamt').textContent.trim();
+              return [dayDue.twd, got, all.twd, shown];
+          }"""), [500, 500, 500, "0"])
 
-    check("發錢之後才補記交易，會標出試算金額與實際發出去的差額",
+    check("領到一半的人，列上寫得出應得與已領",
           page.evaluate("""() => {
-              // 已領的那位當初拿 500，現在補一筆交易讓試算變成 750
+              state.payouts = [];
+              const r = splitStats('', '', 'TWD').rows[0];
+              // 手動塞一筆只發了 200 的紀錄
+              state.payouts.push({id:'p1', memberId:r.memberId, from:'', to:'',
+                                  cur:'TWD', twd:200, ts:Date.now()});
+              renderSplit();
+              const row = [...document.querySelectorAll('#splList .splrow')]
+                  .find(el => el.querySelector('.attrow-n').textContent.trim()
+                              === memberName(r.memberId));
+              const pills = [...row.querySelectorAll('.attpill')].map(e => e.textContent.trim());
+              return [row.querySelector('.splamt').textContent.trim(),
+                      pills.some(t => t.includes('應得 500') && t.includes('已領 200')),
+                      row.classList.contains('paid')];
+          }"""), ["300", True, False])
+
+    check("摘要的待發是扣掉已領之後的總額",
+          page.evaluate("""() => [...document.querySelectorAll('#splCard .attsum-k b')]
+              .map(b => b.textContent.trim())"""), ["0/2", "800"])
+
+    check("發錢之後才補記交易，差額會自動變成新的待領",
+          page.evaluate("""() => {
+              state.payouts = [];
+              const r = splitStats('', '', 'TWD').rows[0];
+              togglePayout(r.memberId, r.twd);                 // 先照 500 發完
               state.sales.push({id:'s2', date:'2026-07-01', mode:'set', cur:'TWD',
                                 sets:1, price:500, runIds:['r1'], items:[]});
               renderSplit();
-              const pill = document.querySelector('#splList .splrow.paid .attpill.bad');
-              const kept = state.payouts[0].twd;
+              const after = splitStats('', '', 'TWD').rows
+                  .find(x => x.memberId === r.memberId);
+              const kept = state.payouts[0].twd;               // 實際發出去的不該被改寫
+              const due = after.twd - paidAmount(r.memberId, '', '', 'TWD');
               state.sales.pop(); renderSplit();
-              return [!!pill, pill.textContent.includes('已發 500'),
-                      pill.textContent.includes('差 250'), kept];
-          }"""), [True, True, True, 500])
+              return [r.twd, kept, after.twd, due];
+          }"""), [500, 500, 750, 250])
 
-    check("匯出圖也標出已領，摘要改成幾人已領",
+    check("匯出圖印的是待領金額，領完的人標出來",
           page.evaluate("""() => {
+              state.payouts = [];
+              const r = splitStats('', '', 'TWD').rows[0];
+              togglePayout(r.memberId, r.twd);
               buildSplitExportNode();
               const sum = [...document.querySelectorAll('#exportHost .ex-sp-sum b')]
                   .map(b => b.textContent.trim());
-              const paid = document.querySelectorAll('#exportHost .ex-sp-p').length;
+              const amts = [...document.querySelectorAll('#exportHost .ex-sp-a')]
+                  .map(e => e.textContent.trim());
+              const done = document.querySelectorAll('#exportHost .ex-sp-p').length;
               document.getElementById('exportHost').innerHTML = '';
-              return [sum[2], paid];
-          }"""), ["1/2", 1])
+              state.payouts = []; renderSplit();
+              return [sum[2], amts, done];
+          }"""), ["1/2", ["0", "500"], 1])
+
+    check("跟目前期間只有部分重疊的結算不扣除，但要標示出來",
+          page.evaluate("""() => {
+              state.payouts = [{id:'p1', memberId:'m1', from:'2026-06-25', to:'2026-07-01',
+                                cur:'TWD', twd:300, ts:Date.now()}];
+              // 目前期間 07-01～07-31 只蓋到那次結算的一半，無法判斷該扣多少
+              const partial = partialPayouts('m1','2026-07-01','2026-07-31','TWD').length;
+              const deducted = paidAmount('m1','2026-07-01','2026-07-31','TWD');
+              // 完整包含就會扣
+              const inside = paidAmount('m1','2026-06-01','2026-07-31','TWD');
+              state.payouts = [];
+              return [partial, deducted, inside];
+          }"""), [1, 0, 300])
+
+    check("扣除只認同一種幣別的結算",
+          page.evaluate("""() => {
+              state.payouts = [{id:'p1', memberId:'m1', from:'', to:'',
+                                cur:'R', twd:900, ts:Date.now()}];
+              const r = [paidAmount('m1','','','TWD'), paidAmount('m1','','','R')];
+              state.payouts = [];
+              return r;
+          }"""), [0, 900])
+
+    # ---------- 材料：扣除已售出 ----------
+    print("\n[material] 可組成組數扣除已售出")
+    seed(page)
+
+    def set_recipe_stock(qty, sold_sets=0, sold_items=None):
+        return page.evaluate("""([qty, soldSets, soldItems]) => {
+            state.schedule = {'2026-06-10':[{id:'g1', name:'RUN 1', capacity:12, wipe:false,
+                videos:[], slots:[], drops: SET_RECIPE.map((n,i) => ({id:'d'+i, name:n, qty}))}]};
+            state.dayTimes = {'2026-06-10':'21:00'};
+            state.sales = [];
+            if (soldSets > 0)
+                state.sales.push({id:'ss', date:'2026-06-10', mode:'set', cur:'TWD',
+                                  sets:soldSets, price:100, runIds:['g1'], items:[]});
+            if (soldItems)
+                state.sales.push({id:'si', date:'2026-06-10', mode:'item', cur:'TWD',
+                                  sets:0, price:0, runIds:['g1'],
+                                  items:[{name:SET_RECIPE[0], qty:soldItems, price:10}]});
+            matFrom = ''; matTo = ''; matPerSet = 1;
+            persist(); renderMaterials();
+            return [curSets, document.querySelector('#matCards .mres-v').textContent.trim()];
+        }""", [qty, sold_sets, sold_items])
+
+    check("沒賣過時，可組成組數等於掉落算出來的組數",
+          set_recipe_stock(10), [10, "10組"])
+
+    check("賣掉 4 組之後只剩 6 組，不會再帶入舊的 10",
+          set_recipe_stock(10, sold_sets=4), [6, "6組"])
+
+    check("單品賣掉的材料也會扣，瓶頸跟著改變",
+          set_recipe_stock(10, sold_items=7), [3, "3組"])
+
+    check("結果卡寫出扣除過程，數字不會憑空變小",
+          page.evaluate("""() => {
+              const t = document.querySelector('#matCards .mres-sold');
+              return [!!t, t.textContent.replace(/\s+/g,' ').trim()];
+          }"""), [True, "掉落夠組 10 組，已售出 7 個單品，扣掉之後還能組 3 組"])
+
+    check("同時賣了整組與單品時，兩種都寫出來",
+          page.evaluate("""() => {
+              state.sales = [
+                {id:'a', date:'2026-06-10', mode:'set', cur:'TWD', sets:2, price:100,
+                 runIds:['g1'], items:[]},
+                {id:'b', date:'2026-06-10', mode:'item', cur:'TWD', sets:0, price:0,
+                 runIds:['g1'], items:[{name:SET_RECIPE[0], qty:3, price:10}]}];
+              renderMaterials();
+              return [curSets, document.querySelector('#matCards .mres-sold')
+                  .textContent.replace(/\\s+/g,' ').trim()];
+          }"""),
+          [5, "掉落夠組 10 組，已售出 2 組與 3 個單品，扣掉之後還能組 5 組"])
+
+    check("瓶頸列印的是扣除後的剩餘量，跟「再 N 個進下一組」對得起來",
+          page.evaluate("""() => {
+              state.sales = [{id:'ss', date:'2026-06-10', mode:'set', cur:'TWD',
+                              sets:5, price:100, runIds:['g1'], items:[]}];
+              state.schedule['2026-06-10'][0].drops =
+                  SET_RECIPE.map((n,i) => ({id:'d'+i, name:n, qty:16}));
+              matPerSet = 3; matFrom = ''; matTo = ''; renderMaterials();
+              const nv = document.querySelector('#matCards .mres-nv').textContent.trim();
+              matPerSet = 1;
+              // 16 掉落 − 5 組×3 = 剩 1 個，每組要 3 個 → 可組 0 組、再 2 個進下一組
+              return [curSets, nv];
+          }"""), [0, "1 個 · 再 2 個進下一組"])
+
+    check("賣超過庫存不會算出負的組數",
+          set_recipe_stock(3, sold_sets=99), [0, "0組"])
+
+    check("材料頁的日期篩選也會夾住已售出的認定",
+          page.evaluate("""() => {
+              state.sales = [{id:'ss', date:'2026-06-10', mode:'set', cur:'TWD',
+                              sets:4, price:100, runIds:['g1'], items:[]}];
+              state.schedule['2026-06-10'][0].drops =
+                  SET_RECIPE.map((n,i) => ({id:'d'+i, name:n, qty:10}));
+              matFrom = ''; matTo = ''; renderMaterials();
+              const all = curSets;
+              // 換到一段不含那場的期間：掉落與售出都不算，組數歸零
+              matFrom = '2026-05-01'; matTo = '2026-05-31'; renderMaterials();
+              const other = curSets;
+              matFrom = ''; matTo = ''; renderMaterials();
+              return [all, other];
+          }"""), [6, 0])
+
+    check("交易的期間認定與分潤同一套（認歸屬場次的日期）",
+          page.evaluate("""() => {
+              // 交易記在 09/04，但歸屬到 06/10 的場次
+              state.sales = [{id:'ss', date:'2026-09-04', mode:'set', cur:'TWD',
+                              sets:4, price:100, runIds:['g1'], items:[]}];
+              matFrom = '2026-06-01'; matTo = '2026-06-30'; renderMaterials();
+              const byRun = curSets;
+              matFrom = ''; matTo = ''; renderMaterials();
+              return byRun;
+          }"""), 6)
+
+    seed(page)
 
     # ---------- 日期快捷鈕選中狀態 ----------
     print("\n[preset] 日期快捷鈕")

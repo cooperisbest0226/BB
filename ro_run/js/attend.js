@@ -172,6 +172,18 @@ function runIndex(){
   return m;
 }
 
+/* 一筆交易屬不屬於某段「場次期間」。
+   跟分潤用同一套判準：認的是歸屬場次的日期，沒指定歸屬才退回交易日期。
+   材料頁扣除已售組數也吃這個函式 —— 兩邊各判各的話，
+   材料頁說還能組 5 組、分潤說那筆錢不在這段期間，數字就對不起來了。 */
+function saleInDateRange(s,from,to){
+  const inR=d=>(!from||d>=from)&&(!to||d<=to);
+  const idx=runIndex();
+  const dts=(Array.isArray(s.runIds)?s.runIds:[])
+    .map(id=>idx.get(id)).filter(Boolean).map(e=>e.date);
+  return dts.length ? dts.some(inR) : inR(s.date||'');
+}
+
 function splitStats(from,to,cur){
   cur=cur||'TWD';
   const idx=runIndex();
@@ -320,44 +332,55 @@ function renderSplit(){
      所以摘要改成講「幾場有收入、幾人分潤」，那才是使用者要確認的事。 */
   /* 領取進度放在摘要裡：發錢發到一半關掉 App 再打開，
      第一眼要看得到「還有幾個人沒領」，而不是自己一列一列數。 */
-  const paid=st.rows.filter(r=>findPayout(r.memberId,splFrom,splTo,aucCur));
-  const paidSum=paid.reduce((a,r)=>a+r.twd,0);
+  const paidSum=st.rows.reduce((a,r)=>a+paidAmount(r.memberId,splFrom,splTo,aucCur),0);
+  const cleared=st.rows.filter(r=>
+    r.twd-paidAmount(r.memberId,splFrom,splTo,aucCur)<=0);
+  const paid={length:cleared.length};
   card.innerHTML=`<div class="attsum">
     <div class="attsum-h">
       <span class="attsum-t">${st.saleCount} 筆${curLabel(aucCur)}交易 · ${st.sharedRuns} 場有收入</span>
       <span class="attsum-r num">${nf(st.totalTwd)}</span>
     </div>
     <div class="attsum-b">
-      <span class="attsum-k"><b class="num">${paid.length}/${st.rows.length}</b> 人已領</span>
-      <span class="attsum-k"><b class="num">${nf(st.totalTwd-paidSum)}</b> 待發</span>
+      <span class="attsum-k"><b class="num">${paid.length}/${st.rows.length}</b> 人領完</span>
+      <span class="attsum-k"><b class="num">${nf(Math.max(0,st.totalTwd-paidSum))}</b> 待發</span>
     </div>
     ${st.rows.length&&paid.length===st.rows.length
       ? `<div class="splnote done">這段期間的分潤都發完了</div>`:''}
+    ${paidSum>0&&paid.length<st.rows.length
+      ? `<div class="splnote">已發出 ${nf(paidSum)}，下方金額都是扣掉已領之後的待領數字</div>`:''}
   </div>`;
 
+  /* 主要數字是「待領」而不是「應得」：發錢的人要看的是還差多少。
+     應得與已領放在下面一行，對帳時才追得回來這個數字怎麼來的。 */
   host.innerHTML=warn+st.rows.map((r,i)=>{
-    const p=findPayout(r.memberId,splFrom,splTo,aucCur);
-    /* 發錢之後才補記交易的話，試算金額會跟當初發出去的不一樣。
-       這種差額一定要講，不然對帳時只會看到一個對不起來的數字。 */
-    const diff=p ? r.twd-p.twd : 0;
-    return `<div class="attrow splrow${p?' paid':''}">
+    const got=paidAmount(r.memberId,splFrom,splTo,aucCur);
+    const due=r.twd-got;
+    const done=due<=0;
+    const exact=exactPayout(r.memberId,splFrom,splTo,aucCur);
+    const partial=partialPayouts(r.memberId,splFrom,splTo,aucCur);
+    return `<div class="attrow splrow${done?' paid':''}">
       <span class="attrow-i num">${i+1}</span>
       <div class="attrow-m">
         <div class="attrow-top">
           <span class="attrow-n">${esc(memberName(r.memberId))}</span>
-          <span class="splamt num">${nf(r.twd)}</span>
+          <span class="splamt num">${nf(due)}</span>
         </div>
         <div class="attrow-sub">
           <span class="attpill">分潤 ${r.shares} 場</span>
-          ${diff?`<span class="attpill bad">已發 ${nf(p.twd)}，差 ${nf(Math.abs(diff))}</span>`:''}
-          <button class="paidbtn${p?' on':''}" data-pay="${r.memberId}" data-amt="${r.twd}"
-            aria-pressed="${!!p}">${p?'✓ 已領':'標記已領'}</button>
+          ${got?`<span class="attpill">應得 ${nf(r.twd)} · 已領 ${nf(got)}</span>`:''}
+          ${partial.length?`<span class="attpill bad">另有 ${partial.length} 筆跨期間的結算未扣除</span>`:''}
+          ${done&&!exact
+            ? `<span class="paidbtn on" aria-disabled="true"
+                 title="這是在別段期間結算掉的，要取消請回那段期間">✓ 已領</span>`
+            : `<button class="paidbtn${done?' on':''}" data-pay="${r.memberId}" data-due="${due}"
+                 aria-pressed="${!!exact}">${exact?'✓ 已領':'標記已領'}</button>`}
         </div>
       </div>
     </div>`;
   }).join('');
   host.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>
-    togglePayout(b.dataset.pay, Number(b.dataset.amt)||0));
+    togglePayout(b.dataset.pay, Number(b.dataset.due)||0));
 }
 
 function applySplPreset(p){
@@ -444,30 +467,58 @@ function renderSaleRunOptions(collapse){
 document.getElementById('splShare').onclick=()=>exportSplitImage();
 
 /* ── 領取紀錄 ─────────────────────────────────────────────
-   分潤算出來只是第一步，錢還要一個一個發。中間最常斷掉的就是「我發到誰了」，
-   尤其是拖到隔天才發完的時候。所以每個人可以單獨標記已領。
+   分潤算出來只是第一步，錢還要一個一個發。中間最常斷掉的就是「我發到誰了」。
 
-   一筆紀錄綁住「誰 + 哪一段場次期間 + 哪種幣別」。換一個期間就是另一次結算，
-   標記自然不會沿用過去 —— 這是刻意的，不是漏掉。
+   關鍵在於「已領」是累積的，不是某一段期間的旗標。實際的用法是這樣的：
+   9/1 當天先結一次、發了 5000W，之後再選 9/1–9/10 或「全部日期」時，
+   要馬上看到「這個人還差多少」，而不是重新看到一次全額。
+   所以每一列的主要數字是「待領」＝ 應得 − 期間內已領。
 
-   金額也一起存：之後如果又補記了那段期間的交易，試算金額會變動，
-   但「當初實際發出去多少」不該跟著被改寫。兩個數字不一樣的時候要講出來，
-   那通常代表有一筆交易是在發錢之後才補進去的。 */
-function payoutKey(memberId,from,to,cur){
-  return `${memberId}|${from||''}|${to||''}|${cur}`;
+   一筆領取紀錄綁住「誰 + 哪一段期間 + 哪種幣別 + 發了多少」。
+   金額存下來是刻意的：之後若補記了那段期間的交易，應得會變動，
+   但「當初實際發出去多少」不該被改寫——差額會自動變成新的待領。
+
+   扣除的條件是「那次結算的期間完整落在目前選的期間裡」。
+   部分重疊不扣，因為無法判斷該扣多少，硬扣會算錯錢；這種情況會另外提示。 */
+function payoutsOf(memberId,cur){
+  return (state.payouts||[]).filter(p=>p.memberId===memberId&&p.cur===cur);
 }
-function findPayout(memberId,from,to,cur){
-  const k=payoutKey(memberId,from,to,cur);
-  return (state.payouts||[]).find(x=>payoutKey(x.memberId,x.from,x.to,x.cur)===k)||null;
+/* a 這段期間是否完整包含在 b 裡（空字串代表那一端不設限） */
+function rangeContains(bFrom,bTo,aFrom,aTo){
+  if(bFrom && (!aFrom || aFrom<bFrom)) return false;
+  if(bTo   && (!aTo   || aTo  >bTo))   return false;
+  return true;
 }
-function togglePayout(memberId,twd){
+/* 目前期間內，這個人已經領走多少 */
+function paidAmount(memberId,from,to,cur){
+  return payoutsOf(memberId,cur)
+    .filter(p=>rangeContains(from,to,p.from,p.to))
+    .reduce((a,p)=>a+(Number(p.twd)||0),0);
+}
+/* 跟目前期間部分重疊、但不完整落在裡面的結算。這種無法判斷該扣多少，
+   所以不扣，但一定要講——不講的話待領金額會莫名其妙偏高。 */
+function partialPayouts(memberId,from,to,cur){
+  return payoutsOf(memberId,cur).filter(p=>{
+    if(rangeContains(from,to,p.from,p.to)) return false;
+    const aF=p.from||'0000-00-00', aT=p.to||'9999-99-99';
+    const bF=from||'0000-00-00',   bT=to||'9999-99-99';
+    return aF<=bT && bF<=aT;                       // 有交集但不完整包含
+  });
+}
+function exactPayout(memberId,from,to,cur){
+  return (state.payouts||[]).find(p=>p.memberId===memberId&&p.cur===cur
+    &&(p.from||'')===(from||'')&&(p.to||'')===(to||''))||null;
+}
+/* 標記已領＝把「目前還差的金額」記成一筆發放。再點一次撤銷這一段期間的紀錄。 */
+function togglePayout(memberId,due){
   const from=splFrom, to=splTo, cur=aucCur;
-  const hit=findPayout(memberId,from,to,cur);
+  const hit=exactPayout(memberId,from,to,cur);
   commit(()=>{
     state.payouts=state.payouts||[];
     if(hit) state.payouts=state.payouts.filter(x=>x!==hit);
-    else state.payouts.push({id:uid(), memberId, from:from||'', to:to||'', cur, twd, ts:Date.now()});
+    else state.payouts.push({id:uid(), memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
   });
   renderSplit();
-  toast(hit?`${memberName(memberId)} 已取消領取標記`:`${memberName(memberId)} 標記為已領`);
+  toast(hit?`${memberName(memberId)} 已取消這段期間的領取紀錄`
+           :`${memberName(memberId)} 標記已領 ${nf(due)}`);
 }
