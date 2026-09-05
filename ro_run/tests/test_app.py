@@ -3060,6 +3060,41 @@ def run(page):
               return [r.twd, kept, after.twd, due];
           }"""), [500, 500, 750, 250])
 
+    check("已領那一列的標籤與按鈕會換行，不會擠成一團",
+          page.evaluate("""() => {
+              state.payouts = [];
+              /* 用實際會遇到的數量級：「應得 50,000,000 · 已領 30,000,000」
+                 這種標籤加上按鈕，在手機寬度下一行絕對放不完。 */
+              const keep = state.sales;
+              state.sales = [{id:'big', date:'2026-07-01', mode:'set', cur:'TWD',
+                              sets:1, price:100000000, runIds:['r1'], items:[]}];
+              const r = splitStats('', '', 'TWD').rows[0];
+              state.payouts.push({id:'p1', memberId:r.memberId, from:'', to:'',
+                                  cur:'TWD', twd:30000000, ts:Date.now()});
+              renderSplit();
+              const row = [...document.querySelectorAll('#splList .splrow')]
+                  .find(el => el.querySelector('.attrow-n').textContent.trim()
+                              === memberName(r.memberId));
+              const sub = row.querySelector('.attrow-sub');
+              const kids = [...sub.children];
+              const wrap = getComputedStyle(sub).flexWrap;
+              /* 真正的換行判準是「按鈕的上緣落在第一顆標籤的下緣之後」。
+                 不能用子元素 top 是否相同 —— 標籤與按鈕高度本來就不一樣，
+                 align-items:center 會讓它們在同一行也有不同的 top。
+                 也不能用 scrollWidth 比 clientWidth：按鈕補觸控範圍的 ::after
+                 刻意往左右各突出 6px，本來就會把 scrollWidth 撐大。 */
+              /* 測試視窗比手機寬，照原樣量會擠得下、測不出東西。
+                 把容器壓到手機那一列實際可用的寬度再量，才是真的在測
+                 「空間不夠的時候會不會換行」。 */
+              sub.style.maxWidth = '240px';
+              const first = kids[0].getBoundingClientRect();
+              const btn = sub.querySelector('.paidbtn').getBoundingClientRect();
+              const wrapped = btn.top >= first.bottom;
+              sub.style.maxWidth = '';
+              state.payouts = []; state.sales = keep; renderSplit();
+              return [wrap, kids.length >= 3, wrapped];
+          }"""), ["wrap", True, True])
+
     check("匯出圖印的是待領金額，領完的人標出來",
           page.evaluate("""() => {
               state.payouts = [];
@@ -3160,6 +3195,35 @@ def run(page):
               // 16 掉落 − 5 組×3 = 剩 1 個，每組要 3 個 → 可組 0 組、再 2 個進下一組
               return [curSets, nv];
           }"""), [0, "1 個 · 再 2 個進下一組"])
+
+    # 回報情境：成交紀錄只顯示目前幣別，材料頁兩種都算，
+    # 同一批貨兩種幣別各記一次就會剛好變成兩倍，而畫面上看不出來。
+    check("兩種幣別都有整組售出時，會拆開標示各賣了幾組",
+          page.evaluate("""() => {
+              state.schedule['2026-06-10'][0].drops =
+                  SET_RECIPE.map((n,i) => ({id:'d'+i, name:n, qty:500}));
+              state.sales = [
+                {id:'a', date:'2026-06-10', mode:'set', cur:'TWD', sets:116, price:100,
+                 runIds:['g1'], items:[]},
+                {id:'b', date:'2026-06-10', mode:'set', cur:'R', sets:116, price:100,
+                 runIds:['g1'], items:[]}];
+              matPerSet = 1; matFrom = ''; matTo = ''; renderMaterials();
+              const t = document.querySelector('#matCards .mres-sold')
+                  .textContent.replace(/\\s+/g,' ').trim();
+              return [curSets, t.includes('已售出 232 組（台幣 116 組 · R 幣 116 組）'),
+                      !!document.querySelector('#matCards .mres-sold-hint')];
+          }"""), [268, True, True])
+
+    check("只有一種幣別時不多印那段拆解，避免變成噪音",
+          page.evaluate("""() => {
+              state.sales = [{id:'a', date:'2026-06-10', mode:'set', cur:'TWD', sets:116,
+                              price:100, runIds:['g1'], items:[]}];
+              renderMaterials();
+              const t = document.querySelector('#matCards .mres-sold')
+                  .textContent.replace(/\\s+/g,' ').trim();
+              return [curSets, t.includes('台幣'),
+                      !!document.querySelector('#matCards .mres-sold-hint')];
+          }"""), [384, False, False])
 
     check("賣超過庫存不會算出負的組數",
           set_recipe_stock(3, sold_sets=99), [0, "0組"])

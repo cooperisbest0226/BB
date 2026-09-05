@@ -150,6 +150,11 @@ function renderMaterials(){
      「帶入目前組數」還會一直帶入舊的數字，很容易重複記一筆不存在的交易。
      整組交易按配方換算回材料，單品交易直接扣掉那種材料。 */
   const sold={}; let soldSets=0, soldItemQty=0;
+  /* 幣別分開記。這一頁算的是「材料還剩多少」，賣掉一組就是賣掉一組，
+     跟收台幣還是 R 幣無關，所以兩種都要算 —— 但成交紀錄那一頁一次只顯示一種幣別，
+     所以這裡的總數會比你在成交紀錄看到的多。不把來源拆開寫的話，
+     那個數字根本無從驗證（同一批貨如果不小心兩種幣別各記一次，就會剛好變成兩倍）。 */
+  const soldByCur={TWD:0, R:0};
   (state.sales||[]).forEach(sale=>{
     if(!saleInDateRange(sale,matFrom,matTo)) return;
     if(isItemSale(sale)){
@@ -161,9 +166,15 @@ function renderMaterials(){
       });
     } else {
       const k=Number(sale.sets)||0;
-      if(k>0){ soldSets+=k; SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*per); }
+      if(k>0){
+        soldSets+=k; soldByCur[saleCur(sale)]+=k;
+        SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*per);
+      }
     }
   });
+  /* 兩種幣別都有賣才拆開講；只有一種的時候多印一段只是噪音 */
+  const curBreak=(soldByCur.TWD&&soldByCur.R)
+    ? `（台幣 ${soldByCur.TWD} 組 · R 幣 ${soldByCur.R} 組）` : '';
   const remain=n=>Math.max(0,(totals[n]||0)-(sold[n]||0));
 
   const sets=Math.min(...SET_RECIPE.map(n=>Math.floor(remain(n)/per)));
@@ -200,9 +211,11 @@ function renderMaterials(){
         </div>
         ${soldSets||soldItemQty?`<div class="mres-sold">
           掉落夠組 ${grossSets} 組，已售出 ${
-            [soldSets?`${soldSets} 組`:'', soldItemQty?`${soldItemQty} 個單品`:'']
+            [soldSets?`${soldSets} 組${curBreak}`:'', soldItemQty?`${soldItemQty} 個單品`:'']
               .filter(Boolean).join("與 ")
           }，扣掉之後還能組 ${sets} 組
+          ${curBreak?`<br><span class="mres-sold-hint">成交紀錄一次只顯示一種幣別，這裡兩種都算；
+            如果同一批貨不小心兩種幣別各記了一次，回成交紀錄切換幣別就看得到重複的那筆。</span>`:''}
         </div>`:''}
         ${neck?`<div class="mres-neck">
           <span class="mres-nk">瓶頸</span>
