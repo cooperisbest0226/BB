@@ -155,11 +155,12 @@ bindFilterToggle('attFiltBtn','attFiltBody');
      1. 每筆交易的錢歸屬到「一場 RUN」。沒指定的舊紀錄，平均分攤給那天的所有場次。
      2. 一場的錢只分給那場的出場成員，不是丟進大水池按總出場比例分——
         同一天兩場成員不一樣的時候，後者會讓沒參加的人也拿到那場的錢。
-     3. 翻車場不分潤。翻車通常也沒有掉落所以沒有收入，
-        但萬一真的有錢綁在翻車場上，它不會人間蒸發，會整筆進公基金並單獨列出來。
-     4. 除不盡的零頭一律無條件捨去，餘額全部進公基金。
-        不用四捨五入是因為那會讓「每人金額加總 ≠ 總收入」——
-        這張圖是要貼到群組的，有人加一加對不上就很難解釋。
+     3. 翻車場不分潤，而且不是「先扣起來」——翻車就是沒打成功、沒有掉落物，
+        根本沒有東西可以分。所以翻車場不會進入分配，也不會產生任何待處理的餘額。
+        沒指定歸屬又找不到可分潤場次的交易，會單獨列出來提醒使用者去指定。
+     4. 收入全數分完，沒有公基金。除不盡的部分用最大餘額法一元一元發完，
+        每人金額加總精確等於總收入 —— 這張圖是要貼到群組的，
+        有人加一加對不上就很難解釋。
 
    金額全程用「分」（整數）計算，最後才換回元。
    浮點數在七位數金額除以六個人的時候會出現 5.999999999 這種值，
@@ -182,15 +183,20 @@ function splitStats(from,to,cur){
   const sales=(state.sales||[]).filter(s=>saleCur(s)===cur);
   const inRange=d=>(!from||d>=from)&&(!to||d<=to);
 
+  /* 能收錢的場次：通關，而且真的有人出場。
+     翻車就是沒打成功、沒有掉落物，沒有東西可以分；有錢卻沒有出場成員的場次
+     也一樣沒有分潤對象。這兩種都不是「先扣起來放公基金」，
+     而是根本不該進入分配 —— 錢會留在原本的交易上，由使用者自己去指定歸屬。 */
+  const eligible=pt=>isCleared(pt)&&pt.slots.some(x=>x.memberId);
+
   /* 第一步：把每一筆錢攤到場次上（單位：分）。
      這裡「不」先套日期區間 —— 區間要篩的是場次，不是交易。
      九月賣掉八月打的材料，那筆錢屬於八月那幾場；材料什麼時候掛上拍賣場
      是記帳的時間點，不該決定它算哪個月的分潤。 */
   const runPool=new Map();          // ptId -> 分
   const runSales=new Map();         // ptId -> Set(交易 id)，用來算區間內有幾筆交易
-  /* 完全掛不到任何場次的交易。這種錢不屬於任何一段「場次期間」，
-     所以不併進任何區間的總額，也不偷偷倒進公基金 —— 那會讓某個期間
-     莫名其妙多出一筆錢。改成單獨列出來提醒使用者回去指定歸屬。 */
+  /* 掛不到任何可分潤場次的交易。單獨列出來提醒使用者回去指定歸屬，
+     不併進任何區間的總額，也不會變成某個期間裡莫名多出來的一筆錢。 */
   let unassignedCents=0, unassignedCount=0;
   const addPool=(id,c,sid)=>{
     runPool.set(id,(runPool.get(id)||0)+c);
@@ -202,53 +208,61 @@ function splitStats(from,to,cur){
     const cents=toCents(saleAmounts(s).amt);
     if(cents<=0) return;
     /* 指定的場次可以跨天、可以多場：材料本來就是累積好幾場才一次賣掉的。
-       已經被刪掉的場次要濾掉，不然那份錢會攤給一個不存在的 id 然後消失。 */
+       已刪除與翻車的場次都要濾掉，前者會讓錢攤給不存在的 id 然後消失，
+       後者根本沒有分潤。 */
     let targets=(Array.isArray(s.runIds)?s.runIds:[])
-      .map(id=>idx.get(id)).filter(Boolean).map(e=>e.pt);
-    /* 沒指定就退回「當天平均分攤」，但只攤給通關的場次。
-       翻車那場沒有掉落物、什麼也沒貢獻，讓它跟著吃一份等於把當天
-       五分之一的收入丟進公基金，其他四場實際打完的人白白少拿。 */
-    if(!targets.length) targets=ptsOf(s.date||'').filter(isCleared);
+      .map(id=>idx.get(id)).filter(Boolean).map(e=>e.pt).filter(eligible);
+    /* 沒指定就退回「當天平均分攤」，同樣只攤給打得成功的場次。
+       五場裡翻一場，那一場不該吃掉五分之一。 */
+    if(!targets.length) targets=ptsOf(s.date||'').filter(eligible);
     if(!targets.length){ unassignedCents+=cents; unassignedCount++; return; }
-    /* 除不盡的分不做「零頭進公基金」：那個零頭沒有日期，套區間時會算不平。
-       改成一分一分發給前幾場，每一分都落在某一場身上，帳自然對得起來。
-       偏差上限是每場 1 分，可以忽略。 */
+    /* 除不盡的分一分一分發給前幾場，每一分都落在某一場身上，不會有零頭沒去處 */
     const base=Math.floor(cents/targets.length);
     let rem=cents-base*targets.length;
     targets.forEach(p=>{ addPool(p.id, base+(rem-->0?1:0), s.id); });
   });
 
-  /* 第二步：只取「區間內的場次」，各自分給那場的人 */
+  /* 第二步：只取「區間內的場次」，各自分給那場的人。
+     走到這裡的場次一定通關、一定有人，所以不會有「沒人可分」的殘料。 */
   const per=new Map();              // memberId -> 分
   const runsPer=new Map();          // memberId -> 實際分到錢的場次數
   const saleIds=new Set();
-  let totalCents=0, fundCents=0, wipedCents=0, sharedRuns=0;
+  let totalCents=0, sharedRuns=0;
   runPool.forEach((pool,ptId)=>{
     const e=idx.get(ptId);
     if(!e || !inRange(e.date)) return;
     (runSales.get(ptId)||[]).forEach(id=>saleIds.add(id));
     totalCents+=pool;
     if(pool<=0) return;
-    /* 明確被選中的翻車場：錢不會憑空消失，整筆進公基金並單獨列出來 */
-    if(isWipe(e.pt)){ wipedCents+=pool; fundCents+=pool; return; }
     const ids=[...new Set(e.pt.slots.map(x=>x.memberId).filter(Boolean))];
-    if(!ids.length){ fundCents+=pool; return; }   // 有錢沒人，只能進公基金
     sharedRuns++;
-    const each=Math.floor(pool/ids.length);
+    const base=Math.floor(pool/ids.length);
+    let rem=pool-base*ids.length;
     ids.forEach(id=>{
-      per.set(id,(per.get(id)||0)+each);
+      per.set(id,(per.get(id)||0)+base+(rem-->0?1:0));
       runsPer.set(id,(runsPer.get(id)||0)+1);
     });
-    fundCents+=pool-each*ids.length;
   });
 
-  /* 第三步：每人無條件捨去到整數元，被捨掉的角分進公基金 */
-  const rows=[...per.entries()].map(([memberId,cents])=>{
-    const twd=Math.floor(cents/100);
-    fundCents+=cents-twd*100;
-    return {memberId, twd};
-  }).sort((a,b)=>b.twd-a.twd ||
+  /* 第三步：換算成整數元。
+     沒有公基金可以擺零頭了，所以用「最大餘額法」——先每人取整數元，
+     剩下的差額一元一元發給小數部分最大的人。這樣每個人拿到的都是整數，
+     而且加總精確等於總收入，不會有一筆錢不知道去哪了。 */
+  const rows=[...per.entries()].map(([memberId,cents])=>({memberId, cents}));
+  const totalWhole=Math.floor(totalCents/100);
+  let assigned=0;
+  rows.forEach(r=>{ r.twd=Math.floor(r.cents/100); assigned+=r.twd; });
+  rows.sort((a,b)=>(b.cents%100)-(a.cents%100) || b.cents-a.cents ||
       memberName(a.memberId).localeCompare(memberName(b.memberId),'zh-Hant'));
+  for(let i=0, left=totalWhole-assigned; left>0 && i<rows.length; i++, left--) rows[i].twd++;
+
+  rows.sort((a,b)=>b.twd-a.twd ||
+      memberName(a.memberId).localeCompare(memberName(b.memberId),'zh-Hant'));
+  /* 價格帶小數時才會出現的不足一元零頭，併給金額最高的人，維持加總相等。
+     實務上價格都是整數，這條幾乎不會走到。 */
+  const sub=totalCents-totalWhole*100;
+  if(sub>0 && rows.length) rows[0].twd+=sub/100;
+  rows.forEach(r=>delete r.cents);
 
   /* 場次數是「實際分到錢的場次」，不是「這段期間的通關場次」。
      兩者會不一樣：有些場次的材料還沒賣掉，有些場次跨在區間外但材料是這段期間賣的。
@@ -259,14 +273,12 @@ function splitStats(from,to,cur){
     rows,
     cur,
     totalTwd:totalCents/100,
-    fundTwd:fundCents/100,
-    wipedTwd:wipedCents/100,
     saleCount:saleIds.size,
     unassignedTwd:unassignedCents/100,
     unassignedCount,
     sharedRuns,
-    /* 帳一定要平：每人金額加總 + 公基金 === 總收入。測試盯著這條。 */
-    balanced:rows.reduce((a,r)=>a+r.twd*100,0)+fundCents===totalCents,
+    /* 帳一定要平：每人金額加總 === 總收入。沒有公基金這個緩衝，這條更嚴格了。 */
+    balanced:Math.round(rows.reduce((a,r)=>a+r.twd*100,0))===totalCents,
   };
 }
 
@@ -306,19 +318,17 @@ function renderSplit(){
     return;
   }
 
-  /* 公基金那一行永遠印出來，就算是 0。
-     這是「加總對不對得起來」的證據，貼到群組讓人自己驗算；
-     只有零頭時才顯示的話，反而會讓人以為那筆錢是憑空多出來的。 */
+  /* 沒有公基金了：收入全數分完，加總精確等於總收入。
+     所以摘要改成講「幾場有收入、幾人分潤」，那才是使用者要確認的事。 */
   card.innerHTML=`<div class="attsum">
     <div class="attsum-h">
-      <span class="attsum-t">${st.saleCount} 筆${curLabel(aucCur)}交易 · ${st.rows.length} 人可分</span>
+      <span class="attsum-t">${st.saleCount} 筆${curLabel(aucCur)}交易 · ${st.sharedRuns} 場有收入</span>
       <span class="attsum-r num">${nf(st.totalTwd)}</span>
     </div>
     <div class="attsum-b">
-      <span class="attsum-k"><b class="num">${nf(st.totalTwd-st.fundTwd)}</b> 已分配</span>
-      <span class="attsum-k"><b class="num">${nf(st.fundTwd)}</b> 公基金</span>
+      <span class="attsum-k"><b class="num">${st.rows.length}</b> 人分潤</span>
+      <span class="attsum-k">全數分配，加總等於總收入</span>
     </div>
-    ${st.wipedTwd>0?`<div class="splnote">其中 ${nf(st.wipedTwd)} 來自翻車場，依規則不分潤，已計入公基金</div>`:''}
   </div>`;
 
   host.innerHTML=warn+st.rows.map((r,i)=>`<div class="attrow splrow">

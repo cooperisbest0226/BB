@@ -113,8 +113,8 @@ async function exportImage(ks){
   return shareNodeAsImage(()=>buildExportNode(ks), `陣容分配_${fileStamp(ks)}.png`);
 }
 
-/* 分潤結果圖：貼到群組是要讓人自己對帳的，所以每人金額之外，
-   總收入、已分配、公基金三個數字一定要在同一張圖上，加起來才驗得起來。 */
+/* 分潤結果圖：貼到群組是要讓人自己對帳的。
+   沒有公基金之後驗算更單純——每人金額加起來就該等於總收入。 */
 function buildSplitExportNode(){
   const st=splitStats(splFrom,splTo,aucCur);
   const range=(splFrom||splTo) ? splFilterText() : '全部日期';
@@ -125,7 +125,6 @@ function buildSplitExportNode(){
     <span class="ex-sp-a">${nf(r.twd)}</span>
   </div>`).join('');
   const notes=[
-    st.wipedTwd>0?`翻車場收入 ${nf(st.wipedTwd)} 不分潤，已計入公基金`:'',
     st.unassignedCount?`另有 ${st.unassignedCount} 筆共 ${nf(st.unassignedTwd)} 尚未指定歸屬場次，未列入`:'',
   ].filter(Boolean).map(t=>`<div class="ex-sp-note">${t}</div>`).join('');
   const host=document.getElementById('exportHost');
@@ -134,12 +133,12 @@ function buildSplitExportNode(){
     <div class="ex-sub">${st.saleCount} 筆交易 · ${st.rows.length} 人可分 · 產出於 ${fmtNow()}</div>
     <div class="ex-sp-sum">
       <span><b>${nf(st.totalTwd)}</b>總收入</span>
-      <span><b>${nf(st.totalTwd-st.fundTwd)}</b>已分配</span>
-      <span><b>${nf(st.fundTwd)}</b>公基金</span>
+      <span><b>${st.sharedRuns}</b>場有收入</span>
+      <span><b>${st.rows.length}</b>人分潤</span>
     </div>
     <div class="ex-sp">${rows}</div>
     ${notes}
-    <div class="ex-sp-note">每人金額無條件捨去到整數，零頭計入公基金</div>
+    <div class="ex-sp-note">收入全數分配，每人金額加總等於總收入</div>
   </div>`;
   return document.getElementById('exportWrap');
 }

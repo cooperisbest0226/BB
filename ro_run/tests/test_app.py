@@ -2496,11 +2496,12 @@ def run(page):
               const st = splitStats('','');
               const by = {};
               st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
-              return [st.totalTwd, by['小明'], by['小華'], by['小美'], st.fundTwd];
-          }"""), [1600, 500, 800, 300, 0])
+              return [st.totalTwd, by['小明'], by['小華'], by['小美']];
+          }"""), [1600, 500, 800, 300])
 
-    check("每人金額加總 + 公基金 === 總收入",
-          page.evaluate("() => splitStats('','').balanced"), True)
+    # 沒有公基金之後，這條不變式更嚴格：加總必須精確等於總收入
+    check("每人金額加總 === 總收入",
+          page.evaluate("() => splitStats('','','TWD').balanced"), True)
 
     check("未指定場次的舊交易，平均分攤給那天所有場次",
           page.evaluate("""() => {
@@ -2508,15 +2509,19 @@ def run(page):
               const st = splitStats('','');
               const by = {};
               st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
-              return [by['小明'], by['小華'], by['小美'], st.fundTwd, st.balanced];
-          }"""), [250, 500, 250, 0, True])
+              return [by['小明'], by['小華'], by['小美'], st.balanced];
+          }"""), [250, 500, 250, True])
 
-    check("翻車場的收入不分潤，整筆進公基金並單獨列出",
+    # 翻車就是沒打成功、沒有掉落物，沒有東西可以分——不是「先扣起來放公基金」。
+    # 指到翻車場的錢會退回未歸屬，提醒使用者自己處理。
+    check("指到翻車場的收入不進入分配，改列為未歸屬",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runIds:['r3'], items:[]}];
-              const st = splitStats('','');
-              return [st.rows.length, st.wipedTwd, st.fundTwd, st.totalTwd, st.balanced];
-          }"""), [0, 900, 900, 900, True])
+              state.sales = [{id:'s9', date:'2026-07-02', mode:'set', cur:'TWD', sets:1,
+                              price:900, runIds:['r3'], items:[]}];
+              const st = splitStats('','','TWD');
+              return [st.rows.length, st.totalTwd, st.unassignedCount,
+                      st.unassignedTwd, st.balanced];
+          }"""), [0, 0, 1, 900, True])
 
     # 掛不到任何場次的交易不併進任何期間，也不倒進公基金——
     # 那會讓某個期間莫名多出一筆錢。改成單獨列出來提醒使用者回去指定。
@@ -2526,44 +2531,48 @@ def run(page):
                               price:500, runIds:[], items:[]}];
               const st = splitStats('','','TWD');
               return [st.unassignedCount, st.unassignedTwd, st.totalTwd,
-                      st.fundTwd, st.rows.length, st.saleCount, st.balanced];
-          }"""), [1, 500, 0, 0, 0, 0, True])
+                      st.rows.length, st.saleCount, st.balanced];
+          }"""), [1, 500, 0, 0, 0, True])
 
     check("runId 指到已經被刪掉的場次時，退回當天平均分攤而不是整筆消失",
           page.evaluate("""() => {
               state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['已刪除的場次'], items:[]}];
-              const st = splitStats('','');
-              return [st.rows.length, st.totalTwd - st.fundTwd, st.balanced];
+              const st = splitStats('','','TWD');
+              return [st.rows.length, st.totalTwd, st.balanced];
           }"""), [3, 1000, True])
 
-    check("除不盡時無條件捨去，零頭進公基金，帳仍然平",
+    # 沒有公基金可以擺零頭，改用最大餘額法把差額一元一元發完
+    check("除不盡時餘額發給人而不是留下來，加總精確等於總收入",
           page.evaluate("""() => {
-              // 1000 給 RUN 2 的兩個人除得盡；1001 給 RUN 1 的兩個人會剩 1
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1001, runIds:['r1'], items:[]}];
-              const st = splitStats('','');
-              const by = {};
-              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
-              return [by['小明'], by['小華'], st.fundTwd, st.balanced];
-          }"""), [500, 500, 1, True])
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1,
+                              price:1001, runIds:['r1'], items:[]}];
+              const st = splitStats('','','TWD');
+              const amts = st.rows.map(r => r.twd);
+              return [amts.slice().sort((a,b) => b - a), amts.reduce((a,b) => a + b, 0),
+                      st.totalTwd, st.balanced];
+          }"""), [[501, 500], 1001, 1001, True])
 
-    check("金額有小數時用分計算，不會出現浮點誤差少一塊錢",
+    check("金額有小數時用分計算，不會出現浮點誤差把錢弄丟",
           page.evaluate("""() => {
-              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:0.03, runIds:['r1'], items:[]}];
-              const st = splitStats('','');
-              // 3 分給 2 個人 = 各 1 分，都不到 1 元，全部被捨去進公基金
-              return [st.rows.every(r => r.twd === 0), st.fundTwd, st.balanced];
-          }"""), [True, 0.03, True])
+              state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1,
+                              price:0.03, runIds:['r1'], items:[]}];
+              const st = splitStats('','','TWD');
+              // 不足一元的零頭併給金額最高的人，加總仍精確等於 0.03
+              return [st.rows.reduce((a,r) => a + r.twd, 0), st.totalTwd, st.balanced];
+          }"""), [0.03, 0.03, True])
 
     check("大額除以奇數人時不會因為浮點誤差少算",
           page.evaluate("""() => {
               state.schedule['2026-07-01'][0].slots =
                   ['m1','m2','m3'].map(x => ({memberId:x}));
               state.sales = [{id:'s9', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:70000000, runIds:['r1'], items:[]}];
-              const st = splitStats('','');
+              const st = splitStats('','','TWD');
               state.schedule['2026-07-01'][0].slots =
                   ['m1','m2'].map(x => ({memberId:x}));
-              return [st.rows.map(r => r.twd), st.fundTwd, st.balanced];
-          }"""), [[23333333, 23333333, 23333333], 1, True])
+              const amts = st.rows.map(r => r.twd);
+              return [amts.reduce((a,b) => a + b, 0),
+                      amts.slice().sort((a,b) => b - a), st.balanced];
+          }"""), [70000000, [23333334, 23333333, 23333333], True])
     # 每人被捨去 0.33 元共 0.99，加上場次層級除不盡剩的 0.01，公基金剛好 1 元
 
     check("日期區間會夾住分潤範圍",
@@ -2571,9 +2580,9 @@ def run(page):
               state.sales = [
                 {id:'a', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['r1'], items:[]},
                 {id:'b', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runIds:['r3'], items:[]}];
-              const st = splitStats('2026-07-01','2026-07-01');
-              return [st.saleCount, st.totalTwd, st.wipedTwd];
-          }"""), [1, 1000, 0])
+              const st = splitStats('2026-07-01','2026-07-01','TWD');
+              return [st.saleCount, st.totalTwd];
+          }"""), [1, 1000])
 
     # --- 畫面 ---
     seed_split()
@@ -2587,11 +2596,12 @@ def run(page):
               .map(b => [b.dataset.sub, b.textContent])"""),
           [["asales", "成交紀錄"], ["asplit", "分潤試算"]])
 
-    check("摘要卡把總收入、已分配、公基金三個數字都印出來",
+    check("摘要卡印出總收入、幾場有收入、幾人分潤",
           page.evaluate("""() => [
               document.querySelector('#splCard .attsum-r').textContent.trim(),
+              document.querySelector('#splCard .attsum-t').textContent.trim(),
               [...document.querySelectorAll('#splCard .attsum-k b')].map(b => b.textContent.trim())]"""),
-          ["1,600", ["1,600", "0"]])
+          ["1,600", "2 筆台幣交易 · 2 場有收入", ["3"]])
 
     check("每人一列，金額由大到小",
           page.evaluate("""() => [...document.querySelectorAll('#splList .splrow')]
@@ -2599,18 +2609,26 @@ def run(page):
                          r.querySelector('.splamt').textContent.trim()])"""),
           [["小華", "800"], ["小明", "500"], ["小美", "300"]])
 
-    check("公基金 0 的時候那一行還是要印，讓人自己驗算加總",
-          page.evaluate("""() => document.querySelector('#splCard').textContent.includes('公基金')"""),
-          True)
-
-    check("有翻車收入時多一行說明它去哪了",
+    # 公基金已經整個拿掉：收入全數分完，加總就是驗算方式
+    check("畫面上不再出現公基金，改成聲明加總等於總收入",
           page.evaluate("""() => {
-              state.sales.push({id:'sw', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:900, runIds:['r3'], items:[]});
+              const t = document.querySelector('#splCard').textContent;
+              const sum = [...document.querySelectorAll('#splList .splamt')]
+                  .reduce((a,e) => a + Number(e.textContent.replace(/,/g,'')), 0);
+              return [t.includes('公基金'), t.includes('加總等於總收入'), sum];
+          }"""), [False, True, 1600])
+
+    check("指到翻車場的收入會變成未歸屬警示，而不是靜靜進公基金",
+          page.evaluate("""() => {
+              state.sales.push({id:'sw', date:'2026-07-02', mode:'set', cur:'TWD', sets:1,
+                                price:900, runIds:['r3'], items:[]});
               renderSplit();
-              const n = document.querySelector('#splCard .splnote');
+              const w = document.querySelector('#splList .splwarn');
+              const r = [!!w, w.textContent.includes('900'),
+                         document.querySelector('#splCard').textContent.includes('公基金')];
               state.sales.pop(); renderSplit();
-              return [!!n, n.textContent.includes('翻車'), n.textContent.includes('公基金')];
-          }"""), [True, True, True])
+              return r;
+          }"""), [True, True, False])
 
     check("有未歸屬的交易時，就算該期間沒收入也要講出來並說明怎麼修",
           page.evaluate("""() => {
@@ -2651,7 +2669,7 @@ def run(page):
               const foot = document.querySelectorAll('#exportHost .ex-sp-note').length;
               document.getElementById('exportHost').innerHTML = '';
               return [sum, names, foot];
-          }"""), [["1,600", "1,600", "0"], ["小華", "小明", "小美"], 1])
+          }"""), [["1,600", "2", "3"], ["小華", "小明", "小美"], 1])
 
     check("分潤圖的色值寫死淺色，深色模式下不會翻掉",
           page.evaluate("""() => {
@@ -2737,8 +2755,8 @@ def run(page):
               const st = splitStats('','','TWD');
               const by = {};
               st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
-              return [by['小明'], by['小華'], by['小美'], st.fundTwd, st.balanced];
-          }"""), [300, 600, 300, 0, True])
+              return [by['小明'], by['小華'], by['小美'], st.totalTwd, st.balanced];
+          }"""), [300, 600, 300, 1200, True])
 
     check("場次數算的是實際分到錢的場次，跟金額對得起來",
           page.evaluate("""() => {
@@ -2774,19 +2792,24 @@ def run(page):
               const by = {};
               one.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
               state.schedule['2026-07-01'][1].wipe = false;
-              return [both.fundTwd, one.fundTwd, one.wipedTwd,
+              return [both.totalTwd, one.totalTwd, one.unassignedCount,
                       by['小明'], by['小華'], one.balanced];
-          }"""), [0, 0, 0, 500, 500, True])
+          }"""), [1000, 1000, 0, 500, 500, True])
 
-    check("明確選中翻車場才會把錢送進公基金，並且標示出來",
+    # 選中的場次翻車 → 退回「當天其他通關場次」；當天沒有別場才會變成未歸屬
+    check("選中的場次翻車時，錢退回當天其他通關的場次",
           page.evaluate("""() => {
               state.schedule['2026-07-01'][1].wipe = true;
               state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
                               sets:1, price:900, runIds:['r2'], items:[]}];
               const st = splitStats('2026-07-01','2026-07-01','TWD');
+              const by = {};
+              st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
               state.schedule['2026-07-01'][1].wipe = false;
-              return [st.rows.length, st.wipedTwd, st.fundTwd, st.balanced];
-          }"""), [0, 900, 900, True])
+              // r1（小明+小華）是當天唯一還通關的場次
+              return [st.rows.length, by['小明'], by['小華'],
+                      st.unassignedCount, st.balanced];
+          }"""), [2, 450, 450, 0, True])
 
     check("攤到多場除不盡時一分一分發完，不會有分數消失",
           page.evaluate("""() => {
@@ -2795,7 +2818,7 @@ def run(page):
                               sets:1, price:1000.01, runIds:['r1','r2'], items:[]}];
               const st = splitStats('2026-07-01','2026-07-01','TWD');
               return [st.totalTwd, st.balanced,
-                      st.rows.reduce((a,r) => a + r.twd, 0) + st.fundTwd];
+                      st.rows.reduce((a,r) => a + r.twd, 0)];
           }"""), [1000.01, True, 1000.01])
 
     # --- 編輯既有交易：修正歸屬場次 ---
@@ -2842,7 +2865,7 @@ def run(page):
 
     # 回報情境：一天五場，只有一場翻車且沒掉落物，其他四場都成功。
     # 那一場不該吃掉五分之一的收入。
-    check("一天五場只有一場翻車：收入只攤給四場通關，公基金是 0",
+    check("一天五場只有一場翻車：收入只攤給四場通關，那一場不吃份",
           page.evaluate("""() => {
               const mk = (id,n,w,ids) => ({id, name:n, capacity:12, wipe:w, videos:[], drops:[],
                                            slots: ids.map(x => ({memberId:x}))});
@@ -2855,11 +2878,11 @@ def run(page):
               const st = splitStats('2026-06-10','2026-06-10','TWD');
               const by = {};
               st.rows.forEach(r => by[memberName(r.memberId)] = r.twd);
-              return [st.totalTwd, st.fundTwd, st.wipedTwd,
+              return [st.totalTwd, st.unassignedCount,
                       by['小明'], by['小華'], by['小美'], st.balanced];
           }"""),
           # 5000 ÷ 4 場 = 1250/場；小明在 f1,f2,f4 → 1875，小華在 f1,f4,f5 → 1875，小美在 f2,f5 → 1250
-          [5000, 0, 0, 1875, 1875, 1250, True])
+          [5000, 0, 1875, 1875, 1250, True])
 
     # 五場全翻 → 未指定歸屬時找不到任何通關場次 → 整筆變成「未歸屬」，
     # 不會被塞進公基金充數。使用者可以自己決定要不要手動指定到翻車場。
@@ -2867,9 +2890,9 @@ def run(page):
           page.evaluate("""() => {
               state.schedule['2026-06-10'].forEach(pt => pt.wipe = true);
               const st = splitStats('2026-06-10','2026-06-10','TWD');
-              return [st.rows.length, st.fundTwd, st.totalTwd,
+              return [st.rows.length, st.totalTwd,
                       st.unassignedCount, st.unassignedTwd, st.balanced];
-          }"""), [0, 0, 0, 1, 5000, True])
+          }"""), [0, 0, 1, 5000, True])
 
     # schemaVersion:7 的資料還是舊欄位名（twd/rate），要一路跑過 8→9 與 9→10
     check("7→10 全鏈：補 runId、換成 cur/price、再包成 runIds 陣列",
@@ -2886,6 +2909,31 @@ def run(page):
           }"""), ["TWD", 100, True, 0, ["r9"], True, True])
 
     seed(page)
+
+    check("更新紀錄的最新一筆與 APP_VERSION 一致",
+          page.evaluate("() => [CHANGELOG[0].v, APP_VERSION, CHANGELOG[0].v === APP_VERSION]")[2],
+          True)
+
+    check("更新紀錄沒有跳號或重複，版本由新到舊",
+          page.evaluate("""() => {
+              const nums = CHANGELOG.map(e => Number(e.v.replace('v','')));
+              const sorted = nums.every((n,i) => i === 0 || nums[i-1] > n);
+              return [sorted, new Set(nums).size === nums.length];
+          }"""), [True, True])
+
+    check("每一筆更新紀錄都有日期與至少一條變更，標籤都是合法的",
+          page.evaluate("""() => {
+              const ok = ['add','fix','imp','chg','rm'];
+              return CHANGELOG.every(e => /^\d{4}\/\d{2}\/\d{2}$/.test(e.d)
+                  && Array.isArray(e.c) && e.c.length > 0
+                  && e.c.every(([tag, txt]) => ok.includes(tag) && txt.length > 0));
+          }"""), True)
+
+    check("這一輪新增的版本都補進更新紀錄了",
+          page.evaluate("""() => {
+              const have = new Set(CHANGELOG.map(e => e.v));
+              return ['v53','v54','v55','v56','v57','v59','v60'].filter(v => !have.has(v));
+          }"""), [])
 
     # ---------- 幣別拆分 ----------
     print("\n[cur] 台幣／R 幣拆分")
