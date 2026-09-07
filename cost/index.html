@@ -2274,7 +2274,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.18.0 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.19.0 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/20</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -2357,7 +2357,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <!-- Proxy split section: collapsed by default, expanded via toggle only -->
     <div class="field" id="f-proxy-section" style="display:none">
       <div class="proxy-section-note">
-        帳單中包含的代墊費用，儲存後自動拆分為獨立代墊記錄，用橘色與收回狀態單獨追蹤；金額仍計入支出總額，不會因為拆分而變少。
+        這筆帳單裡幫別人墊的部分。上面的金額請填<b>刷卡全額</b>——代墊只是註記在這筆項目裡，會另外開一筆橘色記錄追蹤收回狀態，但不會從金額裡扣掉，也不會被重複計算。
       </div>
       <div id="proxy-rows"></div>
       <button type="button" class="proxy-add-btn" onclick="addProxyRow()" id="proxy-add-btn">
@@ -2367,15 +2367,15 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       </button>
       <div class="proxy-calc" id="proxy-calc" style="display:none">
         <div class="proxy-calc-row">
-          <span>帳單總額</span><span id="pc-total">$0</span>
+          <span>記錄金額（刷卡全額）</span><span id="pc-total">$0</span>
         </div>
         <div class="proxy-calc-row">
-          <span>代墊合計</span>
-          <span id="pc-proxy" style="color:var(--orange)">−$0</span>
+          <span>其中代墊（待收回）</span>
+          <span id="pc-proxy" style="color:var(--orange)">$0</span>
         </div>
         <div class="proxy-calc-divider"></div>
         <div class="proxy-calc-result" id="proxy-calc-result">
-          <span>個人費用</span><span id="pc-personal">$0</span>
+          <span>自付</span><span id="pc-personal">$0</span>
         </div>
       </div>
     </div>
@@ -4079,6 +4079,20 @@ const getById=id=>idbReq(store('readonly').get(id)).then(r=>r||null).catch(()=>n
 // Fetch all advance items that are children of a given parent bill id
 const getByParentId=parentId=>idbReq(store('readonly').index('parentId').getAll(IDBKeyRange.only(parentId))).then(r=>r||[]).catch(()=>[]);
 
+// ── 代墊金額的單一事實來源 ────────────────────────────────────────────
+// 父費用存的是「刷卡總額」（含代墊）。從帳單拆出來的子代墊記錄，金額已經
+// 包在父費用那筆全額裡，只是拿來注記「這裡面有多少是幫誰墊的、收回了沒」。
+// 所以任何『花了多少』的加總都必須跳過它 —— 不跳過就是同一筆錢算兩次。
+//
+// 獨立新增的代墊款（沒有 parentId）沒有父項目涵蓋它，那筆錢確實從你口袋
+// 出去了，照常計入。這兩種來源性質不同，唯一的判準就是有沒有 parentId。
+function isSplitChild(x){ return !!x && x.itype==='advance' && x.parentId!=null; }
+// 支出加總請一律走這裡，不要再自己寫 reduce((s,x)=>s+x.amount,0)。
+function sumAmt(arr){ return arr.reduce((s,x)=>s+(isSplitChild(x)?0:(x.amount||0)),0); }
+// 純粹的金額加總，不做任何排除。只給「代墊專屬檢視」與「待收」用 ——
+// 那些地方要看的正是注記本身的金額。
+function sumRaw(arr){ return arr.reduce((s,x)=>s+(x.amount||0),0); }
+
 const putItem=async item=>{
   const key=await idbWrite(store('readwrite').put(item));
   if(!item.id) item.id=key;
@@ -4332,7 +4346,10 @@ function removeProxyRow(btn){
 // 拆分備註是機器產生的，不是使用者寫的。之前每次儲存都把它「再接一次」到
 // 已經含有上一次結果的備註後面，於是備註每存一次就多一行。
 // 現在載入表單時先剝掉，儲存時重新產生 —— 這樣重複儲存的結果會一致。
-const SPLIT_NOTE_RE = /^帳單 \$[\d,]+(?:\.\d+)?，代墊 \$[\d,]+(?:\.\d+)? 已另立記錄$/;
+// 兩種格式：v4.19 之前是「帳單 $X，代墊 $Y 已另立記錄」（扣除語意），
+// 之後是「含代墊 $Y（自付 $Z），已另立記錄追蹤收回」（全額語意）。
+// 舊格式必須繼續認得，否則舊記錄一開啟編輯就會把過時的說明留在備註裡。
+const SPLIT_NOTE_RE = /^(?:帳單 \$[\d,]+(?:\.\d+)?，代墊 \$[\d,]+(?:\.\d+)? 已另立記錄|含代墊 \$[\d,]+(?:\.\d+)?（自付 \$-?[\d,]+(?:\.\d+)?），已另立記錄追蹤收回)$/;
 function stripSplitNote(note){
   return String(note||'').split('\n').filter(l=>!SPLIT_NOTE_RE.test(l.trim())).join('\n').trim();
 }
@@ -4348,7 +4365,7 @@ function updateProxyCalc(){
   if(rows.length > 0 && billAmt > 0){
     calcEl.style.display='';
     document.getElementById('pc-total').textContent    = fmt(billAmt);
-    document.getElementById('pc-proxy').textContent    = '−'+fmt(proxySum);
+    document.getElementById('pc-proxy').textContent    = fmt(proxySum);
     document.getElementById('pc-personal').textContent = fmt(Math.max(personal,0));
     const res=document.getElementById('proxy-calc-result');
     if(res) res.classList.toggle('over', personal<0);
@@ -4725,17 +4742,21 @@ async function rHome(opts={}){
   const normal  = items.filter(x => x.itype !== 'advance');
   const advance = advOn() ? items.filter(x => x.itype === 'advance') : [];
 
-  const advTotal = advance.reduce((s,x)=>s+x.amount,0);
-  const total    = normal.reduce((s,x)=>s+x.amount,0) + advTotal;
-  const paid     = normal.filter(x=>x.paid===1).reduce((s,x)=>s+x.amount,0) + advTotal;
+  // 加總走 sumAmt：拆分子代墊的金額已含在父費用的全額裡，跳過才不會算兩次。
+  const advTotal = sumAmt(advance);          // 只有獨立代墊會有金額
+  const total    = sumAmt(normal) + advTotal;
+  const paid     = sumAmt(normal.filter(x=>x.paid===1)) + advTotal;
   const unpaid   = total-paid;
+  // 「待收」看的是注記本身：不管是拆分出來的還是獨立記的，只要沒收回，
+  // 那筆錢就是別人還沒還你 —— 這裡要用 sumRaw，不能排除子項目。
   const advUnrecItems = advance.filter(x=>x.recovered!==1);
-  const advUnrec = advUnrecItems.reduce((s,x)=>s+x.amount,0);
+  const advUnrec = sumRaw(advUnrecItems);
 
   // 篩選鈕上的即時計數。底部 footer 也有同樣的數字，但項目一多就捲不到，
   // 放在按鈕上才是隨時看得見的。
   const todoN = normal.filter(x=>x.paid!==1).length + advUnrecItems.length;
-  const allN  = normal.length + (advOn()?advance.length:0);
+  // 子代墊是父費用卡上的注記，不是獨立一筆，筆數同樣不重複計。
+  const allN  = normal.length + (advOn()?advance.filter(x=>!isSplitChild(x)).length:0);
   const tn=document.getElementById('hf-todo-n');
   const an=document.getElementById('hf-all-n');
   if(tn){ tn.textContent = todoN>99?'99+':todoN; tn.classList.toggle('on', todoN>0); }
@@ -4895,7 +4916,14 @@ async function rHome(opts={}){
     }else{
       todo.forEach(x=>frag.appendChild(makeCard(x)));
       const foot=document.createElement('div');foot.className='list-footer';
-      foot.textContent=`待處理 ${todo.length} 筆　合計 ${fmt(todo.reduce((s,x)=>s+x.amount,0))}`;
+      // 待付與待收是兩種不同的「待處理」：待付是還要掏錢，待收是別人欠你。
+      // 混在同一個數字裡看不出差別，而且子代墊的金額已算在父費用上。
+      // 代墊款的錢早就付出去了，它出現在待處理清單是因為「還沒收回」，
+      // 不是「還要付」。把它算進待付會憑空多一筆根本不用再掏的錢。
+      const toPay = sumAmt(todo.filter(x=>x.itype!=='advance'));
+      const toGet = sumRaw(todo.filter(x=>x.itype==='advance'&&x.recovered!==1));
+      foot.textContent=`待處理 ${todo.length} 筆　待付 ${fmt(toPay)}`
+                     + (toGet>0?`　待收 ${fmt(toGet)}`:'');
       frag.appendChild(foot);
     }
   }else{
@@ -5192,8 +5220,9 @@ async function rList(){
     const hdr=document.createElement('div');
     hdr.className='date-grp-hdr';
     const label=dateKey==='__no_date__'?'未設定日期':fmtDateHdr(dateKey);
-    // 代墊款只是收回狀態的注記，金額仍算「花了多少」，這裡不再排除
-    const subtotal=groupItems.reduce((s,x)=>s+x.amount,0);
+    // 拆分子代墊的金額已含在同一天的父費用裡，小計跳過它才不會算兩次。
+    // （子卡在畫面上仍會顯示自己的金額，那是注記，不是另一筆支出。）
+    const subtotal=sumAmt(groupItems);
     hdr.innerHTML=`<span>${label}</span>${subtotal>0?`<span class="date-grp-subtotal">${fmt(subtotal)}</span>`:''}`;
     frag.appendChild(hdr);
     groupItems.forEach(x=>{
@@ -5212,9 +5241,13 @@ async function rList(){
     });
   });
 
-  const totalAmt=items.reduce((s,x)=>s+x.amount,0);
+  // 「代墊」分頁是代墊的專屬檢視，要看的就是每一筆注記金額本身，
+  // 所以那裡用 sumRaw 並改稱「代墊合計」；其餘檢視是支出加總，走 sumAmt。
+  const advView  = listFilter==='advance';
+  const totalAmt = advView ? sumRaw(items) : sumAmt(items);
+  const shownN   = advView ? items.length : items.filter(x=>!isSplitChild(x)).length;
   const foot=document.createElement('div');foot.className='list-footer';
-  foot.textContent=`共 ${items.length} 筆　支出合計 ${fmt(totalAmt)}`;
+  foot.textContent=`共 ${shownN} 筆　${advView?'代墊合計':'支出合計'} ${fmt(totalAmt)}`;
   frag.appendChild(foot);
   el.appendChild(frag);
 }
@@ -5232,11 +5265,12 @@ function _last6(y,m){
 }
 
 // cat -> [monthly totals] aligned to ymKeys。
-// 代墊款只是收回狀態的注記，一樣算進分類金額——不然這個分類的預算
-// 進度會漏掉一部分實際花費，跟首頁的加總對不起來。
+// 獨立代墊照樣算進分類金額（那是真的花出去的錢）；拆分子代墊跳過，
+// 因為它的金額已經含在同分類的父費用裡，重複加會讓分類預算憑空超支。
 function _trendByCat(items,ymKeys){
   const map={};
   items.forEach(x=>{
+    if(isSplitChild(x)) return;
     const i=ymKeys.indexOf(x.ym); if(i<0)return;
     (map[x.cat]=map[x.cat]||new Array(ymKeys.length).fill(0))[i]+=x.amount;
   });
@@ -5740,9 +5774,9 @@ async function rChart(){
   const rangeItems = await getByRange(ymKeys[0], ymKeys[5]);
   const trendByCat = _trendByCat(rangeItems, ymKeys);
   const items = rangeItems.filter(x=>x.ym===key);
-  // 代墊款只是收回狀態的注記，甜甜圖與分類金額都照樣算進去——它跟一般
-  // 費用一樣是真的花出去的錢，沒理由在圖表上憑空消失。
-  const donutItems = items;
+  // 獨立代墊照樣進圖表；拆分子代墊排除 —— 它的金額已經在父費用那一片裡，
+  // 再切一片出來，甜甜圈總額就會比首頁大數字多一截。
+  const donutItems = items.filter(x=>!isSplitChild(x));
 
   const catMap={};donutItems.forEach(x=>catMap[x.cat]=(catMap[x.cat]||0)+x.amount);
   const cats=Object.keys(catMap),vals=cats.map(c=>catMap[c]);
@@ -5802,10 +5836,10 @@ async function rChartRange(){
   // 最高月份都照實際花費算，不會因為切到含代墊的月份就悄悄變小。
   const items   = await getByRange(fromKey, toKey);
 
-  const monthTotals = ymKeys.map(k => items.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0));
+  const monthTotals = ymKeys.map(k => sumAmt(items.filter(x=>x.ym===k)));
 
   const allCatMap={};
-  items.forEach(x=>allCatMap[x.cat]=(allCatMap[x.cat]||0)+x.amount);
+  items.forEach(x=>{ if(!isSplitChild(x)) allCatMap[x.cat]=(allCatMap[x.cat]||0)+x.amount; });
 
   const grandTotal   = monthTotals.reduce((s,v)=>s+v,0);
   const activeMths   = monthTotals.filter(v=>v>0).length;
@@ -6058,9 +6092,8 @@ async function renderYearCompare(){
   const monthsIn=yr=>yr<nowY?12:(yr>nowY?0:cm());
 
   document.getElementById('range-summary').innerHTML=selYears.map(yr=>{
-    // 代墊款不再從年度統計裡剔除，理由同月統計
-    const t=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-'))
-               .reduce((s,x)=>s+x.amount,0);
+    // 獨立代墊照算；拆分子代墊跳過（金額已在父費用裡），理由同月統計
+    const t=sumAmt(all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')));
     return `<div class="range-sum-tile"><div class="range-sum-lbl">${yr} 年支出</div><div class="range-sum-val r">${fmt(t)}</div></div>`;
   }).join('');
 
@@ -6079,7 +6112,7 @@ async function renderYearCompare(){
   const datasets=selYears.map(yr=>{
     const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
     const data=Array.from({length:12},(_,i)=>{const k=ymStr(yr,i+1);
-      return all.filter(x=>x.ym===k).reduce((s,x)=>s+x.amount,0);});
+      return sumAmt(all.filter(x=>x.ym===k));});
     return{label:yr+'年',data,borderColor:pal.line,backgroundColor:pal.fill,borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:true,tension:.38};
   });
   if(areaChart){areaChart.destroy();areaChart=null;}
@@ -6102,8 +6135,7 @@ async function renderYearCompare(){
   const statsEl=document.getElementById('trend-stats');
   statsEl.innerHTML=selYears.map(yr=>{
     const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
-    const yTotal=all.filter(x=>x.ym&&x.ym.startsWith(yr+'-'))
-                    .reduce((s,x)=>s+x.amount,0);
+    const yTotal=sumAmt(all.filter(x=>x.ym&&x.ym.startsWith(yr+'-')));
     const n=monthsIn(yr)||1;
     return `<div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 年總支出</div><div class="stat-val">${fmt(yTotal)}</div></div><div class="stat-tile" style="border-top:3px solid ${pal.line}"><div class="stat-lbl">${yr} 月均（÷${n}）</div><div class="stat-val">${fmt(yTotal/n)}</div></div>`;
   }).join('');
@@ -6204,10 +6236,16 @@ async function renderCalendar(){
   const all=await getAll();
   const inMonth=all.filter(x=>x.date&&x.date.startsWith(key)
                               &&(advOn()||x.itype!=='advance'));
-  _calCache=inMonth;
+  // 橘點的意思是「這天有代墊還沒收回」—— 那是狀態不是金額，子項目照算。
+  // 先把它算出來，再從清單裡拿掉子項目。
+  const unrecDays=new Set(inMonth.filter(x=>x.itype==='advance'&&x.recovered!==1)
+                                 .map(x=>+x.date.slice(8,10)));
+  // 日曆列的是「這天要付的款」。子代墊跟它的父費用同一天、金額又含在父費用
+  // 裡，一起列會變成同一筆錢在同一天出現兩次，日合計也會多一份。
+  _calCache=inMonth.filter(x=>!isSplitChild(x));
 
   const byDay={};
-  inMonth.forEach(x=>{ (byDay[+x.date.slice(8,10)]=byDay[+x.date.slice(8,10)]||[]).push(x); });
+  _calCache.forEach(x=>{ (byDay[+x.date.slice(8,10)]=byDay[+x.date.slice(8,10)]||[]).push(x); });
 
   const legAdv=document.getElementById('cal-leg-adv');
   if(legAdv) legAdv.style.display=advOn()?'':'none';
@@ -6226,7 +6264,7 @@ async function renderCalendar(){
     if(list.length){
       // 紅（有未繳）優先於橘（代墊未收回）優先於綠（全部完成）
       const unpaid=list.some(x=>x.itype!=='advance'&&x.paid!==1);
-      const unrec =list.some(x=>x.itype==='advance'&&x.recovered!==1);
+      const unrec =unrecDays.has(d);
       dot=`<div class="cal-dot ${unpaid?'r':unrec?'o':'g'}"></div>`;
     }
     html+=`<div class="cal-day${list.length?' has':''}${ds===td?' today':''}${ds===_calSel?' sel':''}"
@@ -6274,7 +6312,7 @@ function renderCalDetail(){
   const el=document.getElementById('cal-detail');
   if(!_calSel){
     const n=_calCache.length;
-    const sum=_calCache.reduce((s,x)=>s+x.amount,0);
+    const sum=sumAmt(_calCache);
     el.innerHTML=n
       ? `<div class="cal-detail-hdr"><span>本月付款 ${n} 筆</span><span class="cal-detail-sum">${fmt(sum)}</span></div>
          <div class="cal-hint" style="border-top:none;margin-top:0;padding-top:4px">點選有標記的日期查看明細</div>`
@@ -6284,7 +6322,7 @@ function renderCalDetail(){
   const list=_calCache.filter(x=>x.date===_calSel).sort((a,b)=>b.amount-a.amount);
   const d=new Date(_calSel+'T00:00:00');
   const wd=['日','一','二','三','四','五','六'][d.getDay()];
-  const sum=list.reduce((s,x)=>s+x.amount,0);
+  const sum=sumAmt(list);
   el.innerHTML=
     `<div class="cal-detail-hdr">
        <span>${d.getMonth()+1}月${d.getDate()}日 週${wd}　${list.length} 筆</span>
@@ -6299,12 +6337,12 @@ function renderCalUndated(key){
   return getByYM(key).then(items=>{
     // advOn() 為關時完全不顯示代墊項目（功能開關的可見性判斷，
     // 跟下面加總要不要排除代墊金額是兩件事，不要混在一起改）
-    items.filter(x=>!x.date&&(advOn()||x.itype!=='advance')).forEach(x=>undated.push(x));
+    items.filter(x=>!x.date&&(advOn()||x.itype!=='advance')&&!isSplitChild(x)).forEach(x=>undated.push(x));
     if(!undated.length){el.innerHTML='';return;}
     el.innerHTML=
       `<div class="cal-detail-hdr" style="margin-top:4px">
          <span>未排定日期 ${undated.length} 筆</span>
-         <span class="cal-detail-sum">${fmt(undated.reduce((s,x)=>s+x.amount,0))}</span>
+         <span class="cal-detail-sum">${fmt(sumAmt(undated))}</span>
        </div>`+undated.sort((a,b)=>b.amount-a.amount).map(_calRowHTML).join('');
   });
 }
@@ -6447,14 +6485,9 @@ async function openForm(id){
         if(sec)  sec.style.display  = '';
         if(tBtn){ tBtn.classList.add('active'); tBtn.setAttribute('aria-expanded','true'); }
         children.forEach(c => addProxyRow(c.payee, c.amount, c.id));
-        // 金額欄要放「原始帳單總額」，不是已扣除的個人金額。
-        // billAmount 是新版才有的欄位；舊資料用「個人金額 + 代墊合計」還原，
-        // 對只存過一次的記錄完全正確。
-        const kidSum = children.reduce((t,c)=>t+(c.amount||0),0);
-        const billAmt = (typeof x.billAmount === 'number' && x.billAmount > 0)
-                      ? x.billAmount
-                      : x.amount + kidSum;
-        setAmt('f-amt-r','f-amt-d', billAmt);
+        // x.amount 現在就是刷卡全額（開機時的 migration 已把舊資料補齊），
+        // 所以金額欄直接沿用即可，不需要再把子項目加回去 —— 那正是舊版
+        // 「重複儲存一路把金額扣到 0」的來源。
         updateProxyCalc();
       }
     }
@@ -6545,12 +6578,13 @@ async function saveItem(){
     return;
   }
 
-  // Personal amount = bill total minus all proxy payments
+  // 自付額 = 帳單總額 − 代墊合計。這是「這筆裡面有多少真的是我的」的參考值，
+  // 不再是寫進資料庫的金額 —— 主項目存的是刷卡全額。
   const personalAmt = billAmt - proxySum;
 
-  // Auto-append deduction note to remind user that split happened
+  // 自動備註：說明這筆全額裡含了多少代墊，以及那部分另有記錄可追蹤
   const splitNote = proxySum > 0
-    ? `帳單 ${fmt(billAmt)}，代墊 ${fmt(proxySum)} 已另立記錄`
+    ? `含代墊 ${fmt(proxySum)}（自付 ${fmt(personalAmt)}），已另立記錄追蹤收回`
     : '';
   const finalNote = [rawNote, splitNote].filter(Boolean).join('\n');
 
@@ -6563,22 +6597,20 @@ async function saveItem(){
 
   let savedId = editId; // will hold the parent item's final id (new or existing)
 
-  // ── Save main personal item ──────────────────────────────────────────
-  if(!isAdv && personalAmt <= 0 && proxySum > 0 && !editId){
-    // NEW item: entire bill is proxy-paid — skip creating a $0 personal item
-    // savedId stays undefined; proxy children will have no parentId (edge case)
-  } else {
+  // ── Save main item ───────────────────────────────────────────────────
+  // 主項目一律存使用者輸入的刷卡全額（含代墊）。代墊金額不從這裡扣掉 ——
+  // 你刷卡就是刷了這麼多，代墊只是「這裡面有一部分要跟人收回來」的注記。
+  // 全額被代墊的帳單也照樣建立主項目：那筆卡費真實存在，不能沒有記錄。
+  {
     const item={
       itype: 'normal',
       cat, name,
-      amount: personalAmt,   // ← personal portion ONLY
+      amount: billAmt,       // ← 刷卡全額，含代墊
       date, note: finalNote,
       remindDays: remDays, ym
     };
-    // BUGFIX：原本只存扣除後的 personalAmt，原始帳單金額完全沒有留下來。
-    // 重新編輯時表單載入的是「已經扣過的金額」，但代墊明細也一併載回來，
-    // 於是再存一次就又扣一次 —— 反覆儲存會一路把金額扣到 0。
-    // 這裡把使用者實際輸入的帳單總額獨立存起來，作為唯一的事實來源。
+    // billAmount 與 amount 現在一致，保留這個欄位是為了讓「這是含代墊拆分的
+    // 帳單」在資料上仍看得出來，也讓舊版匯出檔的來回匯入不會失真。
     if(proxySum > 0) item.billAmount = billAmt;
     const cd=document.getElementById('f-close').value;
     if(cd) item.closeDate=cd;   // 只有填了才寫入，避免整批多一個空欄位
@@ -7100,10 +7132,23 @@ async function restorePayload(payload, replace){
   const applied=settings?applySettings(settings):[];
 
   let skipped=0;
+  // 匯入會重新配 id，父子連結不跟著換就會斷掉。連結一斷，代墊子項目變成
+  // 孤兒、金額改為獨立計入，但父項目仍是刷卡全額 —— 那筆錢就被算了兩次。
+  // 所以這裡記下「舊 id → 新 id」，全部寫完後再回頭修 parentId。
+  const idMap=new Map();
+  const needsLink=[];
   for(const item of items){
     const c=normalizeImportedItem(item);
     if(!c){ skipped++; continue; }
     await putItem(c);
+    if(item.id!=null) idMap.set(item.id, c.id);
+    if(item.parentId!=null) needsLink.push([item.parentId, c]);
+  }
+  for(const [oldPid, rec] of needsLink){
+    const nid=idMap.get(oldPid);
+    if(nid==null) continue;      // 父項目不在這份備份裡：維持孤兒，獨立計入
+    rec.parentId=nid;
+    await putItem(rec);
   }
   for(const sub of subs){
     const c={...sub}; delete c.id;
@@ -7115,6 +7160,11 @@ async function restorePayload(payload, replace){
     featAdv=true; localStorage.setItem('ep_feat_adv','true');
     applied.push('代墊功能（因含代墊資料而開啟）');
   }
+  // 匯入的可能是 v4.18 以前的備份（主項目存扣除後的自付額）。開機時那次
+  // 遷移已經跑過了，這裡必須強制再跑一次，否則舊格式資料會少算 —— 父項目
+  // 是扣過的，子項目又已經改成不計入。
+  await migrateSplitParentAmounts(true);
+
   applyAdvVisibility(); refreshCatSel();
   return applied;
 }
@@ -7325,6 +7375,14 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.19.0', d:'2026/09/07', c:[
+    '含代墊的帳單改存刷卡全額：項目金額就是你實際刷掉的錢，代墊不再從金額裡扣掉',
+    '代墊改為項目內的注記——拆出來的代墊記錄只供檢視與追蹤收回，不再重複計入任何加總',
+    '首頁、明細、圖表、日曆、年度統計全面改用同一套加總規則，數字不會再互相打架',
+    '待處理清單改為分開顯示「待付」與「待收」，兩種錢不再混成一個數字',
+    '舊資料自動補回全額（遷移前後總額完全相同），匯入舊備份時也會自動處理',
+    '修正：匯入備份時代墊的父子連結會斷掉，導致金額重複計算'
+  ]},
   { v:'v4.18.0', d:'2026/08/20', c:[
     ['imp','勾選核取方塊不再重建整份清單。「全部」檢視下卡片留在原地、零節點異動；「待處理」下只移除該張卡並就地更新底部小計。150 筆時每次勾選的主執行緒工作量從約 129ms 降到約 17ms'],
     ['fix','另一個分頁升級資料庫後，本頁連線失效卻只跳一個可關閉的 alert，關掉之後每個操作都會拋出看不懂的錯誤且畫面毫無反應。改為直接顯示需要重新載入的說明畫面，並讓所有資料存取拋出可讀的原因'],
@@ -7557,11 +7615,50 @@ document.addEventListener('visibilitychange', async () => {
   else { await refreshRems(); maybeAutoShowRems(); }
 });
 
+// ── v4.19 資料遷移：主項目金額改存刷卡全額 ────────────────────────────
+// v4.18 以前，含代墊拆分的主項目存的是「扣掉代墊後的自付額」，代墊子項目
+// 各自帶著自己的金額、而且也被計入總額 —— 加起來才等於刷卡全額。
+// v4.19 起主項目直接存刷卡全額，子項目改成純注記、不再計入。
+//
+// 遷移方式刻意選「父項目金額 += 已連結子項目的合計」，而不是「直接套用
+// billAmount」：前者保證遷移前後的總額分毫不差（父項目多的正好等於子項目
+// 之後不再計入的），後者遇到子項目遺失或被手動改過的舊資料就會對不起來。
+//
+// 沒有 parentId 連結的孤兒代墊（例如更早版本匯入的資料）維持原樣獨立計入，
+// 它的父項目也不會被動到 —— 這樣同樣不會出現重複計算。
+async function migrateSplitParentAmounts(force){
+  if(!force && localStorage.getItem('ep_mig_full_amt')==='1') return;
+  try{
+    const all = await getAll();
+    const kidSum = new Map();          // parentId -> 子代墊金額合計
+    for(const x of all){
+      if(x.itype==='advance' && x.parentId!=null)
+        kidSum.set(x.parentId, (kidSum.get(x.parentId)||0) + (x.amount||0));
+    }
+    let n=0;
+    for(const x of all){
+      const add = kidSum.get(x.id);
+      if(!add) continue;
+      // 已經是全額的資料不要再加一次（重跑遷移、或匯入新版備份的情況）
+      if(typeof x.billAmount==='number' && Math.round(x.amount)===Math.round(x.billAmount)) continue;
+      x.amount = Math.round((x.amount||0) + add);
+      x.billAmount = x.amount;
+      await putItem(x); n++;
+    }
+    localStorage.setItem('ep_mig_full_amt','1');
+    if(n) console.info(`[migration] ${n} 筆含代墊拆分的項目已改存刷卡全額`);
+  }catch(e){
+    // 遷移失敗不能擋住開機。旗標不寫入，下次啟動會再試一次。
+    console.warn('[migration] 主項目金額遷移未完成：', e);
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────
 dbReady = openDB();
 dbReady.then(async ()=>{
   buildSelects();
   refreshCatSel();
+  await migrateSplitParentAmounts();  // 必須在第一次加總前完成
   await initAdvanceFeature();   // decides visibility before the first paint
   rSettings();  // populate settings previews on first load
   renderNetState();
