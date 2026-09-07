@@ -64,6 +64,9 @@ document.addEventListener('click',e=>{
   /* 在明細發現數字記錯時直接改，不用自己切回陣容頁翻到那天那場。
      這裡的場次可能不是「目前這天」，所以要把日期一起帶進去。 */
   if(a==='editRunDrops') dropsSheet(ptId, btn.dataset.day);
+  /* 成交紀錄往前多載幾個月。每按一次多開同樣的區間，
+     不是一次全開 —— 一次全開等於把剛剛省下的成本原封不動還回去。 */
+  if(a==='ledgerMore'){ ledgerMonths+=LEDGER_MONTHS; renderSales(); }
   if(a==='delSale')   confirmSheet('確定要刪除這筆交易紀錄嗎？',()=>{
     commitUndoable('交易紀錄',()=>{ state.sales=(state.sales||[]).filter(s=>s.id!==id); });
   });
@@ -276,3 +279,25 @@ if('serviceWorker' in navigator){
   });
 }
 
+
+/* ── 未攔截的錯誤 ─────────────────────────────────────────
+   這個 App 沒有後端，也沒有人會去看手機的開發者主控台。
+   在沒有這段之前，只要繪製途中丟出例外，畫面就停在改到一半的狀態不動 ——
+   使用者看到的是「按了沒反應」，然後很合理地再按一次、再按一次，
+   而真正的錯誤訊息只留在他打不開的主控台裡。
+
+   這裡不試圖修復什麼，只做一件事：讓錯誤是看得見的，
+   並且告訴使用者「資料還在」——因為當下最該知道的就是這件事。
+   同一次開啟只提示三次就停，連續失敗時洗版的 toast 比沉默更難用。 */
+let errShown=0;
+function reportError(err){
+  if(errShown>=3) return;
+  errShown++;
+  const msg=(err&&(err.message||err.reason&&err.reason.message))||String(err&&err.reason||err||'');
+  /* 先寫進主控台（電腦上接手機除錯時看得到完整堆疊），再用 toast 告訴使用者 */
+  console.error('[星座塔團隊]',err);
+  toast(`發生錯誤，資料仍在：${String(msg).slice(0,60)}`);
+  if(errShown===3) setTimeout(()=>toast('錯誤重複發生，建議先匯出備份再重新開啟'),3000);
+}
+addEventListener('error',e=>reportError(e.error||e));
+addEventListener('unhandledrejection',e=>reportError(e));

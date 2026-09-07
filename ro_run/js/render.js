@@ -38,8 +38,14 @@ function statsVisible(){
   const v=activeViewId();
   return v==='stats'||v==='auction';
 }
+/* 材料頁的 DOM 有沒有真的畫出來。在拍賣頁時 renderMaterials() 只算數字不畫，
+   所以「不髒」不等於「畫好了」—— 少了這個旗標，從拍賣頁切回材料頁會看到上一輪的舊畫面。 */
+let matPainted=false;
 function ensureMaterials(){
-  if(matDirty){ matDirty=false; renderMaterials(); return true; }
+  const needPaint = activeViewId()==='stats';
+  if(matDirty || (needPaint && !matPainted)){
+    matDirty=false; renderMaterials({scanOnly:!needPaint}); return true;
+  }
   return false;
 }
 function renderView(v){
@@ -60,6 +66,9 @@ function renderMaterialsIfVisible(){
   else matDirty=true;
 }
 function render(){
+  /* 重繪之前一律把讀取快取作廢。異動一定會 persist()，那裡已經作廢過一次；
+     這裡是第二道保險，涵蓋「改了資料但沒經過 persist 就直接重繪」的路徑。 */
+  bumpDataRev();
   const ks=dates();
   if(!ks.length){ ensureDate(todayKey()); persist(); }
   if(!curDate||!state.schedule[curDate]) curDate=defaultDate();

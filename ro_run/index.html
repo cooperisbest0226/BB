@@ -27,7 +27,14 @@ try{
 <meta name="apple-mobile-web-app-title" content="星座塔團隊">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- 字型改成非阻塞載入。外部樣式表預設會擋住第一次繪製：訊號差的時候
+     （手機、副本裡、離線第一次開啟）畫面要等這個請求有結果才畫得出來，
+     而它本來就設了 display=swap —— 字型晚到會換字是預期行為，
+     為了那件事順便把整個 App 擋在後面沒有道理。
+     media="print" 讓它以低優先度載入，載完再切回 all 套用。 -->
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"></noscript>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -56,7 +63,7 @@ try{
   <div class="topbar">
     <div class="topbar-row">
       <div class="brand">
-        <span class="brand-mark">星座塔團隊</span>
+        <h1 class="brand-mark">星座塔團隊</h1>
         <span class="brand-sub" id="brandSub"></span>
       </div>
       <button class="icon-btn" id="btnMore" title="設定" aria-label="設定">

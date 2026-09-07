@@ -165,11 +165,20 @@ bindFilterToggle('attFiltBtn','attFiltBody');
    ══════════════════════════════════════════════════════════ */
 const toCents=twd=>Math.round((Number(twd)||0)*100);
 
-/* 全部場次的 id 索引。歸屬場次可以跨天之後，就不能再靠 ptsOf(交易日期) 去找了。 */
+/* 全部場次的 id 索引。歸屬場次可以跨天之後，就不能再靠 ptsOf(交易日期) 去找了。
+
+   這份索引跟資料版本走（見 data.js 的 dataRev）：saleInDateRange() 是逐筆交易呼叫的，
+   不快取的話每筆交易都要把所有日期、所有場次重走一遍，
+   資料一累積就變成交易數 × 場次數的成本。 */
+let runIdxRev=-1, runIdxCache=null;
 function runIndex(){
-  const m=new Map();
-  dates().forEach(k=>ptsOf(k).forEach(pt=>m.set(pt.id,{pt,date:k})));
-  return m;
+  const rev=readRev();
+  if(runIdxRev!==rev){
+    const m=new Map();
+    dates().forEach(k=>ptsOf(k).forEach(pt=>m.set(pt.id,{pt,date:k})));
+    runIdxCache=m; runIdxRev=rev;
+  }
+  return runIdxCache;
 }
 
 /* 一筆交易屬不屬於某段「場次期間」。

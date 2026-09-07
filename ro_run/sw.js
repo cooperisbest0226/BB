@@ -8,7 +8,7 @@
    更新流程刻意不自動接管：install 不呼叫 skipWaiting，新版會停在 waiting 等使用者確認。
    使用者按下更新提示後，頁面才 postMessage({type:'SKIP_WAITING'}) 讓新版上線並重新整理。
    這樣才不會在使用者編輯到一半時，把舊的 index.html 配上新的 styles.css。 */
-const CACHE_NAME = 'star-tower-team-v63';
+const CACHE_NAME = 'star-tower-team-v65';
 const APP_SHELL = [
   './',
   './index.html',
@@ -30,6 +30,9 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png',
+  /* 分頁圖示：漏了這兩個，離線開啟時分頁標籤會是一片空白 */
+  './icons/favicon-32.png',
+  './icons/favicon-64.png',
   /* manifest 的 screenshots：安裝提示框會用到，離線時也要拿得到 */
   './icons/shot-board.png',
   './icons/shot-stats.png'
@@ -73,16 +76,20 @@ self.addEventListener('fetch', (event) => {
      以前是 network-first，訊號差的時候每次冷開都要等 fetch 逾時才退回快取，體感很慢。
      現在先回快取讓 App 秒開，同時在背景抓新版存起來，下次啟動就是新的。 */
   if (req.mode === 'navigate') {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        cache.match('./index.html').then((cached) => {
-          const fresh = fetch(req)
-            .then((res) => putIfOk(cache, './index.html', res))
-            .catch(() => cached);
-          return cached || fresh;
-        })
-      )
+    const task = caches.open(CACHE_NAME).then((cache) =>
+      cache.match('./index.html').then((cached) => ({
+        cached,
+        fresh: fetch(req)
+          .then((res) => putIfOk(cache, './index.html', res))
+          .catch(() => cached)
+      }))
     );
+    event.respondWith(task.then(({ cached, fresh }) => cached || fresh));
+    /* 這一行是 stale-while-revalidate 真正成立的關鍵。
+       respondWith 一旦用快取回應完畢，瀏覽器就可以把 Service Worker 休眠，
+       背景那個「去抓新版」的 fetch 會跟著被砍掉 —— 少了 waitUntil，
+       等於每次都只回舊的、永遠沒抓到新的，使用者要等到換 CACHE_NAME 才會更新。 */
+    event.waitUntil(task.then(({ fresh }) => fresh).catch(() => {}));
     return;
   }
 
@@ -104,14 +111,13 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 外部資源（字型）：stale-while-revalidate
-  event.respondWith(
-    caches.open(CACHE_NAME).then((cache) =>
-      cache.match(req).then((cached) => {
-        const fetchPromise = fetch(req)
-          .then((res) => putIfOk(cache, req, res))
-          .catch(() => cached);
-        return cached || fetchPromise;
-      })
-    )
+  const task = caches.open(CACHE_NAME).then((cache) =>
+    cache.match(req).then((cached) => ({
+      cached,
+      fresh: fetch(req).then((res) => putIfOk(cache, req, res)).catch(() => cached)
+    }))
   );
+  event.respondWith(task.then(({ cached, fresh }) => cached || fresh));
+  // 同上：沒有 waitUntil，字型的背景更新會被休眠中斷
+  event.waitUntil(task.then(({ fresh }) => fresh).catch(() => {}));
 });

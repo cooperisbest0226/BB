@@ -14,8 +14,12 @@ let aucCur='TWD';
 let saleMode='set', saleDraftItems=[];
 /* 成交紀錄的日期區間篩選（空字串＝不限） */
 let aucFrom='', aucTo='';
-/* 千分位；小數最多兩位，整數就不補小數點 */
-const nf=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
+/* 千分位；小數最多兩位，整數就不補小數點。
+   格式器一定要抽出來重複使用：toLocaleString 只要帶了 options，
+   每呼叫一次就會在內部重新建一個 Intl.NumberFormat。這個函式在成交紀錄、
+   分潤、材料統計裡一次繪製會被叫上千次，實測佔掉整個 render() 三成的時間。 */
+const NUM_FMT=new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
+const nf=n=>NUM_FMT.format(Number(n)||0);
 
 /* ── 材料系列分色 ─────────────────────────────────────────
    分成四類各自給色：碎片（藍）／浮塵（綠）／未知（紫）／稀微（桃紅），
@@ -108,19 +112,32 @@ function setInputValue(el, v){
 const MAT_DETAIL_OPEN=3;
 let matOpenDays=null;   // Set；null 代表還沒動過，套用預設
 
-function renderMaterials(){
-  const runSel=document.getElementById('matRun');
-  runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
-    `<option value="${esc(n)}" ${n===matRunName?'selected':''}>${esc(n)}</option>`).join('');
-  setInputValue(document.getElementById('matFrom'), matFrom);
-  setInputValue(document.getElementById('matTo'), matTo);
-  document.getElementById('matFiltText').textContent=matFilterText();
-  /* 篩選生效時要看得出來 —— 以前收合狀態下有沒有篩選長得一模一樣，
-     很容易看到一半忘了自己還開著篩選，把局部數字當成全部。 */
-  const filtering=!!(matFrom||matTo||matRunName);
-  document.getElementById('matFiltBtn').classList.toggle('on',filtering);
-  document.getElementById('matFiltClear').hidden=!filtering;
-  paintPresets('#matFiltBody', matFrom, matTo, 'preset');
+/* 拍賣頁也會呼叫 renderMaterials()，但它要的只有一個數字：目前可組成幾組（curSets）。
+   為了那一個數字去重建材料頁整頁的長條圖與場次明細，是在替看不到的分頁做工 ——
+   180 天的資料實測每次異動要多花二十幾毫秒，而畫出來的東西沒有人看得到。
+
+   所以掃描永遠照算，DOM 則由呼叫端決定要不要畫：{scanOnly:true} 就只算數字。
+   刻意用參數而不是在函式裡偷看「現在是哪個分頁」—— 直接呼叫這個函式的地方
+   （篩選變更、展開收合）本來就期待畫面會更新，讓它們的行為取決於一個看不見的
+   全域狀態，是把 bug 藏起來的做法。畫完之後由 matPainted 記錄，供切回分頁時補畫。 */
+function renderMaterials(o){
+  const paint = !(o&&o.scanOnly);
+  matPainted = paint;
+
+  if(paint){
+    const runSel=document.getElementById('matRun');
+    runSel.innerHTML=`<option value="">全部</option>`+allRunNames().map(n=>
+      `<option value="${esc(n)}" ${n===matRunName?'selected':''}>${esc(n)}</option>`).join('');
+    setInputValue(document.getElementById('matFrom'), matFrom);
+    setInputValue(document.getElementById('matTo'), matTo);
+    document.getElementById('matFiltText').textContent=matFilterText();
+    /* 篩選生效時要看得出來 —— 以前收合狀態下有沒有篩選長得一模一樣，
+       很容易看到一半忘了自己還開著篩選，把局部數字當成全部。 */
+    const filtering=!!(matFrom||matTo||matRunName);
+    document.getElementById('matFiltBtn').classList.toggle('on',filtering);
+    document.getElementById('matFiltClear').hidden=!filtering;
+    paintPresets('#matFiltBody', matFrom, matTo, 'preset');
+  }
 
   const entries=[];
   Object.keys(state.schedule).sort().forEach(k=>{
@@ -143,7 +160,7 @@ function renderMaterials(){
 
   /* ── 組數與瓶頸：這是打開這頁最想知道的事，所以算在最前面、擺在最上面 ── */
   const per=Math.max(1,matPerSet);
-  setInputValue(document.getElementById('matPerSet'), per);
+  if(paint) setInputValue(document.getElementById('matPerSet'), per);
 
   /* 已經賣掉的材料要扣掉。「可組成 N 組」問的是現在還能組幾組，
      賣出去的那幾組不可能再組一次 —— 不扣的話，賣完之後拍賣頁的
@@ -199,7 +216,7 @@ function renderMaterials(){
        </div>`
     : '';
 
-  document.getElementById('matCards').innerHTML = matNames.length
+  if(paint) document.getElementById('matCards').innerHTML = matNames.length
     ? `<div class="mres">
         <div class="mres-top">
           <div class="mres-main">
@@ -236,7 +253,7 @@ function renderMaterials(){
      眼睛沒有落點，圖看起來很滿卻讀不出東西。改成夠用的材料一律壓成細的、低透明度的
      中性色往後站，只有卡住組數的那一種用琥珀色加粗跳出來 —— 這樣一眼就看到異常值。 */
   const gmax=Math.max(1,...matNames.map(n=>totals[n]));
-  document.getElementById('matBars').innerHTML = matNames.length
+  if(paint) document.getElementById('matBars').innerHTML = matNames.length
     ? groupBySeries(matNames).map(({s,names})=>{
         const sum=names.reduce((a,n)=>a+totals[n],0);
         return `<div class="matgrp" style="${msVars(s)}">
@@ -259,7 +276,7 @@ function renderMaterials(){
 
   /* ── 組數試算：每種材料撐得起幾組 ─────────────────────
      頂部原本那兩張「可組成組數／湊下一組還缺」統計卡已經移到主結果卡，這裡不再重複。 */
-  document.getElementById('setDetail').innerHTML=groupBySeries(SET_RECIPE).map(({s,names})=>
+  if(paint) document.getElementById('setDetail').innerHTML=groupBySeries(SET_RECIPE).map(({s,names})=>
     `<div class="matgrp" style="${msVars(s)}">
       <div class="matgrp-h"><span class="matgrp-t">${s.label}</span>
         <span class="matgrp-k">${names.length} 種</span>
@@ -289,7 +306,7 @@ function renderMaterials(){
      不在範圍內的日期，拿整個 Set 的大小去比會判斷錯按鈕該顯示展開還是收合。 */
   const openCount=days.filter(k=>matOpenDays.has(k)).length;
   const allOpen=days.length>0&&openCount===days.length;
-  document.getElementById('matDetail').innerHTML = days.length
+  if(paint) document.getElementById('matDetail').innerHTML = days.length
     ? `<div class="mday-bar">
         <span class="mday-bar-t num">${days.length} 天 · ${withDrops.length} 場</span>
         <button class="gbtn" data-act="matDayAll" data-all="${allOpen?'close':'open'}">

@@ -137,7 +137,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 }
 .topbar-row{display:flex; align-items:center; gap:10px}
 .brand{display:flex; align-items:baseline; gap:8px; margin-right:auto; min-width:0}
-.brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px}
+/* 語意上是頁面標題（h1），但視覺上就是標題列那一行字，所以要壓掉 h1 的預設字級與邊界 */
+.brand-mark{font-size:15px; font-weight:700; letter-spacing:-.2px; margin:0; line-height:inherit}
 .brand-sub{font-size:11px; color:var(--faint); letter-spacing:.4px; white-space:nowrap}
 .icon-btn{
   width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
@@ -752,6 +753,26 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 /* iOS Safari 的原生 date 欄位有較大的固有寬度（16px 字級 + 日曆圖示），
    兩欄並排在窄螢幕會撐破容器，所以窄螢幕改成上下堆疊 */
 @media (max-width:460px){ .mat-range{grid-template-columns:1fr} }
+
+/* ── 日期／時間欄位不准撐破容器 ─────────────────────────
+   上面那條只處理「兩欄並排」，但問題的根還在欄位本身：
+   iOS Safari 的原生 date 欄位不吃 width:100%，它會拿「值 + 日曆圖示」算出來的
+   固有寬度把自己撐開，所以即使已經上下堆疊成一欄，欄位右緣照樣會超出卡片、
+   被畫面切掉。實際回報就是這個狀況（成交紀錄與分潤試算兩個篩選都會）。
+
+   真正要按住的是裝值的那個偽元素：預設它以固有寬度佈局，得明確允許它縮。
+   appearance:none 拿掉的是 iOS 的原生外框，桌機 Chrome 的日曆按鈕是另一個
+   偽元素（::-webkit-calendar-picker-indicator），不受影響。 */
+input[type="date"], input[type="time"]{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; min-width:0; max-width:100%;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value{
+  width:100%; min-width:0; margin:0; text-align:left;
+}
+/* 篩選面板與其中的欄位都不給撐開的餘地（grid/flex 子項預設 min-width:auto） */
+.matfilt-body, .matfilt-body .field, .mat-range > .field{min-width:0}
 .sheet-foot{display:flex; gap:9px; margin-top:16px}
 .preset-row{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 16px}
 .setcfg{display:flex; align-items:center; gap:8px; margin:2px 0 14px; font-size:13px; color:var(--ink-2)}

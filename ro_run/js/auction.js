@@ -299,6 +299,19 @@ function renderSaleQuotes(sales){
 }
 
 /* 成交紀錄：依月份分堆，每堆一個小結列，底下是一張張落槌卡片。 */
+/* ── 成交紀錄一次畫幾個月 ─────────────────────────────────
+   這份帳只會愈來愈長，而且舊的月份幾乎不會再被翻。原本每次重繪都把歷來
+   每一筆交易全部重建成 DOM —— 三百筆就是三千多個節點、十六萬字的 HTML，
+   而使用者在這一頁做的每一個動作（改組數、改價格、切幣別）都要付一次這個代價。
+   實測那是拍賣頁近一半的繪製時間，而且沒有上限，用愈久愈慢。
+
+   所以預設只畫最近幾個月，其餘用一顆按鈕往前補。篩選出來的資料本來就少於
+   這個門檻時按鈕不會出現，日常使用完全感覺不到差別。 */
+const LEDGER_MONTHS=3;
+let ledgerMonths=LEDGER_MONTHS;
+/* 換篩選、換幣別等於換一份帳，要回到只顯示最近幾個月 */
+function resetLedgerPaging(){ ledgerMonths=LEDGER_MONTHS; }
+
 function renderSaleLedger(sales, avgUnit){
   const host=document.getElementById('saleList');
   if(!sales.length){
@@ -309,7 +322,16 @@ function renderSaleLedger(sales, avgUnit){
   }
   const groups={};
   salesByDate(sales).forEach(e=>{ const k=saleMonth(e.s)||'—'; (groups[k]=groups[k]||[]).push(e); });
-  const keys=Object.keys(groups).sort().reverse();      // 新的月份在最上面
+  const allKeys=Object.keys(groups).sort().reverse();   // 新的月份在最上面
+  const keys=allKeys.slice(0,ledgerMonths);
+  const hiddenKeys=allKeys.slice(ledgerMonths);
+  const hiddenRows=hiddenKeys.reduce((a,k)=>a+groups[k].length,0);
+  /* 按鈕要講清楚還藏著什麼。只寫「顯示更多」的話，使用者沒辦法判斷
+     自己看到的是不是全部 —— 一份帳目最不該讓人懷疑的就是這件事。 */
+  const more=hiddenKeys.length
+    ? `<button class="gbtn" data-act="ledgerMore" style="width:100%; margin-top:12px">
+         顯示更早的紀錄（還有 ${hiddenKeys.length} 個月 · ${nf(hiddenRows)} 筆）</button>`
+    : '';
 
   host.innerHTML=keys.map(k=>{
     const rows=groups[k].slice().reverse();             // 月份內也是新的在前
@@ -348,7 +370,7 @@ function renderSaleLedger(sales, avgUnit){
         </div>`;
       }).join('')}</div>
     </div>`;
-  }).join('');
+  }).join('')+more;
 }
 /* ── 日期快捷鈕 ───────────────────────────────────────────
    四個篩選面板（材料、成交紀錄、出場統計、分潤）用的是同一套「今天／本週／本月／全部」。
@@ -413,11 +435,12 @@ bindFilterToggle('aucFiltBtn','aucFiltBody');
 /* 成交紀錄的日期區間篩選 */
 function applyAucPreset(p){
   [aucFrom,aucTo]=presetRange(p);
+  resetLedgerPaging();
   renderSales();
 }
 document.querySelectorAll('#aucFiltBody [data-aucpreset]').forEach(b=>b.onclick=()=>applyAucPreset(b.dataset.aucpreset));
-document.getElementById('aucFrom').onchange=e=>{ aucFrom=e.target.value; renderSales(); };
-document.getElementById('aucTo').onchange  =e=>{ aucTo=e.target.value;   renderSales(); };
+document.getElementById('aucFrom').onchange=e=>{ aucFrom=e.target.value; resetLedgerPaging(); renderSales(); };
+document.getElementById('aucTo').onchange  =e=>{ aucTo=e.target.value;   resetLedgerPaging(); renderSales(); };
 
 /* 售出計算：欄位即時重算，不進 undo 堆疊（還沒按記錄的都只是試算） */
 const saleLive=(id,set)=>document.getElementById(id).oninput=e=>{ set(e.target.value); renderSales(); };
@@ -430,6 +453,7 @@ saleLive('salePrice', v=>salePrice=v);
 document.querySelectorAll('#aucCurSeg [data-cur]').forEach(b=>b.onclick=()=>{
   if(aucCur===b.dataset.cur) return;
   aucCur=b.dataset.cur;
+  resetLedgerPaging();
   salePrice=null;
   saleDraftItems.forEach(it=>it.price='');
   renderSaleItemRows(true);

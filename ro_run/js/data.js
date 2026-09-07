@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v63';
+const APP_VERSION='v65';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -316,6 +316,36 @@ if(sysDark) sysDark.addEventListener('change',()=>{ if((state.settings?.theme||'
    連續操作（連按加減、拖曳排序、逐字打字）會在主執行緒上重複做同一件重活，
    所以合併成一次：先記下「有東西要存」，150ms 內沒有新的異動才真的寫。
    離開頁面前一定要 flushPersist()，不然最後那 150ms 內的異動會遺失。 */
+/* ── 讀取快取的有效期 ───────────────────────────────────
+   dates() 與 runIndex() 會在同一次繪製裡被呼叫上百次 —— 分潤要逐筆交易問
+   「這筆屬不屬於這段期間」，而那個判斷每問一次就重建一份「全部場次」的索引。
+   180 天 × 3 場 × 300 筆交易＝十六萬次無謂的走訪，算的全是同一個答案。
+
+   快取的難處從來不是建立，而是失效。這裡刻意不要求每個異動點自己記得作廢——
+   只要有人忘記，就會變成很難查的「畫面停在舊資料」。改成兩層都不靠人記：
+
+   1. 只在「同一個同步任務」內有效。一次 render()、一個點擊處理函式都是一個任務，
+      任務結束（堆疊清空）就自動作廢。所以「改完資料才讀」永遠讀得到新的，
+      而一次繪製裡的上百次呼叫仍然只算一遍。
+   2. persist() 與 render() 另外主動作廢。所有異動都走 commit()（改資料 → persist → render），
+      所以實際的程式路徑一定拿得到新答案。
+
+   已知界線：同一個任務裡「先讀 → 改 state → 再讀」而中間沒有 persist()，
+   第二次讀到的還是改之前的答案。這是刻意的取捨 —— 一次繪製要呼叫上百次，
+   每次都重新驗證就失去快取的意義。測試裡有一項專門把這條界線釘住。
+
+   快取回傳的陣列與 Map 是共用的，呼叫端只能讀；要改請自己先 slice() 一份。 */
+let dataRev=0, revExpiryQueued=false;
+const bumpDataRev=()=>{ dataRev++; };
+/* 取得目前的版本號，並預約「這個任務結束就換一個新的」 */
+function readRev(){
+  if(!revExpiryQueued){
+    revExpiryQueued=true;
+    queueMicrotask(()=>{ revExpiryQueued=false; dataRev++; });
+  }
+  return dataRev;
+}
+
 let persistTimer=null, persistPending=false;
 function writeNow(){
   persistTimer=null; persistPending=false;
@@ -323,6 +353,7 @@ function writeNow(){
   catch(e){ toast('儲存失敗，裝置空間可能已滿'); }
 }
 function persist(){
+  bumpDataRev();          // 有異動要存 → dates()／runIndex() 的快取作廢
   persistPending=true;
   if(persistTimer) clearTimeout(persistTimer);
   persistTimer=setTimeout(writeNow,150);
@@ -364,7 +395,13 @@ function commitUndoable(label, fn){
 }
 
 /* ── 查詢輔助 ─────────────────────────────────────────── */
-const dates=()=>Object.keys(state.schedule).sort();
+
+let datesRev=-1, datesCache=null;
+const dates=()=>{
+  const rev=readRev();
+  if(datesRev!==rev){ datesCache=Object.keys(state.schedule).sort(); datesRev=rev; }
+  return datesCache;
+};
 const ptsOf=k=>state.schedule[k]||[];
 /* 翻車與否只認 pt.wipe 這一個真相來源；沒有標記就是成功（見 6→7 遷移的取捨說明）。
    包成函式是因為之後的出場統計與分潤試算都要問同一個問題，不想在三個檔案各寫一次 !!pt.wipe。 */

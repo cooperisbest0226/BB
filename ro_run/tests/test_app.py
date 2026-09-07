@@ -291,6 +291,26 @@ def run(page):
         {"id": "b6", "date": "2026-08-05", "cur": "TWD", "sets": 14, "price": 155},
     ]
     load_sales(six)
+    # 成交紀錄預設只畫最近三個月，其餘用按鈕往前補（帳只會愈來愈長，全部重建太貴）
+    check("成交紀錄預設只顯示最近三個月",
+          page.evaluate("() => document.querySelectorAll('#saleList .aucmon').length"), 3)
+    check("按鈕明講還藏著幾個月幾筆，不讓人懷疑自己看到的是不是全部",
+          page.evaluate("""() => {
+              const b = document.querySelector('[data-act="ledgerMore"]');
+              return b ? b.textContent.replace(/\s+/g, ' ').trim() : null;
+          }"""),
+          "顯示更早的紀錄（還有 1 個月 · 1 筆）")
+    check("被藏起來的是最舊的那個月，不是最新的",
+          page.evaluate("""() => [...document.querySelectorAll('.aucmon-t')].map(e=>e.textContent)"""),
+          ["2026 年 8 月", "2026 年 7 月", "2026 年 6 月"])
+
+    # 展開之後行為與原本完全一致，以下沿用原有的斷言
+    page.evaluate("""() => document.querySelector('[data-act="ledgerMore"]').click()""")
+    page.wait_for_timeout(120)
+    check("按下之後全部月份都出來，按鈕跟著消失",
+          page.evaluate("""() => [document.querySelectorAll('#saleList .aucmon').length,
+                                  !!document.querySelector('[data-act="ledgerMore"]')]"""),
+          [4, False])
     check("成交紀錄依月份分成四堆",
           page.evaluate("() => document.querySelectorAll('#saleList .aucmon').length"), 4)
     check("月份由新到舊排列",
@@ -3420,6 +3440,136 @@ def run(page):
               document.getElementById('exportHost').innerHTML = '';
               aucCur = 'TWD'; renderSplit();
               return h.includes('R 幣');
+          }"""), True)
+
+    # ---------- 效能結構：讀取快取與延後繪製 ----------
+    print("\n[perf] 讀取快取與延後繪製")
+    seed(page)
+    check("dates() 與 runIndex() 在同一次呼叫裡回傳同一份物件（有快到）",
+          page.evaluate("""() => [dates() === dates(), runIndex() === runIndex()]"""),
+          [True, True])
+    # 快取的重點不是快，是不會給出過期的答案。
+    # 這一項模擬「上一輪畫完之後才改 state，接著馬上讀」——沒有 persist、沒有 render，
+    # 也就是最容易讓手寫失效機制漏掉的那條路徑。快取只活在同一個同步任務裡，
+    # 所以新的任務一定拿到新的答案。
+    page.evaluate("() => dates()")          # 前一個任務先把快取填起來
+    check("上一輪的快取不會延續到下一次操作",
+          page.evaluate("""() => {
+              state.schedule['2027-01-01'] = [];
+              return [dates().length, dates().includes('2027-01-01')];
+          }"""),
+          [3, True])
+    # 界線寫成測試，而不是只寫在註解裡：同一個任務內「先讀、再改、又讀」
+    # 讀到的仍是改之前的答案。這是刻意的取捨（一次繪製要呼叫上百次，
+    # 每次都重算就失去意義），異動走 commit() → persist() 就不會遇到；
+    # 哪天有人真的需要，改壞這一項會馬上被抓出來。
+    check("同一個任務內先讀再改，要等 persist() 才看得到（已知界線）",
+          page.evaluate("""() => {
+              const before = dates().length;
+              state.schedule['2027-02-02'] = [];
+              const stale = dates().length;
+              persist();
+              return [stale === before, dates().includes('2027-02-02')];
+          }"""),
+          [True, True])
+    check("新場次馬上就查得到，runIndex 不會停在舊索引",
+          page.evaluate("""() => {
+              state.schedule['2027-01-01'] = [{id:'newpt', name:'RUN X', capacity:5, slots:[], drops:[]}];
+              return !!runIndex().get('newpt');
+          }"""), True)
+    check("刪掉的場次也會從索引消失",
+          page.evaluate("""() => {
+              delete state.schedule['2027-01-01'];
+              persist();
+              return [dates().includes('2027-01-01'), !!runIndex().get('newpt')];
+          }"""), [False, False])
+
+    seed(page)
+    # 拍賣頁只需要 curSets，不該連材料頁的 DOM 一起重建；但切回材料頁時必須是新的。
+    check("在拍賣頁重繪時不畫材料頁的 DOM，但數字照算",
+          page.evaluate("""() => {
+              document.querySelector('.tab[data-view="stats"]').click();
+              document.getElementById('matDetail').innerHTML = '';
+              document.querySelector('.tab[data-view="auction"]').click();
+              render();
+              return [document.getElementById('matDetail').innerHTML, typeof curSets];
+          }"""), ["", "number"])
+    check("切回材料頁會補畫，不會停在拍賣頁那一輪的空白",
+          page.evaluate("""() => {
+              document.querySelector('.tab[data-view="stats"]').click();
+              return document.getElementById('matDetail').innerHTML.length > 0;
+          }"""), True)
+    check("直接呼叫 renderMaterials() 一定會畫（篩選變更靠的就是這個）",
+          page.evaluate("""() => {
+              document.getElementById('matBars').innerHTML = '';
+              document.querySelector('.tab[data-view="board"]').click();
+              renderMaterials();
+              return document.getElementById('matBars').innerHTML.length > 0;
+          }"""), True)
+
+    # ---------- 日期欄位不准撐破容器 ----------
+    print("\n[layout] 日期欄位寬度")
+    # 回報情境：手機上拍賣頁的兩個期間篩選，欄位已經上下堆疊了，右邊還是超出畫面。
+    # 原因是原生 date 欄位有自己的固有寬度，不吃 width:100%。
+    # 這一項在多個寬度下量「欄位右緣有沒有超過內容區右緣」。
+    def date_field_overflow(width):
+        page.set_viewport_size({"width": width, "height": 900})
+        page.wait_for_timeout(160)
+        return page.evaluate("""() => {
+            const app = document.querySelector('.app').getBoundingClientRect();
+            const bad = [];
+            document.querySelectorAll('input[type=date]').forEach(el => {
+                const r = el.getBoundingClientRect();
+                if (r.width === 0) return;                     // 收起來的面板不算
+                if (r.right - app.right > 0.5) bad.push(el.id);
+            });
+            return bad;
+        }""")
+
+    page.evaluate("""() => {
+        document.querySelector('.tab[data-view="auction"]').click();
+        document.getElementById('aucFiltBtn').click();
+        aucFrom = '2026-05-01'; aucTo = '2026-08-31'; renderSales();
+    }""")
+    page.wait_for_timeout(200)
+    for wpx in (320, 360, 390, 470):
+        check(f"成交紀錄的日期欄位在 {wpx}px 不會超出內容區", date_field_overflow(wpx), [])
+    page.evaluate("""() => {
+        document.querySelector('[data-sub="asplit"]').click();
+        document.getElementById('splFiltBtn').click();
+        splFrom = '2026-05-01'; splTo = '2026-08-31'; renderSplit();
+    }""")
+    page.wait_for_timeout(200)
+    for wpx in (320, 390):
+        check(f"分潤試算的日期欄位在 {wpx}px 不會超出內容區", date_field_overflow(wpx), [])
+    check("整頁沒有橫向捲動",
+          page.evaluate("""() => document.documentElement.scrollWidth
+                             <= document.documentElement.clientWidth"""), True)
+    # 日期欄位必須明確被允許縮小，否則原生固有寬度會贏
+    check("日期欄位設了 min-width:0 與 max-width:100%，不靠瀏覽器預設",
+          page.evaluate("""() => {
+              const s = getComputedStyle(document.getElementById('aucFrom'));
+              return [s.minWidth, s.maxWidth === '100%' || s.maxWidth.endsWith('px')];
+          }"""), ["0px", True])
+    page.set_viewport_size({"width": 420, "height": 900})
+    page.wait_for_timeout(150)
+    seed(page)
+
+    # ---------- 千分位格式沒有因為抽出共用格式器而改變 ----------
+    check("nf 的輸出與抽出格式器前一致",
+          page.evaluate("""() => [nf(0), nf(1234567), nf(1234.567), nf(-2500), nf('x'), nf(null)]"""),
+          ["0", "1,234,567", "1,234.57", "-2,500", "0", "0"])
+
+    # ---------- 未攔截的錯誤要看得見 ----------
+    print("\n[err] 未攔截的錯誤")
+    check("丟出未攔截的例外時會跳出提示，而不是靜靜卡住",
+          page.evaluate("""async () => {
+              document.querySelectorAll('.toast').forEach(t => t.remove());
+              window.dispatchEvent(new ErrorEvent('error', {
+                  error: new Error('測試用錯誤'), message: '測試用錯誤'}));
+              await new Promise(r => setTimeout(r, 120));
+              const t = document.querySelector('.toast');
+              return t ? t.textContent.includes('資料仍在') : null;
           }"""), True)
 
     seed(page)
