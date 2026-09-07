@@ -181,18 +181,15 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   pointer-events:none;z-index:0;
   transition:transform .32s cubic-bezier(.4,0,.2,1), width .32s cubic-bezier(.4,0,.2,1);
 }
-.tab-lbl{transition:opacity .2s,max-height .25s}
-/* 捲動時收合：只藏文字標籤，圖示保留。
-   整條藏掉會讓使用者失去導覽，不划算。 */
-.tabs.mini .tab{padding:8px 0 6px}
-.tabs.mini .tab-lbl{opacity:0;max-height:0;overflow:hidden}
-.tabs.mini .tab-ind{top:4px;height:30px}
-.tabs.mini .tab-dot{top:2px}
+/* 分頁列固定不變：捲動時不收合、不縮字。
+   原本會在捲動時把文字標籤收掉以省高度，但那讓整條列在捲動中變高變矮，
+   底部按鈕的位置跟著跑，滑到一半要點分頁時常常點錯。省下的十幾 px
+   不值得換掉一個固定命中區。 */
 .tab{
   flex:1;display:flex;flex-direction:column;align-items:center;
   padding:9px 0 6px;border:none;background:transparent;
   color:var(--text3);font-size:10px;font-weight:500;cursor:pointer;
-  gap:3px;position:relative;z-index:1;transition:color var(--t-fast),padding .25s;
+  gap:3px;position:relative;z-index:1;transition:color var(--t-fast);
   letter-spacing:.01em;
 }
 .tab.on{ color:var(--green); }
@@ -2274,7 +2271,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.19.0 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.19.1 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/20</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -3766,24 +3763,9 @@ function replayHeroIntro(fromZero){
   }, true);
 })();
 
-// ── 捲動時收合分頁列的文字標籤 ────────────────────────────
-// 完全隱藏整條會讓使用者失去導覽，只收文字、保留圖示。
-// 收合會讓捲動區高度變動約 15px，門檻太窄會在臨界點來回抖動，
-// 所以遲滯區間拉到 28px。
-(function collapseTabs(){
-  const bar=document.querySelector('.tabs');
-  if(!bar) return;
-  const HYST=28, ENTER=64;
-  document.querySelectorAll('.scroll-body').forEach(box=>{
-    let anchor=0, mini=false;
-    box.addEventListener('scroll', ()=>{
-      const y=box.scrollTop;
-      if(!mini && y > anchor+HYST && y > ENTER){ mini=true; bar.classList.add('mini'); anchor=y; diag('tabs-mini','收合'); }
-      else if(mini && (y < anchor-HYST || y < ENTER/2)){ mini=false; bar.classList.remove('mini'); anchor=y; diag('tabs-mini','展開'); }
-      else if((!mini && y < anchor) || (mini && y > anchor)) anchor=y;   // 只往同方向累積
-    }, {passive:true});
-  });
-})();
+// 分頁列在捲動時的收合行為已於 v4.19.1 移除 —— 它會讓分頁列的高度隨捲動
+// 變動，底部按鈕跟著上下位移，滑到一半要點分頁很容易點錯。每個 .scroll-body
+// 上的那個 scroll 監聽器也一併拿掉，捲動時少一件事要做。
 
 // ══════════════════════════════════════════════════════════
 //  下拉重新整理
@@ -7375,6 +7357,10 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.19.1', d:'2026/09/07', c:[
+    ['chg','底部分頁列改為固定，捲動時不再收合文字標籤。原本捲動超過門檻會把「本月／明細／圖表／設定」四個字收掉以省高度，但那讓整條列在捲動中變高變矮、按鈕位置跟著位移，滑到一半要點分頁很容易點錯'],
+    ['imp','一併移除四個捲動容器上的收合監聽器，捲動時少一件事要做'],
+  ]},
   { v:'v4.19.0', d:'2026/09/07', c:[
     ['chg','含代墊拆分的帳單，項目金額改存刷卡全額。原本存的是扣掉代墊後的自付額，於是卡片上顯示的數字比實際刷掉的錢少一截；代墊現在只是這筆項目裡的注記，不再從金額中扣除'],
     ['chg','從帳單拆出來的代墊記錄改為僅供檢視：它的金額已包含在父項目的全額裡，不再計入首頁、明細、圖表、行事曆、分類預算與年度統計的任何加總，避免同一筆錢被算兩次。手動新增的獨立代墊款不受影響，維持 v4.15.0 起的全額計入'],
