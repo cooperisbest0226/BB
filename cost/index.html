@@ -2271,7 +2271,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.19.2 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.20.0 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/20</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -4075,6 +4075,21 @@ function sumAmt(arr){ return arr.reduce((s,x)=>s+(isSplitChild(x)?0:(x.amount||0
 // 那些地方要看的正是注記本身的金額。
 function sumRaw(arr){ return arr.reduce((s,x)=>s+(x.amount||0),0); }
 
+// 待處理清單底部那行文字的唯一產生器。
+// 待付與待收是兩種不同的「待處理」：待付是還要掏錢，待收是別人欠你。
+// 代墊款的錢早就付出去了，它出現在待處理是因為還沒收回，算進待付會憑空
+// 多一筆根本不用再掏的錢；拆分子代墊的金額又已經含在父項目裡。
+//
+// 這段原本在完整重繪與「勾選後就地更新」兩個地方各寫一份，v4.19.0 只改到
+// 前者，於是勾掉一筆之後底部會退回舊格式而且數字算錯。合併成一個產生器，
+// 兩條路徑就不可能再各講各的。
+function todoFootText(items){
+  const toPay = sumAmt(items.filter(x=>x.itype!=='advance'));
+  const toGet = sumRaw(items.filter(x=>x.itype==='advance'&&x.recovered!==1));
+  return `待處理 ${items.length} 筆　待付 ${fmt(toPay)}`
+       + (toGet>0?`　待收 ${fmt(toGet)}`:'');
+}
+
 const putItem=async item=>{
   const key=await idbWrite(store('readwrite').put(item));
   if(!item.id) item.id=key;
@@ -4215,6 +4230,18 @@ function shiftM(d){ shiftMonthClamped(d); }
 // Returns the render promise: 下拉重整的 `await renderActive()` 原本永遠立刻
 // 通過（這個函式回傳 undefined），轉圈只是跑滿最短時間就收掉，跟資料到底
 // 重查完了沒有一點關係。
+// ── 渲染序號：擋掉慢的舊 render 蓋掉快的新 render ────────────────────
+// 每個 render 都是「await 一次資料 → 同步畫完」。快速連續操作（連點換月、
+// 連切篩選、剛寫入就重繪）會讓好幾次 render 同時在飛；只要其中一次的
+// IndexedDB 讀取比後來的慢回來，它就會拿舊資料覆寫已經正確的畫面。
+//
+// 作法是進入時領一個號碼，每次 await 之後比對一次：不是最新的那次直接
+// 放棄，連一個 DOM 節點都不碰。放棄是安全的 —— 會放棄一定代表有更新的
+// 一次正在跑，畫面不會因此少更新。
+const _renderSeq = { home:0, list:0, chart:0, range:0, cal:0 };
+const nextSeq = k => ++_renderSeq[k];
+const isStale = (k,n) => n !== _renderSeq[k];
+
 function renderActive(){
   if(activeScreen==='home')          return rHome();
   if(activeScreen==='list')          return rList();
@@ -4334,6 +4361,32 @@ function removeProxyRow(btn){
 const SPLIT_NOTE_RE = /^(?:帳單 \$[\d,]+(?:\.\d+)?，代墊 \$[\d,]+(?:\.\d+)? 已另立記錄|含代墊 \$[\d,]+(?:\.\d+)?（自付 \$-?[\d,]+(?:\.\d+)?），已另立記錄追蹤收回)$/;
 function stripSplitNote(note){
   return String(note||'').split('\n').filter(l=>!SPLIT_NOTE_RE.test(l.trim())).join('\n').trim();
+}
+
+// 拆分備註的唯一產生器。儲存表單與「刪掉某一筆代墊後重算」共用同一個寫法，
+// 兩處才不會產出格式不一致的兩種備註（SPLIT_NOTE_RE 只認得固定格式，
+// 一旦有第二種寫法，剝除就會失效、備註會愈疊愈多行）。
+function splitNoteText(billAmt, proxySum){
+  return proxySum > 0
+    ? `含代墊 ${fmt(proxySum)}（自付 ${fmt(billAmt - proxySum)}），已另立記錄追蹤收回`
+    : '';
+}
+
+// 刪掉一筆代墊子項目之後，父項目備註裡的「含代墊 $X」就過時了。金額本身
+// 一直是對的（子項目本來就不計入加總），錯的只有那行說明文字 —— 但它正是
+// 使用者用來核對「這筆裡面有多少要跟人收」的依據，停在舊數字會誤導。
+// 剩餘子項目歸零時整行拿掉，不要留一個「含代墊 $0」。
+async function refreshParentSplitNote(parentId){
+  if(parentId==null) return;
+  const parent = await getById(parentId);
+  if(!parent) return;                       // 父項目已被連鎖刪除，沒東西要修
+  const kids = await getByParentId(parentId);
+  const proxySum = kids.reduce((t,c)=>t+(c.amount||0), 0);
+  const base = stripSplitNote(parent.note);
+  const note = [base, splitNoteText(parent.amount, proxySum)].filter(Boolean).join('\n');
+  if(note === (parent.note||'')) return;    // 沒變就不要多寫一次
+  parent.note = note;
+  await putItem(parent);
 }
 
 function updateProxyCalc(){
@@ -4697,6 +4750,7 @@ let _lastHomeYm=null;
 // 百分比、卡片位置都沒變，重建 154 個節點是白做工。
 async function rHome(opts={}){
   diag('rHome');
+  const _seq = nextSeq('home');
   dirty.home=false;
   renderSubChip();
   // 清單長度變了（換月、切篩選、刪一筆）就重算一次收合條件
@@ -4716,6 +4770,7 @@ async function rHome(opts={}){
   }
   _lastHomeYm=key;
   const items = await getByYM(key);
+  if(isStale('home',_seq)) return;
 
   // 代墊款只是「有沒有收回」的注記，不是排除項——錢已經付出去了，
   // 實際花費本來就是這麼多，收回與否不改變這件事。
@@ -4843,6 +4898,7 @@ async function rHome(opts={}){
 
 
   await refreshRems();
+  if(isStale('home',_seq)) return;
   maybeAutoShowRems();
 
   // ── Copy-last-month banner ──────────────────────────────────────────
@@ -4850,6 +4906,7 @@ async function rHome(opts={}){
   // 原本每次重繪都無條件跑一次 —— 包含每一次勾選核取方塊。
   const prevM=m===1?12:m-1,prevY=m===1?y-1:y;
   const prevItems=items.length ? [] : await getByYM(ymStr(prevY,prevM));
+  if(isStale('home',_seq)) return;
   document.getElementById('copy-wrap').innerHTML=(!items.length&&prevItems.length)
     ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到 ${m} 月？</p><span>複製</span></div>`:'';
 
@@ -4898,14 +4955,7 @@ async function rHome(opts={}){
     }else{
       todo.forEach(x=>frag.appendChild(makeCard(x)));
       const foot=document.createElement('div');foot.className='list-footer';
-      // 待付與待收是兩種不同的「待處理」：待付是還要掏錢，待收是別人欠你。
-      // 混在同一個數字裡看不出差別，而且子代墊的金額已算在父費用上。
-      // 代墊款的錢早就付出去了，它出現在待處理清單是因為「還沒收回」，
-      // 不是「還要付」。把它算進待付會憑空多一筆根本不用再掏的錢。
-      const toPay = sumAmt(todo.filter(x=>x.itype!=='advance'));
-      const toGet = sumRaw(todo.filter(x=>x.itype==='advance'&&x.recovered!==1));
-      foot.textContent=`待處理 ${todo.length} 筆　待付 ${fmt(toPay)}`
-                     + (toGet>0?`　待收 ${fmt(toGet)}`:'');
+      foot.textContent=todoFootText(todo);
       frag.appendChild(foot);
     }
   }else{
@@ -4947,6 +4997,9 @@ function makeCard(x, childInfo, isChild){
   card.dataset.id=x.id;          // OPT1: delegation key
   card.dataset.isadv=isAdv?'1':'0';
   card.dataset.amt=x.amount;     // Fix 2: raw integer — never parse formatted text
+  // 就地更新底部小計時要能分辨拆分子代墊（金額已含在父項目裡、不計入加總），
+  // 否則那條路徑只能看到 data-amt，會把注記金額當成一筆獨立支出加進去。
+  if(isSplitChild(x)) card.dataset.split='1';
 
   // Delete background — data-action tells the delegation handler what to do
   const bg=document.createElement('div');
@@ -5126,7 +5179,9 @@ async function rList(){
   const{from,to}=resolveListRange();
   const q=document.getElementById('search').value.trim().toLowerCase();
 
+  const _seq = nextSeq('list');
   let items = await getByRange(from, to);
+  if(isStale('list',_seq)) return;
   if(!advOn()) items=items.filter(x=>x.itype!=='advance');   // feature switched off
 
   if(listFilter==='paid')        items=items.filter(x=>x.paid===1&&x.itype!=='advance');
@@ -5753,7 +5808,9 @@ async function rChart(){
   // One indexed read of the 6 months ending here serves both this month's
   // figures and the per-category trend lines in 分類預算.
   const {ymKeys, capRange} = _last6(y,m);
+  const _seq = nextSeq('chart');
   const rangeItems = await getByRange(ymKeys[0], ymKeys[5]);
+  if(isStale('chart',_seq)) return;
   const trendByCat = _trendByCat(rangeItems, ymKeys);
   const items = rangeItems.filter(x=>x.ym===key);
   // 獨立代墊照樣進圖表；拆分子代墊排除 —— 它的金額已經在父費用那一片裡，
@@ -5816,7 +5873,9 @@ async function rChartRange(){
 
   // 代墊款只是收回狀態的注記，不再從範圍統計裡剔除——月支出、月均、
   // 最高月份都照實際花費算，不會因為切到含代墊的月份就悄悄變小。
+  const _seq = nextSeq('range');
   const items   = await getByRange(fromKey, toKey);
+  if(isStale('range',_seq)) return;
 
   const monthTotals = ymKeys.map(k => sumAmt(items.filter(x=>x.ym===k)));
 
@@ -6215,7 +6274,9 @@ async function renderCalendar(){
 
   // 依「日期」取件，而不是 ym —— 兩者刻意不同步，所以只能全掃後過濾。
   // 資料量是幾十到幾百筆，成本可以忽略（buildRems 也是同樣做法）。
+  const _seq = nextSeq('cal');
   const all=await getAll();
+  if(isStale('cal',_seq)) return;
   const inMonth=all.filter(x=>x.date&&x.date.startsWith(key)
                               &&(advOn()||x.itype!=='advance'));
   // 橘點的意思是「這天有代墊還沒收回」—— 那是狀態不是金額，子項目照算。
@@ -6565,9 +6626,7 @@ async function saveItem(){
   const personalAmt = billAmt - proxySum;
 
   // 自動備註：說明這筆全額裡含了多少代墊，以及那部分另有記錄可追蹤
-  const splitNote = proxySum > 0
-    ? `含代墊 ${fmt(proxySum)}（自付 ${fmt(personalAmt)}），已另立記錄追蹤收回`
-    : '';
+  const splitNote = splitNoteText(billAmt, proxySum);
   const finalNote = [rawNote, splitNote].filter(Boolean).join('\n');
 
   const wasEditing = !!editId; // capture BEFORE closeForm() resets editId to null
@@ -7391,6 +7450,15 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.20.0', d:'2026/09/07', c:[
+    ['fix','刪掉帳單底下的某一筆代墊後，父項目備註裡的「含代墊 $X」會停在舊數字。金額一直是對的（代墊子項目本來就不計入加總），錯的是那行說明文字——而它正是用來核對「這筆裡面有多少要跟人收」的依據。刪除與復原後都會重算，剩餘代墊歸零時整行移除，不留「含代墊 $0」'],
+    ['imp','拆分備註收斂成單一產生器，儲存表單與刪除後重算共用。兩種寫法會讓剝除規則失效，備註每存一次多一行——那正是 v4.9.4 修過的問題'],
+    ['fix','五個畫面的重繪加上序號保護。每次重繪都是「讀一次資料再畫」，快速連續操作（連點換月、連切篩選）會讓多次重繪同時進行，只要較早發出的那次讀取比較慢回來，就會用舊資料覆寫已經正確的畫面。現在較舊的那次會直接放棄，不碰畫面'],
+  ]},
+  { v:'v4.19.3', d:'2026/09/07', c:[
+    ['fix','在「待處理」檢視勾選項目後，底部那行會退回舊格式（「合計 $X」而非「待付／待收」），而且把代墊金額算進待付、拆分代墊還被重複計算。原因是這行文字在完整重繪與勾選後的就地更新兩個地方各寫了一份，v4.19.0 只改到其中一份'],
+    ['imp','該行文字收斂成單一產生器，兩條路徑共用，不會再各算各的'],
+  ]},
   { v:'v4.19.2', d:'2026/09/07', c:[
     ['fix','「複製上月」會把繳費日與結帳日清空，複製出來的每一筆都要重新填日期。現在兩個日期都會帶過來並整體往後推一個月，日數維持不變；遇到短月份夾到當月最後一天（1/31 推一個月是 2/28，閏年 2/29）'],
     ['fix','「複製上月」會切斷代墊拆分的父子連結，使子項目被當成獨立代墊而重新計入，複製出來的月份會憑空多出一筆支出。現在連結會一併複製過來'],
@@ -7731,6 +7799,8 @@ dbReady.then(async ()=>{
         const childBackups = children.map(c => ({...c}));
         for(const c of children) await delItem(c.id);
         await delItem(id);
+        // 刪掉的若是某張帳單底下的代墊，父項目備註裡的「含代墊 $X」要跟著重算。
+        await refreshParentSplitNote(x.parentId);
         dirtyAll();
         card.remove(); // OPT2: remove only this card, no full rebuild
         if(activeScreen==='home') rHome(); // hero + list back in sync
@@ -7743,6 +7813,8 @@ dbReady.then(async ()=>{
             cb.parentId = restored.id;
             await putItem(cb);
           }
+          // 復原的若是代墊子項目，父項目備註要把它加回去。
+          await refreshParentSplitNote(backup.parentId);
           dirtyAll(); rHome(); toast('已復原');
         });
         return;
@@ -7820,8 +7892,14 @@ dbReady.then(async ()=>{
             // 不去 parse 已經格式化過的文字。
             const foot = list.querySelector('.list-footer');
             if(foot){
-              const sum = rest.reduce((t,c)=>t + (+c.dataset.amt||0), 0);
-              foot.textContent = `待處理 ${rest.length} 筆　合計 ${fmt(sum)}`;
+              // 從卡片的 data 屬性還原出計算所需的最小物件，交給與完整重繪
+              // 同一個產生器。還留在待處理清單上的代墊，依定義就是未收回。
+              foot.textContent = todoFootText(rest.map(c=>({
+                itype:    c.dataset.isadv==='1' ? 'advance' : 'normal',
+                amount:   +c.dataset.amt||0,
+                parentId: c.dataset.split==='1' ? 1 : null,
+                recovered: 0
+              })));
             }
             await rHome({skipList:true});     // 只更新統計
           }
