@@ -2271,7 +2271,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.19.1 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span id="app-info-ver">v4.19.2 <span class="app-info-chev">›</span></span>
         </div>
         <div class="app-info-row"><span>建置日期</span><span>2026/08/20</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
@@ -6677,22 +6677,56 @@ async function confirmDel(){
   closeForm(true); dirtyAll(); rHome(); toast('已刪除');
 }
 
+// 把日期整個往後推 n 個月，日數維持不變。遇到短月份就夾到當月最後一天
+// （1/31 推一個月是 2/28，不是 3/3）。
+function shiftMonth(ds,n){
+  if(!ds) return '';
+  const [y,m,d]=ds.split('-').map(Number);
+  if(!y||!m||!d) return '';
+  const t=new Date(y,m-1+n,1), yy=t.getFullYear(), mm=t.getMonth()+1;
+  return `${yy}-${pad(mm)}-${pad(Math.min(d,daysInMonth(yy,mm)))}`;
+}
+
 // ── Copy prev month ──────────────────────────────────────
 async function copyPrev(){
   const{y,m}=curYM(),prevM=m===1?12:m-1,prevY=m===1?y-1:y;
   const prev=await getByYM(ymStr(prevY,prevM));if(!prev.length)return;
+
+  // 複製要連同繳費日與結帳日一起帶過來，整個往後推一個月。這兩個欄位原本
+  // 被清空，理由是「那是上個月的日期」—— 但每月固定帳單的意義正在於它每個
+  // 月同一天，清掉只是把填寫工作丟回給使用者。推一個月才是原意。
+  //
+  // 繳費日常落在帳單月的次月（ym 是 9 月、繳費日在 10/05 是常態），所以不能
+  // 拿新的 ym 去替換日期裡的年月，只能整體位移，這樣月份差距才保得住。
+  const idMap=new Map();       // 上月 id → 新複本 id
+  const kids=[];               // [上月 parentId, 新複本]
   for(const x of prev){
-    // Dates are cleared on purpose (they're next month's bills, not last
-    // month's), so ym has to be set explicitly — there's no date to derive it.
-    // date 被刻意清空（那是上個月的繳費日）；closeDate 同理，它是上一期帳單的
-//     結帳日，照抄過來會讓新的一筆顯示錯誤的消費期間。
-    const copied={...x,date:'',paid:x.itype==='advance'?1:0,recovered:0,ym:ymStr(y,m)};
-    delete copied.closeDate;
+    const copied={
+      ...x,
+      date:      shiftMonth(x.date,1),
+      paid:      x.itype==='advance'?1:0,
+      recovered: 0,
+      ym:        ymStr(y,m)
+    };
+    if(x.closeDate) copied.closeDate=shiftMonth(x.closeDate,1);
+    else            delete copied.closeDate;
     // 必須「刪掉」而不是設成 undefined：keyPath 屬性存在但值為 undefined，
     // 在嚴格實作下會被當成無效鍵而丟 DataError，而不是交給自動編號產生。
     delete copied.id;
-    delete copied.parentId; // 舊 parentId 指向上月的父項，複製後必須斷開
+    // 舊 parentId 指向上月的父項，先斷開，等新 id 都配好了再接回新的父項。
+    delete copied.parentId;
     await putItem(copied);
+    idMap.set(x.id, copied.id);
+    if(x.parentId!=null) kids.push([x.parentId, copied]);
+  }
+  // 代墊拆分的父子連結要跟著複製過來。父項目存的是刷卡全額、子項目只是注記
+  // 不計入加總 —— 連結一旦斷掉，子項目會被當成獨立代墊而重新計入，複製出來
+  // 的那個月就會比上個月多出一筆憑空的支出。
+  for(const [oldPid,rec] of kids){
+    const nid=idMap.get(oldPid);
+    if(nid==null) continue;    // 父項不在這個月：維持獨立，照常計入
+    rec.parentId=nid;
+    await putItem(rec);
   }
   dirtyAll();rHome();toast(`已複製 ${prev.length} 筆項目`);
 }
@@ -7357,6 +7391,11 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.19.2', d:'2026/09/07', c:[
+    ['fix','「複製上月」會把繳費日與結帳日清空，複製出來的每一筆都要重新填日期。現在兩個日期都會帶過來並整體往後推一個月，日數維持不變；遇到短月份夾到當月最後一天（1/31 推一個月是 2/28，閏年 2/29）'],
+    ['fix','「複製上月」會切斷代墊拆分的父子連結，使子項目被當成獨立代墊而重新計入，複製出來的月份會憑空多出一筆支出。現在連結會一併複製過來'],
+    ['imp','複製時繳費日與帳單月的月份差距維持不變——繳費日常落在帳單月的次月，這個關係不會因為複製而跑掉'],
+  ]},
   { v:'v4.19.1', d:'2026/09/07', c:[
     ['chg','底部分頁列改為固定，捲動時不再收合文字標籤。原本捲動超過門檻會把「本月／明細／圖表／設定」四個字收掉以省高度，但那讓整條列在捲動中變高變矮、按鈕位置跟著位移，滑到一半要點分頁很容易點錯'],
     ['imp','一併移除四個捲動容器上的收合監聽器，捲動時少一件事要做'],
