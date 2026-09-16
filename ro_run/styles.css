@@ -896,7 +896,8 @@ input[type="time"]::-webkit-date-and-time-value{
 .droppill .drop-qty{font-weight:700; color:var(--ms,#b45309)}
 
 /* 掉落物批次編輯 */
-.droprow{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line-2)}
+/* gap 收到 7：多了一組快捷鈕之後，每一像素都是材料名稱能不能不換行的差別 */
+.droprow{display:flex; align-items:center; gap:7px; padding:7px 0; border-bottom:1px solid var(--line-2)}
 .droprow:last-child{border-bottom:none}
 .droprow-n{flex:1; min-width:0; font-size:13.5px; font-weight:500; overflow-wrap:anywhere}
 .droprow.on .droprow-n{color:var(--ms,#92400e); font-weight:650}
@@ -906,9 +907,35 @@ input[type="time"]::-webkit-date-and-time-value{
 }
 .dropgrp:first-child{margin-top:2px}
 .dropgrp::after{content:''; flex:1; height:1px; background:var(--ms-line,var(--line-2))}
+/* 數量快捷鈕。跟 ＋／− 分成兩組：那兩顆是「加減一個」，這三顆是「直接填成這個數字」，
+   意義不同就不該長得一樣，也不該黏在一起讓人以為是同一排。
+   目前數量剛好等於某顆時那顆會亮，等於順便把數字重複講一次。 */
+.quickset{display:flex; gap:3px; flex:0 0 auto}
+.qbtn{
+  min-width:27px; height:32px; padding:0 3px; border-radius:9px;
+  border:1px solid var(--line); background:var(--surface);
+  font-size:12px; font-weight:650; line-height:1; color:var(--muted);
+  font-variant-numeric:tabular-nums;
+  transition:background .14s, color .14s, border-color .14s;
+}
+.qbtn:active{transform:scale(.94); background:var(--line-2)}
+.qbtn.on{
+  color:var(--ms,var(--accent)); font-weight:750;
+  background:var(--ms-soft,var(--accent-soft));
+  border-color:var(--ms-line,rgba(79,70,229,.3));
+}
+/* 極窄的螢幕（SE 那一代）擠不下「名稱 + 三顆快捷 + 步進器」一整排，
+   與其把材料名稱折成兩行糊成一團，不如讓名稱獨佔一行、控制項退到下面。 */
+@media (max-width:340px){
+  .droprow{flex-wrap:wrap; row-gap:6px}
+  .droprow-n{flex:1 1 100%}
+  .quickset{margin-left:auto}
+}
+@media (prefers-reduced-motion:reduce){ .qbtn{transition:none} }
+
 .stepper{display:flex; align-items:center; gap:4px; flex:0 0 auto}
 .stepbtn{
-  width:32px; height:32px; border-radius:9px; border:1px solid var(--line);
+  width:30px; height:32px; border-radius:9px; border:1px solid var(--line);
   background:var(--surface); font-size:17px; font-weight:600; line-height:1; color:var(--ink-2);
   /* 按住會連續累加，期間不要讓瀏覽器把它當成長按選字或捲動手勢 */
   touch-action:none; -webkit-user-select:none; user-select:none;
@@ -918,8 +945,8 @@ input[type="time"]::-webkit-date-and-time-value{
 .stepbtn:disabled{opacity:.3}
 .stepbtn.plus{background:var(--accent-soft); border-color:rgba(79,70,229,.25); color:var(--accent)}
 .stepqty{
-  width:44px !important; text-align:center; font-size:15px !important; font-weight:650;
-  padding:6px 2px !important; border:1px solid var(--line-2) !important; background:var(--surface);
+  width:38px !important; text-align:center; font-size:15px !important; font-weight:650;
+  padding:6px 1px !important; border:1px solid var(--line-2) !important; background:var(--surface);
 }
 .dropsum{
   font-size:12.5px; color:#92400e; background:rgba(180,83,9,.08);

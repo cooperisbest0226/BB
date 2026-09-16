@@ -1294,6 +1294,88 @@ def run(page):
     check("點數字後打字是取代不是接在後面",
           page.evaluate("() => document.querySelector('#dropRows [data-qty]').value"), "8")
 
+    # ---------- 數量快捷鈕 10 / 15 / 20 ----------
+    # 一場常常掉十幾二十個，靠 ＋ 一下一下按太慢。這三顆是「直接填成這個數字」，
+    # 不是在現有數量上再加——跟旁邊的 ＋1 意義不同，這一點必須釘住。
+    check("每一列都有 10 / 15 / 20 三顆快捷鈕",
+          page.evaluate("""() => {
+              const rows = [...document.querySelectorAll('#dropRows .droprow')];
+              const each = rows.map(r => [...r.querySelectorAll('[data-set]')].map(b => b.dataset.set));
+              return [rows.length > 0, each.every(v => v.join(',') === '10,15,20')];
+          }"""), [True, True])
+
+    page.evaluate("() => { closeSheet(); }")
+    page.wait_for_timeout(250)
+    page.evaluate("() => dropsSheet('ptB')")
+    page.wait_for_timeout(350)
+    q15 = f'#dropRows [data-set="15"][data-m="{first}"]'
+    q20 = f'#dropRows [data-set="20"][data-m="{first}"]'
+    page.click(q15)
+    page.wait_for_timeout(180)
+    check("按 15 會把數量填成 15",
+          page.evaluate(f"() => document.querySelector('{qty}').value"), "15")
+    check("按下的那顆會亮起來，其他兩顆不亮",
+          page.evaluate("""() => {
+              const r = document.querySelector('#dropRows .droprow');
+              return [...r.querySelectorAll('[data-set]')].map(b => b.classList.contains('on'));
+          }"""), [False, True, False])
+    page.click(q20)
+    page.wait_for_timeout(180)
+    check("再按 20 是換成 20，不是加成 35",
+          page.evaluate(f"() => document.querySelector('{qty}').value"), "20")
+    check("亮起來的跟著換過去",
+          page.evaluate("""() => {
+              const r = document.querySelector('#dropRows .droprow');
+              return [...r.querySelectorAll('[data-set]')].map(b => b.classList.contains('on'));
+          }"""), [False, False, True])
+    check("摘要跟著一起更新",
+          page.evaluate("() => document.getElementById('dropSum').textContent.includes('共 20 個')"), True)
+
+    page.click(plus)
+    page.wait_for_timeout(180)
+    check("按 ＋ 之後數字不再對齊任何一顆，三顆都不亮",
+          page.evaluate("""() => {
+              const r = document.querySelector('#dropRows .droprow');
+              return [document.querySelector('[data-qty]').value,
+                      [...r.querySelectorAll('[data-set]')].some(b => b.classList.contains('on'))];
+          }"""), ["21", False])
+
+    # 手動打字剛好打到 10 時，那一顆也要亮——亮燈講的是「現在是幾個」，
+    # 不是「你剛剛按了哪一顆」。
+    page.click(qty)
+    page.keyboard.type("10")
+    page.wait_for_timeout(200)
+    check("手動打到 10 時第一顆也會亮",
+          page.evaluate("""() => {
+              const r = document.querySelector('#dropRows .droprow');
+              return [...r.querySelectorAll('[data-set]')].map(b => b.classList.contains('on'));
+          }"""), [True, False, False])
+
+    check("快捷鈕填的數量會真的存進場次",
+          page.evaluate(f"""() => {{
+              document.querySelector('{q15}').click();
+              document.querySelector('[data-s="save"]').click();
+              const d = (ptsOf('2026-08-05').find(p => p.id === 'ptB').drops || [])
+                          .find(x => x.name === '{first}');
+              return d ? d.qty : null;
+          }}"""), 15)
+
+    page.evaluate("() => dropsSheet('ptB')")
+    page.wait_for_timeout(350)
+    check("重新打開時，已經是 15 的那一列一進來就亮著",
+          page.evaluate(f"""() => {{
+              const r = document.querySelector('#dropRows [data-row="{first}"]');
+              return [...r.querySelectorAll('[data-set]')].map(b => b.classList.contains('on'));
+          }}"""), [False, True, False])
+    page.evaluate("() => { closeSheet(); }")
+    page.wait_for_timeout(250)
+    page.evaluate("() => dropsSheet('ptB')")
+    page.wait_for_timeout(350)
+    # 下一項要從 8 開始數，明講出來，不要靠上一項剛好留下的數字
+    page.click(qty)
+    page.keyboard.type("8")
+    page.wait_for_timeout(180)
+
     # 鍵盤操作不會被算成兩次
     page.evaluate("""() => {
         const b = document.querySelector('#dropRows .droprow [data-step="1"]');

@@ -593,8 +593,18 @@ function dropsSheet(ptId, dayKey){
   const names=allMaterialNames();
   (pt.drops||[]).forEach(d=>{ if(!names.includes(d.name)) names.push(d.name); });
 
+  /* 一場下來同一種材料常常是十幾二十個，靠 ＋ 一下一下按太慢，
+     叫出數字鍵盤又會把半個畫面蓋掉。這三顆是「直接填成這個數字」，不是再加上去——
+     跟旁邊的 ＋1 不同意義，所以視覺上分成兩組，而且數字對上時會亮起來，
+     一眼看得出目前是幾個。按錯就再按一顆或用 − 修，不會有東西不見。 */
+  const QUICK_QTY=[10,15,20];
+  const quickHtml=n=>`<div class="quickset">${QUICK_QTY.map(v=>
+      `<button class="qbtn ${(work.get(n)||0)===v?'on':''}" data-set="${v}" data-m="${esc(n)}"
+         aria-label="${esc(n)} 設為 ${v} 個">${v}</button>`).join('')}</div>`;
+
   const rowHtml=n=>`<div class="droprow ${(work.get(n)||0)>0?'on':''}" data-row="${esc(n)}" style="${msVars(matSeries(n))}">
       <span class="droprow-n">${esc(n)}</span>
+      ${quickHtml(n)}
       <div class="stepper">
         <button class="stepbtn" data-step="-1" data-m="${esc(n)}" ${(work.get(n)||0)<=0?'disabled':''}>−</button>
         <input class="stepqty" type="number" min="0" inputmode="numeric" placeholder="0"
@@ -646,6 +656,7 @@ function dropsSheet(ptId, dayKey){
         if(force&&document.activeElement===qi) qi.select();
       }
       row.querySelector('[data-step="-1"]').disabled=q<=0;
+      row.querySelectorAll('[data-set]').forEach(b=>b.classList.toggle('on',+b.dataset.set===q));
     }
     function bindRow(row){
       const n=row.dataset.row;
@@ -653,6 +664,10 @@ function dropsSheet(ptId, dayKey){
         const q=Math.max(0,(work.get(n)||0)+(+b.dataset.step));
         work.set(n,q); paintRow(n,true); paintSum();
       }));
+      row.querySelectorAll('[data-set]').forEach(b=>{
+        /* 不用 bindRepeat：這是一次性的「設成這個值」，按住不該一直重複觸發 */
+        b.onclick=()=>{ work.set(n,+b.dataset.set); paintRow(n,true); paintSum(); };
+      });
       const qi=row.querySelector('[data-qty]');
       /* 點進數字直接全選：接著打的數字就是取代而不是接在後面。
          滑鼠放開時瀏覽器會把選取收成游標，所以要擋掉那一下，不然桌機上白選。 */
@@ -662,6 +677,8 @@ function dropsSheet(ptId, dayKey){
         work.set(n,Math.max(0,parseInt(e.target.value)||0));
         row.classList.toggle('on',(work.get(n)||0)>0);
         row.querySelector('[data-step="-1"]').disabled=(work.get(n)||0)<=0;
+        const q=work.get(n)||0;
+        row.querySelectorAll('[data-set]').forEach(b=>b.classList.toggle('on',+b.dataset.set===q));
         paintSum();
       };
       /* 離開時把 "0"、"-3"、空字串這些統一收斂成畫面該有的樣子 */
@@ -835,6 +852,12 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v68', d:'2026/09/16',
+    c:[
+    ['add','掉落物每一列多了 10 / 15 / 20 三顆快捷鈕，直接把數量填成那個數字。一場常常掉十幾二十個，按 ＋ 一下一下太慢，叫出數字鍵盤又會蓋掉半個畫面'],
+    ['add','目前數量剛好等於某一顆時，那顆會亮起來——不管是按出來的還是自己打的，一眼看得出現在是幾個'],
+    ['imp','為了容納快捷鈕，材料列的間距與加減鈕略為收窄，讓材料名稱在窄螢幕上仍然不換行'],
+  ]},
   { v:'v67', d:'2026/09/16',
     c:[
     ['chg','新增日期時，「從哪一天複製」預設選最新的那一天。以前是「目前這天的前一天」——翻舊資料時停在三月，按新增就會幫你複製三月的配置過來'],
