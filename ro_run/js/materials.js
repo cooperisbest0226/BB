@@ -147,6 +147,12 @@ function renderMaterials(o){
   const totals={}; let dropSum=0, runsWithDrops=0;
   const byDay={};
   entries.forEach(({date,pt})=>{
+    /* 翻車場次的掉落不算。分潤一直是這樣認定的（「翻車就是沒打成功、沒有掉落物」），
+       但這裡以前照算，於是同一批材料在材料頁看得到、在分潤卻分不到 ——
+       兩邊講不同的話，對帳的人只能自己猜哪個是真的。
+       標記翻車現在會清掉掉落物，這道過濾是給舊資料的：不去動使用者的紀錄，
+       只是不再把它算進總數；哪天點回通關，數字就完整回來。 */
+    if(isWipe(pt)) return;
     if(pt.drops&&pt.drops.length){
       runsWithDrops++;
       pt.drops.forEach(d=>{

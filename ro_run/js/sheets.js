@@ -723,11 +723,14 @@ function rolePickSheet(ptId,i){
 
 function dateSheet(){
   const allDates=dates();
-  const prev=allDates.filter(k=>k<curDate).pop()||allDates[allDates.length-1];
+  /* 預設複製最新的那一天，不是「目前這天的前一天」。新增日期幾乎都是往未來排，
+     而最近一次的陣容才是現在的陣容 —— 翻舊資料時停在三月，按新增卻幫你複製三月的
+     配置過來，等於預設值挑了一個你剛好正在看、但跟接下來無關的日子。 */
+  const latest=allDates[allDates.length-1];
   /* 今天還沒建立的話，預設就填今天（最常見的情境）；否則填目前這天的隔天 */
   const def=state.schedule[todayKey()]?shiftDate(curDate,1):todayKey();
   const dateOpts=allDates.slice().reverse().map(k=>
-    `<option value="${k}" ${k===prev?'selected':''}>${fmtDate(k)} ${fmtDow(k)}（${ptsOf(k).length} RUN）</option>`).join('');
+    `<option value="${k}" ${k===latest?'selected':''}>${fmtDate(k)} ${fmtDow(k)}（${ptsOf(k).length} RUN）</option>`).join('');
   sheet('新增日期',`
     <div class="field"><label>日期</label><input name="d" type="date" value="${def}"></div>
     ${allDates.length?`
@@ -747,8 +750,13 @@ function dateSheet(){
       const copy=copyChk?.checked;
       const from=s.querySelector('[name="copyFrom"]')?.value;
       commit(()=>{
+        /* 複製過來的是「陣容配置」，不是那一天發生過的事。
+           所以只留 RUN 名稱、人數上限與成員配置；掉落物、複盤影片、翻車標記都歸零 ——
+           那三樣講的是舊場次的結果，新的一天還沒打，不該一開始就背著別人的戰績。
+           翻車尤其不能帶過來：現在翻車的卡片是鎖住的，新排的場次一建立就不能編輯。 */
         state.schedule[k]= (copy&&from&&state.schedule[from])
-          ? JSON.parse(JSON.stringify(ptsOf(from))).map(p=>({...p,id:uid(),drops:[]}))
+          ? JSON.parse(JSON.stringify(ptsOf(from))).map(p=>
+              ({...p, id:uid(), drops:[], videos:[], wipe:false}))
           : [mkPt('RUN 1',state.settings.defaultCap)];
       });
       curDate=k; closeSheet(); render();
@@ -827,6 +835,21 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v67', d:'2026/09/16',
+    c:[
+    ['chg','新增日期時，「從哪一天複製」預設選最新的那一天。以前是「目前這天的前一天」——翻舊資料時停在三月，按新增就會幫你複製三月的配置過來'],
+    ['fix','複製過來的場次一律是通關：來源那天如果標了翻車，新的一天不會跟著背。新排的場次還沒打，而且翻車的卡片是鎖住的，一建立就不能編輯'],
+    ['fix','複盤影片也不再跟著複製。複製過來的是陣容配置，不是那一天發生過的事'],
+  ]},
+  { v:'v66', d:'2026/09/07',
+    note:'翻車不再只是角落一個小標籤。它代表「這場不算數」，所以整張卡片會被封起來。',
+    c:[
+    ['chg','翻車的 RUN 整張卡片蓋上封條，斜向鋪滿「翻車」字樣，點一下才展開看名單'],
+    ['chg','翻車場次展開後只能看不能改：加人、移出、拖曳、編輯掉落、排序便當、編輯、複製全部停用。要再編輯就先點「改回通關」'],
+    ['chg','翻車場次仍然可以複盤與刪除——翻車最需要看的就是影片'],
+    ['fix','標記翻車時會清掉該場已記錄的掉落物（會先確認，也可以一鍵復原）。以前分潤當翻車沒有掉落、材料統計卻照算，同一批材料在兩頁講不同的話'],
+    ['fix','舊資料裡翻車但留著掉落物的場次，不再計入材料統計；紀錄本身不動，點回通關數字就完整回來'],
+  ]},
   { v:'v65', d:'2026/09/07',
     c:[
     ['fix','拍賣頁「成交紀錄」與「分潤試算」的日期欄位在手機上會超出畫面右邊。原生日期欄位不吃 width:100%，會拿自己的固有寬度把欄位撐開——即使欄位已經上下堆疊也一樣'],

@@ -567,6 +567,62 @@ def run(page):
     check("掉落紀錄不跟著複製",
           page.evaluate("() => state.schedule['2026-08-10'][0].drops.length"), 0)
 
+    # 預設要選最新的那一天。翻舊資料時停在三月、按新增卻幫你複製三月的配置過來，
+    # 等於預設值挑了一個剛好正在看、但跟接下來無關的日子。
+    seed(page)
+    check("「從哪一天複製」預設選最新的日期",
+          page.evaluate("""() => {
+              document.getElementById('btnAddDate').click();
+              const sel = document.querySelector('select[name="copyFrom"]');
+              const latest = dates()[dates().length - 1];
+              const r = [sel.value, latest, sel.options[0].value === sel.value];
+              closeSheet();
+              return r;
+          }"""),
+          page.evaluate("""() => {
+              const latest = dates()[dates().length - 1];
+              return [latest, latest, true];
+          }"""))
+    check("停在比較舊的日期時，預設仍然是最新那天而不是眼前這天的前一天",
+          page.evaluate("""() => {
+              curDate = dates()[0]; render();
+              document.getElementById('btnAddDate').click();
+              const v = document.querySelector('select[name="copyFrom"]').value;
+              closeSheet();
+              return v === dates()[dates().length - 1];
+          }"""), True)
+
+    # 複製過來的是「陣容配置」，不是那一天發生過的事。
+    # 翻車尤其不能帶過去——翻車的卡片是鎖住的，新排的場次一建立就不能編輯。
+    seed(page)
+    check("翻車的來源日期複製過去後是通關，不是一建立就鎖死",
+          page.evaluate("""() => {
+              const src = dates()[dates().length - 1];
+              ptsOf(src).forEach(p => {
+                  p.wipe = true;
+                  p.videos = [{id:'v1', url:'https://youtu.be/abc', title:'舊複盤'}];
+              });
+              persist();
+              document.getElementById('btnAddDate').click();
+              document.querySelector('select[name="copyFrom"]').value = src;
+              document.querySelector('input[name="d"]').value = '2026-12-25';
+              document.querySelector('[data-s="save"]').click();
+              const made = state.schedule['2026-12-25'];
+              return [made.length > 0,
+                      made.every(p => p.wipe === false),
+                      made.every(p => (p.videos || []).length === 0),
+                      made.every(p => (p.drops || []).length === 0),
+                      ptsOf(src).every(p => p.wipe === true)];   // 來源不能被動到
+          }"""), [True, True, True, True, True])
+    check("複製過去的卡片沒有封條，可以直接編輯",
+          page.evaluate("""() => {
+              curDate = '2026-12-25'; render();
+              document.querySelector('.tab[data-view="board"]').click();
+              const c = document.querySelector('.ptcard');
+              return [c.classList.contains('sealed'), c.classList.contains('wiped'),
+                      !!c.querySelector('[data-act="editPt"]')];
+          }"""), [False, False, True])
+
     # ---------- 複製 RUN ----------
     print("\n[pt] 複製 RUN 會帶走陣容")
     seed(page)
@@ -2131,6 +2187,33 @@ def run(page):
               document.getElementById('exportHost').innerHTML = '';
               return h.includes('19:00');
           }"""), True)
+    # 多天匯出時，時間掛在每一天的小標上（整張圖的大標只放日期區間，
+    # 因為每天的時間不一定一樣）。沒設時間的那天就不提時間。
+    check("多天匯出時每一天各自帶自己的時間",
+          page.evaluate("""() => {
+              state.dayTimes['2026-08-01'] = '19:00';
+              state.dayTimes['2026-08-05'] = '21:00';
+              buildExportNode(['2026-08-01', '2026-08-05']);
+              const days = [...document.querySelectorAll('#exportWrap .ex-day')]
+                             .map(e => e.textContent);
+              document.getElementById('exportHost').innerHTML = '';
+              return [days.length, days[0].includes('19:00'), days[1].includes('21:00')];
+          }"""), [2, True, True])
+    check("多天匯出的翻車數：整張圖一個總數，每天再各自一個",
+          page.evaluate("""() => {
+              ptsOf('2026-08-01')[0].wipe = true;
+              ptsOf('2026-08-05')[0].wipe = true;
+              buildExportNode(['2026-08-01', '2026-08-05']);
+              const sub = document.querySelector('#exportWrap .ex-sub').textContent;
+              const days = [...document.querySelectorAll('#exportWrap .ex-day')].map(e => e.textContent);
+              const tags = document.querySelectorAll('#exportWrap .ex-pt-w').length;
+              ptsOf('2026-08-01')[0].wipe = false;
+              ptsOf('2026-08-05')[0].wipe = false;
+              document.getElementById('exportHost').innerHTML = '';
+              return [sub.includes('翻車 2'),
+                      days.every(d => d.includes('翻車 1')),
+                      tags];
+          }"""), [True, True, 2])
     check("匯出圖片的 RUN 卡片不再重複印時間",
           page.evaluate("""() => {
               buildExportNode([curDate]);
@@ -2176,6 +2259,17 @@ def run(page):
     print("\n[wipe] 翻車標記")
     # seed() 每天只有一場，隔離性測不出來；這裡在同一天補第二場，
     # 而且讓它有掉落物，後面的場次明細才會列到它（明細只列有掉落的場次）。
+    # 從材料頁「畫出來的長條」上讀某個材料的總數。
+    # 刻意讀 DOM 而不是在測試裡重算一次 —— 重算等於拿自己的答案跟自己對，
+    # App 算錯了也照樣會通過。
+    page.evaluate("""() => {
+        window.matBarValue = (name) => {
+            const row = [...document.querySelectorAll('#matBars .bar-row')]
+                .find(r => r.querySelector('.bar-l').textContent.trim() === name);
+            return row ? +row.querySelector('.bar-n').textContent.trim() : 0;
+        };
+    }""")
+
     def seed_two_runs():
         seed(page)
         page.evaluate("""() => {
@@ -2221,17 +2315,20 @@ def run(page):
                       t.classList.contains('on')];
           }"""), ["通關", "false", False])
 
-    # 直接點徽章，確認是真的走事件委派而不是只有函式可用
+    # 直接點徽章，確認是真的走事件委派而不是只有函式可用。
+    # 第一場沒有掉落物，所以不會跳確認，直接標記。
+    page.evaluate("() => { ptsOf(curDate)[0].drops = []; persist(); render(); }")
+    page.wait_for_timeout(100)
     page.click(".ptcard .wipetag")
-    page.wait_for_timeout(120)
+    page.wait_for_timeout(150)
 
-    check("點徽章後資料與畫面同步變成翻車",
+    check("點徽章後資料變成翻車，卡片整張換成封條",
           page.evaluate("""() => {
-              const t = document.querySelector('.ptcard .wipetag');
-              return [ptsOf(curDate)[0].wipe, t.textContent.trim(),
-                      t.getAttribute('aria-pressed'), t.classList.contains('on'),
-                      document.querySelector('.ptcard').classList.contains('wiped')];
-          }"""), [True, "翻車", "true", True, True])
+              const c = document.querySelector('.ptcard');
+              return [ptsOf(curDate)[0].wipe, c.classList.contains('wiped'),
+                      c.classList.contains('sealed'),
+                      c.querySelector('.wseal-word').textContent.trim()];
+          }"""), [True, True, True, "翻車"])
 
     check("翻車標記有寫進 localStorage，不是只改了畫面",
           page.evaluate("""() => {
@@ -2244,14 +2341,108 @@ def run(page):
           page.evaluate("() => ptsOf(curDate).map(p => !!p.wipe)"),
           page.evaluate("() => ptsOf(curDate).map((p,i) => i === 0)"))
 
-    page.click(".ptcard .wipetag")
-    page.wait_for_timeout(120)
-    check("再點一次改回通關",
+    # 封條收合時底下的內容不是隱藏，是根本沒畫 ——
+    # 隱藏但還在 DOM 裡的按鈕，鍵盤與螢幕閱讀器照樣走得到，那是假的鎖定。
+    check("收合的封條卡片裡只有封條本身可以聚焦",
           page.evaluate("""() => {
-              const t = document.querySelector('.ptcard .wipetag');
-              return [ptsOf(curDate)[0].wipe, t.textContent.trim(),
-                      document.querySelector('.ptcard').classList.contains('wiped')];
-          }"""), [False, "通關", False])
+              const c = document.querySelector('.ptcard.sealed');
+              return [...c.querySelectorAll('button,input,select,a,[tabindex]')]
+                       .map(e => e.dataset.act || e.tagName);
+          }"""), ["wipeOpen"])
+
+    page.click('.ptcard.sealed .wseal')
+    page.wait_for_timeout(150)
+    check("點封條展開之後看得到名單",
+          page.evaluate("""() => {
+              const c = document.querySelector('.ptcard.wiped');
+              return [c.classList.contains('wopen'), c.classList.contains('sealed'),
+                      c.querySelectorAll('.slot').length > 0];
+          }"""), [True, False, True])
+
+    # 展開之後是唯讀：能做的只剩「改回通關」、複盤、刪除，以及收合封條本身。
+    check("展開後只剩查看與退出的動作，所有編輯入口都不在",
+          page.evaluate("""() => {
+              const c = document.querySelector('.ptcard.wiped');
+              return [...new Set([...c.querySelectorAll('[data-act]')].map(e => e.dataset.act))].sort();
+          }"""), ["delPt", "review", "toggleWipe", "wipeOpen"])
+    check("翻車卡片不是拖曳目標，也沒有移出鈕",
+          page.evaluate("""() => {
+              const c = document.querySelector('.ptcard.wiped');
+              return [c.hasAttribute('data-drop'), !!c.querySelector('.slot-x')];
+          }"""), [False, False])
+    check("點選成員後再點翻車卡片不會把人加進去",
+          page.evaluate("""() => {
+              const pt = ptsOf(curDate)[0], before = pt.slots.length;
+              assign(state.members[0].id, pt.id);
+              return [ptsOf(curDate)[0].slots.length, before];
+          }"""),
+          page.evaluate("() => [ptsOf(curDate)[0].slots.length, ptsOf(curDate)[0].slots.length]"))
+
+    page.click('.ptcard.wiped .wipetag')
+    page.wait_for_timeout(150)
+    check("點「改回通關」回到一般卡片，封條消失",
+          page.evaluate("""() => {
+              const c = document.querySelector('.ptcard');
+              return [ptsOf(curDate)[0].wipe, c.classList.contains('wiped'),
+                      !!c.querySelector('.wseal'), c.querySelector('.wipetag').textContent.trim()];
+          }"""), [False, False, False, "通關"])
+
+    # 有掉落物時標記翻車會清掉它們，所以要先確認；取消就什麼都不動。
+    print("\n[wipe] 標記翻車會清掉掉落物")
+    page.evaluate("""() => {
+        ptsOf(curDate)[0].wipe = false;
+        ptsOf(curDate)[0].drops = [{id:'dd1', name:'威力隕石碎片', qty:4}];
+        persist(); render();
+    }""")
+    page.wait_for_timeout(120)
+    page.click('.ptcard .wipetag')
+    page.wait_for_timeout(200)
+    check("有掉落物時會先問，並講明會清掉幾筆",
+          page.evaluate("""() => {
+              const h = document.getElementById('sheetHost').textContent;
+              return [h.includes('翻車'), h.includes('1 筆掉落物')];
+          }"""), [True, True])
+    page.click('#sheetHost [data-s="no"]')
+    page.wait_for_timeout(200)
+    check("按取消時掉落物與翻車標記都不動",
+          page.evaluate("() => [ptsOf(curDate)[0].wipe, ptsOf(curDate)[0].drops.length]"),
+          [False, 1])
+
+    page.click('.ptcard .wipetag')
+    page.wait_for_timeout(200)
+    page.click('#sheetHost [data-s="yes"]')
+    page.wait_for_timeout(250)
+    check("確認後標記翻車並清空掉落物",
+          page.evaluate("() => [ptsOf(curDate)[0].wipe, ptsOf(curDate)[0].drops.length]"),
+          [True, 0])
+    check("清掉的掉落物可以一鍵復原（破壞性操作必須可退）",
+          page.evaluate("""() => {
+              const u = document.querySelector('.toast-act .toast-btn');
+              if (!u) return 'no-undo';
+              u.click();
+              return [ptsOf(curDate)[0].wipe, ptsOf(curDate)[0].drops.length];
+          }"""), [False, 1])
+
+    # 翻車場次的掉落物不進材料統計——分潤一直是這樣認定的，兩邊要講同一句話。
+    # 不去猜固定總數（種子資料還有別的場次），量的是「標記翻車前後差了多少」。
+    check("標記翻車後，材料總數正好少掉那一場的掉落量",
+          page.evaluate("""() => {
+              matFrom = ''; matTo = ''; matRunName = '';
+              const pt = ptsOf(curDate)[1];
+              pt.wipe = false;
+              pt.drops = [{id:'m2', name:'威力隕石碎片', qty:7}];
+              persist();
+              document.querySelector('.tab[data-view="stats"]').click();
+              renderMaterials();
+              const before = matBarValue('威力隕石碎片');
+              pt.wipe = true; persist(); renderMaterials();
+              const after = matBarValue('威力隕石碎片');
+              pt.wipe = false; persist();
+              document.querySelector('.tab[data-view="board"]').click();
+              return before - after;
+          }"""), 7)
+
+    seed_two_runs()
 
     check("複製 RUN 不會把翻車標記帶到複本",
           page.evaluate("""() => {
@@ -2262,6 +2453,51 @@ def run(page):
               const pts = ptsOf(curDate);
               return [pts.length === before + 1, pts[pts.length - 1].wipe, src.wipe];
           }"""), [True, False, True])
+
+    # ---------- 備份：匯出的 JSON 要裝得下全部欄位 ----------
+    print("\n[backup] 匯出／匯入不掉任何欄位")
+    # 備份最怕的不是壞掉，是「看起來成功、但少了一欄」——還原之後才發現便當、
+    # 複盤影片或領取紀錄不見了。所以這裡把每一種資料都塞一筆有辨識度的值，
+    # 走完整條「匯出 → 驗證 → migrate → 覆蓋」的路，再逐欄比對。
+    check("每一種資料往返之後一字不差",
+          page.evaluate("""() => {
+              localStorage.clear(); state = seed();
+              state.members = [{id:'m1', name:'阿凱', active:true, defaultRoleId:'r1',
+                                notes:'備註', buffs:{r1:'自訂BUFF'}}];
+              state.roles = [{id:'r1', name:'牧師', color:'#22c55e', icon:'✝', order:0, buff:'預設BUFF'}];
+              state.schedule = {'2026-06-01':[{id:'p1', name:'RUN 1', capacity:9, wipe:true,
+                  slots:[{memberId:'m1', roleId:'r1', bento:true}],
+                  drops:[{id:'d1', name:'威力隕石碎片', qty:3}],
+                  videos:[{id:'v1', url:'https://youtu.be/x', title:'複盤'}]}]};
+              state.dayTimes = {'2026-06-01':'21:30'};
+              state.sales = [{id:'s1', date:'2026-06-02', mode:'set', sets:2, price:1500,
+                              cur:'R', total:3000, runRefs:['p1'], note:'備註B'}];
+              state.payouts = [{id:'y1', memberId:'m1', cur:'R', cents:12345,
+                                at:'2026-06-03', from:'2026-06-01', to:'2026-06-30'}];
+              state.settings = {theme:'dark', defaultTime:'19:00', defaultCap:8,
+                                lastExportAt:1700000000000, lastSnapDay:'2026-06-01'};
+              persist();
+
+              const file = JSON.stringify(state);            // exportJson 寫進檔案的就是這個
+              const data = JSON.parse(file);
+              // 匯入端的格式檢查
+              const passes = !!(data && Array.isArray(data.members) &&
+                                Array.isArray(data.roles) && typeof data.schedule === 'object');
+              state = migrate(data);
+              return [passes, JSON.stringify(state) === file];
+          }"""), [True, True])
+    check("匯出的頂層欄位就是完整的 state，沒有任何一欄被漏掉",
+          page.evaluate("() => Object.keys(state).sort()"),
+          page.evaluate("() => Object.keys(seed()).sort()"))
+    check("資料只住在一把 localStorage 鑰匙底下，備份不會漏掉另一半",
+          page.evaluate("""() => {
+              persist(); flushPersist();          // persist 是延遲寫入的，要先落地才量得到
+              const mine = Object.keys(localStorage).filter(k => k !== INSTALL_DISMISS_KEY);
+              return [mine, JSON.parse(localStorage.getItem(KEY)) !== null];
+          }"""),
+          page.evaluate("() => [[KEY], true]"))
+
+    seed(page)
 
     # ---------- 翻車標記：匯出 ----------
     print("\n[wipe] 匯出圖片與 CSV 標示")

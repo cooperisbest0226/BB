@@ -245,7 +245,56 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
    標記在標題列而不是功能鈕那一排：它描述「這場的結果」，不是一個動作。
    翻車卡整張壓一層極淡的紅並把左緣加粗，滑一長串場次時不用逐張讀徽章
    就看得出哪幾場出事；但飽和度刻意壓低，避免翻車多的那幾天整頁變成紅牆。 */
-.ptcard.wiped{border-color:color-mix(in srgb, var(--danger) 34%, var(--line-2)); box-shadow:inset 3px 0 0 var(--danger), var(--shadow)}
+/* 翻車卡片不再靠左邊那條紅線示意 —— 封條已經把話講得夠大聲，
+   兩個訊號疊在一起只會讓展開後的版面多一條從半空中開始的線。 */
+.ptcard.wiped{border-color:color-mix(in srgb, var(--danger) 34%, var(--line-2)); box-shadow:var(--shadow)}
+
+/* ── 翻車封條 ────────────────────────────────────────────
+   翻車是「這場不算數」，不是「這場比較不重要」，所以視覺上要是一個切斷，
+   不是角落一個小標籤。用封鎖線的語彙：斜向重複的「翻車」字樣把整張卡片封起來，
+   點一下才掀開看名單 —— 掀開之後也只能看，因為場次已經定案。
+   紅色沿用既有的 --danger，不另外開新色；這裡的強度來自密度與角度，不是新顏色。 */
+.ptcard.wiped.sealed{padding:0; overflow:hidden; border-style:dashed}
+.wseal{
+  position:relative; display:block; width:100%; overflow:hidden; text-align:center;
+  min-height:132px; padding:26px 16px; border-radius:inherit; cursor:pointer;
+  background:color-mix(in srgb, var(--danger) 9%, var(--surface));
+  transition:background .2s var(--ease);
+}
+.ptcard.wiped.wopen .wseal{
+  min-height:0; padding:12px 16px; border-radius:var(--r-md) var(--r-md) 0 0;
+  margin:-1px -1px 12px; border-bottom:1px solid color-mix(in srgb, var(--danger) 26%, transparent);
+}
+.wseal:active{background:color-mix(in srgb, var(--danger) 15%, var(--surface))}
+/* 斜向鋪滿的「翻車」。pointer-events 交給外層按鈕，字樣本身不吃點擊。 */
+.wseal-tape{
+  position:absolute; inset:-40% -20%; display:flex; flex-wrap:wrap; gap:10px 22px;
+  align-content:center; justify-content:center; transform:rotate(-15deg);
+  pointer-events:none; user-select:none;
+}
+.wseal-tape i{
+  font-style:normal; font-size:19px; font-weight:800; letter-spacing:.14em;
+  color:color-mix(in srgb, var(--danger) 26%, transparent);
+}
+.ptcard.wiped.wopen .wseal-tape{inset:-60% -20%; gap:6px 16px}
+.ptcard.wiped.wopen .wseal-tape i{font-size:14px; color:color-mix(in srgb, var(--danger) 18%, transparent)}
+.wseal-core{position:relative; display:flex; flex-direction:column; align-items:center; gap:5px}
+.wseal-word{
+  font-size:34px; font-weight:800; letter-spacing:.2em; text-indent:.2em; line-height:1.1;
+  color:var(--danger); text-shadow:0 1px 0 var(--surface);
+}
+.ptcard.wiped.wopen .wseal-word{font-size:16px; letter-spacing:.14em; text-indent:.14em}
+.wseal-meta{font-size:12.5px; font-weight:600; color:var(--ink-2)}
+.wseal-cta{font-size:11.5px; font-weight:550; color:var(--muted)}
+.ptcard.wiped.wopen .wseal-core{flex-direction:row; align-items:baseline; gap:9px; flex-wrap:wrap}
+/* 掀開之後內容是唯讀的：淡一階，讓「看得到但不能改」是看得出來的，而不是按了才發現 */
+.ptcard.wiped.wopen .slots,
+.ptcard.wiped.wopen .dropsec,
+.ptcard.wiped.wopen .meter{opacity:.62}
+/* 鎖住的 pill 保留原本的顏色與形狀（那是資訊），但拿掉所有「可以按」的訊號 */
+.rolepill.lock,.droppill.lock,.slot-buff.lock{cursor:default; pointer-events:none}
+.rolepill.lock:active,.droppill.lock:active,.slot-buff.lock:active{transform:none}
+@media (prefers-reduced-motion:reduce){ .wseal{transition:none} }
 .wipetag{
   flex:0 0 auto; font-size:10.5px; font-weight:650; line-height:1;
   padding:3px 8px; border-radius:99px; letter-spacing:.2px;

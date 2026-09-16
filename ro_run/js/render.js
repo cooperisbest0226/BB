@@ -41,6 +41,9 @@ function statsVisible(){
 /* 材料頁的 DOM 有沒有真的畫出來。在拍賣頁時 renderMaterials() 只算數字不畫，
    所以「不髒」不等於「畫好了」—— 少了這個旗標，從拍賣頁切回材料頁會看到上一輪的舊畫面。 */
 let matPainted=false;
+/* 哪幾張翻車卡片被展開了。只活在記憶體裡、不存檔：這是「我現在想看一下」，
+   不是這一場的性質，不該跟著資料被匯出或同步到別台裝置。 */
+const wipeOpen=new Set();
 function ensureMaterials(){
   const needPaint = activeViewId()==='stats';
   if(matDirty || (needPaint && !matPainted)){
@@ -143,37 +146,66 @@ function renderBoard(){
         <svg viewBox="0 0 24 24"><use href="#ic-poring"/></svg>
       </span>`;
     }).join('');
+    const wiped=isWipe(pt), wopen=wipeOpen.has(pt.id);
     const rows=pt.slots.length ? pt.slots.map((s,si)=>{
       const m=memberById(s.memberId), r=roleById(s.roleId);
       if(!m) return '';
+      /* 翻車卡片裡的職業與 BUFF 改成純文字：留著按鈕外觀但按不動，等於騙人按一次才發現。
+         沒有職業的空位就直接不顯示——「指定職業」是一個邀請，但這裡已經不能指定了。 */
       const pill=r
-        ? `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
-             style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`
-        : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`;
+        ? (wiped
+            ? `<span class="rolepill lock" style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</span>`
+            : `<button class="rolepill" data-act="role" data-pt="${pt.id}" data-i="${si}"
+             style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`)
+        : (wiped ? '' : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`);
       const bf=buffFor(m,r), own=hasBuffOverride(m,r&&r.id);
       const buffTag = r
-        ? `<button class="slot-buff ${own?'own':''} ${bf?'':'none'}" data-act="slotBuff"
+        ? (wiped
+            ? (bf?`<span class="slot-buff lock ${own?'own':''}">${esc(bf)}</span>`:'')
+            : `<button class="slot-buff ${own?'own':''} ${bf?'':'none'}" data-act="slotBuff"
              data-pt="${pt.id}" data-i="${si}" title="${own?'這個人自己的 BUFF':'套用職業預設 BUFF'}"
-           >${bf?esc(bf):'＋ BUFF'}</button>`
+           >${bf?esc(bf):'＋ BUFF'}</button>`)
         : '';
       return `<div class="slot ${s.bento?'bento':''}" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
           ${buffTag}
         </div>${pill}
-        <button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>
+        ${wiped?'':`<button class="slot-x" data-act="unassign" data-pt="${pt.id}" data-i="${si}" aria-label="移出">×</button>`}
       </div>`;
     }).join('') : `<div class="slot-empty">還沒有人 — 從下方拖曳或點選成員加入</div>`;
     /* 翻車標記直接做在標題列而不是下面那排功能鈕：它是「這場的結果」，
-       跟編輯／複製／刪除那種動作不同性質，混在一起按錯的代價也不一樣。 */
-    const wiped=isWipe(pt);
-    return `<div class="ptcard ${wiped?'wiped':''}" data-drop="pt" data-pt="${pt.id}" style="animation-delay:${i*45}ms">
+       跟編輯／複製／刪除那種動作不同性質，混在一起按錯的代價也不一樣。
+
+       翻車的卡片整張蓋上封條：翻車是「這場不算數」，而不是「這場比較不重要」，
+       所以視覺上要是一個切斷，不是一個小標籤。收合時只留封條，展開才看得到名單，
+       而且展開後也只能看不能改 —— 場次已經定案，要再編輯就先點回「通關」。
+       只有封條本身（切換回通關）、複盤、刪除保持可用，不然使用者會被鎖死在裡面。 */
+    const seal = wiped ? `
+      <button class="wseal ${wopen?'open':''}" data-act="wipeOpen" data-pt="${pt.id}"
+        aria-expanded="${wopen}" aria-label="${esc(pt.name)} 翻車，${wopen?'點一下收合':'點一下展開查看名單'}">
+        <span class="wseal-tape" aria-hidden="true">${Array.from({length:wopen?10:28},()=>'<i>翻車</i>').join('')}</span>
+        <span class="wseal-core">
+          <span class="wseal-word">翻車</span>
+          <span class="wseal-meta">${esc(pt.name)} · ${n} 人出場</span>
+          <span class="wseal-cta">${wopen?'收合':'點一下查看名單'}</span>
+        </span>
+      </button>` : '';
+    /* 收合的翻車卡片只輸出封條：底下的內容不是隱藏起來，是根本不畫。
+       隱藏但存在的按鈕仍然會被鍵盤與螢幕閱讀器走到，那是假的鎖定。 */
+    if(wiped && !wopen){
+      return `<div class="ptcard wiped sealed" data-pt="${pt.id}" style="animation-delay:${i*45}ms">
+        ${seal}
+      </div>`;
+    }
+    return `<div class="ptcard ${wiped?'wiped wopen':''}" ${wiped?'':'data-drop="pt"'} data-pt="${pt.id}" style="animation-delay:${i*45}ms">
+      ${seal}
       <div class="pt-head">
         <div class="pt-id">
           <div class="pt-name">${esc(pt.name)}
             <button class="wipetag ${wiped?'on':''}" data-act="toggleWipe" data-pt="${pt.id}"
               aria-pressed="${wiped}" title="${wiped?'點一下改回通關':'點一下標記為翻車'}"
-            >${wiped?'翻車':'通關'}</button>
+            >${wiped?'改回通關':'通關'}</button>
           </div>
         </div>
         <div class="pt-count num ${full?'full':''}"><b>${n}</b><span>/${pt.capacity}</span></div>
@@ -183,18 +215,21 @@ function renderBoard(){
       <div class="dropsec">
         <div class="dropsec-head">
           <span class="dropsec-t">掉落物</span>
-          <button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">${(pt.drops&&pt.drops.length)?'編輯掉落':'＋ 記錄掉落'}</button>
+          ${wiped?'':`<button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">${(pt.drops&&pt.drops.length)?'編輯掉落':'＋ 記錄掉落'}</button>`}
         </div>
         <div class="dropgrid">${(pt.drops&&pt.drops.length) ? [...pt.drops].sort((a,b)=>
           MAT_SERIES.findIndex(s=>s.key===matSeries(a.name).key)-MAT_SERIES.findIndex(s=>s.key===matSeries(b.name).key)).map(d=>
-          `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`).join('')
-          : `<span class="bench-empty" style="padding:0">還沒有記錄</span>`}</div>
+          (wiped
+            ? `<span class="droppill lock" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`
+            : `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`)).join('')
+          : `<span class="bench-empty" style="padding:0">${wiped?'翻車場次沒有掉落物':'還沒有記錄'}</span>`}</div>
       </div>
       <div class="pt-foot">
+        ${wiped?'':`
         <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
-        <button class="gbtn" data-act="orderPt" data-pt="${pt.id}" ${n?'':'disabled'}>排序 / 便當</button>
+        <button class="gbtn" data-act="orderPt" data-pt="${pt.id}" ${n?'':'disabled'}>排序 / 便當</button>`}
         <button class="gbtn ${vn?'hasvid':''}" data-act="review" data-pt="${pt.id}">複盤${vn?`<span class="vid-n num">${vn}</span>`:''}</button>
-        <button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>
+        ${wiped?'':`<button class="gbtn" data-act="dupPt" data-pt="${pt.id}">複製</button>`}
         <button class="gbtn warn" data-act="delPt" data-pt="${pt.id}" style="margin-left:auto">刪除</button>
       </div>
     </div>`;

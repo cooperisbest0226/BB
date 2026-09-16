@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v65';
+const APP_VERSION='v67';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -380,12 +380,15 @@ function commit(fn){
    這裡只留「最後一次破壞性操作」可以撤銷：刪除前存一份整包 JSON，
    使用者在 toast 上按「復原」就整包還原。沒有堆疊、不記錄一般編輯，
    成本是一次 JSON.stringify，但解決了誤刪這個真正會讓人心痛的情境。 */
-function commitUndoable(label, fn){
+/* msg 可以換掉預設的「已刪除…」。呼叫端不要自己再補一個 toast ——
+   toast() 會先清掉現有的，帶「復原」的那個會被吹掉，破壞性操作就變成不可退了。 */
+function commitUndoable(label, fn, msg){
   let before;
   try{ before=JSON.stringify(state); }catch(e){ before=null; }
   commit(fn);
-  if(before===null){ toast(`已刪除${label}`); return; }
-  toastAction(`已刪除${label}`,'復原',()=>{
+  const text=msg||`已刪除${label}`;
+  if(before===null){ toast(text); return; }
+  toastAction(text,'復原',()=>{
     try{
       state=migrate(JSON.parse(before));
       persist(); render();

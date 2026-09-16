@@ -36,12 +36,35 @@ document.addEventListener('click',e=>{
   }
   if(a==='unassign')  commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); p.slots.splice(i,1); });
   if(a==='toggleBento') commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); const s=p.slots[i]; s.bento=!s.bento; });
-  /* 翻車標記：直接切換不跳確認。誤按的代價只是再按一次，
-     跟刪除那種要 confirmSheet 的操作不同層級。 */
+  /* 展開／收合翻車卡片的封條 */
+  if(a==='wipeOpen'){
+    if(wipeOpen.has(ptId)) wipeOpen.delete(ptId); else wipeOpen.add(ptId);
+    renderBoard();
+  }
+  /* 翻車標記。改回通關直接切換 —— 誤按的代價只是再按一次。
+     但標記為翻車會清掉已記錄的掉落物，那是會弄丟資料的操作，所以要確認 + 可復原。
+     為什麼要清：分潤本來就當翻車沒有掉落（「沒有東西可以分」），
+     但材料統計以前照算，於是同一批材料會出現在材料頁、卻拿不到分潤。
+     兩邊講不同的話，對帳的人只能自己猜哪個是真的。 */
   if(a==='toggleWipe'){
-    commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) p.wipe=!p.wipe; });
-    const p=ptsOf(curDate).find(x=>x.id===ptId);
-    toast(p&&p.wipe?`${p.name} 已標記為翻車`:`${p?p.name:''} 已改回通關`);
+    const p0=ptsOf(curDate).find(x=>x.id===ptId); if(!p0) return;
+    const markWipe=!p0.wipe, dn=(p0.drops||[]).length;
+    const apply=()=>{
+      if(markWipe && dn){
+        /* 訊息交給 commitUndoable 一起發，不要在後面再 toast 一次 —— 那會蓋掉「復原」 */
+        commitUndoable('',()=>{
+          const p=ptsOf(curDate).find(x=>x.id===ptId);
+          if(p){ p.wipe=true; p.drops=[]; }
+        }, `${p0.name} 已標記為翻車，清掉 ${dn} 筆掉落`);
+      }else{
+        commit(()=>{ const p=ptsOf(curDate).find(x=>x.id===ptId); if(p) p.wipe=markWipe; });
+        toast(markWipe?`${p0.name} 已標記為翻車`:`${p0.name} 已改回通關`);
+      }
+      if(!markWipe) wipeOpen.delete(ptId);
+    };
+    if(markWipe && dn)
+      confirmSheet(`標記「${p0.name}」為翻車？\n已記錄的 ${dn} 筆掉落物會一併清除。`, apply, '標記翻車');
+    else apply();
   }
   if(a==='orderPt')   orderSheet(ptId);
   if(a==='addDrop')   dropsSheet(ptId);

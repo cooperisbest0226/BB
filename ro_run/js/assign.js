@@ -5,6 +5,10 @@
    指派 / 移動
    ══════════════════════════════════════════════════════════ */
 function assign(memberId, ptId){
+  /* 翻車的場次已經定案，不收人。擋在這裡而不是各個入口，是因為拖曳與點選
+     最後都走這個函式；擋在入口就得記得每加一個入口都要再擋一次。 */
+  const target=ptsOf(curDate).find(p=>p.id===ptId);
+  if(target&&isWipe(target)){ toast(`${target.name} 已標記翻車，要改先點回通關`); picked=null; renderBench(); return; }
   commit(()=>{
     const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
     if(pt.slots.length>=pt.capacity){ toast(`${pt.name} 已滿`); return; }
