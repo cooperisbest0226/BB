@@ -9,13 +9,37 @@ function assign(memberId, ptId){
      最後都走這個函式；擋在入口就得記得每加一個入口都要再擋一次。 */
   const target=ptsOf(curDate).find(p=>p.id===ptId);
   if(target&&isWipe(target)){ toast(`${target.name} 已標記翻車，要改先點回通關`); picked=null; renderBench(); return; }
+  /* 選取要在重繪「之前」清掉：commit() 裡的 render() 會順便畫底部的放置列，
+     晚一步清的話，人已經放進去了、放置列卻還開著 */
+  picked=null; pickedFrom=null;
   commit(()=>{
     const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
     if(pt.slots.length>=pt.capacity){ toast(`${pt.name} 已滿`); return; }
     const m=memberById(memberId);
     pt.slots.push({memberId, roleId:m?.defaultRoleId||null});
   });
-  picked=null;
+}
+/* 把某場的某一格整格搬到另一場：職業與便當標記一起帶走。
+   以前跨 RUN 拖曳走的是 assign()，等於「複製」—— 原場次還留著這個人，
+   而且新位子的職業被重設成他的預設職業，手動指定過的職業就不見了。
+   現在從 RUN 拿起來放到另一個 RUN 是「移動」；要讓同一個人跑兩場，從上方成員列拖。
+   si 是位子的 index（同一人可能在同一場佔兩格），memberId 用來確認那一格沒有被換掉。 */
+function moveSlot(fromPtId, si, toPtId, memberId){
+  const pts=ptsOf(curDate);
+  const src=pts.find(p=>p.id===fromPtId), dst=pts.find(p=>p.id===toPtId);
+  const i=+si, slot=src&&src.slots[i];
+  const drop=()=>{ picked=null; pickedFrom=null; renderBench(); renderBoard(); };
+  if(!src||!dst||!slot||(memberId&&slot.memberId!==memberId)) return drop();
+  if(fromPtId===toPtId) return drop();
+  /* 翻車的場次已經定案：拿不出來，也放不進去 */
+  const locked=[src,dst].find(isWipe);
+  if(locked){ toast(`${locked.name} 已標記翻車，要改先點回通關`); return drop(); }
+  if(dst.slots.length>=dst.capacity){ toast(`${dst.name} 已滿`); return drop(); }
+  picked=null; pickedFrom=null;   // 同 assign()：先清再重繪
+  commit(()=>{
+    const [s]=src.slots.splice(i,1);
+    dst.slots.push(s);
+  });
 }
 /* 依「拖曳來源那一個 slot 的 index」移除，不是依 memberId —
    同一人可以在同一場 RUN 裡重複出現（雙開/多開），用 index 才不會一次把全部重複的都移掉 */
@@ -60,11 +84,12 @@ document.addEventListener('pointerup',e=>{
   document.querySelectorAll('.drop-on').forEach(el=>el.classList.remove('drop-on'));
   d.el.classList.remove('dragging');
   if(d.ghost) d.ghost.remove();
-  if(!d.moved){ tapChip(d.id); return; }
+  if(!d.moved){ tapChip(d.id, d.from, d.si); return; }
   const t=dropTargetAt(e.clientX,e.clientY);
   if(!t) return;
   if(t.dataset.drop==='bench'){ if(d.from!=='bench') unassign(d.from,d.si); }
-  else if(t.dataset.pt!==d.from) assign(d.id,t.dataset.pt);
+  else if(d.from==='bench') assign(d.id,t.dataset.pt);          // 從成員列拖進來：加入
+  else if(t.dataset.pt!==d.from) moveSlot(d.from,d.si,t.dataset.pt,d.id);  // 從別場拖過來：移動
 });
 document.addEventListener('pointercancel',()=>{
   if(!drag) return;
@@ -161,21 +186,79 @@ document.addEventListener('pointercancel',()=>{
   orderDrag=null;
 });
 
+/* ── 職業列表拖曳排序 ─────────────────────────────────────
+   以前每列一組上下箭頭，把第 13 個職業移到最上面要按 12 次。
+   改成跟排序編輯器同一套：按住右邊的把手直接拖到位。 */
+let roleDrag=null;
+function bindRoleDrag(host){
+  host.querySelectorAll('.role-grip').forEach(g=>{
+    g.onpointerdown=e=>{
+      e.preventDefault();
+      const row=g.closest('[data-role-row]');
+      roleDrag={id:row.dataset.roleRow, row, hover:null, before:false, startY:e.clientY};
+      row.classList.add('dragging');
+    };
+  });
+}
+/* 把 id 這個職業移到 hoverId 的前面／後面，然後把 order 重新編成 0,1,2… */
+function reorderRole(id, hoverId, before){
+  commit(()=>{
+    const rs=sortedRoles();
+    const from=rs.findIndex(r=>r.id===id); if(from<0) return;
+    const [moved]=rs.splice(from,1);
+    let to=rs.findIndex(r=>r.id===hoverId); if(to<0) return;
+    if(!before) to++;
+    rs.splice(to,0,moved);
+    rs.forEach((r,i)=>{ r.order=i; });
+  });
+}
+document.addEventListener('pointermove',e=>{
+  if(!roleDrag) return;
+  const host=document.getElementById('roleList');
+  roleDrag.row.style.transform=`translateY(${e.clientY-roleDrag.startY}px)`;
+  host.querySelectorAll('.drop-before,.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-role-row]');
+  if(el && el!==roleDrag.row && host.contains(el)){
+    const rect=el.getBoundingClientRect(), before=e.clientY<rect.top+rect.height/2;
+    el.classList.add(before?'drop-before':'drop-after');
+    roleDrag.hover=el.dataset.roleRow; roleDrag.before=before;
+  } else roleDrag.hover=null;
+});
+function endRoleDrag(commitIt){
+  if(!roleDrag) return;
+  const d=roleDrag; roleDrag=null;
+  d.row.classList.remove('dragging'); d.row.style.transform='';
+  document.querySelectorAll('#roleList .drop-before,#roleList .drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  if(commitIt && d.hover && d.hover!==d.id) reorderRole(d.id, d.hover, d.before);
+}
+document.addEventListener('pointerup',()=>endRoleDrag(true));
+document.addEventListener('pointercancel',()=>endRoleDrag(false));
+
 function dropTargetAt(x,y){
   const el=document.elementFromPoint(x,y);
   return el?el.closest('[data-drop]'):null;
 }
-/* 點一下＝選取，再點隊伍卡片＝加入 */
-function tapChip(id){
-  if(picked===id){ picked=null; }
-  else if(picked===null){ picked=id; toast('已選取 — 點一下 RUN 加入'); }
-  else { picked=id; }
-  renderBench();
+/* 點一下＝選取，再點隊伍卡片＝加入（從成員列選的）或移過去（從某場 RUN 裡選的）。
+   手機上拖曳 RUN 裡的人會變成捲動頁面，點選才是主要的操作方式，
+   所以兩條路的語意要一樣：從 RUN 裡拿起來的，放到別場就是移動。 */
+let pickedFrom=null;   // null＝從成員列選的；{pt, si}＝從某場 RUN 的某一格選的
+function tapChip(id, from, si){
+  const fromRun = from && from!=='bench' ? {pt:from, si:+si} : null;
+  const same = picked===id &&
+    (fromRun ? (pickedFrom&&pickedFrom.pt===fromRun.pt&&pickedFrom.si===fromRun.si) : !pickedFrom);
+  if(same){ picked=null; pickedFrom=null; }
+  else {
+    /* 以前選取後跳一個 toast 教你「點一下 RUN 加入」；現在底部放置列本身就講清楚了 */
+    picked=id; pickedFrom=fromRun;
+  }
+  renderBench(); renderBoard();
 }
 document.addEventListener('click',e=>{
   if(!picked) return;
   if(e.target.closest('[data-chip]')) return; // 這個點擊已經由 pointerup 的 tapChip() 處理過，不要再重複指派
   const card=e.target.closest('[data-drop="pt"]');
-  if(card&&!e.target.closest('button[data-act]')) assign(picked,card.dataset.pt);
+  if(!card||e.target.closest('button[data-act]')) return;
+  if(pickedFrom) moveSlot(pickedFrom.pt, pickedFrom.si, card.dataset.pt, picked);
+  else assign(picked,card.dataset.pt);
 });
 

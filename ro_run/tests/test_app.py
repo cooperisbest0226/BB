@@ -682,6 +682,8 @@ def run(page):
     seed(page)
     page.click('.tab[data-view="board"]')
     page.wait_for_timeout(100)
+    page.click("#btnDateMore")
+    page.wait_for_timeout(350)
     page.click("#btnDelDate")
     page.wait_for_timeout(200)
     page.click('[data-s="yes"]')
@@ -691,6 +693,8 @@ def run(page):
 
     seed(page)
     page.evaluate("() => { state.schedule = {'2026-08-05': state.schedule['2026-08-05']}; render(); }")
+    page.click("#btnDateMore")
+    page.wait_for_timeout(350)
     page.click("#btnDelDate")
     page.wait_for_timeout(200)
     check("剩最後一天時拒絕刪除",
@@ -876,11 +880,12 @@ def run(page):
     check("陣容格子顯示各自的 BUFF",
           page.evaluate("""() => [...document.querySelectorAll('.slot .slot-buff')]
               .map(e => e.textContent.trim())"""),
-          ["天使之護", "聖體降臨", "＋ BUFF"])
+          # v70：沒有 BUFF 的人不再掛「＋ BUFF」佔位（小美刻意不放 BUFF）
+          ["天使之護", "聖體降臨"])
     check("自訂的格子加上 own 標記，套預設的沒有",
           page.evaluate("""() => [...document.querySelectorAll('.slot .slot-buff')]
               .map(e => e.classList.contains('own'))"""),
-          [False, True, True])
+          [False, True])
 
     # 從陣容格子點 BUFF 標籤修改
     page.click('.slot[data-si="0"] .slot-buff')
@@ -925,7 +930,7 @@ def run(page):
     }""")
     page.wait_for_timeout(250)
     check("沒指定職業的格子不顯示 BUFF 標籤",
-          page.evaluate("() => document.querySelectorAll('.slot .slot-buff').length"), 3)
+          page.evaluate("() => document.querySelectorAll('.slot .slot-buff').length"), 2)
 
     # 成員面板的 BUFF 列
     page.click('.tab[data-view="members"]')
@@ -947,9 +952,10 @@ def run(page):
     page.click('.sheet [data-s="cancel"]')
     page.wait_for_timeout(300)
 
-    check("成員列表的摘要顯示生效後的 BUFF",
+    # v69：職業名稱右邊的標籤已經寫了，副標不再重複一次
+    check("成員列表的摘要顯示生效後的 BUFF（不重複職業名）",
           page.evaluate("""() => document.querySelector('.row[data-id="m2"] .row-s').textContent"""),
-          "帝國聖衛軍 · 聖體降臨")
+          "聖體降臨")
     page.click('.tab[data-view="board"]')
     page.wait_for_timeout(150)
 
@@ -1856,7 +1862,7 @@ def run(page):
           }"""), [True, True, True])
     check("刪除整天的確認訊息也會算進錄影連結",
           page.evaluate("""() => {
-              document.getElementById('btnDelDate').click();
+              dateMoreSheet(); document.getElementById('btnDelDate').click();
               const t = document.querySelector('.sheet p').textContent;
               closeSheet();
               return t.includes('個錄影連結');
@@ -3573,13 +3579,15 @@ def run(page):
               state.schedule['2026-06-10'][0].drops =
                   SET_RECIPE.map((n,i) => ({id:'d'+i, name:n, qty:10}));
               matFrom = ''; matTo = ''; renderMaterials();
-              const all = curSets;
+              const all = matSets;
               // 換到一段不含那場的期間：掉落與售出都不算，組數歸零
               matFrom = '2026-05-01'; matTo = '2026-05-31'; renderMaterials();
-              const other = curSets;
+              const other = matSets;
+              // v69：拍賣頁的「帶入目前組數」不吃材料頁的篩選，永遠是全部資料
+              const forSale = curSets;
               matFrom = ''; matTo = ''; renderMaterials();
-              return [all, other];
-          }"""), [6, 0])
+              return [all, other, forSale];
+          }"""), [6, 0, 6])
 
     check("交易的期間認定與分潤同一套（認歸屬場次的日期）",
           page.evaluate("""() => {
@@ -3587,7 +3595,7 @@ def run(page):
               state.sales = [{id:'ss', date:'2026-09-04', mode:'set', cur:'TWD',
                               sets:4, price:100, runIds:['g1'], items:[]}];
               matFrom = '2026-06-01'; matTo = '2026-06-30'; renderMaterials();
-              const byRun = curSets;
+              const byRun = matSets;
               matFrom = ''; matTo = ''; renderMaterials();
               return byRun;
           }"""), 6)
@@ -3889,6 +3897,647 @@ def run(page):
               const t = document.querySelector('.toast');
               return t ? t.textContent.includes('資料仍在') : null;
           }"""), True)
+
+
+    # ================= v69 =================
+    print("\n[v69] PT 計算的快捷鈕不再被別頁的日期快捷鈕觸發")
+    seed(page)
+    page.evaluate("() => { Object.keys(stars).forEach(k => stars[k] = 0); renderCalc(); }")
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(150)
+    if page.get_attribute('#matFiltBtn', 'aria-expanded') != 'true':
+        page.click('#matFiltBtn')
+    page.click('#matFiltBody [data-preset="today"]')
+    page.wait_for_timeout(100)
+    check("材料頁按「今天」不會動到 PT 計算的星數",
+          page.evaluate("() => Object.values(stars).every(v => v === 0)"), True)
+    page.click('.tab[data-view="members"]')
+    page.click('[data-sub="mattend"]')
+    if page.get_attribute('#attFiltBtn', 'aria-expanded') != 'true':
+        page.click('#attFiltBtn')
+    page.click('#attFiltBody [data-preset="week"]')
+    page.wait_for_timeout(100)
+    check("出場統計按「本週」也不會動到 PT 計算",
+          page.evaluate("() => Object.values(stars).every(v => v === 0)"), True)
+    page.click('.tab[data-view="calc"]')
+    page.wait_for_timeout(150)
+    check("PT 計算的總數不會出現 NaN",
+          page.inner_text('#calcTotal').replace('\n', ''), "0pt")
+    page.click('#view-calc [data-preset="0,5,5,5,5"]')
+    page.wait_for_timeout(100)
+    check("PT 計算自己的快捷鈕照常可用",
+          page.inner_text('#calcTotal').replace('\n', ''), "925pt")
+    check("按 PT 快捷鈕不會重設材料篩選（v37 修過的方向仍然成立）",
+          page.evaluate("() => [matFrom === todayKey(), matTo === todayKey()]"), [True, True])
+    page.evaluate("() => { Object.keys(stars).forEach(k => stars[k] = 0); renderCalc(); matFrom = ''; matTo = ''; attFrom=''; attTo=''; }")
+
+    print("\n[v69] 集合時間跟著日期走")
+    seed(page)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+    check("修改日期時集合時間一起搬過去，舊日期不留",
+          page.evaluate("""() => {
+              curDate = '2026-08-05'; render();
+              editDateSheet();
+              document.querySelector('.sheet [name="d"]').value = '2026-08-07';
+              document.querySelector('.sheet [data-s="save"]').click();
+              return [curDate, dayTime('2026-08-07'), '2026-08-05' in state.dayTimes,
+                      document.getElementById('btnDayTime').textContent];
+          }"""), ["2026-08-07", "21:00", False, "21:00"])
+    check("刪除日期時集合時間一起刪掉",
+          page.evaluate("""() => {
+              curDate = '2026-08-07'; render();
+              dateMoreSheet(); document.getElementById('btnDelDate').click();
+              document.querySelector('.sheet [data-s="yes"]').click();
+              return '2026-08-07' in state.dayTimes;
+          }"""), False)
+    check("刪除日期後按復原，時間也回來",
+          page.evaluate("""() => {
+              document.querySelector('.toast-act .toast-btn').click();
+              return dayTime('2026-08-07');
+          }"""), "21:00")
+    check("新增日期並複製某一天時，沿用那天的集合時間",
+          page.evaluate("""() => {
+              curDate = '2026-08-01'; render();
+              dateSheet();
+              document.querySelector('.sheet [name="d"]').value = '2026-08-10';
+              document.querySelector('.sheet [name="copy"]').checked = true;
+              document.querySelector('.sheet [name="copyFrom"]').value = '2026-08-01';
+              document.querySelector('.sheet [data-s="save"]').click();
+              return [dayTime('2026-08-10'), document.getElementById('btnDayTime').textContent];
+          }"""), ["19:00", "19:00"])
+    check("新增日期不複製時套用設定裡的預設時間",
+          page.evaluate("""() => {
+              state.settings.defaultTime = '20:30';
+              dateSheet();
+              document.querySelector('.sheet [name="d"]').value = '2026-08-11';
+              document.querySelector('.sheet [name="copy"]').checked = false;
+              document.querySelector('.sheet [data-s="save"]').click();
+              return [dayTime('2026-08-11'), document.getElementById('btnDayTime').textContent];
+          }"""), ["20:30", "20:30"])
+    check("複製來源那天沒填時間時退回預設時間",
+          page.evaluate("""() => {
+              state.dayTimes['2026-08-01'] = '';
+              dateSheet();
+              document.querySelector('.sheet [name="d"]').value = '2026-08-12';
+              document.querySelector('.sheet [name="copy"]').checked = true;
+              document.querySelector('.sheet [name="copyFrom"]').value = '2026-08-01';
+              document.querySelector('.sheet [data-s="save"]').click();
+              return dayTime('2026-08-12');
+          }"""), "20:30")
+
+    print("\n[v69] 調低人數上限要先確認")
+    seed(page)
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(150)
+    check("上限低於現有人數時先跳確認，還沒動到資料",
+          page.evaluate("""() => {
+              curDate = '2026-08-05'; render();
+              ptSheet('ptB');
+              document.querySelector('.sheet [name="cap"]').value = 1;
+              document.querySelector('.sheet [data-s="save"]').click();
+              const msg = document.querySelector('.sheet p')?.textContent || '';
+              const p = ptsOf(curDate)[0];
+              return [p.slots.length, p.capacity, msg.includes('2 人會被移出'),
+                      msg.includes('小華') && msg.includes('小美')];
+          }"""), [3, 10, True, True])
+    check("按取消什麼都不會變",
+          page.evaluate("""() => {
+              document.querySelector('.sheet [data-s="no"]').click();
+              const p = ptsOf(curDate)[0];
+              return [p.slots.length, p.capacity];
+          }"""), [3, 10])
+    check("確定之後移出排在後面的人，並且可以復原",
+          page.evaluate("""() => {
+              ptSheet('ptB');
+              document.querySelector('.sheet [name="cap"]').value = 1;
+              document.querySelector('.sheet [data-s="save"]').click();
+              document.querySelector('.sheet [data-s="yes"]').click();
+              const p = ptsOf(curDate)[0];
+              const after = [p.slots.length, p.capacity, !!document.querySelector('.toast-act')];
+              document.querySelector('.toast-act .toast-btn').click();
+              const q = ptsOf(curDate)[0];
+              return [after, [q.slots.length, q.capacity]];
+          }"""), [[1, 1, True], [3, 10]])
+    check("只改名稱或調高上限不會跳確認",
+          page.evaluate("""() => {
+              ptSheet('ptB');
+              document.querySelector('.sheet [name="name"]').value = 'RUN 改名';
+              document.querySelector('.sheet [name="cap"]').value = 12;
+              document.querySelector('.sheet [data-s="save"]').click();
+              const p = ptsOf(curDate)[0];
+              return [!!document.querySelector('.sheet'), p.name, p.capacity, p.slots.length];
+          }"""), [False, "RUN 改名", 12, 3])
+
+    print("\n[v69] 其他修正")
+    seed(page)
+    check("編輯單品交易時新增的一列，單價欄是空的（不是 undefined）",
+          page.evaluate("""() => {
+              state.sales = [{id:'si', date:'2026-08-05', mode:'item', cur:'TWD', sets:0, price:0,
+                              runIds:[], items:[{name:'威力隕石碎片', qty:2, price:50}]}];
+              persist();
+              saleSheet('si');
+              document.querySelector('.sheet [data-s="addRow"]').click();
+              const p = [...document.querySelectorAll('#editItemRows .itemrow-p')].map(i => i.value);
+              closeSheet();
+              return p;
+          }"""), ["50", ""])
+    check("CSV 的日期欄帶年份",
+          page.evaluate("""async () => {
+              let captured = null;
+              const orig = window.download;
+              window.download = blob => { captured = blob; };
+              exportCsv(['2026-08-01']);
+              window.download = orig;
+              const t = await captured.text();
+              return t.split('\\r\\n')[1].split(',')[0];
+          }"""), '"2026-08-01"')
+    check("清空所有資料的確認文字不再說「無法復原」，並指出快照可以救回",
+          page.evaluate("""() => {
+              resetAllData();
+              const t = document.querySelector('.sheet p').textContent;
+              closeSheet();
+              return [t.includes('無法復原'), t.includes('自動備份與還原')];
+          }"""), [False, True])
+
+    print("\n[v69] 版面")
+    seed(page)
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(250)
+    check("拍賣統計是一張結果卡：累計總額放大，其餘四個數字一列",
+          page.evaluate("""() => {
+              const c = document.querySelector('#saleCards .aucres');
+              return [!!c, c.querySelector('.aucres-main .stat-k').textContent,
+                      [...c.querySelectorAll('.aucres-sub .stat-k')].map(e => e.textContent)];
+          }"""), [True, "累計總額", ["交易次數", "累計售出組數", "累計售出單品", "平均每組"]])
+    check("手機寬度下四個小數字排在同一列",
+          page.evaluate("""() => {
+              const t = [...document.querySelectorAll('#saleCards .aucres-sub .stat')].map(e => Math.round(e.getBoundingClientRect().top));
+              return new Set(t).size;
+          }"""), 1)
+    check("結果卡在手機上不會超出內容區",
+          page.evaluate("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"), True)
+    page.set_viewport_size({"width": 420, "height": 900})
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(200)
+    check("待分配區的分隔線不再用會被圓角彎掉的 border-top",
+          page.evaluate("""() => {
+              const b = document.getElementById('bench');
+              return [getComputedStyle(b).borderTopWidth, getComputedStyle(b, '::before').height];
+          }"""), ["0px", "1px"])
+    check("日期列留了空間給選中那顆的光暈",
+          page.evaluate("""() => {
+              const d = getComputedStyle(document.getElementById('dateRail'));
+              return parseFloat(d.paddingBottom) >= 10 && parseFloat(d.paddingLeft) >= 8;
+          }"""), True)
+    check("日期列加了留白後，下方區塊的按鈕上緣仍然點得到",
+          page.evaluate("""() => ['btnDayTime','btnAddPt','btnDateMore'].every(id => {
+              const r = document.getElementById(id).getBoundingClientRect();
+              const el = document.elementFromPoint(r.left + r.width / 2, r.top + 2);
+              return el && el.closest('#' + id);
+          })"""), True)
+    check("日期列加了留白後，整頁沒有橫向捲動",
+          page.evaluate("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"), True)
+
+    print("\n[v69] 跨 RUN 拖曳改成移動")
+    seed(page)
+    page.set_viewport_size({"width": 900, "height": 1400})
+    page.evaluate("""() => {
+        const rs = sortedRoles();
+        ptsOf('2026-08-05')[0].slots = [
+            {memberId:'m1', roleId:rs[3].id, bento:true},
+            {memberId:'m2', roleId:null}, {memberId:'m3', roleId:null}];
+        state.schedule['2026-08-05'].push({id:'ptC', name:'RUN B2', capacity:2, wipe:false,
+            slots:[{memberId:'m2', roleId:null}], drops:[], videos:[]});
+        curDate = '2026-08-05'; persist(); render();
+    }""")
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(250)
+
+    def drag_slot(src_sel, dst_sel):
+        a = page.locator(src_sel).first.bounding_box()
+        b = page.locator(dst_sel).first.bounding_box()
+        page.mouse.move(a['x'] + 25, a['y'] + 12)
+        page.mouse.down()
+        page.mouse.move(a['x'] + 25, a['y'] + 50, steps=5)
+        page.mouse.move(b['x'] + 60, b['y'] + 20, steps=10)
+        page.mouse.up()
+        page.wait_for_timeout(200)
+
+    roster = """() => ptsOf(curDate).map(p => p.slots.map(s => s.memberId).join(','))"""
+    drag_slot('.ptcard[data-pt="ptB"] .slot[data-chip="m1"]', '.ptcard[data-pt="ptC"] .pt-head')
+    check("從 RUN 拖到另一個 RUN 是移動：原場次不再有這個人",
+          page.evaluate(roster), ["m2,m3", "m2,m1"])
+    check("移動時職業與便當標記一起帶過去",
+          page.evaluate("""() => {
+              const s = ptsOf(curDate).find(p => p.id === 'ptC').slots[1];
+              return [s.roleId === sortedRoles()[3].id, s.bento === true];
+          }"""), [True, True])
+    drag_slot('.ptcard[data-pt="ptB"] .slot[data-chip="m3"]', '.ptcard[data-pt="ptC"] .pt-head')
+    check("目標滿了就不移動，原場次也不少人",
+          page.evaluate(roster), ["m2,m3", "m2,m1"])
+    page.evaluate("() => { ptsOf(curDate).find(p => p.id === 'ptC').capacity = 5; persist(); render(); }")
+    page.wait_for_timeout(150)
+    drag_slot('.chip[data-chip="m3"]', '.ptcard[data-pt="ptC"] .pt-head')
+    check("從成員列拖進 RUN 仍然是加入（同一人可以跑兩場）",
+          page.evaluate(roster), ["m2,m3", "m2,m1,m3"])
+    drag_slot('.ptcard[data-pt="ptC"] .slot[data-chip="m3"]', '#bench')
+    check("從 RUN 拖回成員列仍然是移出",
+          page.evaluate(roster), ["m2,m3", "m2,m1"])
+    drag_slot('.ptcard[data-pt="ptB"] .slot[data-chip="m2"]', '.ptcard[data-pt="ptC"] .pt-head')
+    check("同一格同一人重複的情況下，只搬被拖的那一格",
+          page.evaluate(roster), ["m3", "m2,m1,m2"])
+
+    print("\n[v69] 點選 RUN 裡的人再點別場也是移動")
+    page.click('.ptcard[data-pt="ptC"] .slot[data-chip="m1"] .slot-name')
+    page.wait_for_timeout(150)
+    check("點 RUN 裡的人會標出那一格，成員列不亮",
+          page.evaluate("""() => [
+              !!document.querySelector('.ptcard[data-pt="ptC"] .slot.picked[data-chip="m1"]'),
+              !!document.querySelector('.chip.picked')]"""), [True, False])
+    page.click('.ptcard[data-pt="ptB"] .pt-head')
+    page.wait_for_timeout(200)
+    check("再點另一個 RUN 就移過去",
+          page.evaluate(roster), ["m3,m1", "m2,m2"])
+    check("移動後取消選取",
+          page.evaluate("() => [picked, pickedFrom, document.querySelectorAll('.slot.picked').length]"),
+          [None, None, 0])
+    page.click('.ptcard[data-pt="ptB"] .slot[data-chip="m1"] .slot-name')
+    page.click('.ptcard[data-pt="ptB"] .pt-head')
+    page.wait_for_timeout(150)
+    check("點回同一場不會變動，只是取消選取",
+          page.evaluate("() => [" + roster[6:] + ", picked]"), [["m3,m1", "m2,m2"], None])
+    page.click('.chip[data-chip="m3"]')
+    page.click('.ptcard[data-pt="ptC"] .pt-head')
+    page.wait_for_timeout(150)
+    check("點成員列再點 RUN 仍然是加入",
+          page.evaluate(roster), ["m3,m1", "m2,m2,m3"])
+
+    print("\n[v69] 翻車場次鎖定延伸到移動")
+    page.evaluate("""() => { ptsOf(curDate).find(p => p.id === 'ptC').wipe = true;
+                             wipeOpen.add('ptC'); persist(); render(); }""")
+    page.wait_for_timeout(200)
+    check("展開的翻車卡片裡，位子不能被拿起來（沒有 data-chip）",
+          page.evaluate("""() => [document.querySelectorAll('.ptcard[data-pt="ptC"] .slot').length > 0,
+              document.querySelectorAll('.ptcard[data-pt="ptC"] [data-chip]').length]"""), [True, 0])
+    check("用程式直接移進翻車場次會被擋下",
+          page.evaluate("() => { moveSlot('ptB', 0, 'ptC', 'm3'); return " + roster[6:] + "; }"),
+          ["m3,m1", "m2,m2,m3"])
+    check("用程式直接從翻車場次移出也會被擋下",
+          page.evaluate("() => { moveSlot('ptC', 0, 'ptB', 'm2'); return " + roster[6:] + "; }"),
+          ["m3,m1", "m2,m2,m3"])
+    check("位子已經換人時（index 對不上）不會搬錯人",
+          page.evaluate("""() => { ptsOf(curDate).find(p => p.id === 'ptC').wipe = false; persist();
+                                   moveSlot('ptC', 0, 'ptB', 'm3'); return """ + roster[6:] + "; }"),
+          ["m3,m1", "m2,m2,m3"])
+    page.set_viewport_size({"width": 420, "height": 900})
+
+    print("\n[v69] 缺席名單排除停用成員")
+    seed(page)
+    page.evaluate("""() => {
+        state.members.push({id:'m4', name:'在團沒排到', active:true, buffs:{}});
+        state.members.push({id:'m5', name:'已停用', active:false, buffs:{}});
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="members"]')
+    page.click('[data-sub="mattend"]')
+    page.wait_for_timeout(200)
+    check("停用的成員不列進「沒有出場」",
+          page.evaluate("""() => {
+              const a = document.querySelector('#attList .attabs');
+              return [a.querySelector('b').textContent.trim(),
+                      [...a.querySelectorAll('span')].map(s => s.textContent.trim())];
+          }"""), ["1 人這段期間沒有出場", ["在團沒排到"]])
+
+    print("\n[v69] 帶入目前組數一律用全部資料")
+    seed(page)
+    page.evaluate("""() => {
+        state.schedule['2026-08-01'][0].drops = SET_RECIPE.map((n,i) => ({id:'a'+i, name:n, qty:4}));
+        state.schedule['2026-08-05'][0].drops = SET_RECIPE.map((n,i) => ({id:'b'+i, name:n, qty:3}));
+        state.sales = []; matPerSet = 1; persist(); render();
+    }""")
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(200)
+    check("沒有篩選時，材料頁與帶入組數相同",
+          page.evaluate("() => [matSets, curSets]"), [7, 7])
+    check("材料頁篩選某一天時，頁面顯示那天的組數，帶入組數仍是全部",
+          page.evaluate("""() => {
+              matFrom = '2026-08-05'; matTo = '2026-08-05'; renderMaterials();
+              return [matSets, curSets,
+                      document.querySelector('#matCards .mres-v').textContent.trim()];
+          }"""), [3, 7, "3組"])
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(200)
+    check("拍賣頁的「帶入目前組數」不受材料頁篩選影響",
+          page.evaluate("""() => [document.getElementById('saleLoad').textContent.trim(),
+                                  (document.getElementById('saleLoad').click(), document.getElementById('saleSets').value)]"""),
+          ["帶入目前組數 7", "7"])
+    check("篩選「場次名稱」時帶入組數也是全部",
+          page.evaluate("""() => { matFrom = ''; matTo = ''; matRunName = 'RUN A1'; renderMaterials();
+                                   const r = [matSets, curSets]; matRunName = ''; renderMaterials(); return r; }"""),
+          [4, 7])
+
+
+    # ================= v70 介面改版 =================
+    print("\n[v70] 陣容卡精簡")
+    seed(page)
+    page.evaluate("""() => {
+        const rs = sortedRoles();
+        rs[0].buff = '天龍光環';
+        const pt = ptsOf('2026-08-05')[0];
+        pt.slots = [{memberId:'m1', roleId:rs[0].id}, {memberId:'m2', roleId:rs[1].id}, {memberId:'m3', roleId:null}];
+        pt.drops = [{id:'x1', name:'威力隕石碎片', qty:4}, {id:'x2', name:'耐力隕石碎片', qty:5},
+                    {id:'x3', name:'威力隕石浮塵', qty:2}, {id:'x4', name:'未知的隕石碎片', qty:3}];
+        curDate = '2026-08-05'; dropOpen.clear(); persist(); render();
+    }""")
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(250)
+    check("沒有 BUFF 的人不再掛「＋ BUFF」佔位，有 BUFF 的照常顯示",
+          page.evaluate("""() => [...document.querySelectorAll('.ptcard[data-pt="ptB"] .slot')]
+              .map(r => r.querySelector('.slot-buff')?.textContent.trim() || '')"""),
+          ["天龍光環", "", ""])
+    check("沒有 BUFF 的列高收斂到 50px 以內",
+          page.evaluate("""() => Math.round(document.querySelector('.ptcard[data-pt="ptB"] .slot[data-si="1"]').getBoundingClientRect().height) <= 50"""), True)
+    check("掉落物預設只有一行依系列加總的摘要，不攤開標籤",
+          page.evaluate("""() => {
+              const c = document.querySelector('.ptcard[data-pt="ptB"]');
+              return [c.querySelectorAll('.droppill').length,
+                      [...c.querySelectorAll('.dropsum-s')].map(e => e.textContent.replace(/\\s+/g,' ').trim())];
+          }"""), [0, ["碎片 9", "浮塵 2", "未知 3"]])
+    page.click('.ptcard[data-pt="ptB"] [data-act="dropToggle"]')
+    page.wait_for_timeout(200)
+    check("點摘要展開逐項標籤，再點收合",
+          page.evaluate("""() => {
+              const n1 = document.querySelectorAll('.ptcard[data-pt="ptB"] .droppill').length;
+              document.querySelector('.ptcard[data-pt="ptB"] [data-act="dropToggle"]').click();
+              return [n1, document.querySelectorAll('.ptcard[data-pt="ptB"] .droppill').length];
+          }"""), [4, 0])
+    check("收合時仍然有「編輯掉落」可以直接改",
+          page.evaluate("() => !!document.querySelector('.ptcard[data-pt=\"ptB\"] .dropsec [data-act=\"addDrop\"]')"), True)
+    check("掉落區有左右內距，不再貼著卡片邊",
+          page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('.ptcard .dropsec')).paddingLeft) >= 12"), True)
+
+    print("\n[v70] 選職業面板與 BUFF 入口")
+    page.click('.ptcard[data-pt="ptB"] .slot[data-si="0"] [data-act="role"]')
+    page.wait_for_timeout(400)
+    check("目前的職業被標出來，其他的沒有",
+          page.evaluate("""() => {
+              const on = [...document.querySelectorAll('.sheet [data-r][aria-pressed="true"]')];
+              return [on.length, on[0].dataset.r === sortedRoles()[0].id];
+          }"""), [1, True])
+    check("面板底下有這個人這個職業的 BUFF 列",
+          page.evaluate("() => document.querySelector('.sheet [data-s=\"buff\"] .buffrow-v').textContent"), "天龍光環")
+    page.click('.sheet [data-s="buff"]')
+    page.wait_for_timeout(400)
+    check("點 BUFF 列開出該成員該職業的 BUFF 面板",
+          page.evaluate("() => document.querySelector('.sheet [name=\"buff\"]').value"), "天龍光環")
+    page.evaluate("() => closeSheet()")
+
+    print("\n[v70] 待分配：還沒排的在前面")
+    check("今天沒排到的人排在最前面、排過的標成 done",
+          page.evaluate("""() => {
+              state.members.push({id:'m9', name:'新人', active:true, buffs:{}}); persist(); render();
+              const chips = [...document.querySelectorAll('#benchList .chip')];
+              return [chips[0].dataset.chip, chips.slice(1).every(c => c.classList.contains('done'))];
+          }"""), ["m9", True])
+    check("標題寫出還有幾人沒排",
+          page.evaluate("() => document.getElementById('benchTitle').textContent"), "成員 4 · 未排 1")
+
+    print("\n[v70] 選取後的放置列")
+    page.evaluate("""() => { state.schedule['2026-08-05'].push({id:'ptC', name:'RUN B2', capacity:1, wipe:false,
+        slots:[{memberId:'m1', roleId:null}], drops:[], videos:[]}); persist(); render(); }""")
+    page.wait_for_timeout(200)
+    check("沒選人時不顯示放置列",
+          page.evaluate("() => document.getElementById('pickBar').hidden"), True)
+    page.click('#benchList .chip[data-chip="m9"]')
+    page.wait_for_timeout(200)
+    check("從成員列選人：放置列寫「加入」並列出每一場，滿的那場不能按",
+          page.evaluate("""() => {
+              const bar = document.getElementById('pickBar');
+              return [bar.hidden, bar.querySelector('.pickbar-t').textContent.replace(/\\s+/g,''),
+                      [...bar.querySelectorAll('[data-pickto]')].map(b => [b.dataset.pickto, b.disabled])];
+          }"""), [False, "加入新人", [["ptB", False], ["ptC", True]]])
+    page.click('#pickBar [data-pickto="ptB"]')
+    page.wait_for_timeout(200)
+    check("點場次就加入，放置列收起來",
+          page.evaluate("""() => [ptsOf(curDate).find(p => p.id === 'ptB').slots.map(s => s.memberId).join(','),
+                                  document.getElementById('pickBar').hidden, picked]"""),
+          ["m1,m2,m3,m9", True, None])
+    page.evaluate("() => { ptsOf(curDate).find(p => p.id === 'ptC').capacity = 5; persist(); render(); }")
+    page.click('.ptcard[data-pt="ptB"] .slot[data-chip="m9"] .slot-name')
+    page.wait_for_timeout(200)
+    check("從 RUN 裡選人：放置列寫「移到」，不列出原本那場",
+          page.evaluate("""() => {
+              const bar = document.getElementById('pickBar');
+              return [bar.querySelector('.pickbar-t').textContent.replace(/\\s+/g,''),
+                      [...bar.querySelectorAll('[data-pickto]')].map(b => b.dataset.pickto)];
+          }"""), ["移到新人", ["ptC"]])
+    page.click('#pickBar [data-pickto="ptC"]')
+    page.wait_for_timeout(200)
+    check("點場次就移過去",
+          page.evaluate("() => ptsOf(curDate).map(p => p.slots.map(s => s.memberId).join(','))"),
+          ["m1,m2,m3", "m1,m9"])
+    page.click('#benchList .chip[data-chip="m2"]')
+    page.click('#pickBar [data-pickcancel]')
+    page.wait_for_timeout(150)
+    check("× 取消選取並收起放置列",
+          page.evaluate("() => [picked, document.getElementById('pickBar').hidden]"), [None, True])
+    page.click('#benchList .chip[data-chip="m2"]')
+    page.click('.tab[data-view="members"]')
+    page.wait_for_timeout(200)
+    check("切到別的分頁會取消選取，放置列不會跟過去",
+          page.evaluate("() => [picked, document.getElementById('pickBar').hidden]"), [None, True])
+    page.click('.tab[data-view="board"]')
+    page.wait_for_timeout(200)
+    page.evaluate("() => { ptsOf(curDate).find(p => p.id === 'ptC').wipe = true; persist(); render(); }")
+    page.click('#benchList .chip[data-chip="m2"]')
+    page.wait_for_timeout(150)
+    check("翻車的場次不會出現在放置列",
+          page.evaluate("() => [...document.querySelectorAll('#pickBar [data-pickto]')].map(b => b.dataset.pickto)"),
+          ["ptB"])
+    page.evaluate("() => clearPick()")
+
+    print("\n[v70] 日期列與「⋯」選單")
+    check("前後箭頭與獨立的操作列已移除",
+          page.evaluate("() => [!!document.getElementById('btnPrevDate'), !!document.getElementById('btnNextDate'), !!document.querySelector('.date-actions')]"),
+          [False, False, False])
+    check("日期列最後一顆是「＋ 新增」",
+          page.evaluate("() => { const c = document.querySelectorAll('#dateRail > *'); return c[c.length-1].id; }"), "btnAddDate")
+    page.click('#btnAddDate')
+    page.wait_for_timeout(400)
+    check("點「＋」開新增日期面板",
+          page.evaluate("() => document.querySelector('.sheet-t').textContent"), "新增日期")
+    page.evaluate("() => closeSheet()")
+    page.click('#btnDateMore')
+    page.wait_for_timeout(400)
+    check("「⋯」選單有回到今天、修改日期、刪除這天",
+          page.evaluate("() => [...document.querySelectorAll('.sheet .settings-t')].map(e => e.textContent)"),
+          ["回到今天", "修改日期", "刪除這天"])
+    page.evaluate("() => closeSheet()")
+    check("停在今天時「回到今天」是停用的；不在今天時可以跳回來",
+          page.evaluate("""() => {
+              const tk = todayKey();
+              state.schedule[tk] = [mkPt('RUN 1', 12)]; persist();
+              curDate = tk; render(); dateMoreSheet();
+              const d1 = document.getElementById('btnToday').disabled; closeSheet();
+              curDate = '2026-08-01'; render(); dateMoreSheet();
+              document.getElementById('btnToday').click();
+              return [d1, curDate === tk];
+          }"""), [True, True])
+
+    print("\n[v70] 長面板的底部按鈕固定在下緣")
+    page.set_viewport_size({"width": 390, "height": 700})
+    page.evaluate("() => { curDate = '2026-08-05'; render(); dropsSheet('ptB'); }")
+    page.wait_for_timeout(450)
+    check("掉落物面板的「儲存」不用捲動就看得到",
+          page.evaluate("""() => {
+              const b = document.querySelector('.sheet [data-s="save"]').getBoundingClientRect();
+              const sh = document.querySelector('.sheet');
+              return [sh.scrollHeight > sh.clientHeight, b.bottom <= innerHeight && b.top >= 0];
+          }"""), [True, True])
+    check("按「儲存」點得到（沒被內容蓋住）",
+          page.evaluate("""() => {
+              const b = document.querySelector('.sheet [data-s="save"]').getBoundingClientRect();
+              const el = document.elementFromPoint(b.left + b.width/2, b.top + b.height/2);
+              return !!(el && el.closest('[data-s="save"]'));
+          }"""), True)
+    page.evaluate("() => closeSheet()")
+    page.set_viewport_size({"width": 420, "height": 900})
+
+    print("\n[v70] PT 計算")
+    page.click('.tab[data-view="calc"]')
+    page.wait_for_timeout(250)
+    check("合計卡在屬性卡上面，屬性明細已移除",
+          page.evaluate("""() => {
+              const t = document.getElementById('calcTotal'), a = document.getElementById('attrCards');
+              return [!!(t.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), !!document.getElementById('calcBreak')];
+          }"""), [True, False])
+    page.click('#view-calc [data-preset="0,5,5,3,5"]')
+    page.wait_for_timeout(150)
+    check("進度條看得到，亮的格數跟 PT 一致",
+          page.evaluate("""() => {
+              const ps = [...document.querySelectorAll('#calcMeter .pip')];
+              return [ps.every(p => p.getBoundingClientRect().height > 0), ps.filter(p => p.classList.contains('full')).length];
+          }"""), [True, 9])
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.evaluate("() => window.scrollTo(0,0)")
+    page.wait_for_timeout(150)
+    check("手機上點最後一個屬性的星星時，合計仍在畫面內",
+          page.evaluate("""() => {
+              const star = document.querySelector('.star[data-attr="trap"][data-v="5"]').getBoundingClientRect();
+              const tot = document.getElementById('calcTotal').getBoundingClientRect();
+              return [star.bottom <= innerHeight - 80, tot.top >= 0];
+          }"""), [True, True])
+    page.set_viewport_size({"width": 420, "height": 900})
+    page.evaluate("() => { Object.keys(stars).forEach(k => stars[k] = 0); renderCalc(); }")
+
+    print("\n[v70] 單品出售兩行")
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.click('.tab[data-view="auction"]')
+    page.click('#aucSeg [data-sub="asales"]')
+    page.click('#saleModeSeg [data-mode="item"]')
+    page.wait_for_timeout(200)
+    check("材料名稱欄在手機上有完整寬度（放得下「威力隕石碎片」）",
+          page.evaluate("() => document.querySelector('#saleItemRows .itemrow-n').getBoundingClientRect().width > 220"), True)
+    check("數量、單價、小計在第二行",
+          page.evaluate("""() => {
+              const r = document.querySelector('#saleItemRows .itemrow');
+              const t = s => Math.round(r.querySelector(s).getBoundingClientRect().top);
+              return [t('.itemrow-q') > t('.itemrow-n'), t('.itemrow-q') === t('.itemrow-p')];
+          }"""), [True, True])
+    page.click('#saleModeSeg [data-mode="set"]')
+    page.set_viewport_size({"width": 420, "height": 900})
+
+    print("\n[v70] 場次明細精簡列")
+    seed(page)
+    page.evaluate("""() => {
+        state.schedule['2026-08-05'][0].drops = [
+            {id:'a', name:'智慧隕石碎片', qty:5}, {id:'b', name:'威力隕石碎片', qty:4},
+            {id:'c', name:'耐力隕石浮塵', qty:3}, {id:'d', name:'未知的隕石碎片', qty:2}, {id:'e', name:'神秘寶石', qty:1}];
+        matOpenDays = new Set(['2026-08-05']); matRunPills.clear(); persist(); render();
+    }""")
+    page.click('.tab[data-view="stats"]')
+    page.click('[data-sub="detail"]')
+    page.wait_for_timeout(250)
+    check("每個系列一行，配方材料寫屬性首字、照屬性順序",
+          page.evaluate("""() => [...document.querySelectorAll('#matDetail .mrun')].find(r => r.querySelector('.mrun-h').dataset.pt === 'ptB')
+              .querySelectorAll('.mline').length"""), 4)
+    check("碎片那一行是「威4 智5」，總數在右邊",
+          page.evaluate("""() => {
+              const l = document.querySelector('#matDetail .mline');
+              return [l.querySelector('.mline-lb').textContent, [...l.querySelectorAll('.mline-i')].map(e => e.textContent).join(' '),
+                      l.querySelector('.mline-sum').textContent];
+          }"""), ["碎片", "威4 智5", "9"])
+    check("非配方材料寫全名",
+          page.evaluate("""() => [...document.querySelectorAll('#matDetail .mline')].map(l => l.querySelector('.mline-v').textContent.trim()).includes('神秘寶石×1')"""), True)
+    page.click('#matDetail .mrun-c')
+    page.wait_for_timeout(200)
+    check("點精簡列切成逐項標籤，再點切回來",
+          page.evaluate("""() => {
+              const n = document.querySelectorAll('#matDetail .droppill').length;
+              document.querySelector('#matDetail .mrun-c').click();
+              return [n, document.querySelectorAll('#matDetail .droppill').length];
+          }"""), [5, 0])
+
+    print("\n[v70] 職業列表拖曳排序")
+    page.click('.tab[data-view="members"]')
+    page.click('[data-sub="mroles"]')
+    page.wait_for_timeout(250)
+    check("上下箭頭已換成拖曳把手；沒設 BUFF 的副標寫「未設定 BUFF」",
+          page.evaluate("""() => [document.querySelectorAll('#roleList [data-act="roleUp"]').length,
+                                  document.querySelectorAll('#roleList .role-grip').length === state.roles.length,
+                                  document.querySelector('#roleList .row .row-s').textContent]"""),
+          [0, True, "未設定 BUFF"])
+    before = page.evaluate("() => sortedRoles().map(r => r.name)")
+    g = page.locator('#roleList .role-grip').nth(0).bounding_box()
+    t = page.locator('#roleList .row').nth(2).bounding_box()
+    page.mouse.move(g['x'] + g['width']/2, g['y'] + g['height']/2)
+    page.mouse.down()
+    page.mouse.move(g['x'] + g['width']/2, g['y'] + g['height']/2 + 10, steps=3)
+    page.mouse.move(t['x'] + 60, t['y'] + t['height'] - 4, steps=10)
+    page.mouse.up()
+    page.wait_for_timeout(250)
+    check("把第一個職業拖到第三個後面",
+          page.evaluate("() => sortedRoles().map(r => r.name)"),
+          [before[1], before[2], before[0]] + before[3:])
+    check("排序後 order 重新編成連續的 0,1,2…",
+          page.evaluate("() => sortedRoles().map(r => r.order).every((o,i) => o === i)"), True)
+    check("勾選管理模式下不顯示把手",
+          page.evaluate("""() => { roleSelectMode = true; renderRoles();
+              const n = document.querySelectorAll('#roleList .role-grip').length;
+              roleSelectMode = false; renderRoles(); return n; }"""), 0)
+
+    print("\n[v70] 全部標記已領")
+    seed(page)
+    page.evaluate("""() => {
+        state.sales = [{id:'s1', date:'2026-08-05', mode:'set', cur:'TWD', sets:3, price:100, runIds:['ptB'], items:[]}];
+        state.payouts = [{id:'p0', memberId:'m1', from:'', to:'', cur:'TWD', twd:40, ts:1}];
+        splFrom = ''; splTo = ''; aucCur = 'TWD'; persist(); render();
+    }""")
+    page.click('.tab[data-view="auction"]')
+    page.click('#aucSeg [data-sub="asplit"]')
+    page.wait_for_timeout(250)
+    check("按鈕寫出還有幾人、多少待發",
+          page.evaluate("() => document.getElementById('splPayAll').textContent.replace(/\\s+/g,' ').trim()"),
+          "全部標記已領3 人 · 260")
+    page.click('#splPayAll')
+    page.wait_for_timeout(400)
+    check("先確認才動資料",
+          page.evaluate("() => [!!document.querySelector('.sheet [data-s=\"yes\"]'), state.payouts.length]"), [True, 1])
+    page.click('.sheet [data-s="yes"]')
+    page.wait_for_timeout(300)
+    check("確定後每個人待領歸零，按鈕消失",
+          page.evaluate("""() => [splitStats('', '', 'TWD').rows.every(r => r.twd - paidAmount(r.memberId, '', '', 'TWD') === 0),
+                                  !!document.getElementById('splPayAll')]"""), [True, False])
+    check("同一段期間已有結算的人，差額併進原本那一筆，不另開",
+          page.evaluate("() => [state.payouts.filter(p => p.memberId === 'm1').length, state.payouts.find(p => p.memberId === 'm1').twd]"),
+          [1, 100])
+    page.click('.toast-act .toast-btn')
+    page.wait_for_timeout(300)
+    check("可以復原",
+          page.evaluate("() => [state.payouts.length, state.payouts[0].twd, !!document.getElementById('splPayAll')]"),
+          [1, 40, True])
 
     seed(page)
 

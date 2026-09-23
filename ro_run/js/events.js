@@ -6,7 +6,7 @@
    ══════════════════════════════════════════════════════════ */
 document.addEventListener('click',e=>{
   const chip=e.target.closest('[data-date]');
-  if(chip){ curDate=chip.dataset.date; picked=null; render(); return; }
+  if(chip){ curDate=chip.dataset.date; picked=null; pickedFrom=null; render(); return; }
   const t=e.target.closest('.tab');
   if(t){
     const from=activeViewId(), to=t.dataset.view, moved=from!==to;
@@ -18,6 +18,9 @@ document.addEventListener('click',e=>{
     document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+t.dataset.view));
     const onBoard=to==='board';
     document.getElementById('bench').classList.toggle('hidden',!onBoard);
+    /* 選到一半切走分頁：底部的放置列只屬於陣容頁，選取一併取消，切回來不會莫名其妙還選著 */
+    if(moved && !onBoard && picked!==null){ picked=null; pickedFrom=null; }
+    renderPickBar();
     /* 切過去的分頁如果在背景時有資料異動，這時才補畫（見 renderActiveView 的說明） */
     renderActiveView();
     /* 等這一輪版面完成再捲，不然高度還沒定，捲過去會被夾到錯的位置 */
@@ -67,6 +70,11 @@ document.addEventListener('click',e=>{
     else apply();
   }
   if(a==='orderPt')   orderSheet(ptId);
+  if(a==='addDate')   dateSheet();
+  if(a==='dropToggle'){
+    if(dropOpen.has(ptId)) dropOpen.delete(ptId); else dropOpen.add(ptId);
+    renderBoard();
+  }
   if(a==='addDrop')   dropsSheet(ptId);
   if(a==='editDrop')  dropsSheet(ptId);
   if(a==='review')    reviewSheet(ptId,0);
@@ -87,6 +95,12 @@ document.addEventListener('click',e=>{
   /* 在明細發現數字記錯時直接改，不用自己切回陣容頁翻到那天那場。
      這裡的場次可能不是「目前這天」，所以要把日期一起帶進去。 */
   if(a==='editRunDrops') dropsSheet(ptId, btn.dataset.day);
+  /* 場次明細：精簡列 ↔ 逐項標籤 */
+  if(a==='mrunPills'){
+    const k=btn.dataset.key;
+    if(matRunPills.has(k)) matRunPills.delete(k); else matRunPills.add(k);
+    renderMaterials();
+  }
   /* 成交紀錄往前多載幾個月。每按一次多開同樣的區間，
      不是一次全開 —— 一次全開等於把剛剛省下的成本原封不動還回去。 */
   if(a==='ledgerMore'){ ledgerMonths+=LEDGER_MONTHS; renderSales(); }
@@ -128,24 +142,45 @@ document.addEventListener('click',e=>{
     if(roleSelected.has(id)) roleSelected.delete(id); else roleSelected.add(id);
     renderRoles();
   }
-  if(a==='roleUp'||a==='roleDown'){
-    commit(()=>{
-      const rs=sortedRoles(), i2=rs.findIndex(r=>r.id===id), j=a==='roleUp'?i2-1:i2+1;
-      if(j<0||j>=rs.length) return;
-      [rs[i2].order,rs[j].order]=[rs[j].order,rs[i2].order];
-    });
-  }
 });
 
 document.getElementById('btnMore').onclick=moreSheet;
-document.getElementById('btnAddDate').onclick=dateSheet;
-document.getElementById('btnEditDate').onclick=editDateSheet;
-document.getElementById('btnToday').onclick=()=>{
+/* 日期的次要操作（回到今天、修改、刪除）收進「⋯」：這三個都不常用，
+   以前跟前後箭頭一起獨立佔一整排，陣容卡被往下推了 60px。
+   前後箭頭拿掉了——日期列本身就能左右滑，點哪天就是哪天。 */
+document.getElementById('btnDateMore').onclick=()=>dateMoreSheet();
+function goToday(){
   const tk=todayKey();
-  if(!state.schedule[tk]) return toast('今天還沒有建立排班，可以點「＋ 新增日期」建立');
-  curDate=tk; picked=null; render();
-};
-document.getElementById('btnDelDate').onclick=()=>{
+  if(!state.schedule[tk]) return toast('今天還沒有建立排班，可以點日期列最後的「＋」建立');
+  curDate=tk; picked=null; pickedFrom=null; render();
+}
+function dateMoreSheet(){
+  const tk=todayKey(), onToday=curDate===tk, hasToday=!!state.schedule[tk];
+  const ic=d=>`<svg viewBox="0 0 24 24">${d}</svg>`;
+  sheet(`${fmtDate(curDate)} ${fmtDow(curDate)}`,`
+    <div class="settings-group">
+      <button class="settings-row" id="btnToday" ${onToday?'disabled':''}>
+        <span class="settings-ic" style="color:var(--accent);background:var(--accent-soft)">${ic('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>')}</span>
+        <span class="settings-tx"><span class="settings-t">回到今天</span>
+          <span class="settings-d">${onToday?'目前就在今天':hasToday?fmtDate(tk)+' '+fmtDow(tk):'今天還沒有建立排班'}</span></span>
+      </button>
+      <button class="settings-row" id="btnEditDate">
+        <span class="settings-ic" style="color:var(--ink-2);background:var(--surface-2)">${ic('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')}</span>
+        <span class="settings-tx"><span class="settings-t">修改日期</span><span class="settings-d">整天的 RUN、排班與集合時間一起搬到另一天</span></span>
+      </button>
+      <button class="settings-row" id="btnDelDate">
+        <span class="settings-ic" style="color:var(--danger);background:rgba(220,38,38,.1)">${ic('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>')}</span>
+        <span class="settings-tx"><span class="settings-t" style="color:var(--danger)">刪除這天</span><span class="settings-d">會先確認，刪除後可以復原</span></span>
+      </button>
+    </div>
+    <div class="sheet-foot"><button class="gbtn" data-s="cancel">關閉</button></div>`, s=>{
+    s.querySelector('#btnToday').onclick=()=>{ closeSheet(); goToday(); };
+    s.querySelector('#btnEditDate').onclick=()=>editDateSheet();
+    s.querySelector('#btnDelDate').onclick=()=>{ closeSheet(); deleteCurDate(); };
+    s.querySelector('[data-s="cancel"]').onclick=closeSheet;
+  });
+}
+function deleteCurDate(){
   if(dates().length<=1) return toast('至少要保留一天');
   const target=curDate;
   const pts=ptsOf(target);
@@ -157,7 +192,12 @@ document.getElementById('btnDelDate').onclick=()=>{
     `含 ${pts.length} 個 RUN、${slotCount} 個排班位子${dropCount?`、${dropCount} 筆掉落紀錄`:''}${vidCount?`、${vidCount} 個錄影連結`:''}。\n`+
     `刪除後材料統計也會少掉這天的數據。`,
     ()=>{
-      commitUndoable(`${fmtDate(target)} 這天的資料`,()=>{ delete state.schedule[target]; curDate=null; });
+      commitUndoable(`${fmtDate(target)} 這天的資料`,()=>{
+        delete state.schedule[target];
+        /* 時間跟著日期走：留著的話，之後重建同一天會吃到這個舊時間 */
+        if(state.dayTimes) delete state.dayTimes[target];
+        curDate=null;
+      });
     });
 };
 document.getElementById('btnAddPt').onclick=()=>ptSheet(null);
@@ -167,8 +207,14 @@ document.getElementById('btnDayTime').onclick=()=>{
 };
 document.getElementById('btnAddMember').onclick=()=>memberSheet(null);
 document.getElementById('memberSearch').oninput=renderMembers;
-document.getElementById('btnPrevDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i>0){curDate=ks[i-1];render();} };
-document.getElementById('btnNextDate').onclick=()=>{ const ks=dates(),i=ks.indexOf(curDate); if(i<ks.length-1){curDate=ks[i+1];render();} };
+
+/* 底部放置列：點場次名稱就放進去（加入或移動），× 取消選取 */
+document.getElementById('pickBar').addEventListener('click',e=>{
+  if(e.target.closest('[data-pickcancel]')){ clearPick(); return; }
+  const b=e.target.closest('[data-pickto]'); if(!b||b.disabled||picked===null) return;
+  if(pickedFrom) moveSlot(pickedFrom.pt, pickedFrom.si, b.dataset.pickto, picked);
+  else assign(picked, b.dataset.pickto);
+});
 
 document.getElementById('btnClearDay').onclick=()=>{
   if(!assignedIds(curDate).size) return toast('本日還沒有排班');

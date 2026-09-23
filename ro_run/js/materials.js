@@ -111,6 +111,29 @@ function setInputValue(el, v){
    實測 28 天 56 場會產生一萬六千像素的頁面，全部攤開沒人滑得完。 */
 const MAT_DETAIL_OPEN=3;
 let matOpenDays=null;   // Set；null 代表還沒動過，套用預設
+/* 場次明細裡哪幾場切成「逐項標籤」（預設是精簡的一行一系列），只記在記憶體 */
+const matRunPills=new Set();
+
+/* 一場的掉落，每個系列濃縮成一行：「碎片 威4 耐5 專2 創3 咒4 智5」。
+   配方材料只寫屬性的第一個字（威力→威），順序固定照遊戲裡的屬性順序，
+   六種對齊之後，一眼就能跨場比較；其他材料寫全名。
+   以前是一顆一顆的標籤，一場 13 顆、兩欄排七行，一天就佔掉一整個畫面。 */
+function compactDropsHTML(drops){
+  const order=n=>{ const i=KNOWN_MATERIALS.indexOf(n); return i<0?999:i; };
+  const qty=n=>drops.filter(d=>d.name===n).reduce((a,d)=>a+d.qty,0);
+  const names=[...new Set(drops.map(d=>d.name))].sort((a,b)=>order(a)-order(b));
+  return groupBySeries(names).map(({s,names:ns})=>{
+    const total=ns.reduce((a,n)=>a+qty(n),0);
+    const single=ns.length===1 && (s.key==='unknown'||s.key==='rune');
+    const items=single ? '' : ns.map(n=>{
+      const short=SET_RECIPE.includes(n) ? n[0] : null;
+      return short ? `<span class="mline-i">${short}<b>${qty(n)}</b></span>`
+                   : `<span class="mline-i">${esc(n)}<b>×${qty(n)}</b></span>`;
+    }).join('');
+    return `<div class="mline" style="${msVars(s)}"><span class="mline-lb">${s.label}</span>
+      <span class="mline-v num">${items}</span><span class="mline-sum num">${total}</span></div>`;
+  }).join('');
+}
 
 /* 拍賣頁也會呼叫 renderMaterials()，但它要的只有一個數字：目前可組成幾組（curSets）。
    為了那一個數字去重建材料頁整頁的長條圖與場次明細，是在替看不到的分頁做工 ——
@@ -120,6 +143,62 @@ let matOpenDays=null;   // Set；null 代表還沒動過，套用預設
    刻意用參數而不是在函式裡偷看「現在是哪個分頁」—— 直接呼叫這個函式的地方
    （篩選變更、展開收合）本來就期待畫面會更新，讓它們的行為取決於一個看不見的
    全域狀態，是把 bug 藏起來的做法。畫完之後由 matPainted 記錄，供切回分頁時補畫。 */
+/* 某個範圍的材料庫存：掉落總量、已售出、還能組幾組。
+   renderMaterials() 用篩選範圍算一次給材料頁看，
+   再用「全部資料」算一次給拍賣頁的「帶入目前組數」（curSets）用。 */
+function matInventory(from,to,runName,per){
+  const match=(k,pt)=>(!from||k>=from)&&(!to||k<=to)&&(!runName||pt.name===runName);
+  const entries=[];
+  Object.keys(state.schedule).sort().forEach(k=>{
+    ptsOf(k).forEach(pt=>{ if(match(k,pt)) entries.push({date:k,pt}); });
+  });
+
+  const totals={}; let dropSum=0, runsWithDrops=0;
+  const byDay={};
+  entries.forEach(({date,pt})=>{
+    /* 翻車場次的掉落不算。分潤一直是這樣認定的（「翻車就是沒打成功、沒有掉落物」），
+       標記翻車現在會清掉掉落物，這道過濾是給舊資料的：不去動使用者的紀錄，
+       只是不再把它算進總數；哪天點回通關，數字就完整回來。 */
+    if(isWipe(pt)) return;
+    if(pt.drops&&pt.drops.length){
+      runsWithDrops++;
+      pt.drops.forEach(d=>{
+        totals[d.name]=(totals[d.name]||0)+d.qty;
+        dropSum+=d.qty;
+        byDay[date]=(byDay[date]||0)+d.qty;
+      });
+    }
+  });
+
+  /* 已經賣掉的材料要扣掉。「可組成 N 組」問的是現在還能組幾組，
+     賣出去的那幾組不可能再組一次。整組交易按配方換算回材料，單品交易直接扣掉那種材料。
+     幣別分開記：這裡兩種都算（賣掉一組就是賣掉一組），但成交紀錄一次只顯示一種，
+     不把來源拆開寫的話，那個數字無從驗證。 */
+  const sold={}; let soldSets=0, soldItemQty=0;
+  const soldByCur={TWD:0, R:0};
+  (state.sales||[]).forEach(sale=>{
+    if(!saleInDateRange(sale,from,to)) return;
+    if(isItemSale(sale)){
+      saleItems(sale).forEach(it=>{
+        const n=(it.name||'').trim(), q=Number(it.qty)||0;
+        if(n){ sold[n]=(sold[n]||0)+q; soldItemQty+=q; }
+      });
+    } else {
+      const k=Number(sale.sets)||0;
+      if(k>0){
+        soldSets+=k; soldByCur[saleCur(sale)]+=k;
+        SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*per);
+      }
+    }
+  });
+  const remain=n=>Math.max(0,(totals[n]||0)-(sold[n]||0));
+  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor(remain(n)/per)));
+  const grossSets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
+  return {entries,totals,dropSum,runsWithDrops,byDay,sold,soldSets,soldItemQty,soldByCur,remain,sets,grossSets};
+}
+/* 材料頁畫面上的「可組成」（吃篩選）；拍賣頁用的 curSets 則一律是全部資料 */
+let matSets=0;
+
 function renderMaterials(o){
   const paint = !(o&&o.scanOnly);
   matPainted = paint;
@@ -139,71 +218,24 @@ function renderMaterials(o){
     paintPresets('#matFiltBody', matFrom, matTo, 'preset');
   }
 
-  const entries=[];
-  Object.keys(state.schedule).sort().forEach(k=>{
-    ptsOf(k).forEach(pt=>{ if(matMatches(k,pt)) entries.push({date:k,pt}); });
-  });
-
-  const totals={}; let dropSum=0, runsWithDrops=0;
-  const byDay={};
-  entries.forEach(({date,pt})=>{
-    /* 翻車場次的掉落不算。分潤一直是這樣認定的（「翻車就是沒打成功、沒有掉落物」），
-       但這裡以前照算，於是同一批材料在材料頁看得到、在分潤卻分不到 ——
-       兩邊講不同的話，對帳的人只能自己猜哪個是真的。
-       標記翻車現在會清掉掉落物，這道過濾是給舊資料的：不去動使用者的紀錄，
-       只是不再把它算進總數；哪天點回通關，數字就完整回來。 */
-    if(isWipe(pt)) return;
-    if(pt.drops&&pt.drops.length){
-      runsWithDrops++;
-      pt.drops.forEach(d=>{
-        totals[d.name]=(totals[d.name]||0)+d.qty;
-        dropSum+=d.qty;
-        byDay[date]=(byDay[date]||0)+d.qty;
-      });
-    }
-  });
-  const matNames=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
-
-  /* ── 組數與瓶頸：這是打開這頁最想知道的事，所以算在最前面、擺在最上面 ── */
   const per=Math.max(1,matPerSet);
   if(paint) setInputValue(document.getElementById('matPerSet'), per);
 
-  /* 已經賣掉的材料要扣掉。「可組成 N 組」問的是現在還能組幾組，
-     賣出去的那幾組不可能再組一次 —— 不扣的話，賣完之後拍賣頁的
-     「帶入目前組數」還會一直帶入舊的數字，很容易重複記一筆不存在的交易。
-     整組交易按配方換算回材料，單品交易直接扣掉那種材料。 */
-  const sold={}; let soldSets=0, soldItemQty=0;
-  /* 幣別分開記。這一頁算的是「材料還剩多少」，賣掉一組就是賣掉一組，
-     跟收台幣還是 R 幣無關，所以兩種都要算 —— 但成交紀錄那一頁一次只顯示一種幣別，
-     所以這裡的總數會比你在成交紀錄看到的多。不把來源拆開寫的話，
-     那個數字根本無從驗證（同一批貨如果不小心兩種幣別各記一次，就會剛好變成兩倍）。 */
-  const soldByCur={TWD:0, R:0};
-  (state.sales||[]).forEach(sale=>{
-    if(!saleInDateRange(sale,matFrom,matTo)) return;
-    if(isItemSale(sale)){
-      saleItems(sale).forEach(it=>{
-        const n=(it.name||'').trim(), q=Number(it.qty)||0;
-        /* 單品賣掉的材料不分在不在配方裡都要扣：不在配方裡的雖然不影響組數，
-           但 sold 這份帳之後可能有別的用途，少記一種就會不一致。 */
-        if(n){ sold[n]=(sold[n]||0)+q; soldItemQty+=q; }
-      });
-    } else {
-      const k=Number(sale.sets)||0;
-      if(k>0){
-        soldSets+=k; soldByCur[saleCur(sale)]+=k;
-        SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*per);
-      }
-    }
-  });
+  /* 材料頁顯示的是「篩選範圍內」的庫存；拍賣頁的「帶入目前組數」則一律看全部資料。
+     以前兩者共用同一個數字，材料頁如果停在「今天」，拍賣頁帶入的就只是今天的組數，
+     很容易照著它記下一筆組數不對的交易。所以同一套算法跑兩次：篩選範圍一次、全部一次
+     （沒有篩選時兩者相同，直接共用，不多算）。 */
+  const inv=matInventory(matFrom,matTo,matRunName,per);
+  const filtering=!!(matFrom||matTo||matRunName);
+  matSets=inv.sets;
+  curSets=filtering ? matInventory('','','',per).sets : inv.sets;
+  const {entries,totals,dropSum,runsWithDrops,byDay,soldSets,soldItemQty,soldByCur,remain,sets,grossSets}=inv;
+  const matNames=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+
   /* 兩種幣別都有賣才拆開講；只有一種的時候多印一段只是噪音 */
   const curBreak=(soldByCur.TWD&&soldByCur.R)
     ? `（台幣 ${soldByCur.TWD} 組 · R 幣 ${soldByCur.R} 組）` : '';
-  const remain=n=>Math.max(0,(totals[n]||0)-(sold[n]||0));
-
-  const sets=Math.min(...SET_RECIPE.map(n=>Math.floor(remain(n)/per)));
   const nextNeed=(sets+1)*per;                      // 要湊到下一組，每種材料需累積到的量
-  curSets=sets;                                     // 給售出計算「帶入目前組數」用
-  const grossSets=Math.min(...SET_RECIPE.map(n=>Math.floor((totals[n]||0)/per)));
   /* 瓶頸：撐得起的組數等於整體組數的那幾種。可能不只一種，列出缺最多的那個當代表。 */
   const necks=SET_RECIPE.filter(n=>Math.floor(remain(n)/per)===sets)
     .sort((a,b)=>remain(a)-remain(b));
@@ -335,8 +367,11 @@ function renderMaterials(o){
               <span class="mrun-t num">${esc(dayTime(date))}</span>
               <span class="mrun-e">編輯</span>
             </button>
-            <div class="dropgrid mrun-g">${sortDrops(pt.drops).map(d=>
-              `<span class="droppill" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div>
+            ${matRunPills.has(date+'|'+pt.id)
+              ? `<button class="mrun-c open" data-act="mrunPills" data-key="${date}|${pt.id}" aria-label="收合成精簡列">
+                  <div class="dropgrid mrun-g">${sortDrops(pt.drops).map(d=>
+                    `<span class="droppill" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`).join('')}</div></button>`
+              : `<button class="mrun-c" data-act="mrunPills" data-key="${date}|${pt.id}" aria-label="展開成逐項標籤">${compactDropsHTML(pt.drops)}</button>`}
           </div>`).join(''):''}
         </div>`;
       }).join('')

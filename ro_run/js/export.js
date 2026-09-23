@@ -165,15 +165,17 @@ function exportCsv(ks){
     ptsOf(k).forEach(pt=>{
       pt.slots.forEach(s=>{
         const m=memberById(s.memberId), r=roleById(s.roleId);
-        if(m) rows.push([fmtDate(k),fmtDow(k),pt.name,isWipe(pt)?'翻車':'通關',dayTime(k),m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
+        if(m) rows.push([k,fmtDow(k),pt.name,isWipe(pt)?'翻車':'通關',dayTime(k),m.name,r?r.name:'',buffFor(m,r),s.bento?'是':'','']);
       });
       if(pt.drops&&pt.drops.length){
-        rows.push([fmtDate(k),fmtDow(k),pt.name,isWipe(pt)?'翻車':'通關',dayTime(k),'','','','',
+        rows.push([k,fmtDow(k),pt.name,isWipe(pt)?'翻車':'通關',dayTime(k),'','','','',
           pt.drops.map(d=>`${d.name}×${d.qty}`).join('、')]);
       }
     });
   });
   if(rows.length===1) return toast(ks.length>1?'這個範圍還沒有排班資料':'這天還沒有排班資料');
+  /* 日期欄用完整的 YYYY-MM-DD：只寫 09/23 的話跨年匯出分不出是哪一年，
+     在 Excel 裡排序也會把兩年的資料混在一起。 */
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),`陣容分配_${fileStamp(ks)}.csv`);
   toast(`已匯出 CSV（${ks.length} 天）`);

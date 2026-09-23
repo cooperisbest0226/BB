@@ -125,7 +125,9 @@ function renderAttend(){
   /* 缺席名單：統計頁只列有出場的人的話，「這段期間誰完全沒排到」
      反而變成最難看出來的資訊——那通常正是要處理的事。 */
   const seen=new Set(rows.map(r=>r.memberId));
-  const absent=state.members.filter(m=>!seen.has(m.id));
+  /* 只列啟用中的人：停用的成員（退團、暫停）本來就不會排班，
+     列進「沒有出場」只是把真正要追的名字淹掉 */
+  const absent=state.members.filter(m=>m.active&&!seen.has(m.id));
   const absentLine=absent.length
     ? `<div class="attabs"><b>${absent.length} 人這段期間沒有出場</b>${
         absent.map(m=>`<span>${esc(m.name)}</span>`).join('')}</div>`
@@ -358,6 +360,7 @@ function renderSplit(){
       ? `<div class="splnote done">這段期間的分潤都發完了</div>`:''}
     ${paidSum>0&&paid.length<st.rows.length
       ? `<div class="splnote">已發出 ${nf(paidSum)}，下方金額都是扣掉已領之後的待領數字</div>`:''}
+    ${payAllBtn(st)}
   </div>`;
 
   /* 主要數字是「待領」而不是「應得」：發錢的人要看的是還差多少。
@@ -391,6 +394,40 @@ function renderSplit(){
   host.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>
     togglePayout(b.dataset.pay, Number(b.dataset.due)||0));
 }
+
+/* ── 全部標記已領 ─────────────────────────────────────────
+   一次發完的時候不用點 13 次。只處理「還有待領」的人，
+   記下的是每個人當下的待領金額（跟逐一標記同一個規則）。
+   這段期間已經有結算紀錄、但後來又多了待領的人（補記了交易），
+   把差額加到那筆紀錄上，而不是再開一筆 —— 同一段期間只留一筆，
+   逐一點「✓ 已領」取消時才不會只取消掉一半。 */
+function unpaidRows(st){
+  return st.rows.map(r=>({r, due:r.twd-paidAmount(r.memberId,splFrom,splTo,aucCur)})).filter(x=>x.due>0);
+}
+function payAllBtn(st){
+  const list=unpaidRows(st);
+  if(!list.length) return '';
+  const total=list.reduce((a,x)=>a+x.due,0);
+  return `<button class="gbtn splpayall" id="splPayAll">全部標記已領<span class="num">${list.length} 人 · ${nf(total)}</span></button>`;
+}
+function payAll(){
+  const st=splitStats(splFrom,splTo,aucCur), list=unpaidRows(st);
+  if(!list.length) return;
+  const total=list.reduce((a,x)=>a+x.due,0), from=splFrom, to=splTo, cur=aucCur;
+  confirmSheet(`把 ${list.length} 人標記為已領？\n共 ${nf(total)} ${curLabel(cur)}（${splFilterText()}）。\n之後可以按「復原」，或逐一點「✓ 已領」取消。`, ()=>{
+    commitUndoable('', ()=>{
+      state.payouts=state.payouts||[];
+      list.forEach(({r,due})=>{
+        const hit=exactPayout(r.memberId,from,to,cur);
+        if(hit) hit.twd=(Number(hit.twd)||0)+due;
+        else state.payouts.push({id:uid(), memberId:r.memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
+      });
+    }, `已標記 ${list.length} 人已領，共 ${nf(total)}`);
+  }, '全部標記已領');
+}
+document.getElementById('splCard').addEventListener('click',e=>{
+  if(e.target.closest('#splPayAll')) payAll();
+});
 
 function applySplPreset(p){
   [splFrom,splTo]=presetRange(p);

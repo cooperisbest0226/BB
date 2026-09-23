@@ -330,9 +330,23 @@ function ptSheet(id){
     s.querySelector('[data-s="save"]').onclick=()=>{
       const name=val(s,'name')||'PT';
       const cap=Math.max(1,Math.min(30,parseInt(val(s,'cap'))||12));
+      const cur=id?ptsOf(curDate).find(x=>x.id===id):null;
+      /* 上限調到比現有人數少，超出的人會被移出這場。以前是直接砍掉、沒有確認也不能復原，
+         改完才發現後面七個人不見了。現在先講清楚誰會被移出，確定後也能按「復原」。 */
+      const cut=cur&&cur.slots.length>cap ? cur.slots.slice(cap) : [];
+      if(cut.length){
+        const who=cut.map(sl=>memberById(sl.memberId)?.name||'（已刪除的成員）').join('、');
+        confirmSheet(`把「${cur.name}」的上限改成 ${cap} 人？\n排在後面的 ${cut.length} 人會被移出這場：${who}`, ()=>{
+          commitUndoable('', ()=>{
+            const p=ptsOf(curDate).find(x=>x.id===id); if(!p) return;
+            Object.assign(p,{name,capacity:cap});
+            p.slots=p.slots.slice(0,cap);
+          }, `已把上限改成 ${cap} 人，移出 ${cut.length} 人`);
+        }, '確定移出');
+        return;
+      }
       commit(()=>{
-        if(id){ const p=ptsOf(curDate).find(x=>x.id===id); Object.assign(p,{name,capacity:cap});
-          if(p.slots.length>cap) p.slots=p.slots.slice(0,cap); }
+        if(id){ const p=ptsOf(curDate).find(x=>x.id===id); Object.assign(p,{name,capacity:cap}); }
         else { ensureDate(curDate); state.schedule[curDate].push({...mkPt(name,cap)}); }
       });
       closeSheet();
@@ -721,11 +735,25 @@ function dropsSheet(ptId, dayKey){
 function rolePickSheet(ptId,i){
   const pt=ptsOf(curDate).find(p=>p.id===ptId); if(!pt) return;
   const slot=pt.slots[i], m=memberById(slot.memberId);
+  const curRole=roleById(slot.roleId);
+  /* 目前的職業要標出來：以前每一顆長得都一樣，看不出現在是哪個，改之前還得先關掉面板回去看 */
+  /* BUFF 的入口：陣容卡上不再每列掛「＋ BUFF」，改從這裡進去。
+     已經有 BUFF 的人，卡片上的 BUFF 文字仍然可以直接點。 */
+  const bf=m&&curRole?buffFor(m,curRole):'', own=m&&curRole&&hasBuffOverride(m,curRole.id);
+  const buffRow = (m&&curRole) ? `
+    <div class="skillgrp">BUFF</div>
+    <button class="buffrow" data-s="buff">
+      <span class="buffrow-n" style="color:${curRole.color}">${esc(curRole.icon||'')}${esc(curRole.name)}</span>
+      <span class="buffrow-v ${bf?'':'none'}">${bf?esc(bf):own?'這個人不放 BUFF':'未設定'}</span>
+      <span class="buffrow-tag ${own?'own':''}">${own?'自訂':'預設'}</span>
+    </button>` : '';
   sheet(`${m?m.name:''} 的職業`,`
-    <div class="rolegrid">${sortedRoles().map(r=>
-      `<button class="rolepill" data-r="${r.id}"
-        style="color:${r.color};border-color:${hexA(r.color,.45)};background:${hexA(r.color,.1)};padding:8px 14px;font-size:13px">
-        ${esc(r.icon||'')}${esc(r.name)}</button>`).join('')}</div>
+    <div class="rolegrid">${sortedRoles().map(r=>{
+      const on=r.id===slot.roleId;
+      return `<button class="rolepill ${on?'on':''}" data-r="${r.id}" aria-pressed="${on}"
+        style="--rc:${r.color};color:${on?'#fff':r.color};border-color:${on?r.color:hexA(r.color,.45)};background:${on?r.color:hexA(r.color,.1)};padding:8px 14px;font-size:13px">
+        ${on?'<span class="rp-check" aria-hidden="true">✓</span>':''}${esc(r.icon||'')}${esc(r.name)}</button>`;}).join('')}</div>
+    ${buffRow}
     <div class="sheet-foot">
       <button class="gbtn" data-s="clear">清除職業</button>
       <button class="gbtn" data-s="cancel">取消</button>
@@ -734,6 +762,8 @@ function rolePickSheet(ptId,i){
       commit(()=>{ pt.slots[i].roleId=b.dataset.r; }); closeSheet();
     });
     s.querySelector('[data-s="clear"]').onclick=()=>{ commit(()=>{ pt.slots[i].roleId=null; }); closeSheet(); };
+    const bb=s.querySelector('[data-s="buff"]');
+    if(bb) bb.onclick=()=>memberBuffSheet(slot.memberId, slot.roleId);
     s.querySelector('[data-s="cancel"]').onclick=closeSheet;
   });
 }
@@ -775,6 +805,12 @@ function dateSheet(){
           ? JSON.parse(JSON.stringify(ptsOf(from))).map(p=>
               ({...p, id:uid(), drops:[], videos:[], wipe:false}))
           : [mkPt('RUN 1',state.settings.defaultCap)];
+        /* 集合時間：複製的話沿用來源那天的時間（同一套陣容通常同一個時段開），
+           來源沒填或不複製就用設定裡的預設。以前這裡不設，時間鈕會停在「設定時間」，
+           要等那天新增一場 RUN 才被 ensureDate() 順手補上。 */
+        state.dayTimes=state.dayTimes||{};
+        const srcTime=(copy&&from&&state.schedule[from])?dayTime(from):'';
+        state.dayTimes[k]=srcTime||state.settings.defaultTime||'';
       });
       curDate=k; closeSheet(); render();
     };
@@ -799,6 +835,11 @@ function editDateSheet(){
       commit(()=>{
         state.schedule[to]=state.schedule[from];
         delete state.schedule[from];
+        /* 集合時間是跟著日期存的（dayTimes），不一起搬的話新日期會變成「設定時間」，
+           舊日期的時間則留在資料裡，之後有人重建那一天就會莫名其妙帶著它。 */
+        state.dayTimes=state.dayTimes||{};
+        if(state.dayTimes[from]!==undefined) state.dayTimes[to]=state.dayTimes[from];
+        delete state.dayTimes[from];
       });
       curDate=to; closeSheet(); render();
       toast(`已改成 ${fmtDate(to)}`);
@@ -852,6 +893,42 @@ async function checkUpdate(btn){
    tag：add 新增 / fix 修正 / imp 改善 / chg 變更 / rm 移除
    note：整段補充說明（用在需要額外交代脈絡的版本上） */
 const CHANGELOG=[
+  { v:'v70', d:'2026/09/23',
+    note:'介面改版：手機上少滑、少點。資料與計算方式完全沒變。',
+    c:[
+    ['chg','陣容卡精簡：沒設 BUFF 的人不再多一行「＋ BUFF」，每列從 62px 降到約 46px；BUFF 改從職業標籤進去設定'],
+    ['chg','陣容卡的掉落物收成一行依系列加總的摘要（碎片 23 · 浮塵 19 · 未知 3），點一下才展開逐項標籤'],
+    ['add','選了成員之後，底部浮出一排場次按鈕，直接點就加入（或移到那場），不用再往下滑找卡片；滿的場次不能按'],
+    ['chg','上方成員列：今天還沒排的人排前面，排過的淡一階，標題寫出「未排 N」'],
+    ['chg','日期操作列拿掉：「＋ 新增」變成日期列最後一顆，回到今天／修改／刪除收進右邊的「⋯」。陣容往上移了一整排'],
+    ['imp','長的面板（掉落物、交易編輯等）底部按鈕固定在下緣，不用滑到底才按得到儲存'],
+    ['imp','選職業的面板會標出目前的職業，底下多了這個人的 BUFF 列'],
+    ['chg','PT 計算：合計移到最上面，屬性卡改成一行，點星星時結果一直看得到；移除跟屬性卡重複的「屬性明細」'],
+    ['fix','PT 計算合計下方的進度條一直是隱形的（v33 波利圖示改版時連帶壞掉），現在看得到了'],
+    ['chg','拍賣頁的五張統計卡合成一張結果卡：累計總額放大，其餘四個數字一列'],
+    ['imp','單品出售的明細列拆成兩行，材料名稱有完整寬度'],
+    ['chg','材料頁場次明細每個系列濃縮成一行（碎片 威4 耐5 專2…），點一下才是逐項標籤'],
+    ['chg','職業列表的上下箭頭換成拖曳把手，按住直接拖到位；沒設 BUFF 的職業不再顯示「排序 N」'],
+    ['add','分潤試算加「全部標記已領」，一次發完不用點十幾次；會先確認，也可以復原'],
+  ]},
+  { v:'v69', d:'2026/09/23',
+    note:'整體健檢：修掉幾個會弄錯資料的地方，並把跨場次拖人改成「移動」。',
+    c:[
+    ['chg','把人從一場 RUN 拖到另一場（或點一下再點別場）改成「移動」，職業與便當一起帶過去。以前是複製：原場次還留著這個人，手動指定的職業也被重設。要讓同一人跑兩場，從上方成員列拖'],
+    ['fix','在材料或出場統計按「今天／本週／本月」，PT 計算的體力星數會壞掉、總 PT 變成 NaN'],
+    ['fix','修改日期時集合時間沒有跟著搬，新日期變回「設定時間」；刪除日期也會留下舊時間'],
+    ['fix','新增日期時沒有帶集合時間。現在複製某一天會沿用那天的時間，否則套用設定裡的預設'],
+    ['fix','把人數上限調到比現有人數少，後面的人會直接被刪掉。現在會先列出誰會被移出，確定後也能復原'],
+    ['chg','拍賣頁的「帶入目前組數」一律用全部資料計算，不再跟著材料頁的篩選變動'],
+    ['chg','出場統計的「沒有出場」名單不再列出停用的成員'],
+    ['fix','翻車卡片展開後，裡面的人可以被拖出去，繞過鎖定'],
+    ['fix','CSV 的日期欄帶上年份（2026-09-23），跨年匯出不會混在一起'],
+    ['fix','編輯單品交易時新增的一列，單價欄的內部欄位名稱寫錯'],
+    ['imp','手機上拍賣統計卡最後一張單數卡橫跨整排，不再留一個空格'],
+    ['imp','成員列表的副標不再重複職業名稱，只放 BUFF 與備註'],
+    ['imp','日期列選中那天的光暈不再被切成方塊；待分配上方的分隔線改成直線'],
+    ['fix','清空所有資料的確認文字改正：不再說「無法復原」，並指出可以從自動快照救回'],
+  ]},
   { v:'v68', d:'2026/09/16',
     c:[
     ['add','掉落物每一列多了 10 / 15 / 20 三顆快捷鈕，直接把數量填成那個數字。一場常常掉十幾二十個，按 ＋ 一下一下太慢，叫出數字鍵盤又會蓋掉半個畫面'],
@@ -1180,7 +1257,7 @@ function changelogSheet(){
 /* 清空所有資料：回到全新安裝的狀態。跟匯入一樣，動手前先自動備份一份，且完全無法用復原救回 */
 function resetAllData(){
   confirmSheet(
-    '這會清空所有成員、職業、排班與售出紀錄，且無法復原（復原功能已移除）。\n按下確定後會先自動下載一份目前資料的備份。',
+    '這會清空所有成員、職業、排班與售出紀錄，toast 上的「復原」救不回來。\n按下確定後會先自動下載一份目前資料的備份，也會留一份自動快照，可以在「自動備份與還原」救回。',
     ()=>{
       saveSnapshot('reset');
       backupJson();

@@ -44,6 +44,10 @@ let matPainted=false;
 /* 哪幾張翻車卡片被展開了。只活在記憶體裡、不存檔：這是「我現在想看一下」，
    不是這一場的性質，不該跟著資料被匯出或同步到別台裝置。 */
 const wipeOpen=new Set();
+/* 陣容卡的掉落物預設收成一行摘要，展開哪幾張只記在記憶體裡（跟 wipeOpen 同一個道理）。
+   完整的逐場明細在材料頁；陣容頁要回答的是「這場排了誰」，
+   十幾顆掉落標籤攤在每張卡上，一張卡就要滑掉半個畫面。 */
+const dropOpen=new Set();
 function ensureMaterials(){
   const needPaint = activeViewId()==='stats';
   if(matDirty || (needPaint && !matPainted)){
@@ -98,7 +102,11 @@ function renderDates(){
   const rail=document.getElementById('dateRail'), tk=todayKey();
   const ks=dates(), keysStr=ks.join(',');
   if(keysStr!==dateRailKeysCache||tk!==dateRailTodayCache){
-    rail.innerHTML=ks.map(k=>dateChipHTML(k,tk)).join('');
+    /* 「＋ 新增」做成日期列最後一顆：最常用的情境是排新的一天，那時候停在最新的日期，
+       這顆就在旁邊。原本獨立一排的前後箭頭、今天、修改、刪除收進「⋯」選單。 */
+    rail.innerHTML=ks.map(k=>dateChipHTML(k,tk)).join('')+
+      `<button class="datechip addchip" id="btnAddDate" data-act="addDate" aria-label="新增日期">
+        <div class="dc-plus">＋</div><div class="dc-meta">新增</div></button>`;
     dateRailKeysCache=keysStr; dateRailTodayCache=tk;
   }else{
     /* 日期集合沒變：唯一可能變動內容的只有「目前這天」（使用者一次只能編輯 curDate），
@@ -159,14 +167,18 @@ function renderBoard(){
              style="color:${r.color};border-color:${hexA(r.color,.4)};background:${hexA(r.color,.09)}">${esc(r.icon||'')}${esc(r.name)}</button>`)
         : (wiped ? '' : `<button class="rolepill empty" data-act="role" data-pt="${pt.id}" data-i="${si}">指定職業</button>`);
       const bf=buffFor(m,r), own=hasBuffOverride(m,r&&r.id);
-      const buffTag = r
+      /* 沒有 BUFF 就不佔第二行。以前每一列都掛一個灰色「＋ BUFF」，十個人就是十個，
+         卡片因此高了一倍。要設定 BUFF 改從職業標籤進去（選職業的面板底下有 BUFF 列）。 */
+      const buffTag = (r && bf)
         ? (wiped
-            ? (bf?`<span class="slot-buff lock ${own?'own':''}">${esc(bf)}</span>`:'')
-            : `<button class="slot-buff ${own?'own':''} ${bf?'':'none'}" data-act="slotBuff"
+            ? `<span class="slot-buff lock ${own?'own':''}">${esc(bf)}</span>`
+            : `<button class="slot-buff ${own?'own':''}" data-act="slotBuff"
              data-pt="${pt.id}" data-i="${si}" title="${own?'這個人自己的 BUFF':'套用職業預設 BUFF'}"
-           >${bf?esc(bf):'＋ BUFF'}</button>`)
+           >${esc(bf)}</button>`)
         : '';
-      return `<div class="slot ${s.bento?'bento':''}" data-chip="${m.id}" data-from="${pt.id}" data-si="${si}">
+      /* 翻車卡片是鎖住的：位子不給拿起來（沒有 data-chip），不然拖到成員列或別場就等於繞過鎖定 */
+      const isPicked=!wiped&&picked===m.id&&pickedFrom&&pickedFrom.pt===pt.id&&pickedFrom.si===si;
+      return `<div class="slot ${s.bento?'bento':''} ${isPicked?'picked':''}" ${wiped?'':`data-chip="${m.id}" data-from="${pt.id}" data-si="${si}"`}>
         <div class="slot-nm">
           <span class="slot-name">${esc(m.name)}</span>
           ${buffTag}
@@ -212,18 +224,7 @@ function renderBoard(){
       </div>
       <div class="meter">${pips}</div>
       <div class="slots">${rows}</div>
-      <div class="dropsec">
-        <div class="dropsec-head">
-          <span class="dropsec-t">掉落物</span>
-          ${wiped?'':`<button class="gbtn" data-act="addDrop" data-pt="${pt.id}" style="padding:5px 10px;font-size:12px">${(pt.drops&&pt.drops.length)?'編輯掉落':'＋ 記錄掉落'}</button>`}
-        </div>
-        <div class="dropgrid">${(pt.drops&&pt.drops.length) ? [...pt.drops].sort((a,b)=>
-          MAT_SERIES.findIndex(s=>s.key===matSeries(a.name).key)-MAT_SERIES.findIndex(s=>s.key===matSeries(b.name).key)).map(d=>
-          (wiped
-            ? `<span class="droppill lock" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`
-            : `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`)).join('')
-          : `<span class="bench-empty" style="padding:0">${wiped?'翻車場次沒有掉落物':'還沒有記錄'}</span>`}</div>
-      </div>
+      ${dropSecHTML(pt, wiped)}
       <div class="pt-foot">
         ${wiped?'':`
         <button class="gbtn" data-act="editPt" data-pt="${pt.id}">編輯</button>
@@ -236,21 +237,88 @@ function renderBoard(){
   }).join('');
 }
 
+/* 掉落物區塊：預設一行摘要（依系列加總），點開才是逐項標籤 */
+function dropSecHTML(pt, wiped){
+  const drops=pt.drops||[], dn=drops.length;
+  const edit = wiped ? '' :
+    `<button class="gbtn dropsec-edit" data-act="addDrop" data-pt="${pt.id}">${dn?'編輯掉落':'＋ 記錄掉落'}</button>`;
+  if(!dn){
+    return `<div class="dropsec"><div class="dropsec-head">
+      <span class="dropsec-t">掉落物</span>
+      <span class="dropsum-none">${wiped?'翻車場次沒有掉落物':'還沒有記錄'}</span>${edit}</div></div>`;
+  }
+  const open=dropOpen.has(pt.id);
+  const series=groupBySeries([...new Set(drops.map(d=>d.name))]).map(({s,names})=>{
+    const q=drops.filter(d=>names.includes(d.name)).reduce((a,d)=>a+d.qty,0);
+    return `<span class="dropsum-s" style="${msVars(s)}">${s.label} <b class="num">${q}</b></span>`;
+  }).join('');
+  const pills = open ? `<div class="dropgrid">${sortDrops(drops).map(d=>
+      (wiped
+        ? `<span class="droppill lock" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></span>`
+        : `<button class="droppill" data-act="editDrop" data-pt="${pt.id}" data-d="${d.id}" style="${msVars(matSeries(d.name))}">${esc(d.name)}<span class="drop-qty">×${d.qty}</span></button>`)).join('')}</div>` : '';
+  return `<div class="dropsec ${open?'open':''}">
+    <div class="dropsec-head">
+      <button class="dropsum" data-act="dropToggle" data-pt="${pt.id}" aria-expanded="${open}"
+        aria-label="掉落物 ${dn} 種，${open?'點一下收合':'點一下展開明細'}">
+        <span class="dropsec-t">掉落</span>
+        <span class="dropsum-list">${series}</span>
+        <svg class="dropsum-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      ${edit}
+    </div>
+    ${pills}
+  </div>`;
+}
+
 function renderBench(){
   const host=document.getElementById('benchList');
   let list=benchMembers(curDate);
-  document.getElementById('benchTitle').textContent=`成員 ${list.length}`;
+  /* 今天還沒排到的人排前面、已經排過的淡一階：以前 14 個人照固定順序排，
+     要一顆一顆看有沒有數字徽章才知道誰還沒排。排序是穩定的，同一組內維持原本的順序。 */
+  const runsOf=new Map(list.map(m=>[m.id,countRuns(curDate,m.id)]));
+  list=[...list.filter(m=>!runsOf.get(m.id)), ...list.filter(m=>runsOf.get(m.id))];
+  const idle=list.filter(m=>!runsOf.get(m.id)).length;
+  document.getElementById('benchTitle').textContent=
+    list.length ? `成員 ${list.length}${idle?` · 未排 ${idle}`:' · 全部排入'}` : '成員 0';
   if(!list.length){
     host.innerHTML=`<div class="bench-empty">還沒有啟用中的成員</div>`;
+    renderPickBar();
     return;
   }
   host.innerHTML=list.map(m=>{
-    const r=roleById(m.defaultRoleId), n=countRuns(curDate,m.id);
-    return `<button class="chip ${picked===m.id?'picked':''}" data-chip="${m.id}" data-from="bench">
+    const r=roleById(m.defaultRoleId), n=runsOf.get(m.id);
+    return `<button class="chip ${n?'done':''} ${picked===m.id&&!pickedFrom?'picked':''}" data-chip="${m.id}" data-from="bench">
       ${r?`<span class="chip-dot" style="background:${r.color}"></span>`:''}${esc(m.name)}${n?`<span class="chip-n">${n}</span>`:''}
     </button>`;
   }).join('');
+  renderPickBar();
 }
+
+/* ── 選取後的快速放置列 ───────────────────────────────────
+   選了一個人之後，要往下滑找到那張 RUN 卡再點一下；一天兩三場、卡片又長，
+   手機上就是一路滑。改成選取時在底部分頁列上方浮出這一排：直接點場次名稱就放進去。
+   從成員列選的是「加入」，從某場 RUN 裡選的是「移到」（跟拖曳同一套語意）。
+   卡片本身仍然可以點，這一排只是捷徑。 */
+function renderPickBar(){
+  const bar=document.getElementById('pickBar'); if(!bar) return;
+  const on = picked!==null && activeViewId()==='board' && !!memberById(picked);
+  document.body.classList.toggle('picking', on);
+  if(!on){ bar.hidden=true; bar.innerHTML=''; return; }
+  const move=!!pickedFrom, m=memberById(picked);
+  const targets=ptsOf(curDate).filter(p=>!isWipe(p) && !(move&&p.id===pickedFrom.pt));
+  const btns=targets.map(p=>{
+    const full=p.slots.length>=p.capacity;
+    return `<button class="pickbar-run" data-pickto="${p.id}" ${full?'disabled':''}>
+      <span class="pickbar-rn">${esc(p.name)}</span><span class="pickbar-rc num">${full?'已滿':`${p.slots.length}/${p.capacity}`}</span></button>`;
+  }).join('');
+  bar.innerHTML=`<div class="pickbar-glass">
+    <span class="pickbar-t">${move?'移到':'加入'}<b>${esc(m.name)}</b></span>
+    <div class="pickbar-runs">${btns||`<span class="pickbar-none">${move?'沒有其他場次':'這天還沒有 RUN'}</span>`}</div>
+    <button class="pickbar-x" data-pickcancel aria-label="取消選取">×</button>
+  </div>`;
+  bar.hidden=false;
+}
+function clearPick(){ picked=null; pickedFrom=null; renderBench(); renderBoard(); }
 
 function renderMembers(){
   const q=(document.getElementById('memberSearch').value||'').trim().toLowerCase();
@@ -262,7 +330,8 @@ function renderMembers(){
   }
   host.innerHTML=`<div class="list">`+list.map(m=>{
     const r=roleById(m.defaultRoleId);
-    const meta=[r?r.name:'', buffFor(m,r), m.notes].filter(Boolean).join(' · ');
+    /* 職業名稱右邊的標籤已經寫了，副標只放標籤沒講的事：生效中的 BUFF 與備註 */
+    const meta=[buffFor(m,r), m.notes].filter(Boolean).join(' · ');
     return `<div class="row" data-act="editMember" data-id="${m.id}">
       <div class="row-main">
         <div class="row-t">${esc(m.name)}${m.active?'':'<span class="badge off">停用</span>'}</div>
@@ -289,20 +358,19 @@ function renderRoles(){
   host.innerHTML=`<div class="list">`+rs.map((r,i)=>{
     const checked=roleSelected.has(r.id);
     return `
-    <div class="row ${roleSelectMode?'row-selectable':''}" ${roleSelectMode?`data-act="toggleRoleSel" data-id="${r.id}"`:''}>
+    <div class="row ${roleSelectMode?'row-selectable':''}" data-role-row="${r.id}" ${roleSelectMode?`data-act="toggleRoleSel" data-id="${r.id}"`:''}>
       ${roleSelectMode?`<span class="checkbox ${checked?'on':''}"></span>`:`<span class="swatch" style="background:${r.color}"></span>`}
       <div class="row-main" ${roleSelectMode?'':`data-act="editRole" data-id="${r.id}"`}>
         <div class="row-t">${esc(r.icon||'')}${esc(r.name)}</div>
-        <div class="row-s">${r.buff?esc(r.buff):`排序 ${i+1}`}</div>
+        <div class="row-s ${r.buff?'':'none'}">${r.buff?esc(r.buff):'未設定 BUFF'}</div>
       </div>
       ${roleSelectMode?'':`
-      <button class="icon-btn" data-act="roleUp" data-id="${r.id}" ${i===0?'disabled':''} aria-label="上移">
-        <svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></button>
-      <button class="icon-btn" data-act="roleDown" data-id="${r.id}" ${i===rs.length-1?'disabled':''} aria-label="下移">
-        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>`}
+      <div class="role-grip" aria-label="按住拖曳調整順序" title="按住拖曳調整順序">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg></div>`}
     </div>`;
   }).join('')+`</div>`;
 
+  if(!roleSelectMode) bindRoleDrag(host);
   const start=document.getElementById('roleSelStart');
   if(start) start.onclick=()=>{ roleSelectMode=true; roleSelected=new Set(); renderRoles(); };
   const cancel=document.getElementById('roleSelCancel');

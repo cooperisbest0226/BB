@@ -205,7 +205,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .daterail{display:flex; align-items:center; gap:6px; margin-top:14px}
 .dates{
   display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity;
-  flex:1; min-width:0; padding:2px 0; scrollbar-width:none;
+  flex:1; min-width:0; scrollbar-width:none;
+  /* 捲動容器會把子元素的陰影裁掉，選中那顆的光暈會被切成方塊。
+     四周多留一圈空間給陰影，再用負邊距抵掉，版面位置不變。 */
+  padding:4px 10px 12px; margin:-4px -10px -12px; scroll-padding-inline:10px;
   -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
 }
 .dates::-webkit-scrollbar{display:none}
@@ -227,7 +230,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .icon-btn.sm{width:44px; height:44px; flex:0 0 auto}
 .icon-btn.sm svg{width:15px; height:15px}
 .datechip[aria-current="true"]{
-  background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.35);
+  background:linear-gradient(135deg,var(--accent),#7c6ef2); border-color:var(--accent); color:#fff; box-shadow:0 4px 10px -2px rgba(79,70,229,.42);
 }
 .datechip[aria-current="true"] .dc-dow,
 .datechip[aria-current="true"] .dc-meta{color:rgba(255,255,255,.62)}
@@ -354,6 +357,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .slot.bento:hover{background:rgba(34,197,94,.19)}
 /* 拖曳中的整列（跨 RUN 指派 / 移到成員列表）稍微淡出，提示正在拖曳 */
 .slot.dragging{opacity:.4}
+/* 點選 RUN 裡的人準備移到別場：跟成員列的選取同一種強調 */
+.slot.picked{background:var(--accent-soft); box-shadow:inset 3px 0 0 var(--accent)}
 .slot-nm{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1}
 .slot-name{font-size:13.5px; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .slot-buff{
@@ -436,9 +441,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 /* 待分配成員：現在位於頂部標題列下方（原本固定在畫面底部）。
    已經在 .topbar 的毛玻璃底之下，這裡不再重複做背景模糊，只留一條分隔線。 */
 .bench{
-  margin-top:9px; padding-top:9px; border-top:1px solid var(--line-2);
+  position:relative; margin-top:9px; padding-top:9px;
   border-radius:10px; transition:opacity .2s var(--ease);
 }
+/* 分隔線不能用 border-top：.bench 有圓角（給拖放高亮用），圓角會把上邊框的兩端往下彎，
+   看起來像一張被切掉的卡片邊。改成一條獨立的直線。 */
+.bench::before{content:''; position:absolute; left:0; right:0; top:0; height:1px; background:var(--line-2); pointer-events:none}
 .bench.drop-on{box-shadow:inset 0 0 0 2px var(--accent); background:var(--accent-soft)}
 .bench.hidden{display:none}
 .bench-top{display:flex; align-items:center; gap:9px; margin-bottom:8px}
@@ -496,6 +504,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 
 /* ── stats ──────────────────────────────────────────────── */
 .statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:11px}
+/* 手機上是兩欄，5 張卡的最後一張會單獨掛在左下、右邊空一格。
+   只在兩欄的寬度內讓它橫跨整排；更寬的螢幕欄數不固定，不套用。 */
+@media (max-width:474px){
+  .statgrid > .stat:last-child:nth-child(odd){grid-column:1 / -1}
+}
 .stat{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:14px 15px; box-shadow:var(--shadow)}
 .stat-k{font-size:11px; color:var(--muted); font-weight:500; letter-spacing:.03em}
 .stat-v{font-size:27px; font-weight:680; letter-spacing:-1px; margin-top:3px; line-height:1}
@@ -1503,3 +1516,164 @@ a.gbtn{text-decoration:none; color:var(--ink-2)}
 .mres-sold-hint{display:inline-block; margin-top:5px; color:var(--warn); line-height:1.7}
 
 .splrow .paidbtn{margin-left:auto}
+
+/* ══════════════════════════════════════════════════════════
+   v70 介面改版
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 陣容卡：列高收斂 ───────────────────────────────────────
+   以前每列都有兩行（名字＋「＋ BUFF」），加上 44px 的移出鈕再上下各 9px，一列 62px。
+   沒有 BUFF 的人現在只有一行，移出鈕本身就撐住 44px 的可點高度，外面不再多墊。 */
+.slot{padding:1px 4px 1px 15px; min-height:46px}
+.slot-nm{padding:4px 0}
+
+/* 掉落區以前沒有左右內距，標籤直接貼著卡片邊 */
+.dropsec{margin-top:0; padding:8px 13px 10px 15px}
+.dropsec-head{margin-bottom:0; min-height:44px}
+.dropsec.open .dropsec-head{margin-bottom:8px}
+.dropsec-edit{padding:5px 11px; font-size:12px; flex:0 0 auto}
+.dropsum{
+  flex:1; min-width:0; display:flex; align-items:center; gap:9px; min-height:44px;
+  text-align:left; border-radius:10px; padding:0 4px 0 0;
+}
+.dropsum-list{display:flex; flex-wrap:wrap; gap:4px 10px; min-width:0}
+.dropsum-s{font-size:12px; font-weight:550; color:var(--ms-ink); white-space:nowrap}
+.dropsum-s b{font-weight:700; color:var(--ms)}
+.dropsum-s::before{content:''; display:inline-block; width:7px; height:7px; border-radius:2px; background:var(--ms); margin-right:5px; vertical-align:1px}
+.dropsum-c{flex:0 0 auto; width:15px; height:15px; margin-left:auto; stroke:var(--faint); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .22s var(--ease)}
+.dropsec.open .dropsum-c{transform:rotate(180deg)}
+.dropsum-none{flex:1; font-size:12px; color:var(--faint)}
+
+/* ── 日期列：最後一顆「＋ 新增」、右邊「⋯」 ───────────────── */
+.daterail{gap:8px}
+.datechip.addchip{
+  width:52px; border-style:dashed; border-color:var(--line); background:transparent;
+  backdrop-filter:none; -webkit-backdrop-filter:none; color:var(--accent);
+}
+.datechip.addchip .dc-plus{font-size:19px; font-weight:500; line-height:1.15; margin-top:3px}
+.datechip.addchip .dc-meta{color:var(--accent); font-weight:600}
+.daterail .icon-btn.sm svg{fill:currentColor; stroke-width:2}
+button.settings-row:disabled{opacity:.45; cursor:default}
+
+/* ── 待分配：還沒排的在前面，排過的淡一階 ─────────────────── */
+.chip.done{background:var(--surface-2); color:var(--muted); box-shadow:none}
+.chip.done .chip-n{background:var(--muted)}
+
+/* ── 選取後的放置列：浮在分頁列上方 ──────────────────────── */
+.pickbar{
+  position:fixed; left:0; right:0; z-index:41; pointer-events:none;
+  bottom:calc(84px + env(safe-area-inset-bottom)); padding:0 14px;
+  animation:rise .22s var(--ease) both;
+}
+.pickbar[hidden]{display:none}
+.pickbar-glass{
+  pointer-events:auto; max-width:520px; margin:0 auto; display:flex; align-items:center; gap:8px;
+  padding:6px 6px 6px 14px; border-radius:18px;
+  background:rgba(255,255,255,.86); backdrop-filter:blur(24px) saturate(1.8); -webkit-backdrop-filter:blur(24px) saturate(1.8);
+  border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow:0 10px 28px -8px rgba(21,23,28,.28);
+}
+[data-theme="dark"] .pickbar-glass{background:rgba(27,30,38,.9)}
+.pickbar-t{flex:0 0 auto; font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; line-height:1.25; max-width:74px}
+.pickbar-t b{font-size:13.5px; color:var(--ink); font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pickbar-runs{flex:1; min-width:0; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none}
+.pickbar-runs::-webkit-scrollbar{display:none}
+.pickbar-run{
+  flex:0 0 auto; min-height:44px; padding:4px 13px; border-radius:12px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; line-height:1.2;
+  color:#fff; background:var(--accent); border:1px solid var(--accent); transition:transform .12s var(--ease);
+}
+.pickbar-run:active{transform:scale(.95)}
+.pickbar-run:disabled{color:var(--faint); background:var(--surface-2); border-color:var(--line-2)}
+.pickbar-rn{font-size:13px; font-weight:650; white-space:nowrap}
+.pickbar-rc{font-size:10px; opacity:.8}
+.pickbar-none{font-size:12px; color:var(--faint); align-self:center}
+.pickbar-x{flex:0 0 auto; width:40px; height:44px; border-radius:12px; font-size:18px; color:var(--muted)}
+.pickbar-x:active{background:var(--surface-2)}
+/* 放置列出現時，頁面底部多留一點，最後一張卡的按鈕不會被蓋住 */
+body.picking .app{padding-bottom:calc(160px + env(safe-area-inset-bottom))}
+
+/* ── 面板底部按鈕固定在下緣 ───────────────────────────────
+   掉落物面板有十幾列材料，按完數量還要往下滑才找得到「儲存」。
+   短的面板沒有捲動，sticky 不會有任何效果，長相不變。 */
+.sheet:has(> .sheet-foot){padding-bottom:0}
+.sheet > .sheet-foot{
+  position:sticky; bottom:0; z-index:2; background:var(--surface);
+  padding:12px 0 calc(16px + env(safe-area-inset-bottom)); margin-top:12px;
+}
+.sheet > .sheet-foot::before{
+  content:''; position:absolute; left:0; right:0; bottom:100%; height:16px; pointer-events:none;
+  background:linear-gradient(to bottom, transparent, var(--surface));
+}
+
+/* ── 選職業面板：標出目前的職業 ───────────────────────────── */
+.rolepill.on{box-shadow:0 2px 8px -2px color-mix(in srgb, var(--rc) 60%, transparent); font-weight:700}
+.rp-check{margin-right:4px}
+
+/* ── 職業列表：拖曳把手 ─────────────────────────────────── */
+.row-s.none{color:var(--faint)}
+.role-grip{
+  flex:0 0 auto; width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+  color:var(--faint); border-radius:9px; cursor:grab; touch-action:none;
+}
+.role-grip svg{width:19px; height:19px; fill:currentColor}
+#roleList .row.dragging .role-grip, .role-grip:active{color:var(--accent); background:var(--accent-soft); cursor:grabbing}
+/* 拖曳中的那一列會蓋在指標底下；不讓它吃指標，才量得到底下是哪一列 */
+#roleList .row.dragging{position:relative; z-index:3; background:var(--surface); box-shadow:var(--shadow-lift); pointer-events:none}
+#roleList .row.drop-before{box-shadow:inset 0 3px 0 0 var(--accent)}
+#roleList .row.drop-after{box-shadow:inset 0 -3px 0 0 var(--accent)}
+
+/* ── PT 計算：合計置頂、屬性卡一行 ────────────────────────── */
+.totalcard.calc-top{margin-top:4px; padding:15px 16px 14px}
+.calc-top .total-v{font-size:44px}
+.calc-top .total-meter{margin:10px 0}
+.attrcard{display:flex; align-items:center; gap:10px; padding:8px 12px 8px 14px; margin-bottom:7px}
+.attr-id{display:flex; flex-direction:column; min-width:44px; line-height:1.25}
+.attr-id .star-lb{margin-left:0; font-size:10.5px}
+.attrcard .stars{flex:1; justify-content:center; gap:1px}
+.attrcard .star{width:34px; height:40px; font-size:20px}
+.attrcard .attr-pt{margin-left:0; min-width:56px; text-align:center}
+
+/* ── 拍賣：一張結果卡 ─────────────────────────────────────── */
+.aucres{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-md); padding:15px 16px 13px; box-shadow:var(--shadow)}
+.aucres .stat{background:none; border:none; box-shadow:none; padding:0; border-radius:0}
+.aucres-main .stat-v{font-size:34px; letter-spacing:-1.4px}
+.aucres-vrow{display:flex; align-items:baseline; gap:5px}
+.aucres-u{font-size:13px; color:var(--faint); font-weight:500}
+.aucres-sub{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;
+  margin-top:12px; padding-top:11px; border-top:1px dashed var(--line);
+}
+.aucres-sub .stat-k{font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.aucres-sub .stat-v{font-size:17px; letter-spacing:-.4px; margin-top:4px}
+
+/* ── 單品出售：一列拆成兩行，材料名稱有完整寬度 ───────────── */
+.itemrow{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto 30px;
+  grid-template-areas:"n n n x" "q p s s"; row-gap:6px;
+}
+.itemrow-n{grid-area:n}
+.itemrow-q{grid-area:q}
+.itemrow-p{grid-area:p}
+.itemrow-s{grid-area:s; min-width:64px; padding-right:4px}
+.itemrow .salerow-x{grid-area:x; justify-self:end; width:30px; height:30px}
+
+/* ── 材料頁場次明細：一個系列一行 ─────────────────────────── */
+.mrun-c{display:block; width:100%; text-align:left; padding:9px 14px 10px}
+.mrun-c:active{background:var(--surface-2)}
+.mrun-c .mrun-g{padding:2px 0}
+.mline{display:flex; align-items:baseline; gap:9px; padding:2px 0; font-size:12.5px}
+.mline-lb{flex:0 0 30px; font-size:11px; font-weight:650; color:var(--ms-ink)}
+.mline-v{flex:1; min-width:0; display:flex; flex-wrap:wrap; gap:2px 9px; color:var(--ink-2)}
+.mline-i b{font-weight:700; color:var(--ms); margin-left:1px}
+.mline-sum{flex:0 0 auto; font-size:11.5px; font-weight:650; color:var(--muted)}
+
+/* ── 分潤：全部標記已領 ───────────────────────────────────── */
+.splpayall{width:100%; margin-top:11px; justify-content:space-between; font-weight:600}
+.splpayall .num{font-weight:500; color:var(--muted)}
+
+/* PT 計算的進度條：它借用了 .pip 這個名字，但 v33 起 .pip 變成波利圖示（靠裡面的 svg 撐出形狀），
+   這裡的 .pip 是空的 div，於是整條進度條一直是隱形的。給它自己的長相，也不要跟著波利跳。 */
+.total-meter .pip{flex:1; height:6px; border-radius:3px; background:var(--line); opacity:1; animation:none; color:inherit}
+.total-meter .pip.on{background:var(--accent)}
+.total-meter .pip.full{background:var(--ok)}

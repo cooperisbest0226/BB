@@ -188,13 +188,23 @@ function renderSales(){
   const avgUnit = sum.sets ? setAmt/sum.sets : 0;
   /* 卡片標籤不重複幣別：頁面上方的幣別切換已經說了現在在看哪一種，
      每張卡再掛一次「（台幣）」只是把標籤撐長。 */
-  document.getElementById('saleCards').innerHTML=[
+  /* 一張結果卡，跟材料頁的主結果卡同一種長相：最重要的累計總額放大，
+     其餘四個數字排成一列小字。原本是五張一樣大的卡，手機上兩欄疊三排，
+     第一眼看不出哪個數字才是重點，還佔掉大半個畫面。 */
+  const sub=[
     ['交易次數', nf(sales.length)],
     ['累計售出組數', nf(sum.sets)],
     ['累計售出單品', nf(sum.qty)],
-    ['累計總額', nf(sum.amt)],
     ['平均每組', nf(Math.round(avgUnit))],
-  ].map(([k,v])=>`<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('');
+  ];
+  document.getElementById('saleCards').innerHTML=`<div class="aucres">
+    <div class="stat aucres-main">
+      <div class="stat-k">累計總額</div>
+      <div class="aucres-vrow"><div class="stat-v num">${nf(sum.amt)}</div><span class="aucres-u">${curLabel(aucCur)}</span></div>
+    </div>
+    <div class="aucres-sub">${sub.map(([k,v])=>
+      `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('')}</div>
+  </div>`;
 
   renderSaleTrend(sales, setSales, avgUnit);
   renderSaleQuotes(sales);
@@ -560,7 +570,7 @@ function saleSheet(id){
     bindRunPicker(sh.querySelector('#editRunPick'),
                   ()=>workRunIds, v=>{ workRunIds=v; });
     const addBtn=sh.querySelector('[data-s="addRow"]');
-    if(addBtn) addBtn.onclick=()=>{ work.push({name:'',qty:'',twd:''}); paintRows(); };
+    if(addBtn) addBtn.onclick=()=>{ work.push({name:'',qty:'',price:''}); paintRows(); };
 
     sh.querySelector('[data-s="save"]').onclick=()=>{
       const date=sh.querySelector('[name="date"]').value||s.date;
