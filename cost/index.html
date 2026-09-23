@@ -86,6 +86,13 @@ input,select,textarea,button{font-family:inherit;font-size:16px}
   --z-fullscreen:60;--z-overlay:70;--z-toast:80;
 
   /* ── Safe area */
+  /* ── 字型堆疊
+     備援字型要接近原字型：原本寫的是 'DM Mono',monospace —— 字型還沒下載到
+     （首次離線開啟、或更新後快取被清掉）時，iOS 的 monospace 是 Courier，
+     所有金額瞬間變成打字機字。DM Mono 只有 300/400/500 三個字重，
+     寫 600/700 會被瀏覽器硬加粗，數字糊成一團，一律收在 500。 */
+  --f-sans:'Sora',-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang TC','Noto Sans TC',sans-serif;
+  --f-num:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
   --safe-b:env(safe-area-inset-bottom,0px);
   --safe-t:env(safe-area-inset-top,0px);
 
@@ -142,7 +149,7 @@ html,body{
   touch-action:manipulation;
   background:var(--surface);
   color:var(--text);
-  font-family:'Sora',-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang TC',sans-serif;
+  font-family:var(--f-sans);
   -webkit-font-smoothing:antialiased;
   -webkit-overflow-scrolling:auto;
 }
@@ -193,19 +200,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   letter-spacing:.01em;
 }
 .tab.on{ color:var(--green); }
-/* Center tab gets a pill highlight */
-.tab:nth-child(3){
-  position:relative;
-}
-.tab:nth-child(3).on::before{
-  content:'';
-  position:absolute;
-  top:3px;left:50%;transform:translateX(-50%);
-  width:48px;height:48px;
-  background:var(--green-lt);
-  border-radius:50%;
-  z-index:-1;
-}
+/* v4.21：移除舊版「中間分頁加圓形底」的規則。分頁列前面多了 .tab-ind 這個
+   <span> 之後，:nth-child(3) 指到的變成「明細」，於是只有明細分頁會在滑軌
+   指示器之上再疊一顆圓，兩層高亮互相錯位。 */
 .tab svg{
   width:22px;height:22px;stroke:currentColor;fill:none;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
@@ -218,6 +215,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   padding:0 4px;border-radius:99px;min-width:15px;text-align:center;
   display:none;
 }
+/* JS 以 class 切換顯示。原本寫 style.display='' 想「取消隱藏」，結果只是退回
+   上面這條 display:none —— 角標從來沒有出現過。 */
+.tab-dot.on{display:block}
 
 /* ── Screen shell ────────────────────────────────────────── */
 .screen{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
@@ -235,6 +235,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
    safe-area 已由 .tabs 的 padding-bottom 吃掉，這裡不能再加，否則重複計算。
    只掛 #home-scroll：FAB 只在首頁顯示，明細頁不必平白多留 88px。 */
 #home-scroll{padding-bottom:88px}
+/* 首頁清單底部的小計原本靠右，內容不夠長、無法捲動時正好落在 FAB 底下，
+   「待收 $860」被按鈕蓋住。改成靠左並讓出 FAB 的寬度。 */
+#home-list .list-footer{text-align:left;padding-right:76px;padding-left:4px}
 
 /* ── Top bar ─────────────────────────────────────────────── */
 .top-bar{
@@ -352,7 +355,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   cursor:pointer;display:flex;align-items:center;justify-content:center;
 }
 .mp-nav:active{background:var(--surface4)}
-.mp-year{font-size:17px;font-weight:700;font-family:'DM Mono',monospace}
+.mp-year{font-size:17px;font-weight:500;font-family:var(--f-num)}
 .mp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
 .mp-m{
   position:relative;height:46px;border:1.5px solid transparent;border-radius:12px;
@@ -388,7 +391,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   stroke-width:1.8;stroke-linecap:round;
 }
 .hero-big-num{
-  font-family:'Sora',sans-serif;
+  font-family:var(--f-sans);
   font-size:37px;font-weight:700;
   letter-spacing:-.04em;line-height:1;
   /* #D94B4B 在米色底上對比約 4:1，對這麼大的主數字偏淡；--red-dk 是 5.4:1 */
@@ -459,13 +462,18 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 /* eyebrow 右側：展開顯示「個人支出」，收合換成總額 */
 .hero-mini-tot{
   position:absolute;right:0;top:50%;transform:translateY(-50%);
-  font-family:'Sora',sans-serif;font-size:19px;font-weight:700;
+  font-family:var(--f-sans);font-size:19px;font-weight:700;
   letter-spacing:-.03em;color:var(--red-dk);white-space:nowrap;
   font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;
   opacity:0;pointer-events:none;transition:opacity .2s ease;
 }
 .hero-eyebrow{position:relative}
 .home-hero.collapsed .hero-mini-tot{opacity:1}
+/* 總額的顏色要有意義：平常用主文字色，超過月預算才轉紅。
+   原本永遠是紅字 —— 沒花錢的月份 $0 也是紅的，真的超支時反而沒有任何
+   額外訊號（超支只寫在下方預算條的小字裡）。 */
+.hero-big-num,.hero-mini-tot{color:var(--text)}
+.hero-big-num.over,.hero-mini-tot.over{color:var(--red-dk)}
 .hero-eyebrow-tag{transition:opacity .18s ease}
 .home-hero.collapsed .hero-eyebrow-tag{opacity:0}
 /* 收合時訂閱條一起讓位 */
@@ -519,7 +527,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   overflow:hidden;transition:opacity .18s ease;
 }
 .home-hero.collapsed .hbud-legend{height:0;opacity:0;margin:0}
-.hbud-legend b{font-family:'DM Mono',monospace;font-weight:600;margin-left:2px;color:var(--text2)}
+.hbud-legend b{font-family:var(--f-num);font-weight:500;margin-left:2px;color:var(--text2)}
 /* .r/.g 原本只定義在 .hbud-meta 底下，判斷語的紅綠因此吃不到 */
 .hbud-legend b.g{color:var(--green)}
 .hbud-legend b.r{color:var(--red)}
@@ -548,7 +556,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .home-hero.collapsed .hbud-meta{height:0;opacity:0;margin:0}
 .hbud{transition:margin-top .26s ease}
 .home-hero.collapsed .hbud{margin-top:9px}
-.hbud-meta b{font-family:'DM Mono',monospace;font-weight:600;color:var(--text2);margin:0 1px 0 3px}
+.hbud-meta b{font-family:var(--f-num);font-weight:500;color:var(--text2);margin:0 1px 0 3px}
 .hbud-meta .g{color:var(--green)}
 .hbud-meta .r{color:var(--red)}
 .hbud-meta .sep{margin:0 6px;opacity:.5}
@@ -718,19 +726,19 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   min-width:17px;height:17px;padding:0 4px;
   border-radius:99px;background:var(--orange);color:#fff;
   border:2px solid var(--surface);      /* 用列的背景色描邊，讓角標從 icon 上浮起來 */
-  font-size:10px;font-weight:700;line-height:13px;text-align:center;
-  font-family:'DM Mono',monospace;
+  font-size:10px;font-weight:500;line-height:13px;text-align:center;
+  font-family:var(--f-num);
   display:none;
 }
 .fb-badge.on{display:block}
 /* 選中時底色是綠的，橘色角標對比會太差，改成白底橘字 */
 .filter-btn.on .fb-badge{background:#fff;color:var(--orange);border-color:var(--green)}
 /* 「全部」用淡色純數字，不搶警示 */
-.fb-n{margin-left:5px;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--text3)}
+.fb-n{margin-left:5px;font-family:var(--f-num);font-size:12px;font-weight:500;color:var(--text3)}
 .filter-btn.on .fb-n{color:rgba(255,255,255,.75)}
 .filter-btn:active{background:var(--surface2);transform:scale(.97)}
 .filter-btn.on{background:var(--green);border-color:transparent;color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(46,158,114,.25)}
-.list-footer{text-align:right;font-size:12px;color:var(--text3);padding:7px 2px 0;font-family:'DM Mono',monospace;letter-spacing:.01em}
+.list-footer{text-align:right;font-size:12px;color:var(--text3);padding:7px 2px 0;font-family:var(--f-num);letter-spacing:.01em}
 
 /* ── Swipe-delete background ──────────────────────────────── */
 .del-bg{
@@ -779,7 +787,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 
 /* ── Hero supporting line (replaces the old three-chip strip) ── */
 .hero-subline{font-size:12.5px;color:var(--text2);margin-bottom:0;letter-spacing:.01em}
-.hero-subline b{font-family:'DM Mono',monospace;font-weight:600}
+.hero-subline b{font-family:var(--f-num);font-weight:500}
 .hero-subline .g{color:var(--green)}
 .hero-subline .r{color:var(--red)}
 .hero-subline .o{color:var(--orange)}
@@ -886,7 +894,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   box-shadow:none;                 /* no inner shadow */
   color:var(--text);
   font-size:14px;
-  font-family:'DM Mono',monospace;
+  font-family:var(--f-num);
   padding:0;
   outline:none;
   transition:none;
@@ -936,7 +944,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   font-size:13px;color:var(--text2);
 }
 .proxy-calc-row span:last-child{
-  font-family:'DM Mono',monospace;font-weight:500;font-size:13px;
+  font-family:var(--f-num);font-weight:500;font-size:13px;
 }
 .proxy-calc-divider{height:1px;background:var(--border);margin:3px 0}
 .proxy-calc-result{
@@ -945,7 +953,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 .proxy-calc-result.over{color:var(--red)}
 .proxy-calc-result span:last-child{
-  font-family:'DM Mono',monospace;font-size:14px;font-weight:700;
+  font-family:var(--f-num);font-size:14px;font-weight:500;
 }
 
 /* ── Feature 1: Date-group headers in list view ──────────── */
@@ -959,7 +967,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   content:'';flex:1;height:1px;background:var(--border);
 }
 .date-grp-subtotal{
-  font-family:'DM Mono',monospace;
+  font-family:var(--f-num);
   font-size:11px;color:var(--text3);
   flex-shrink:0;
 }
@@ -1006,8 +1014,32 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   padding:10px 13px;box-shadow:var(--shadow-sm);
 }
 .range-sum-lbl{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;font-weight:500}
-.range-sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;letter-spacing:-.02em}
+.range-sum-val{font-family:var(--f-num);font-size:15px;font-weight:500;letter-spacing:-.02em}
 .range-sum-val.r{color:var(--red)}.range-sum-val.g{color:var(--green)}
+.range-sum-sub{font-family:var(--f-num);font-size:11px;color:var(--text3);margin-top:2px}
+/* 趨勢圖圖例（有預算線時） */
+.range-legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px;font-size:11px;color:var(--text3)}
+.range-legend span{display:inline-flex;align-items:center;gap:5px}
+.range-legend i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.range-legend i.bar{background:rgba(46,158,114,.55)}
+.range-legend i.hi{background:var(--red)}
+.range-legend i.bud{width:14px;height:0;border-radius:0;border-top:1.5px dashed var(--amber)}
+/* 範圍分類合計：每一列的長條要貼著自己的標籤，與下一列之間留出間距。
+   原本長條與下一列標籤的距離比跟自己標籤還近，視覺上會被讀成下一列的。 */
+#range-cat-rows .rc-item{margin-bottom:14px}
+#range-cat-rows .rc-item:last-child{margin-bottom:2px}
+#range-cat-rows .bud-cat-row{margin-bottom:5px}
+.rc-amt{font-family:var(--f-num);font-weight:500}
+.rc-pct{display:inline-block;min-width:34px;text-align:right;color:var(--text3);margin-left:6px;font-family:var(--f-num);font-size:12px}
+/* Chart.js 無法載入時的替代長條圖 */
+.fb-chart{position:relative;display:flex;align-items:flex-end;gap:6px;height:170px;padding:8px 2px 22px;margin-top:4px}
+.fb-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;position:relative;min-width:0}
+.fb-bar{background:rgba(46,158,114,.55);border-radius:5px 5px 2px 2px;min-height:2px}
+.fb-bar.hi{background:var(--red)}
+.fb-x{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden}
+.fb-bud{position:absolute;left:0;right:0;border-top:1.5px dashed var(--amber);pointer-events:none;z-index:1}
+.fb-bud span{position:absolute;right:0;top:-15px;font-size:10px;color:var(--amber)}
+.fb-note{font-size:11px;color:var(--text3);text-align:center;margin-top:8px}
 
 /* ── Item card ───────────────────────────────────────────── */
 .icard{
@@ -1021,6 +1053,10 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   contain-intrinsic-size:auto 70px;
 }
 .icard:active{box-shadow:none}
+.icard.leaving{
+  opacity:0;margin-bottom:0;transform:scale(.98);
+  transition:height .26s ease,opacity .2s ease,margin-bottom .26s ease,transform .2s ease;
+}
 .irow{
   display:flex;align-items:center;gap:11px;padding:13px 14px;
   background:var(--bg);position:relative;z-index:var(--z-card-row);
@@ -1043,10 +1079,15 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .iinfo{min-height:44px;display:flex;flex-direction:column;justify-content:center}
 .iinfo{flex:1;min-width:0;cursor:pointer;border:none;background:transparent;padding:0;text-align:left;font:inherit;color:inherit;display:block}
 .iinfo:active{opacity:.7}
-.iname{font-size:14px;font-weight:500;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* block 而非 flex：flex 容器裡的文字是匿名 flex item，text-overflow 對它無效，
+   長名稱會被硬切在半個字上（「（醫療＋意外險附」），沒有省略號。 */
+.iname{font-size:14px;font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .iname.done{color:var(--text3);text-decoration:line-through}
 .isub{font-size:11.5px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.overdue-dot{width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0}
+/* 到期狀態：取代原本名稱旁沒有說明的紅點 */
+.idue{font-weight:600;margin-right:8px}
+.idue.r{color:var(--red)}
+.idue.a{color:var(--amber)}
 /* 代墊摘要 chip：附在父費用卡名稱/備註下方，可點展開子項目 */
 .iproxy-chip{
   display:inline-flex;align-items:center;gap:5px;margin-top:6px;
@@ -1078,7 +1119,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .icard-child .irow{padding-top:11px;padding-bottom:11px}
 
 .iright{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-.iamt{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;letter-spacing:-.01em}
+.iamt{font-family:var(--f-num);font-size:14px;font-weight:500;letter-spacing:-.01em}
 .iamt.g{color:var(--green)}.iamt.r{color:var(--red)}.iamt.o{color:var(--orange)}
 
 .rem-row{
@@ -1099,7 +1140,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .rem-body{flex:1;min-width:0}
 .rem-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rem-meta{font-size:11px;color:var(--text3);margin-top:2px}
-.rem-amt{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;flex-shrink:0}
+.rem-amt{font-family:var(--f-num);font-size:13px;font-weight:500;flex-shrink:0}
 .rem-amt.r{color:var(--red)}.rem-amt.a{color:var(--amber)}.rem-amt.o{color:var(--orange)}
 
 /* ── Copy / advance banners ───────────────────────────────── */
@@ -1140,7 +1181,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 /* ── Chart screen ────────────────────────────────────────── */
 .stat-tile{background:var(--bg);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-sm)}
 .stat-lbl{font-size:10px;color:var(--text3);margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
-.stat-val{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-.02em}
+.stat-val{font-family:var(--f-num);font-size:17px;font-weight:500;letter-spacing:-.02em}
 .stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}.stat-val.o{color:var(--orange)}
 .bud-cat-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;align-items:center}
 .bud-cat-track{background:var(--surface);border-radius:4px;height:5px;overflow:hidden}
@@ -1181,7 +1222,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 .bud-prog-lbl{color:var(--text3);letter-spacing:.02em;flex-shrink:0}
 .bud-prog-val{
-  font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);
+  font-family:var(--f-num);font-size:12.5px;color:var(--text2);
   text-align:right;white-space:nowrap;
 }
 .bud-prog-val strong{font-weight:600;color:var(--text)}
@@ -1210,12 +1251,12 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
              opacity .18s ease;
 }
 .donut-lbl{
-  font-family:'Sora',sans-serif;font-size:11.5px;
+  font-family:var(--f-sans);font-size:11.5px;
   fill:var(--text3);font-weight:500;letter-spacing:.06em;
 }
 .donut-amt{
-  font-family:'DM Mono',monospace;font-size:15px;
-  fill:var(--text);font-weight:700;letter-spacing:-.03em;
+  font-family:var(--f-num);font-size:15px;
+  fill:var(--text);font-weight:500;letter-spacing:-.03em;
 }
 .donut-empty{
   text-align:center;color:var(--text3);font-size:13px;
@@ -1243,11 +1284,11 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .cat-amt{
-  font-family:'DM Mono',monospace;font-size:13px;font-weight:600;
+  font-family:var(--f-num);font-size:13px;font-weight:500;
   color:var(--text);flex-shrink:0;letter-spacing:-.02em;
 }
 .cat-share{
-  font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text3);
+  font-family:var(--f-num);font-size:11.5px;color:var(--text3);
   flex:0 0 44px;text-align:right;
 }
 .cat-chev{font-size:9px;color:var(--text3);flex-shrink:0;transition:transform .2s;display:inline-block}
@@ -1259,7 +1300,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 .cat-bud .bud-track-wrap{flex:1;margin-bottom:0}
 .cat-bud-pct{
-  font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);
+  font-family:var(--f-num);font-size:11px;color:var(--text3);
   flex-shrink:0;white-space:nowrap;
 }
 .cat-bud-pct.over{color:var(--red);font-weight:600}
@@ -1293,9 +1334,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 .donut-detail-row:last-of-type{border-bottom:none}
 .donut-detail-n{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.donut-detail-d{font-size:11px;color:var(--text3);flex-shrink:0;font-family:'DM Mono',monospace}
+.donut-detail-d{font-size:11px;color:var(--text3);flex-shrink:0;font-family:var(--f-num)}
 .donut-detail-a{
-  font-family:'DM Mono',monospace;font-size:12.5px;font-weight:600;
+  font-family:var(--f-num);font-size:12.5px;font-weight:500;
   color:var(--text2);flex-shrink:0;min-width:60px;text-align:right;
 }
 .donut-detail-more{font-size:11px;color:var(--text3);padding:6px 0 2px;text-align:center}
@@ -1324,7 +1365,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .bud-nolimit-row:last-child{border-bottom:none}
 .bud-nolimit-row span:first-child{color:var(--text);flex:1;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bud-nolimit-amt{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);font-weight:600}
+.bud-nolimit-amt{font-family:var(--f-num);font-size:12.5px;color:var(--text2);font-weight:500}
 
 /* ── Trend screen ────────────────────────────────────────── */
 .yr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
@@ -1421,7 +1462,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
   font-size:12px;font-weight:600;color:var(--text2);
   padding:9px 2px 6px;border-top:1px solid var(--border);
 }
-.cal-detail-sum{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)}
+.cal-detail-sum{font-family:var(--f-num);font-size:12px;color:var(--text3)}
 .cal-hint{
   font-size:11.5px;color:var(--text3);text-align:center;
   padding:14px 0 6px;border-top:1px solid var(--border);margin-top:10px;
@@ -1436,7 +1477,7 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .cal-row-body{flex:1;min-width:0}
 .cal-row-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-row-meta{font-size:10.5px;color:var(--text3);margin-top:2px}
-.cal-row-amt{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;flex-shrink:0}
+.cal-row-amt{font-family:var(--f-num);font-size:13px;font-weight:500;flex-shrink:0}
 .cal-row-amt.r{color:var(--red)}.cal-row-amt.g{color:var(--green)}.cal-row-amt.o{color:var(--orange)}
 .sheet{
   background:var(--bg);
@@ -1480,9 +1521,9 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 }
 .cl-item.now .cl-dot{background:var(--green);box-shadow:0 0 0 1.5px var(--green)}
 .cl-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:9px}
-.cl-ver{font-family:'DM Mono',monospace;font-size:14.5px;font-weight:600;color:var(--text);letter-spacing:-.01em}
+.cl-ver{font-family:var(--f-num);font-size:14.5px;font-weight:500;color:var(--text);letter-spacing:-.01em}
 .cl-item.now .cl-ver{color:var(--green)}
-.cl-date{font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace}
+.cl-date{font-size:11.5px;color:var(--text3);font-family:var(--f-num)}
 .cl-now-badge{
   font-size:10px;font-weight:700;color:var(--green);background:var(--green-lt);
   padding:2px 7px;border-radius:99px;letter-spacing:.04em;
@@ -1536,6 +1577,32 @@ html{overflow-x:hidden;overscroll-behavior-x:none}
 .radio-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:4px}
 .radio-opt{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--text);padding:5px 0;font-size:14px}
 .radio-opt input[type=radio]{width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+/* 選項本身也是 <label>，會被上面 .field label（欄位標題：11.5px、灰字、全大寫、
+   display:block）以較高的權重蓋掉 —— 選項看起來像停用的小標題，圓鈕也跟文字
+   錯位。這裡用同等以上的權重把選項還原成正常文字。 */
+.field .radio-opt{
+  display:flex;margin-bottom:0;font-size:14px;font-weight:500;
+  color:var(--text);letter-spacing:0;text-transform:none;
+}
+/* 分段按鈕：二～三選一的欄位，整塊都是命中區，選中狀態一眼可辨 */
+.radio-row.seg{
+  display:flex;flex-wrap:nowrap;gap:4px;padding:4px;margin-top:0;
+  background:var(--surface4);border-radius:13px;
+}
+.radio-row.seg .radio-opt{
+  flex:1;justify-content:center;min-height:40px;padding:0 8px;position:relative;
+  border-radius:10px;color:var(--text2);font-size:14px;font-weight:600;
+  transition:background var(--t-fast),color var(--t-fast),box-shadow var(--t-fast);
+  -webkit-user-select:none;user-select:none;text-align:center;white-space:nowrap;
+}
+.radio-row.seg .radio-opt input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.radio-row.seg .radio-opt:has(input:checked){
+  background:var(--bg);color:var(--text);box-shadow:var(--shadow-sm);
+}
+.radio-row.seg .radio-opt:has(input:focus-visible){outline:2px solid var(--green);outline-offset:1px}
+.radio-row.seg .radio-opt:active{transform:scale(.98)}
+/* 代墊款被選中時用橘色，與清單上的代墊配色一致 */
+.radio-row.seg .radio-opt:has(#rt-advance:checked){color:var(--orange-dk)}
 .fdivider{height:1px;background:var(--border);margin:16px 0}
 .field-note{font-size:11px;color:var(--text3);margin-top:5px}
 
@@ -1607,7 +1674,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 }
 .amt-wrap:focus-within{outline:2.5px solid var(--green);outline-offset:1px;background:var(--bg)}
 .amt-unit{font-size:15px;color:var(--text3);margin-right:5px;flex-shrink:0;font-weight:500}
-.amt-disp{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;flex:1;color:var(--text)}
+.amt-disp{font-family:var(--f-sans);font-size:22px;font-weight:700;letter-spacing:-.03em;flex:1;color:var(--text)}
 .amt-disp.ph{color:var(--text3);font-weight:400;font-size:16px;font-family:inherit}
 .amt-input{position:absolute;inset:0;opacity:0;border:none;background:transparent;font-size:16px;width:100%;height:100%;cursor:text}
 
@@ -1711,7 +1778,10 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .cat-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}
 .cat-tag{display:flex;align-items:center;gap:5px;padding:6px 13px;border:1.5px solid var(--border2);border-radius:99px;font-size:13px;background:var(--surface3);color:var(--text);cursor:pointer;font-weight:500;transition:all var(--t-fast)}
 .cat-tag:active{background:var(--surface4)}
-.cat-del{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;cursor:pointer;flex-shrink:0;color:var(--text3)}
+.cat-del{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;cursor:pointer;flex-shrink:0;color:var(--text3);
+  /* 14px 的 ✕ 太難點中；用透明外框把命中區撐到約 30px，視覺大小不變 */
+  box-sizing:content-box;padding:8px;margin:-8px -10px -8px -6px}
+.cat-del:active{color:var(--red)}
 .cat-add-row{display:flex;gap:8px}
 .cat-add-row input{flex:1;height:40px;border:1.5px solid var(--border2);border-radius:var(--radius);background:var(--surface3);color:var(--text);padding:0 12px;font-size:16px;transition:all var(--t-base)}
 .cat-add-row input:focus{outline:2px solid var(--green);outline-offset:1px;background:var(--bg)}
@@ -1721,6 +1791,8 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 /* ── Toggle switch ────────────────────────────────────────── */
 .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
 .toggle-row:last-child{border-bottom:none}
+.toggle-row.disabled{opacity:.45}
+.toggle-row.disabled .toggle{pointer-events:none}
 .toggle-lbl{font-size:14px;color:var(--text);font-weight:500}
 .toggle-sub{font-size:11px;color:var(--text3);margin-top:2px}
 .toggle{position:relative;width:46px;height:28px;flex-shrink:0}
@@ -1743,7 +1815,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .snap-meta{flex:1;min-width:0}
 .snap-when{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
 .snap-latest{font-size:10px;font-weight:700;color:var(--green);background:var(--green-lt);padding:2px 7px;border-radius:99px;letter-spacing:.03em}
-.snap-detail{font-size:11.5px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}
+.snap-detail{font-size:11.5px;color:var(--text3);margin-top:3px;font-family:var(--f-num)}
 .snap-restore{flex:0 0 auto;height:34px;padding:0 16px;border-radius:99px;border:1.5px solid var(--green);
   background:var(--green-lt);color:var(--green-dk);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
 .snap-restore:active{background:var(--green);color:#fff;transform:scale(.97)}
@@ -1770,12 +1842,15 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   box-shadow:0 6px 20px rgba(46,158,114,.30);
 }
 .app-info-icon svg{width:30px;height:30px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
-.app-info-name{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px;color:var(--text);letter-spacing:-.02em}
+.app-info-name{font-family:var(--f-sans);font-size:20px;font-weight:700;margin-bottom:4px;color:var(--text);letter-spacing:-.02em}
 .app-info-version{font-size:13px;color:var(--text3);margin-bottom:16px}
 .app-info-rows{border-top:1px solid var(--border);padding-top:14px}
-.app-info-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
-.app-info-row span:first-child{color:var(--text3)}
-.app-info-row span:last-child{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:12px}
+.app-info-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;min-height:30px}
+.app-info-row>span:first-child{color:var(--text3)}
+.app-info-row>span:last-child{color:var(--text);font-weight:500;font-family:var(--f-num);font-size:12px}
+/* 可點的那一列：這條規則要排在 .app-info-row 之後，否則它的 padding:5px 0
+   會把左右內距蓋掉，只剩 -6px 外距 ——「版本」兩個字因此比其他列往左凸 6px */
+.app-info-row.app-info-row-tap{margin:0 -8px;padding:5px 8px}
 
 
 /* ── 訂閱單行細條（hero 卡下方，高度壓到約 34px）────────── */
@@ -1797,7 +1872,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sub-chip-amt{
-  font-family:'DM Mono',monospace;font-size:12.5px;font-weight:600;
+  font-family:var(--f-num);font-size:12.5px;font-weight:500;
   color:var(--text);flex-shrink:0;
 }
 .sub-chip-arrow{width:12px;height:12px;stroke:var(--text3);fill:none;stroke-width:2.2;stroke-linecap:round;flex-shrink:0}
@@ -1815,7 +1890,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .sub-sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
 .sub-sum-row:last-child{margin-bottom:0}
 .sub-sum-lbl{font-size:12px;color:var(--text2);flex-shrink:0}
-.sub-sum-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--text);text-align:right}
+.sub-sum-val{font-family:var(--f-num);font-size:15px;font-weight:500;color:var(--text);text-align:right}
 .sub-sum-val.sm{font-size:13px;font-weight:500;color:var(--text2)}
 
 /* 未來 12 個月扣款分佈 */
@@ -1824,7 +1899,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   display:flex;justify-content:space-between;align-items:baseline;gap:10px;
   font-size:11.5px;color:var(--text2);font-weight:600;padding:0 2px 8px;
 }
-.fc-hdr span:last-child{font-family:'DM Mono',monospace;color:var(--text3);font-weight:500}
+.fc-hdr span:last-child{font-family:var(--f-num);color:var(--text3);font-weight:500}
 .fc-chart{display:flex;align-items:flex-end;gap:3px;height:62px;padding:0 2px}
 .fc-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-end}
 .fc-bar{width:100%;border-radius:3px 3px 0 0;background:var(--surface4)}
@@ -1843,7 +1918,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   padding:13px 2px 7px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;
 }
 .sub-card-hdr span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sub-card-hdr span:last-child{font-family:'DM Mono',monospace;color:var(--text3);font-weight:500;flex-shrink:0}
+.sub-card-hdr span:last-child{font-family:var(--f-num);color:var(--text3);font-weight:500;flex-shrink:0}
 .sub-fee-tag{
   display:inline-block;font-size:9px;font-weight:600;margin-left:6px;
   padding:1px 6px;border-radius:99px;background:var(--surface4);color:var(--text3);
@@ -1860,7 +1935,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .sub-row-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub-row-meta{font-size:11px;color:var(--text3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub-row-right{text-align:right;flex-shrink:0}
-.sub-row-amt{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--text)}
+.sub-row-amt{font-family:var(--f-num);font-size:14px;font-weight:500;color:var(--text)}
 .sub-row-unit{font-size:10px;font-weight:400;color:var(--text3)}
 .sub-row-cyc{font-size:10px;color:var(--text3);margin-top:2px}
 .sub-badge{
@@ -1895,7 +1970,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   display:flex;justify-content:space-between;align-items:baseline;gap:10px;
   font-size:12px;color:var(--text2);padding:3px 0;
 }
-.sub-calc-row span:last-child{font-family:'DM Mono',monospace;flex-shrink:0}
+.sub-calc-row span:last-child{font-family:var(--f-num);flex-shrink:0}
 .sub-calc-row.strong{
   color:var(--text);font-weight:600;font-size:13px;
   border-top:1px solid var(--border);margin-top:4px;padding-top:7px;
@@ -1944,7 +2019,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   font-size:10px;padding:3px 8px;border-radius:99px;margin-left:5px;cursor:pointer;
 }
 .diag-body{
-  font-family:'DM Mono',monospace;font-size:10px;line-height:1.5;
+  font-family:var(--f-num);font-size:10px;line-height:1.5;
   white-space:pre-wrap;word-break:break-all;
   max-height:34vh;overflow-y:auto;margin:0;
 }
@@ -1962,18 +2037,51 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 .offline-bar.on{display:flex}
 .offline-bar svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 
+/* ── 通用對話框 ─────────────────────────────────────────── */
+#uidlg{z-index:calc(var(--z-overlay) + 5)}   /* 要疊在完整表單（z-overlay+1）之上 */
+.ui-dlg{max-width:340px;padding:22px 20px calc(18px + var(--safe-b));animation:dlgIn .18s ease-out}
+@keyframes dlgIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.ui-dlg-title{font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin-bottom:8px}
+.ui-dlg-title:empty{display:none}
+.ui-dlg-msg{font-size:14px;line-height:1.6;color:var(--text2);white-space:pre-line;overflow-wrap:anywhere}
+.ui-dlg-msg b{color:var(--text);font-weight:600}
+.ui-dlg-btns{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.ui-dlg-btns.row{flex-direction:row-reverse}
+.ui-dlg-btns .btn{flex:0 0 auto;height:46px;min-height:46px;box-shadow:none}
+.ui-dlg-btns.row .btn{flex:1 1 0}
+.btn.danger{background:var(--red);color:#fff;border-color:transparent;font-weight:700}
+.btn.danger:active{background:var(--red-dk)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--text2)}
+
+/* ── 欄位驗證錯誤 ─────────────────────────────────────────── */
+.field.invalid input,.field.invalid select,.field.invalid .amt-wrap{
+  border-color:var(--red);background-color:var(--red-lt);
+}
+.field-err{font-size:12px;color:var(--red);margin-top:6px;font-weight:500}
+.field.invalid input:focus,.field.invalid select:focus,.field.invalid .amt-wrap:focus-within{outline-color:var(--red)}
+.field.invalid{animation:fieldShake .32s ease}
+@keyframes fieldShake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.field.invalid,.ui-dlg{animation:none}}
+
 /* ── Toast ────────────────────────────────────────────────── */
 .toast{
   position:fixed;bottom:calc(72px + var(--safe-b) + 10px);
   left:50%;transform:translateX(-50%) translateY(12px);
   background:rgba(26,25,22,.9);color:#fff;font-size:14px;font-weight:500;
-  padding:10px 18px;border-radius:99px;
+  padding:10px 18px;border-radius:22px;
   opacity:0;transition:all .25s;pointer-events:none;
-  white-space:nowrap;z-index:var(--z-toast);max-width:92vw;
-  display:flex;align-items:center;gap:4px;
+  z-index:var(--z-toast);
+  /* 可換行：「已更新：國泰人壽 年繳保費（…）（歸入 2026/10）」這類長訊息原本
+     nowrap 直接被截掉，還會橫跨到 FAB 上面 */
+  white-space:normal;text-align:center;line-height:1.4;
+  width:max-content;max-width:calc(100vw - 40px);
+  display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;
   box-shadow:var(--shadow-md);
 }
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+/* 首頁有 FAB 時，toast 升到按鈕上方，不和它搶同一塊位置 */
+.fab.on ~ .toast{bottom:calc(124px + var(--safe-b))}
+.toast button{flex-shrink:0}
 
 /* ── Amber lit (missing from tokens) ─────────────────────── */
 .rem-ico.a{background:var(--amber-lt)}.rem-ico.a svg{stroke:var(--amber)}
@@ -2271,9 +2379,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div class="app-info-version">個人記帳 PWA · 離線可用</div>
       <div class="app-info-rows">
         <div class="app-info-row app-info-row-tap" role="button" tabindex="0" onclick="openChangelog()">
-          <span>版本</span><span id="app-info-ver">v4.20.0 <span class="app-info-chev">›</span></span>
+          <span>版本</span><span><span id="app-info-ver">v4.21.0</span> <span class="app-info-chev">›</span></span>
         </div>
-        <div class="app-info-row"><span>建置日期</span><span>2026/08/20</span></div>
+        <div class="app-info-row"><span>建置日期</span><span id="app-info-date">2026/09/23</span></div>
         <div class="app-info-row"><span>開發者</span><span>Henry</span></div>
       </div>
     </div>
@@ -2320,7 +2428,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
   <div class="fs-body">
     <div class="field" id="f-type-wrap">
       <label>費用類型</label>
-      <div class="radio-row">
+      <div class="radio-row seg" role="radiogroup" aria-label="費用類型">
         <label class="radio-opt"><input type="radio" name="itype" id="rt-normal" value="normal" onchange="onTypeChange()"> 一般費用</label>
         <label class="radio-opt"><input type="radio" name="itype" id="rt-advance" value="advance" onchange="onTypeChange()"> 代墊款</label>
       </div>
@@ -2399,7 +2507,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
       <div style="height:1px;background:var(--border);margin:0 0 14px"></div>
       <div class="field">
         <label>到期提醒</label>
-        <div class="radio-row">
+        <div class="radio-row seg" role="radiogroup" aria-label="到期提醒">
           <label class="radio-opt"><input type="radio" name="remind" id="rd-off" value="0"> 不提醒</label>
           <label class="radio-opt"><input type="radio" name="remind" id="rd-3" value="3"> 提前 3 天</label>
           <label class="radio-opt"><input type="radio" name="remind" id="rd-7" value="7"> 提前 7 天</label>
@@ -2458,7 +2566,13 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 <div class="overlay" id="cov" role="dialog" aria-modal="true" aria-labelledby="cov-title" onclick="if(event.target===this)closeCatModal()">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
-    <h3 id="cov-title">管理費用類別</h3>
+    <div class="sheet-hdr-row">
+      <h3 id="cov-title">管理費用類別</h3>
+      <button class="fs-back" onclick="closeCatModal()" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="field-note" style="margin:-6px 0 12px">點類別右側的 ✕ 刪除；最多 12 個。</p>
     <div class="cat-grid" id="cat-tags"></div>
     <div class="cat-add-row">
       <input id="new-cat" type="text" placeholder="新增類別名稱" maxlength="10">
@@ -2475,8 +2589,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <div class="sheet-handle"></div>
     <div class="sheet-hdr-row">
       <h3 id="snapov-title">自動備份與還原</h3>
-      <button class="btn" style="flex:0 0 auto;width:auto;height:36px;padding:0 16px;font-size:14px"
-              onclick="document.getElementById('snapov').classList.remove('on')">關閉</button>
+      <button class="fs-back" onclick="document.getElementById('snapov').classList.remove('on')" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
     </div>
     <div class="remind-info-box"><p>App 會在每次開啟與資料變動後自動存檔，保留最近 5 份，可一鍵還原 —— 用來救誤刪、誤匯入。快照存在這支手機上，換機或遺失救不到，離開裝置的長期備份請用上方「匯出 JSON」。</p></div>
     <div id="snap-list"></div>
@@ -2488,8 +2603,9 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
     <div class="sheet-handle"></div>
     <div class="sheet-hdr-row">
       <h3 id="clov-title">版本更新紀錄</h3>
-      <button class="btn" style="flex:0 0 auto;width:auto;height:36px;padding:0 16px;font-size:14px"
-              onclick="document.getElementById('clov').classList.remove('on')">關閉</button>
+      <button class="fs-back" onclick="document.getElementById('clov').classList.remove('on')" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
     </div>
     <div id="cl-list"></div>
   </div>
@@ -2498,12 +2614,15 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 <div class="overlay" id="rsov" role="dialog" aria-modal="true" aria-labelledby="rsov-title" onclick="if(event.target===this)this.classList.remove('on')">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
-    <h3 id="rsov-title">提醒設定</h3>
+    <div class="sheet-hdr-row">
+      <h3 id="rsov-title">提醒設定</h3>
+      <button class="fs-save" onclick="saveRemindSettings()">儲存</button>
+      <button class="fs-back" onclick="document.getElementById('rsov').classList.remove('on')" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
     <div class="remind-info-box"><p>開啟或切回 App 時自動掃描到期費用：首頁顯示提醒卡片；若有逾期或即將到期，會跳出提醒視窗（每天最多一次）。不需要系統通知權限。</p></div>
     <div id="remind-settings-rows"></div>
-    <div class="sheet-btns" style="margin-top:14px">
-      <button class="btn primary" onclick="saveRemindSettings()">儲存</button>
-    </div>
   </div>
 </div>
 
@@ -2678,7 +2797,7 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 
       <div class="field">
         <label>扣款週期</label>
-        <div class="radio-row">
+        <div class="radio-row seg" role="radiogroup" aria-label="扣款週期">
           <label class="radio-opt"><input type="radio" name="sbcyc" id="sb-cyc-m" value="monthly" onchange="updateSubCalc()"> 每月</label>
           <label class="radio-opt"><input type="radio" name="sbcyc" id="sb-cyc-y" value="yearly" onchange="updateSubCalc()"> 每年</label>
         </div>
@@ -2773,6 +2892,19 @@ input[type="date"]::-moz-focus-inner{border:0;padding:0}
 <div class="offline-bar" id="offline-bar" role="status" aria-live="polite">
   <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.7 16.7A9 9 0 0 0 12 20M5 12.5a11 11 0 0 1 4-2.4M2 8.8a16 16 0 0 1 5-3M22 8.8a16 16 0 0 0-9.5-3.7"/></svg>
   離線模式 · 資料仍存在本機
+</div>
+<!-- ═══════════════ 通用對話框（取代 alert / confirm）════════════════
+     原生 alert/confirm 在 iOS 主畫面模式會以網域名稱當標題、字級與按鈕
+     都不受控，而且只有「確定／取消」兩個鍵 —— 匯入時的「清空還原 vs 合併」
+     被硬塞進這兩個鍵，連「不匯入了」都選不到。 -->
+<div class="overlay center" id="uidlg" role="alertdialog" aria-modal="true"
+     aria-labelledby="uidlg-title" aria-describedby="uidlg-msg"
+     onclick="if(event.target===this)_dlgClose(_dlgCancel)">
+  <div class="dialog ui-dlg" onclick="event.stopPropagation()">
+    <div class="ui-dlg-title" id="uidlg-title"></div>
+    <div class="ui-dlg-msg" id="uidlg-msg"></div>
+    <div class="ui-dlg-btns" id="uidlg-btns"></div>
+  </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -2889,6 +3021,83 @@ function toastAction(msg, label, fn){
 function doToastAct(){
   const t=document.getElementById('toast');
   if(t._actFn){clearTimeout(_actTimer);const f=t._actFn;t._actFn=null;t.classList.remove('on');f();}
+}
+
+// ── 通用對話框 ────────────────────────────────────────────────
+// uiDialog({title, msg, html, buttons:[{label, value, kind}], cancelValue}) → Promise<value>
+//   kind：'primary' | 'danger' | '' | 'ghost'。按鈕由上到下依序排列（兩顆時改左右並排，
+//   第一顆放右邊 —— 與 iOS 慣例一致，主要動作在右／下）。
+//   點背景、按 Esc 都回傳 cancelValue。
+let _dlgResolve=null, _dlgCancel=null;
+function uiDialog(o){
+  const ov=document.getElementById('uidlg');
+  if(!ov){ return Promise.resolve(o.cancelValue); }
+  if(_dlgResolve){ const r=_dlgResolve; _dlgResolve=null; r(_dlgCancel); }  // 不疊兩層
+  document.getElementById('uidlg-title').textContent=o.title||'';
+  const msg=document.getElementById('uidlg-msg');
+  if(o.html!=null) msg.innerHTML=o.html; else msg.textContent=o.msg||'';
+  const box=document.getElementById('uidlg-btns');
+  const btns=o.buttons||[{label:'知道了',value:true,kind:'primary'}];
+  box.className='ui-dlg-btns'+(btns.length===2?' row':'');
+  box.innerHTML='';
+  btns.forEach(b=>{
+    const el=document.createElement('button');
+    el.type='button'; el.className='btn'+(b.kind?' '+b.kind:''); el.textContent=b.label;
+    el.addEventListener('click',()=>_dlgClose(b.value));
+    box.appendChild(el);
+  });
+  _dlgCancel=o.cancelValue;
+  ov.classList.add('on');
+  const focusEl=box.querySelector('.btn.primary,.btn.danger')||box.querySelector('.btn');
+  setTimeout(()=>focusEl&&focusEl.focus({preventScroll:true}),30);
+  return new Promise(res=>{ _dlgResolve=res; });
+}
+function _dlgClose(v){
+  const ov=document.getElementById('uidlg');
+  if(ov) ov.classList.remove('on');
+  const r=_dlgResolve; _dlgResolve=null;
+  if(r) r(v);
+}
+function uiAlert(msg, title){
+  return uiDialog({title:title||'', msg, buttons:[{label:'知道了',value:true,kind:'primary'}], cancelValue:true});
+}
+function uiConfirm(msg, o={}){
+  return uiDialog({
+    title:o.title||'', msg, html:o.html,
+    buttons:[{label:o.ok||'確定', value:true, kind:o.danger?'danger':'primary'},
+             {label:o.cancel||'取消', value:false}],
+    cancelValue:false
+  });
+}
+
+// ── 欄位驗證 ────────────────────────────────────────────────
+// 在欄位下方直接寫出錯誤、框線轉紅並把焦點帶過去，取代「跳一個 alert、
+// 按掉之後自己找是哪一格」。使用者一動那一格，錯誤就自動收掉。
+function fieldError(id, msg){
+  const el=document.getElementById(id);
+  const field=el && (el.closest('.field') || el.parentElement);
+  if(!field){ toast(msg); return; }
+  clearFieldError(field);
+  field.classList.add('invalid');
+  const p=document.createElement('p'); p.className='field-err'; p.textContent=msg; p.setAttribute('role','alert');
+  field.appendChild(p);
+  const clear=()=>{ clearFieldError(field); el.removeEventListener('input',clear); el.removeEventListener('change',clear); };
+  el.addEventListener('input',clear); el.addEventListener('change',clear);
+  // amt-input 是透明疊在顯示層上的真正輸入框；focus 它就會叫出數字鍵盤
+  try{ el.focus({preventScroll:false}); }catch{}
+  const sc=field.closest('.fs-body,.sheet');
+  if(sc){
+    const br=sc.getBoundingClientRect(), fr=field.getBoundingClientRect();
+    if(fr.top<br.top+60 || fr.bottom>br.bottom-20) sc.scrollTop += fr.top-br.top-80;
+  }
+}
+function clearFieldError(field){
+  if(!field) return;
+  field.classList.remove('invalid');
+  field.querySelectorAll('.field-err').forEach(n=>n.remove());
+}
+function clearAllFieldErrors(root){
+  (root||document).querySelectorAll('.field.invalid').forEach(clearFieldError);
 }
 
 
@@ -3048,7 +3257,7 @@ async function renderSubChip(){
   const hasSplit = live.some(subHasSplit);
   const mo       = live.reduce((t,x)=>t+subMonthly(x),0);
   const moMine   = live.reduce((t,x)=>t+subMonthlyMine(x),0);
-  amtEl.textContent = fmt(hasSplit?moMine:mo)+' /月';
+  amtEl.textContent = (hasSplit?'我 ':'')+fmt(hasSplit?moMine:mo)+' /月';
 
   // 7 天內有扣款時，這 34px 從儀表板切換成提醒——
   // 不然它只是一條永遠不變的裝飾。
@@ -3063,7 +3272,11 @@ async function renderSubChip(){
     txtEl.textContent = `訂閱 · ${soon.x.name} ${dd<=0?'今日':dd+' 天後'}扣款 ${fmt(subCharged(soon.x))}`;
   }else{
     chip.classList.remove('urgent');
-    txtEl.textContent = `訂閱 ${live.length} 項${hasSplit?`　我負擔（帳單 ${fmt(mo)}）`:'　已含在信用卡帳單'}`;
+    // 原本寫成「我負擔（帳單 $632）… $551 /月」：括號裡的數字與右邊的數字
+    // 並排，讀起來像是同一件事的兩個值。改成兩個各自有標籤的數字。
+    txtEl.textContent = hasSplit
+      ? `訂閱 ${live.length} 項 · 帳單 ${fmt(mo)}`
+      : `訂閱 ${live.length} 項 · 已含在卡費`;
   }
 }
 
@@ -3075,7 +3288,8 @@ let _poliTimer = 0;
 // 位置用 calc 把行程往內縮一個半徑：0% 時貼齊軌道左端而不是騎在邊緣上，
 // 100% 時同理。純 calc 之間仍可補間，不需要 @property。
 const _poliPos = pct => `calc(${pct}% + ${((50-pct)/50*7.5).toFixed(2)}px)`;
-function _runPoli(pct, isOver){
+// fromPct：起跑位置。null = 不跑（數值沒變，直接定位、不播動畫）。
+function _runPoli(pct, isOver, fromPct=0){
   const el = document.getElementById('h-bud-poli');
   if(!el) return;
   clearTimeout(_poliTimer);
@@ -3083,9 +3297,13 @@ function _runPoli(pct, isOver){
   el.classList.toggle('over', !!isOver);
   el.classList.toggle('warn', !isOver && pct>=80);
 
-  if(_reduceMotion()){ el.style.left = _poliPos(pct); return; }
+  if(_reduceMotion() || fromPct===null){
+    const t=el.style.transition; el.style.transition='none';
+    el.style.left = _poliPos(pct); void el.offsetWidth; el.style.transition=t;
+    return;
+  }
 
-  el.style.left = _poliPos(0);
+  el.style.left = _poliPos(fromPct);
   void el.offsetWidth;                      // 重置 transition 起點
   el.classList.add('hop');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -3205,7 +3423,7 @@ function _subRowHTML(x){
       <div class="sub-row-meta">${esc(meta.join(' · ')||'—')}</div>
     </div>
     <div class="sub-row-right">
-      <div class="sub-row-amt">${fmt(main)}<span class="sub-row-unit"> /月</span></div>
+      <div class="sub-row-amt">${split?'<span class="sub-row-unit">我 </span>':''}${fmt(main)}<span class="sub-row-unit"> /月</span></div>
       <div class="sub-row-cyc">${sub2}</div>
     </div>
   </div>`;
@@ -3294,7 +3512,9 @@ async function renderSubList(){
     const sum=rows.reduce((t,x)=>t+subMonthly(x),0);
     const fee=cardFee(card);
     const feeTag=(fee!=null&&fee>0)?`<span class="sub-fee-tag">外幣 ${fee}%</span>`:'';
-    html+=`<div class="sub-card-hdr"><span>${esc(card)}${feeTag}</span><span>${fmt(sum)} /月</span></div>`;
+    // 卡片小計是「帳單上會看到多少」，列上的大數字在有分攤時是「我負擔」，
+    // 兩者不同 —— 標清楚，免得加總對不起來
+    html+=`<div class="sub-card-hdr"><span>${esc(card)}${feeTag}</span><span>帳單 ${fmt(sum)} /月</span></div>`;
     html+=rows.map(_subRowHTML).join('');
   });
   if(!live.length) html+=`<div class="empty-msg" style="padding:26px 12px">
@@ -3407,6 +3627,7 @@ function updateSubCalc(){
 
 async function openSubEdit(id){
   _editSubId=id;
+  clearAllFieldErrors(document.getElementById('sub-view-edit'));
   const cat=document.getElementById('sb-cat');
   cat.innerHTML=getCats().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   const cur=document.getElementById('sb-cur');
@@ -3457,14 +3678,15 @@ function closeSubEdit(silent){
 
 async function saveSub(){
   const rec=_readSubForm();
-  if(!rec.name){ alert('請填寫訂閱名稱'); return; }
-  if(rec.amount<0){ alert('金額不可為負數'); return; }
-  if(!rec.startDate){ alert('請選擇起訂日'); return; }
-  if(rec.endDate && rec.endDate < rec.startDate){ alert('結束日不可早於起訂日'); return; }
+  clearAllFieldErrors(document.getElementById('sub-view-edit'));
+  if(!rec.name){ fieldError('sb-name','請填寫訂閱名稱'); return; }
+  if(rec.amount<0){ fieldError('sb-amt-r','金額不可為負數'); return; }
+  if(!rec.startDate){ fieldError('sb-start','請選擇起訂日'); return; }
+  if(rec.endDate && rec.endDate < rec.startDate){ fieldError('sb-end','結束日不可早於起訂日'); return; }
   if(subIsFX(rec) && !rec.fxRate && !rec.chargedAmount){
-    alert('外幣訂閱請填寫匯率，或直接填入實際扣繳金額'); return;
+    fieldError('sb-fx','外幣訂閱請填寫匯率，或在下方直接填入實際扣繳金額'); return;
   }
-  if(rec.splitMine > rec.splitCount){ alert('我的份數不可大於總份數'); return; }
+  if(rec.splitMine > rec.splitCount){ fieldError('sb-split-mine','我的份數不可大於總份數'); return; }
 
   if(_editSubId) rec.id=_editSubId;
   const wasEditing=!!_editSubId;
@@ -3482,7 +3704,8 @@ async function saveSub(){
 async function deleteSub(){
   if(!_editSubId) return;
   const x=await getSubById(_editSubId);
-  if(!confirm(`確定刪除訂閱「${x?.name||''}」？\n此操作不影響任何費用記錄。`)) return;
+  if(!await uiConfirm('只刪除這筆訂閱的記錄，不影響任何費用項目。',
+       {title:`刪除訂閱「${x?.name||''}」？`, ok:'刪除', danger:true})) return;
   await delSub(_editSubId);
   closeSubEdit(true);
   await renderSubList();
@@ -4542,13 +4765,22 @@ async function refreshRems(){
 
   const badge=document.getElementById('remind-badge');
   if(badge){
-    if(n>0){badge.textContent=n>9?'9+':n;badge.style.display='';}
-    else badge.style.display='none';
+    badge.textContent = n>9 ? '9+' : String(n);
+    badge.classList.toggle('on', n>0);
   }
 
   const wrap=document.getElementById('reminder-wrap');
+  // 「待處理」檢視本身就是這些提醒的清單：若每一筆提醒都已經出現在
+  // 下方清單裡（都屬於正在看的這個月），橫幅只是把同一件事再講一次，
+  // 連同篩選鈕上的角標，同一個「4」會在一個畫面上出現三次。
+  // 有跨月的提醒（例如上個月還沒繳的）時照常顯示，那些在清單上看不到。
+  let allInList=false;
+  if(n && typeof homeView!=='undefined' && homeView==='todo'){
+    const {y,m}=curYM(), k=ymStr(y,m);
+    allInList=_remCache.every(r=>r.item && r.item.ym===k);
+  }
   if(wrap){
-    wrap.innerHTML = n
+    wrap.innerHTML = (n && !allInList)
       ? `<button class="rem-entry" type="button" onclick="openRemModal()">
            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
            <p>有 <strong>${n} 筆</strong>待處理提醒</p><span>檢視</span>
@@ -4745,6 +4977,8 @@ function setHomeView(v){
 
 // ── HOME ─────────────────────────────────────────────────
 let _lastHomeYm=null;
+// 上一次畫預算條時的數值，用來判斷這次要不要播動畫、從哪裡接著跑
+let _budLast=null;
 // opts.skipList：只重算統計（hero、預算條、篩選鈕計數、提醒），不動清單 DOM。
 // 勾選核取方塊時用得上 —— 那個動作只改變「已繳/未繳」的分配，總額、預算
 // 百分比、卡片位置都沒變，重建 154 個節點是白做工。
@@ -4811,8 +5045,13 @@ async function rHome(opts={}){
   const miniTot=document.getElementById('h-mini-tot');
   if(miniTot) animNum(miniTot, total, fmt,
           {from: (monthChanged || !prevHomeYm) ? 0 : undefined, dur:750});
+  const _overBud = (budStore.total||0)>0 && total>(budStore.total||0);
+  document.getElementById('h-tot').classList.toggle('over', _overBud);
+  if(miniTot) miniTot.classList.toggle('over', _overBud);
   // 已繳 = total − 未繳，是推得的；只留需要行動的那一半。
-  let sub = unpaid>0
+  let sub = !items.length
+    ? '這個月還沒有任何項目'
+    : unpaid>0
     ? `未繳 <b class="r">${fmt(unpaid)}</b><span class="sep">·</span>已繳 <b class="g">${fmt(paid)}</b>`
     : `全部已繳 <b class="g">${fmt(paid)}</b>`;
   if(advOn()&&advUnrec>0) sub+=`<span class="sep">·</span>待收 <b class="o">${fmt(advUnrec)}</b>`;
@@ -4829,6 +5068,7 @@ async function rHome(opts={}){
   // 沒設預算就整塊收起來：一條 0% 的軌道不說明任何事
   if(bTotal<=0){
     wrap.hidden = true;
+    _budLast = null;
   }else{
     wrap.hidden = false;
     const remain = bTotal-total;
@@ -4837,12 +5077,27 @@ async function rHome(opts={}){
 
     const shownPct = Math.min(rawPct,100);
     const state = rawPct>=100?'over':rawPct>=80?'warn':'';
-    fill.style.width = '0%';
+    // 只在「第一次畫、換月」時從 0 起跑；數值變了就從上一個位置接著跑；
+    // 數值沒變（切換待處理／全部、勾選項目、回到這一頁）就完全不動。
+    // 原本每次重繪都把進度條歸零重播，切個篩選就看到「已用 92%」這種
+    // 動畫途中的假數字，勾一筆帳單也要看跑者從頭再跑一次。
+    const replay  = monthChanged || !prevHomeYm || !_budLast || _budLast.total!==bTotal;
+    const prevPct = _budLast ? _budLast.shown : 0;
+    const prevRaw = _budLast ? _budLast.raw : 0;
+    const changed = !_budLast || _budLast.raw!==rawPct;
+    _budLast = {raw:rawPct, shown:shownPct, total:bTotal};
     fill.className = 'hbud-fill'+(state?' '+state:'');
-    _runPoli(shownPct, rawPct>=100);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(replay){
+      fill.style.width = '0%';
+      _runPoli(shownPct, rawPct>=100, 0);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ fill.style.width = shownPct+'%'; }));
+    }else if(changed){
+      _runPoli(shownPct, rawPct>=100, prevPct);
+      fill.style.width = shownPct+'%';       // transition 自然從目前寬度補間
+    }else{
+      _runPoli(shownPct, rawPct>=100, null);
       fill.style.width = shownPct+'%';
-    }));
+    }
 
     // 今日應有進度（只有看當月才有意義）
     const lgFill = document.getElementById('h-bud-lg-fill');
@@ -4893,7 +5148,8 @@ async function rHome(opts={}){
     meta.innerHTML = parts.join('<span class="sep">·</span>');
     // 百分比與跑者同步爬升：數字與位置說的是同一件事，就該一起動
     const pctEl = lgFill.querySelector('b');
-    if(pctEl) animNum(pctEl, rawPct, v=>Math.round(v)+'%', {from:0, dur:900});
+    if(pctEl) animNum(pctEl, rawPct, v=>Math.round(v)+'%',
+                      {from: replay ? 0 : (changed ? prevRaw : rawPct), dur:900});
   }
 
 
@@ -4907,8 +5163,9 @@ async function rHome(opts={}){
   const prevM=m===1?12:m-1,prevY=m===1?y-1:y;
   const prevItems=items.length ? [] : await getByYM(ymStr(prevY,prevM));
   if(isStale('home',_seq)) return;
-  document.getElementById('copy-wrap').innerHTML=(!items.length&&prevItems.length)
-    ?`<div class="copy-banner" onclick="copyPrev()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><p>複製上月 <strong>${prevItems.length} 筆</strong>到 ${m} 月？</p><span>複製</span></div>`:'';
+  // 「複製上月」只出現在下方的空狀態裡。原本上面還有一條同功能的橫幅，
+  // 兩者的顯示條件完全相同（本月沒有項目），於是同一個畫面出現兩個複製鈕。
+  document.getElementById('copy-wrap').innerHTML='';
 
   // 統計到此為止都已更新完畢。skipList 的呼叫端自己負責維護清單 DOM。
   if(opts.skipList) return;
@@ -4953,7 +5210,7 @@ async function rHome(opts={}){
         <button class="empty-cta-sec" onclick="setHomeView('all')">查看全部項目</button>`;
       frag.appendChild(done);
     }else{
-      todo.forEach(x=>frag.appendChild(makeCard(x)));
+      todo.forEach(x=>frag.appendChild(makeCard(x,null,false,HOME_CARD)));
       const foot=document.createElement('div');foot.className='list-footer';
       foot.textContent=todoFootText(todo);
       frag.appendChild(foot);
@@ -4969,12 +5226,12 @@ async function rHome(opts={}){
     Object.keys(cats).forEach(cat=>{
       const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent=cat;
       frag.appendChild(lbl);
-      cats[cat].forEach(x=>frag.appendChild(makeCard(x)));
+      cats[cat].forEach(x=>frag.appendChild(makeCard(x,null,false,HOME_CARD)));
     });
     if(advance.length){
       const lbl=document.createElement('div');lbl.className='sec-lbl';lbl.textContent='代墊款';
       frag.appendChild(lbl);
-      advance.slice().sort(byDate).forEach(x=>frag.appendChild(makeCard(x)));
+      advance.slice().sort(byDate).forEach(x=>frag.appendChild(makeCard(x,null,false,HOME_CARD)));
     }
   }
   el.appendChild(frag);
@@ -4983,7 +5240,28 @@ async function rHome(opts={}){
 // ── Item card (listener-free — all events handled by delegation) ──
 // OPT1: No addEventListener calls here. Data attributes carry the context
 // the delegation handler needs. This means N cards = 0 extra listeners.
-function makeCard(x, childInfo, isChild){
+// 到期狀態文字：只對「未繳的一般費用」有意義。
+// 代墊款的日期是「你先付出去的那天」，過了不代表逾期 —— 原本一律掛紅點，
+// 聚餐代墊過了一天就被標成逾期，紅點本身也沒有任何說明。
+// withSoon：首頁要連「即將到期」一起標；明細頁的日期分組標題已經寫了「N 天後」，不重複。
+function dueInfo(x, withSoon){
+  if(x.itype==='advance' || x.paid===1 || !x.date) return null;
+  const d=diffDays(x.date);
+  if(d<0) return {cls:'r', txt:`逾期 ${-d} 天`};
+  if(!withSoon) return null;
+  const soon=(remCfg&&remCfg.dueSoonDays)||3;
+  if(d===0) return {cls:'a', txt:'今天到期'};
+  if(d<=soon) return {cls:'a', txt:`${d} 天後到期`};
+  return null;
+}
+function dueSpan(x, withSoon){
+  const di=dueInfo(x, withSoon); if(!di) return null;
+  const sp=document.createElement('span');
+  sp.className='idue '+di.cls; sp.textContent=di.txt;
+  return sp;
+}
+const HOME_CARD={due:true};
+function makeCard(x, childInfo, isChild, opts){
   const isAdv=x.itype==='advance';
   const isDone=isAdv?x.recovered===1:x.paid===1;
   // childInfo：這張是「有代墊拆分的父費用」時帶入 {n, recovered}，
@@ -5034,9 +5312,6 @@ function makeCard(x, childInfo, isChild){
   const nm=document.createElement('div');
   nm.className='iname'+(isDone?' done':'');
   nm.appendChild(document.createTextNode(x.name));
-  if(!isDone&&x.date&&x.date<today()){
-    const dot=document.createElement('span');dot.className='overdue-dot';dot.setAttribute('aria-label','逾期');nm.appendChild(dot);
-  }
   info.appendChild(nm);
 
   const subs=[];
@@ -5048,9 +5323,12 @@ function makeCard(x, childInfo, isChild){
     const noteShown = hasKids ? stripSplitNote(x.note) : x.note;
     if(noteShown) subs.push(noteShown);
   }
-  if(subs.length){
+  const due = dueSpan(x, !!(opts&&opts.due));
+  if(subs.length || due){
     const st=document.createElement('div');st.className='isub';
-    st.textContent=subs.join('　');info.appendChild(st);
+    if(due) st.appendChild(due);
+    if(subs.length) st.appendChild(document.createTextNode(subs.join('　')));
+    info.appendChild(st);
   }
   // 代墊摘要 chip —— 只在父費用卡出現，點一下展開/收合子項目。
   // 放在 iinfo 之外、直接掛在 row 上，才不會連帶觸發「編輯」動作。
@@ -5087,6 +5365,22 @@ function makeCard(x, childInfo, isChild){
   row.append(chkHit,info,right);
   card.append(bg,row);
   return card;
+}
+
+// 卡片離場：高度收合＋淡出，結束後移除。減少動態偏好時直接移除。
+function _cardLeave(card){
+  return new Promise(res=>{
+    if(_reduceMotion()){ card.remove(); return res(); }
+    const h=card.offsetHeight;
+    card.style.height=h+'px'; card.style.overflow='hidden';
+    void card.offsetHeight;
+    card.classList.add('leaving');
+    card.style.height='0px';
+    let done=false;
+    const fin=()=>{ if(done) return; done=true; card.remove(); res(); };
+    card.addEventListener('transitionend', e=>{ if(e.propertyName==='height') fin(); });
+    setTimeout(fin, 320);
+  });
 }
 
 // ── OPT2: Lightweight home metric patch ──────────────────
@@ -5203,6 +5497,10 @@ async function rList(){
 
   document.getElementById('range-info').textContent=
     `${from===to?from.replace('-','/'):from.replace('-','/')+' ~ '+to.replace('-','/')}　共 ${items.length} 筆`;
+  // 「本月」鈕其實跟著首頁選的月份走；首頁切到 8 月時它顯示的是 8 月，
+  // 按鈕卻還寫「本月」。不是當月時直接寫出月份。
+  const lm=document.getElementById('lr-month');
+  if(lm){ const c=curYM(); lm.textContent=(c.y===cy()&&c.m===cm())?'本月':`${c.m}月`; }
   const el=document.getElementById('list-items');
 
   if(!items.length){
@@ -5384,7 +5682,10 @@ function _budBadge(spent,limit){
 function budCatBlockHTML(o){
   const spent=o.spent||0, limit=o.limit||0;
   const trend=o.trend||[];
-  const pct=limit>0?Math.min(Math.round(spent/limit*100),100):0;
+  // 進度條寬度要夾在 100% 內，但文字要寫實際比例 —— 原本兩者共用同一個
+  // 夾過的數字，於是右上角寫「超支 728%」、下面卻寫「(100%)」。
+  const rawPct=limit>0?Math.round(spent/limit*100):0;
+  const pct=Math.min(rawPct,100);
   const over=limit>0&&spent>limit;
   const barColor=over?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
   const bdg=_budBadge(spent,limit);
@@ -5399,7 +5700,7 @@ function budCatBlockHTML(o){
     : '';
   const paceCap=pace!=null
     ? `<div class="bud-pace-cap${ahead?' over':''}"><i></i>${
-        ahead?`超前進度（本月已過 ${pace}%）`:`本月已過 ${pace}%，用量在進度內`}</div>`
+        ahead?`超出進度（本月已過 ${pace}%）`:`本月已過 ${pace}%，用量在進度內`}</div>`
     : '';
 
   return `<div class="bud-cat-head">
@@ -5411,7 +5712,7 @@ function budCatBlockHTML(o){
       <div class="bud-prog-row">
         <span class="bud-prog-lbl">已用</span>
         <span class="bud-prog-val${over?' over':''}"${id('prog-val')}>
-          <strong>${fmt(spent)}</strong>${limit>0?` / ${fmt(limit)}<span class="pct">(${pct}%)</span>`:'<span class="pct">未設上限</span>'}
+          <strong>${fmt(spent)}</strong>${limit>0?` / ${fmt(limit)}<span class="pct">(${rawPct}%)</span>`:'<span class="pct">未設上限</span>'}
         </span>
       </div>
       <div class="bud-track-wrap">
@@ -5442,6 +5743,47 @@ let rangeChart = null;
 // 單月組成用的是自繪 SVG 甜甜圈，不受影響 —— 所以這裡只需要讓趨勢圖說清楚
 // 發生什麼事、怎麼補救。
 const chartLibReady = () => typeof Chart !== 'undefined';
+
+// 類別顏色一律依「類別在清單中的位置」決定，甜甜圈、範圍分類合計、預算頁
+// 同一個類別永遠同一個顏色。原本範圍合計是依排名上色，房租在單月組成是
+// 粉紅、切到支出趨勢變成綠色。
+function catColor(cat){
+  const i=getCats().indexOf(cat);
+  if(i>=0) return DONUT_COLORS[i%DONUT_COLORS.length];
+  // 已刪除的類別：用名稱雜湊出一個固定顏色，不跟現存類別撞在同一格
+  let h=0; for(const ch of String(cat)) h=(h*31+ch.charCodeAt(0))>>>0;
+  return DONUT_COLORS[(getCats().length + h)%DONUT_COLORS.length];
+}
+// canvas 看不懂 'var(--text3)' 這種字串，Chart.js 會退回預設的深灰。
+// 要給它解析後的實際色碼。
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#9E9A94';
+}
+let _chartDefaultsSet=false;
+function chartDefaults(){
+  if(_chartDefaultsSet || !chartLibReady()) return;
+  _chartDefaultsSet=true;
+  Chart.defaults.font.family = cssVar('--f-sans') || 'sans-serif';
+  Chart.defaults.color = cssVar('--text3');
+}
+// 百分比顯示：非零但不到 1% 的不要寫成「0%」
+const pctLbl = (part,total)=>{
+  if(!total||!part) return '0%';
+  const p=part/total*100;
+  return p<1 ? '<1%' : Math.round(p)+'%';
+};
+// Chart.js 拿不到時（首次離線開啟）的替代長條圖：純 HTML，不依賴任何套件
+function fallbackBarsHTML(labels, values, hiIdx, budget){
+  const max=Math.max(...values, budget||0, 1);
+  const bl = budget>0 ? `<div class="fb-bud" style="bottom:calc(22px + (100% - 30px) * ${(budget/max).toFixed(4)})"><span>預算</span></div>` : '';
+  return `<div class="fb-chart" role="img" aria-label="每月支出長條圖">${bl}
+    ${values.map((v,i)=>`<div class="fb-col">
+        <div class="fb-bar${i===hiIdx?' hi':''}" style="height:${(v/max*100).toFixed(1)}%" title="${esc(labels[i])}：${fmt(v)}"></div>
+        <div class="fb-x">${esc(labels[i])}</div>
+      </div>`).join('')}
+    </div>
+    <p class="fb-note">完整互動圖表需要連線載入，連上網路後重新開啟即可。</p>`;
+}
 function chartUnavailableHTML(){
   return `<div class="empty-msg" style="padding:26px 12px">
       <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.7 16.7A9 9 0 0 0 12 20M5 12.5a11 11 0 0 1 4-2.4M2 8.8a16 16 0 0 1 5-3M22 8.8a16 16 0 0 0-9.5-3.7"/></svg>
@@ -5587,7 +5929,7 @@ function renderCatRows(ctx){
     const TOP=5;
     const paceCap = (r.limit>0&&pacePct!=null)
       ? `<div class="bud-pace-cap${bpct>pacePct?' over':''}"><i></i>${
-          bpct>pacePct?`超前進度（本月已過 ${pacePct}%）`:`本月已過 ${pacePct}%，用量在進度內`}</div>`
+          bpct>pacePct?`超出進度（本月已過 ${pacePct}%）`:`本月已過 ${pacePct}%，用量在進度內`}</div>`
       : '';
 
     el.innerHTML=
@@ -5826,7 +6168,7 @@ async function rChart(){
   const allCats = getCats();
   const sorted = cats.map(c=>{
     const ci = allCats.indexOf(c);
-    return {cat:c, val:catMap[c], color:DONUT_COLORS[(ci>=0?ci:cats.indexOf(c))%DONUT_COLORS.length]};
+    return {cat:c, val:catMap[c], color:catColor(c)};
   }).sort((a,b)=>b.val-a.val);
 
   // Items behind each slice, for the expandable legend detail
@@ -5893,7 +6235,7 @@ async function rChartRange(){
   document.getElementById('range-summary').innerHTML=
     `<div class="range-sum-tile"><div class="range-sum-lbl">支出合計</div><div class="range-sum-val r">${fmt(grandTotal)}</div></div>`+
     `<div class="range-sum-tile"><div class="range-sum-lbl">月均（÷${ymKeys.length}）</div><div class="range-sum-val">${fmt(Math.round(avgMth))}</div></div>`+
-    `<div class="range-sum-tile"><div class="range-sum-lbl">最高月份</div><div class="range-sum-val r">${maxMthKey}</div></div>`;
+    `<div class="range-sum-tile"><div class="range-sum-lbl">最高月份</div><div class="range-sum-val">${maxMthKey==='—'?'—':maxMthKey.replace('-','/')}</div>${maxMth>0?`<div class="range-sum-sub">${fmt(maxMth)}</div>`:''}</div>`;
 
   // X-axis labels: shorten if many months
   const labels=ymKeys.map(k=>{
@@ -5901,10 +6243,13 @@ async function rChartRange(){
     return ymKeys.length>12 ? `${m}月` : `${+y%100}/${+m}`;
   });
 
-  // Highlight max month bar
-  const bgColors=monthTotals.map((v,i)=>v===maxMth&&maxMth>0
-    ? 'rgba(217,75,75,.85)'
-    : DONUT_COLORS[i%DONUT_COLORS.length]+'CC');
+  // 同一個數列用同一個顏色，只把最高的那個月標出來。原本每根柱子借用
+  // 類別色盤輪流上色 —— 下方「範圍分類合計」也用這組顏色，於是 4 月的柱子
+  // 和「信用卡」同色，看起來像在說 4 月都是信用卡。
+  const hiIdx = maxMth>0 ? monthTotals.indexOf(maxMth) : -1;
+  const baseCol = 'rgba(46,158,114,.55)', hiCol = cssVar('--red') || '#D94B4B';
+  const bgColors=monthTotals.map((v,i)=> i===hiIdx ? hiCol : baseCol);
+  const budTotal = budStore.total||0;
 
   // Update chart title
   document.getElementById('range-chart-title').textContent=
@@ -5920,49 +6265,67 @@ async function rChartRange(){
     cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
   }else if(!chartLibReady()){
     cv.style.display='none';
-    noticeEl.innerHTML=chartUnavailableHTML();
+    noticeEl.innerHTML=fallbackBarsHTML(labels, monthTotals, hiIdx, budTotal);
   }else{
     cv.style.display='';
+    chartDefaults();
+    const tickCol = cssVar('--text3');
+    const datasets=[{
+      label:'月支出',data:monthTotals,
+      backgroundColor:bgColors,
+      borderRadius:6,borderSkipped:false,
+      hoverBackgroundColor:bgColors.map(c=>c===hiCol?hiCol:'rgba(46,158,114,.85)'),
+      order:2
+    }];
+    // 月預算參考線：柱子高過這條線就是超支的月份，不用逐一 hover 對數字
+    if(budTotal>0) datasets.push({
+      type:'line', label:'月預算', data:monthTotals.map(()=>budTotal),
+      borderColor:cssVar('--amber')||'#C9943A', borderWidth:1.5, borderDash:[5,4],
+      pointRadius:0, pointHoverRadius:0, fill:false, order:1
+    });
     rangeChart=new Chart(cv,{
       type:'bar',
-      data:{
-        labels,
-        datasets:[{
-          label:'月支出',data:monthTotals,
-          backgroundColor:bgColors,
-          borderRadius:6,borderSkipped:false,
-          hoverBackgroundColor:'rgba(46,158,114,.9)'
-        }]
-      },
+      data:{ labels, datasets },
       options:{
         responsive:true,
         plugins:{
           legend:{display:false},
-          tooltip:{callbacks:{
-            title:ctx=>ymKeys[ctx[0].dataIndex],
-            label:ctx=>` ${fmt(ctx.raw)}`
-          }}
+          tooltip:{
+            filter:ctx=>ctx.dataset.type!=='line',
+            callbacks:{
+              title:ctx=>ymKeys[ctx[0].dataIndex].replace('-','/'),
+              label:ctx=>` ${fmt(ctx.raw)}`,
+              afterLabel:ctx=>budTotal>0 ? ` 預算 ${fmt(budTotal)}（${Math.round(ctx.raw/budTotal*100)}%）` : ''
+            }
+          }
         },
         scales:{
           x:{
-            grid:{color:'rgba(128,128,128,.06)'},
+            grid:{display:false},
             ticks:{
               font:{size:ymKeys.length>18?9:11},
-              color:'var(--text3)',
+              color:tickCol,
               maxRotation:ymKeys.length>12?45:0
             }
           },
           y:{
-            grid:{color:'rgba(128,128,128,.06)'},
+            grid:{color:'rgba(128,128,128,.08)'},
+            border:{display:false},
             beginAtZero:true,
+            suggestedMax: budTotal>0 ? budTotal*1.08 : undefined,
             ticks:{
-              font:{size:11},color:'var(--text3)',
+              font:{size:11},color:tickCol,maxTicksLimit:6,
               callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'
             }
           }
         }
       }
     });
+  }
+  // 圖例：只有畫了預算線時才需要
+  if(budTotal>0 && items.length && chartLibReady()){
+    noticeEl.insertAdjacentHTML('beforeend',
+      `<div class="range-legend"><span><i class="bar"></i>月支出</span><span><i class="hi"></i>最高月份</span><span><i class="bud"></i>月預算 ${fmt(budTotal)}</span></div>`);
   }
 
   // Category breakdown table for the range
@@ -5974,18 +6337,19 @@ async function rChartRange(){
   }
   const rcFrag=document.createDocumentFragment();
   sortedCats.forEach(([cat,amt],i)=>{
-    const pct=grandTotal>0?Math.round(amt/grandTotal*100):0;
-    const color=DONUT_COLORS[i%DONUT_COLORS.length];
+    const pct=grandTotal>0?amt/grandTotal*100:0;
+    const color=catColor(cat);
     const d=document.createElement('div');
+    d.className='rc-item';
     d.innerHTML=`
       <div class="bud-cat-row">
         <span style="display:flex;align-items:center;gap:7px;color:var(--text2)">
           <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
           ${esc(cat)}
         </span>
-        <span style="color:var(--text2)"><strong>${fmt(amt)}</strong><span style="color:var(--text3);margin-left:6px">${pct}%</span></span>
+        <span style="color:var(--text2)"><strong class="rc-amt">${fmt(amt)}</strong><span class="rc-pct">${pctLbl(amt,grandTotal)}</span></span>
       </div>
-      <div class="bud-cat-track"><div class="bud-cat-fill" style="width:${pct}%;background:${color}"></div></div>`;
+      <div class="bud-cat-track"><div class="bud-cat-fill" style="width:${Math.max(pct,amt>0?1:0).toFixed(1)}%;background:${color}"></div></div>`;
     rcFrag.appendChild(d);
   });
   rcEl.innerHTML='';
@@ -6067,7 +6431,8 @@ function updateBudProgress(idx){
   if(!input)return;
   const limit=parseInt(input.value)||0;
   const spent=_budModalCatSpent[idx]||0;
-  const pct=limit>0?Math.min(Math.round(spent/limit*100),100):0;
+  const rawPct=limit>0?Math.round(spent/limit*100):0;
+  const pct=Math.min(rawPct,100);
   const over=limit>0&&spent>limit;
 
   const track=document.getElementById(`bud-track-${idx}`);
@@ -6083,7 +6448,7 @@ function updateBudProgress(idx){
   if(val){
     val.classList.toggle('over',over);
     val.innerHTML=`<strong>${fmt(spent)}</strong>`+
-      (limit>0?` / ${fmt(limit)}<span class="pct">(${pct}%)</span>`
+      (limit>0?` / ${fmt(limit)}<span class="pct">(${rawPct}%)</span>`
               :'<span class="pct">未設上限</span>');
   }
 
@@ -6164,7 +6529,8 @@ async function renderYearCompare(){
     return;
   }
   document.getElementById('area-chart').style.display='';
-  areaChart=new Chart(document.getElementById('area-chart'),{type:'line',data:{labels,datasets},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}：${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)'}},y:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:'var(--text3)',callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'},beginAtZero:true}}}});
+  chartDefaults();
+  areaChart=new Chart(document.getElementById('area-chart'),{type:'line',data:{labels,datasets},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}：${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:cssVar('--text3')}},y:{grid:{color:'rgba(128,128,128,.07)'},ticks:{font:{size:11},color:cssVar('--text3'),callback:v=>v===0?'$0':'$'+fmtN(Math.round(v/1000))+'K'},beginAtZero:true}}}});
 
   const legEl=document.getElementById('chart-legend');legEl.innerHTML='';
   selYears.forEach(yr=>{const pal=YR_PAL[dataYears.indexOf(yr)%YR_PAL.length];
@@ -6195,6 +6561,7 @@ let quickId=null;
 async function openQuickEdit(id){
   const x=await getById(id); if(!x) return;
   quickId=id;
+  clearAllFieldErrors(document.getElementById('qeov'));
   const isAdv=x.itype==='advance';
 
   document.getElementById('qe-title').textContent=x.name;
@@ -6225,7 +6592,7 @@ async function saveQuickEdit(){
   if(!quickId) return;
   const x=await getById(quickId); if(!x){closeQuickEdit();return;}
   const amt=getAmt('qe-amt-r');
-  if(amt<0){ alert('金額不可為負數'); return; }
+  if(amt<0){ fieldError('qe-amt-r','金額不可為負數'); return; }
 
   x.amount=amt;
   x.date=document.getElementById('qe-date').value;
@@ -6467,6 +6834,13 @@ function rSettings(){
   const ss=document.getElementById('pwa-sw-sub');
   const cls=document.getElementById('cl-sub');
   if(cls && CHANGELOG.length) cls.textContent = `${CHANGELOG[0].v} · ${CHANGELOG[0].d}`;
+  // 關於卡片的版本與日期跟著更新紀錄走，不再各自手寫 —— 原本「建置日期」
+  // 停在 2026/08/20，比目前版本早了好幾版。
+  if(CHANGELOG.length){
+    const av=document.getElementById('app-info-ver'), ad=document.getElementById('app-info-date');
+    if(av) av.textContent = CHANGELOG[0].v;
+    if(ad) ad.textContent = CHANGELOG[0].d;
+  }
   if(ss) ss.textContent =
     swState === 'ready'   ? '離線快取已啟用' :
     swState === 'pending' ? '離線快取啟用中…' :
@@ -6484,6 +6858,7 @@ function rSettings(){
 async function openForm(id){
   focusStack.push(document.activeElement); // Fix 4: push onto stack (handles nested overlays)
   editId=id||null;refreshCatSel();
+  clearAllFieldErrors(document.getElementById('fsform'));
   document.getElementById('fs-title').textContent=id?'編輯費用項目':'新增費用項目';
   document.getElementById('fs-del').style.display=id?'':'none';
 
@@ -6582,9 +6957,10 @@ function closeForm(skipFocusRestore=false){
 async function saveItem(){
   const name    = document.getElementById('f-name').value.trim();
   const billAmt = getAmt('f-amt-r');            // user-entered total (e.g. full credit card bill)
-  if(!name){ alert('請填寫項目名稱'); return; }
+  clearAllFieldErrors(document.getElementById('fsform'));
+  if(!name){ fieldError('f-name','請填寫項目名稱'); return; }
   // $0 是合法金額（例如免年費、贈品、額度未使用的訂閱），只擋負數
-  if(billAmt<0){ alert('金額不可為負數'); return; }
+  if(billAmt<0){ fieldError('f-amt-r','金額不可為負數'); return; }
 
   const isAdv = document.getElementById('rt-advance').checked;
   const{y,m}  = curYM();
@@ -6604,7 +6980,7 @@ async function saveItem(){
   const proxySum  = proxyRows.reduce((s,r) => s+r.amount, 0);
 
   if(proxySum > billAmt){
-    alert(`代墊金額合計 ${fmt(proxySum)} 超過帳單 ${fmt(billAmt)}，請確認金額`);
+    fieldError('proxy-rows', `代墊合計 ${fmt(proxySum)} 超過這筆的金額 ${fmt(billAmt)}，請確認金額`);
     return;
   }
   // getProxyRows() already filters partial rows (requires both payee + amount>0)
@@ -6617,7 +6993,7 @@ async function saveItem(){
     return (amount>0&&!payee)||(payee&&!amount);
   });
   if(hasIncomplete){
-    alert('代墊明細有未填完的項目，請確認每筆都有對象姓名與金額');
+    fieldError('proxy-rows','有代墊列沒填完：每一列都需要對象與金額（不需要的列請按 ✕ 移除）');
     return;
   }
 
@@ -6728,12 +7104,28 @@ async function saveItem(){
   toast(`${verb}：${name}${elsewhere}${suffix}`);
 }
 async function confirmDel(){
-  if(!editId||!confirm('確定刪除此項目？'))return;
+  if(!editId) return;
+  const id = editId;
+  const x = await getById(id); if(!x) return;
   // Fix 1: cascade-delete all proxy children linked to this bill
-  const children = await getByParentId(editId);
+  const children = await getByParentId(id);
+  const ok = await uiConfirm(
+    children.length ? `底下的 ${children.length} 筆代墊記錄會一起刪除。` : '刪除後可在提示出現時按「復原」救回。',
+    {title:`刪除「${x.name}」？`, ok:'刪除', danger:true});
+  if(!ok || editId!==id) return;
+  const backup = {...x}, childBackups = children.map(c=>({...c}));
   for(const c of children) await delItem(c.id);
-  await delItem(editId);
-  closeForm(true); dirtyAll(); rHome(); toast('已刪除');
+  await delItem(id);
+  await refreshParentSplitNote(x.parentId);
+  closeForm(true); dirtyAll(); rHome();
+  // 與滑動刪除一致：給 4 秒反悔
+  toastUndo(`已刪除「${x.name}」`, async()=>{
+    delete backup.id;
+    const restored = await putItem(backup);
+    for(const cb of childBackups){ delete cb.id; cb.parentId = restored.id; await putItem(cb); }
+    await refreshParentSplitNote(backup.parentId);
+    dirtyAll(); renderActive(); toast('已復原');
+  });
 }
 
 // 把日期整個往後推 n 個月，日數維持不變。遇到短月份就夾到當月最後一天
@@ -6812,10 +7204,16 @@ function renderCatTags(){
   });
 }
 function addCat(){const inp=document.getElementById('new-cat'),name=inp.value.trim();if(!name)return;if(userCats.includes(name)){toast('類別已存在');return;}if(userCats.length>=12){toast('最多 12 個類別');return;}userCats.push(name);saveCats();renderCatTags();dirtyAll();inp.value='';toast(`已新增「${name}」`);}
-function delCat(cat,e){
+async function delCat(cat,e){
   if(e)e.stopPropagation();
   if(userCats.length<=1){toast('至少保留一個類別');return;}
-  if(!confirm(`刪除「${cat}」？`))return;
+  // 先告訴使用者這個類別底下有多少筆、刪掉之後會怎樣，而不是只問「刪除？」
+  let used=0;
+  try{ used=(await getAll()).filter(x=>x.cat===cat && !isSplitChild(x)).length; }catch{}
+  const msg = used
+    ? `已有 ${used} 筆項目使用這個類別。項目本身會保留，但表單的類別選單裡不再有「${cat}」，這個類別的預算上限也會一併移除。`
+    : '這個類別目前沒有任何項目使用。';
+  if(!await uiConfirm(msg,{title:`刪除類別「${cat}」？`, ok:'刪除', danger:true}))return;
   const idx=userCats.indexOf(cat);
   userCats=userCats.filter(c=>c!==cat);
   // Fix: shift budget byIdx entries above the deleted index down by 1,
@@ -6840,6 +7238,17 @@ function openRemindModal(){
   const mk=(k,l,s)=>`<div class="toggle-row"><div><div class="toggle-lbl">${l}</div>${s?`<div class="toggle-sub">${s}</div>`:''}</div><label class="toggle"><input type="checkbox" id="rs-${k}" ${remCfg[k]?'checked':''}><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>`;
   rows.innerHTML=mk('enabled','啟用到期提醒','開啟後首頁顯示提醒卡片')+mk('showOverdue','逾期未繳提醒','日期已過且未繳納')+mk('showDueSoon','即將到期提醒','繳費日即將到來')+mk('showAdvanceUnrec','代墊未收回提醒','代墊款尚未收回')+
   `<div class="toggle-row"><div class="toggle-lbl">提前提醒天數</div><select id="rs-days" style="height:34px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface3);color:var(--text);padding:0 8px;-webkit-appearance:none;width:70px"><option value="1" ${remCfg.dueSoonDays===1?'selected':''}>1 天</option><option value="3" ${remCfg.dueSoonDays===3?'selected':''}>3 天</option><option value="7" ${remCfg.dueSoonDays===7?'selected':''}>7 天</option><option value="14" ${remCfg.dueSoonDays===14?'selected':''}>14 天</option></select></div>`;
+  // 子選項跟著總開關：總開關關掉時其餘設定都不會生效，就不該看起來還能調
+  const master=document.getElementById('rs-enabled'), soon=document.getElementById('rs-showDueSoon');
+  const sync=()=>{
+    const on=master.checked;
+    [['rs-showOverdue',on],['rs-showDueSoon',on],['rs-showAdvanceUnrec',on],['rs-days',on&&soon.checked]].forEach(([id,en])=>{
+      const el=document.getElementById(id); if(!el) return;
+      el.disabled=!en;
+      const row=el.closest('.toggle-row'); if(row) row.classList.toggle('disabled',!en);
+    });
+  };
+  master.addEventListener('change',sync); soon.addEventListener('change',sync); sync();
   document.getElementById('rsov').classList.add('on');
 }
 function saveRemindSettings(){
@@ -7177,7 +7586,8 @@ async function restoreSnapshot(ts){
   const snap=snaps.find(s=>s.ts===ts);
   if(!snap){ toast('找不到這份備份'); return; }
   const when=fmtSnapWhen(ts);
-  if(!confirm(`還原「${when}」的備份（${snap.count} 筆項目）？\n\n目前的資料會被這份備份取代。還原前系統會先自動存一份目前狀態，還原錯了可以再還原回來。`)) return;
+  if(!await uiConfirm('目前的資料會被這份備份取代。\n還原前會先自動存一份目前狀態，還原錯了可以再還原回來。',
+       {title:`還原「${when}」的備份（${snap.count} 筆項目）？`, ok:'還原'})) return;
 
   // 還原前先把「現在」拍一張，給使用者反悔的機會
   await takeSnapshot('before-restore');
@@ -7188,7 +7598,7 @@ async function restoreSnapshot(ts){
     dirtyAll(); renderActive(); rSettings();
     toast(`已還原「${when}」的備份`);
   }catch(err){
-    alert('還原失敗：'+err.message);
+    uiAlert(err.message, '還原失敗');
   }
 }
 
@@ -7307,13 +7717,28 @@ async function importFile(e){
     if(settings) parts.push('以及類別／預算／發薪日／提醒等設定（將覆蓋目前設定）');
     else if(isJSON) parts.push('（此備份為舊格式，不含設定）');
     else parts.push('（CSV 不含設定）');
-    if(!confirm(`即將匯入${parts.join('，')}。要繼續嗎？`)) { e.target.value=''; return; }
-
-    // 已有資料時，讓使用者決定要取代還是合併——還原備份通常想要前者
+    // 已有資料時，讓使用者決定要取代還是合併——還原備份通常想要前者。
+    // 原本這裡是兩個連續的 confirm()，第二個把「清空還原／合併」塞進「確定／取消」：
+    // 想中止匯入的人按取消，得到的卻是合併 —— 根本沒有「不要匯入」這個選項。
     const existing=await getAll();
+    const summary=`檔案內容：${parts.join('，')}。`;
     let replaced=false;
     if(existing.length&&items.length){
-      replaced=confirm(`目前已有 ${existing.length} 筆項目。\n\n按「確定」清空後還原（適合回復備份）\n按「取消」保留並合併（適合合併另一台裝置）`);
+      const pick=await uiDialog({
+        title:'匯入備份',
+        msg:`${summary}\n\n這支手機上目前已有 ${existing.length} 筆項目，要怎麼處理？\n・清空後還原：適合回復備份（匯入前會自動存一份目前狀態）\n・保留並合併：適合合併另一台裝置的資料`,
+        buttons:[
+          {label:'清空後還原', value:'replace', kind:'primary'},
+          {label:'保留並合併', value:'merge'},
+          {label:'取消', value:null, kind:'ghost'}
+        ],
+        cancelValue:null
+      });
+      if(!pick){ e.target.value=''; return; }
+      replaced = pick==='replace';
+      if(replaced){ try{ await takeSnapshot('before-restore'); }catch{} }
+    }else{
+      if(!await uiConfirm(summary,{title:'匯入備份', ok:'匯入'})){ e.target.value=''; return; }
     }
 
     // 還原邏輯與快照還原完全共用
@@ -7323,7 +7748,7 @@ async function importFile(e){
     dirtyAll(); renderActive(); rSettings();
 
     toast(`${replaced?'已還原':'已匯入'} ${items.length-skipped} 筆${skipped?`（略過 ${skipped} 筆格式不符）`:''}${applied.length?'　+ '+applied.length+' 項設定':''}`);
-  }catch(err){alert('匯入失敗：'+err.message);}
+  }catch(err){uiAlert(err.message,'匯入失敗');}
   e.target.value='';
 }
 
@@ -7450,6 +7875,37 @@ async function applyUpdate() {
 // tag：add 新增 / fix 修正 / imp 改善 / chg 變更
 // note：整段說明（用在無法逐版還原的彙整項目上）
 const CHANGELOG = [
+  { v:'v4.21.0', d:'2026/09/23', c:[
+    ['fix','底部「本月」分頁的提醒角標從來沒有出現過：程式想用 style.display=\'\' 取消隱藏，結果只是退回 CSS 的 display:none'],
+    ['fix','「明細」分頁被選中時多疊一顆錯位的圓形底色。那是舊版「中間分頁加圓」的規則，分頁列前面多了滑軌指示器後，它指到的變成明細'],
+    ['fix','預算條、跑者與「已用 X%」在每次重繪都歸零重播：切換待處理／全部、勾一筆帳單，都會先看到「已用 92%」這種動畫途中的假數字。現在只有換月才重播，數值變了從原位置接著跑，沒變就不動'],
+    ['fix','預算設定頁的分類進度寫「$36,420 / $5,000 (100%)」，右上角卻寫「超支 728%」——兩處共用了夾在 100% 的數字。現在文字顯示實際比例，只有進度條寬度夾住'],
+    ['fix','表單裡的單選項（一般費用／代墊款、到期提醒、扣款週期）被欄位標題的樣式蓋掉，變成灰色小字、圓鈕與文字錯位，看起來像停用。改成分段按鈕，整塊都能點'],
+    ['fix','長名稱在卡片上被硬切在半個字，沒有省略號'],
+    ['chg','名稱旁沒有說明的紅點改成明寫「逾期 N 天」；首頁另外標出「今天到期／N 天後到期」。代墊款不再被標成逾期——它的日期是你先付錢的那天，過了不代表遲繳'],
+    ['fix','首頁清單底部的小計在項目不多時會被 + 按鈕蓋住'],
+    ['fix','設定頁「關於」卡片的版本那列比其他列往左凸、數值上下錯位；建置日期停在 2026/08/20。版本與日期改為跟著更新紀錄自動帶入'],
+    ['chg','所有 alert／confirm 改成 App 內的對話框。原生對話框在主畫面模式會以網址當標題，而且只有兩個鍵'],
+    ['fix','匯入備份時「清空還原 vs 合併」被塞進「確定／取消」，想中止匯入按下取消，得到的卻是合併。現在是三個明確的選項，選「清空後還原」前會先自動存一份目前狀態'],
+    ['imp','表單驗證改成在欄位下方直接標示錯誤、框線轉紅並把游標帶過去，不再跳窗後讓人自己找是哪一格'],
+    ['imp','在「待處理」勾掉一筆，卡片會收合離場，提示列附「復原」——原本卡片瞬間消失，點錯了得切到「全部」去翻'],
+    ['imp','編輯表單的「刪除」也有復原，確認框會說明底下有幾筆代墊會一起刪除'],
+    ['fix','支出趨勢的長條借用類別色盤輪流上色，4 月的柱子和下方「信用卡」同色，像在說 4 月都是信用卡。改成單一顏色、只標出最高月份，並在有設定月預算時畫出預算參考線'],
+    ['fix','圖表座標文字的顏色寫成 CSS 變數字串，canvas 無法解析，一律變成預設深灰；字型也沒套用'],
+    ['fix','範圍分類合計的顏色依排名決定，同一個類別在單月組成與支出趨勢是不同顏色；每列的長條離下一列標籤比離自己還近；不到 1% 的類別顯示成「0%」'],
+    ['imp','首次離線開啟、圖表元件載不到時，支出趨勢改畫一張簡易長條圖，不再只有一段說明文字'],
+    ['chg','首頁總額平常用主文字色，超過月預算才轉紅。原本永遠是紅字，連 $0 也是紅的，真的超支時反而沒有額外訊號'],
+    ['fix','空白月份同時出現「複製上月」橫幅與空狀態裡的「複製上月」按鈕；總額下方寫「全部已繳 $0」'],
+    ['imp','「待處理」檢視中，所有提醒都已列在下方清單時，不再額外顯示「有 N 筆待處理提醒」橫幅'],
+    ['imp','訂閱條改寫成「訂閱 3 項 · 帳單 $632　我 $551 /月」；卡片分組小計標明是帳單金額，分攤的訂閱列標明「我」'],
+    ['imp','類別管理、提醒設定、自動備份、更新紀錄的關閉方式統一為右上角 ✕；自動備份與更新紀錄開著時背景頁不再能被捲動'],
+    ['imp','提醒設定的總開關關閉時，其餘選項一併變灰停用'],
+    ['imp','刪除類別前說明有幾筆項目在使用、刪除後會怎樣；類別的 ✕ 命中區放大'],
+    ['imp','明細的「本月」鈕在首頁切到其他月份時改寫成該月份'],
+    ['fix','DM Mono 只有 400/500 字重，卻有十多處寫 600/700，數字被瀏覽器硬加粗而發糊；字型備援從 monospace（iOS 上是 Courier）改為系統等寬字'],
+    ['fix','Service Worker 每次改版都會清掉 Chart.js 與字型的快取，更新後第一次離線開啟就會退回備援字型、圖表無法顯示。改放在不隨版本清除的快取，升級時也會把舊快取裡的檔案搬過來'],
+    ['imp','提示訊息可以換行，不再截斷；首頁有 + 按鈕時提示升到按鈕上方'],
+  ]},
   { v:'v4.20.0', d:'2026/09/07', c:[
     ['fix','刪掉帳單底下的某一筆代墊後，父項目備註裡的「含代墊 $X」會停在舊數字。金額一直是對的（代墊子項目本來就不計入加總），錯的是那行說明文字——而它正是用來核對「這筆裡面有多少要跟人收」的依據。刪除與復原後都會重算，剩餘代墊歸零時整行移除，不留「含代墊 $0」'],
     ['imp','拆分備註收斂成單一產生器，儲存表單與刪除後重算共用。兩種寫法會讓剝除規則失效，備註每存一次多一行——那正是 v4.9.4 修過的問題'],
@@ -7663,7 +8119,7 @@ async function promptInstall() {
   }
   if (isStandalone()) { toast('已在主畫面模式執行'); return; }
   // iOS Safari 沒有 beforeinstallprompt，只能給步驟
-  alert('加入主畫面：\n\niPhone / iPad（Safari）\n1. 點下方「分享」\n2. 選「加入主畫面」\n\nAndroid（Chrome）\n1. 點右上角「⋮」\n2. 選「安裝應用程式」');
+  uiAlert('iPhone / iPad（Safari）\n1. 點下方工具列的「分享」\n2. 選「加入主畫面」\n\nAndroid（Chrome）\n1. 點右上角「⋮」\n2. 選「安裝應用程式」', '加入主畫面');
 }
 
 // ── 儲存空間 / 永久保存 ──────────────────────────────────
@@ -7682,9 +8138,10 @@ async function showStorage() {
   const persisted = navigator.storage.persisted ? await navigator.storage.persisted() : false;
   const mb = n => (n / 1048576).toFixed(1) + ' MB';
   const items = await getAll();
-  alert(
+  uiAlert(
     `已使用：${mb(usage)}\n可用配額：${mb(quota)}\n記錄筆數：${items.length} 筆\n` +
-    `永久保存：${persisted ? '已啟用（資料不會被瀏覽器自動清除）' : '未啟用（空間不足時可能被清除，建議定期匯出備份）'}`
+    `永久保存：${persisted ? '已啟用（資料不會被瀏覽器自動清除）' : '未啟用（空間不足時可能被清除，建議定期匯出備份）'}`,
+    '儲存空間'
   );
 }
 
@@ -7857,14 +8314,23 @@ dbReady.then(async ()=>{
       const nm     = row.querySelector('.iname');
       const badge  = row.querySelector('.badge');
       const amtEl  = row.querySelector('.iamt');
-      const dot    = nm.querySelector('.overdue-dot');
+      const due    = row.querySelector('.idue');
       const cc     = isAdv ? (checked?'g':'o') : (checked?'g':'r');
       const bt     = isAdv ? (checked?'已收回':'代墊中') : (checked?'已繳':'未繳');
 
       nm.classList.toggle('done', checked);
       badge.className = `badge ${cc}`;   badge.textContent = bt;
       amtEl.className = `iamt ${cc}`;
-      if(checked && dot) dot.remove();
+      if(checked && due) due.remove();
+      else if(!checked && !isAdv && !due){
+        // 取消勾選：逾期／即將到期的標示要回來（首頁才標即將到期）
+        const sp = dueSpan({...x, paid:0}, containerId==='home-list');
+        if(sp){
+          let st=row.querySelector('.isub');
+          if(!st){ st=document.createElement('div'); st.className='isub'; row.querySelector('.iinfo').insertBefore(st, nm.nextSibling); }
+          st.insertBefore(sp, st.firstChild);
+        }
+      }
       e.target.setAttribute('aria-label', isAdv
         ? (checked?'已收回，點擊取消':'未收回，點擊標記收回')
         : (checked?'已繳，點擊取消':'未繳，點擊標記繳納'));
@@ -7886,7 +8352,8 @@ dbReady.then(async ()=>{
           if(!rest.length){
             await rHome();                    // 需要渲染空狀態
           }else{
-            card.remove();
+            // 先讓卡片收合淡出再移除：直接消失的話，使用者看不出剛才點掉的是哪一筆
+            await _cardLeave(card);
             // 清單底部的「待處理 N 筆　合計 X」也在 #home-list 裡，
             // 只移除卡片的話它會停在舊數字。金額一律讀 data-amt 的原始整數，
             // 不去 parse 已經格式化過的文字。
@@ -7913,8 +8380,16 @@ dbReady.then(async ()=>{
         }
       }
 
-      toast(isAdv ? (checked?'已標記收回 ✓':'已取消收回')
-                  : (checked?'已標記繳納 ✓':'已取消繳納'));
+      // 待處理檢視裡勾掉的項目會直接離開清單，點錯了要能馬上救回來，
+      // 否則得切到「全部」去翻那一筆。
+      const label = isAdv ? (checked?'已標記收回':'已取消收回')
+                          : (checked?'已標記繳納':'已取消繳納');
+      toastUndo(`${label}：${x.name}`, async()=>{
+        const y = await getById(id); if(!y) return;
+        if(isAdv) y.recovered = checked ? 0 : 1; else y.paid = checked ? 0 : 1;
+        await putItem(y);
+        dirtyAll(); renderActive();
+      });
     });
 
     // Swipe-to-delete ───────────────────────────────────────────────────────
@@ -8012,7 +8487,8 @@ dbReady.then(async ()=>{
   // Fix 4: Focus stack for nested overlays.
   // MutationObserver pushes on open and pops+restores on close for each overlay sheet.
   // The full-screen form is handled separately in openForm/closeForm.
-  ['bov','cov','rsov','remov','calov','qeov','subov','mpov'].forEach(id=>{
+  // snapov / clov 原本不在清單裡：開著「自動備份」或「更新紀錄」時背景頁面還能被拖著捲
+  ['bov','cov','rsov','remov','calov','qeov','subov','mpov','snapov','clov','uidlg'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const observer = new MutationObserver(()=>{
@@ -8033,6 +8509,10 @@ dbReady.then(async ()=>{
   document.addEventListener('keydown', e=>{
     if(e.key !== 'Escape') return;
 
+    // 通用對話框在最上層，先關它
+    const dlg = document.getElementById('uidlg');
+    if(dlg && dlg.classList.contains('on')){ _dlgClose(_dlgCancel); return; }
+
     // Highest z-index first: full-screen form
     const fsform = document.getElementById('fsform');
     if(fsform && fsform.classList.contains('on')){
@@ -8044,6 +8524,8 @@ dbReady.then(async ()=>{
     const openSheet = document.querySelector('.overlay.on');
     if(openSheet){
       if(openSheet.id==='qeov') closeQuickEdit();   // 一併清掉編輯中的 id
+      else if(openSheet.id==='cov') closeCatModal(); // 關閉時要同步下拉選單與摘要
+      else if(openSheet.id==='remov') closeRemModal();
       else if(openSheet.id==='subov'){
         // 訂閱編輯檢視先退回清單，再按一次才關閉整個彈窗
         if(document.getElementById('sub-view-edit').style.display!=='none') closeSubEdit();

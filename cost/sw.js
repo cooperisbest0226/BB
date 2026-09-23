@@ -16,9 +16,14 @@
    所有資料都在 IndexedDB，Service Worker 一律不碰。
    ══════════════════════════════════════════════════════════════════ */
 
-const VERSION      = 'v4.20.0';
+const VERSION      = 'v4.21.0';
 const SHELL_CACHE  = `expense-shell-${VERSION}`;
 const RUNTIME_CACHE= `expense-runtime-${VERSION}`;
+// 跨源 CDN（Chart.js、字型）放在不隨版本變動的快取裡。
+// 原本它跟 RUNTIME_CACHE 一起在每次改版時被清空：更新後第一次離線開啟，
+// 字型退回系統等寬字（iOS 是 Courier）、圖表整塊顯示「尚未載入」，
+// 直到下次連線才恢復。這些檔案的網址本身就帶版本號，不需要跟著 App 版本走。
+const CDN_CACHE    = 'expense-cdn-v1';
 
 // App shell。圖示放在這裡是刻意的：安裝畫面拿不到圖示會顯示空白方塊。
 const SHELL_ASSETS = [
@@ -54,8 +59,23 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
+    // 從舊版的 runtime 快取把 CDN 檔案搬進 CDN_CACHE 再刪 —— 否則升上這一版
+    // 的當下，已下載好的字型與 Chart.js 還是會被清掉一次。
+    try {
+      const cdn = await caches.open(CDN_CACHE);
+      for (const k of keys) {
+        if (!k.startsWith('expense-runtime-') || k === RUNTIME_CACHE) continue;
+        const old = await caches.open(k);
+        for (const req of await old.keys()) {
+          if (new URL(req.url).origin === self.location.origin) continue;
+          if (await cdn.match(req)) continue;
+          const res = await old.match(req);
+          if (res) await cdn.put(req, res);
+        }
+      }
+    } catch (err) { console.warn('[sw] 搬移 CDN 快取失敗：', err); }
     await Promise.all(
-      keys.filter(k => k !== SHELL_CACHE && k !== RUNTIME_CACHE)
+      keys.filter(k => k !== SHELL_CACHE && k !== RUNTIME_CACHE && k !== CDN_CACHE)
           .map(k => caches.delete(k))
     );
     // 導覽預載：有支援的瀏覽器可以在 SW 啟動的同時就發出請求
@@ -134,7 +154,7 @@ async function cacheFirst(request) {
 }
 
 async function staleWhileRevalidate(request) {
-  const cache = await caches.open(RUNTIME_CACHE);
+  const cache = await caches.open(CDN_CACHE);
   const cached = await cache.match(request);
   const network = fetch(request).then(res => {
     // opaque 回應（no-cors 的 CDN）status 是 0，照樣要存，
