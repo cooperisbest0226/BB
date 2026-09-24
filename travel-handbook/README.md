@@ -8,6 +8,7 @@
 - **清單**：行李清單，可以套用範本，也可以把目前清單存成範本
 - **分享**：產生唯讀連結給家人，訂位代號、附件、清單都不會上傳
 - **開車車程**：行程之間自動顯示 Google 地圖車程、時間不夠會標紅；「開車」交通項目自動帶入抵達時間；今日頁建議出發時間
+- **地圖**：行程頁、今日頁點「地圖」看整天路線（Google 地圖內嵌，免費）；行程詳細資訊有小地圖
 - **其他**：離線就緒檢查、JSON 備份匯出入、深色模式、檢查更新、更新紀錄
 
 ## 檔案結構
@@ -107,6 +108,27 @@ App 會盡量省額度：
 - 地點寫得越完整越準，例如「日月潭向山遊客中心」比「向山」好。App 會依旅程的時區優先在當地搜尋（日本的旅程會優先找日本的地名）。
 - 全程搭大眾運輸的旅程（例如日本鐵路旅行），建議把開關關掉，免得出現用不到的開車時間。
 
+### 車程算不出來時
+
+| 錯誤 | 原因 | 處理 |
+|---|---|---|
+| `no_maps_key` | Worker 沒有金鑰 | 在 `worker/` 執行 `npx wrangler secret put GOOGLE_MAPS_KEY` 再 `npx wrangler deploy` |
+| `maps_denied` | Google 拒絕（403） | 確認已啟用 **Routes API**、已綁帳單、金鑰的「應用程式限制」是「無」、「API 限制」有勾 Routes API。改完等幾分鐘 |
+| `no_route` | Google 找不到路線 | 地點寫完整一點；或兩地之間無法開車（例如隔海） |
+| `maps_quota` | 超過每日上限 | 隔天再試，或調高 Google Cloud 的配額 |
+| `Required Worker name missing` | 不在 `worker/` 資料夾執行 wrangler | 先 `cd worker`，或加 `--name travel-handbook-share` |
+
+想看 Google 回的原始錯誤：在 `worker/` 執行 `npx wrangler tail`，再到 App 觸發一次車程計算。
+
+用 Windows PowerShell 手動測試時，中文地址要先轉 UTF-8，否則會變成 `???` 而得到 `no_route`：
+
+```powershell
+$body = @{ from = "台北車站"; to = "台北101"; region = "tw" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "https://travel-handbook-share.cooperisbest0226.workers.dev/route" `
+  -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) `
+  -Headers @{ Origin = "https://cooperisbest0226.github.io" }
+```
+
 ### 分享 API
 
 | 方法 | 路徑 | 說明 |
@@ -120,6 +142,23 @@ App 會盡量省額度：
 - `id` 是 16 碼隨機字元，放在分享連結裡，拿到連結的人都能讀。
 - `key` 是 32 碼隨機字元，只存在規劃者手機，伺服器只保存它的 SHA-256。
 - 單份行程上限 256 KB。
+
+## 內嵌地圖（Google Maps Embed API，免費）
+
+跟車程用的金鑰**分開**，另外建一把只給地圖用的金鑰。它會出現在網頁原始碼，所以一定要限制：
+
+1. Google Cloud Console →「API 和服務」→「程式庫」→ 啟用 **Maps Embed API**。
+2. 「憑證」→「建立憑證」→「API 金鑰」，點進去設定：
+   - **應用程式限制**：「HTTP 參照網址（網站）」，新增 `https://cooperisbest0226.github.io/*`
+   - **API 限制**：「限制金鑰」，只勾 **Maps Embed API**
+3. 把金鑰貼到 `index.html` 最上面的 `MAPS_EMBED_KEY = ''` 引號裡，推上 GitHub。
+
+設好限制後，別人拿到金鑰也只能在你的網站上顯示地圖；Maps Embed API 本身不收費。留空就不會顯示「地圖」按鈕。
+
+- 一律畫開車路線。關掉「自動計算車程」的旅程，線條只用來看位置和順序（Google 的大眾運輸路線不能經過多個地點；步行路線遇到機場聯絡橋、高速公路會整張圖失敗）。
+- 有飛機的日子只畫落地之後那段；最多 22 個地點（起點＋20 個中途點＋終點）。
+- 地圖需要網路，離線時會顯示提示，導航按鈕照常可用。
+- 地圖顯示「This page can't load Google Maps correctly」或空白：多半是 API 還沒啟用、參照網址沒填對，或剛改完設定還沒生效（等幾分鐘）。
 
 ## 資料模型（IndexedDB：`travel_handbook`）
 

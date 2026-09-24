@@ -101,13 +101,18 @@ async function route(req, env, cors) {
   });
   const g = await r.json().catch(() => ({}));
   if (!r.ok) {
+    // 原始錯誤印到 log，用 npx wrangler tail 就看得到真正原因（金鑰、API 沒啟用、地址格式…）
+    console.log('routes_error', r.status, JSON.stringify({ from, to, region, error: g.error && g.error.message }));
     // 地址查不到時 Google 回 400/404；金鑰或計費問題回 403
     if (r.status === 403) return json({ error: 'maps_denied' }, 502, cors);
     if (r.status === 429) return json({ error: 'maps_quota' }, 429, cors);
     return json({ error: 'no_route' }, 422, cors);
   }
   const rt = g.routes && g.routes[0];
-  if (!rt || rt.distanceMeters == null) return json({ error: 'no_route' }, 422, cors);
+  if (!rt || rt.distanceMeters == null) {
+    console.log('routes_empty', JSON.stringify({ from, to, region }));
+    return json({ error: 'no_route' }, 422, cors);
+  }
   const seconds = parseSec(rt.duration), staticSeconds = parseSec(rt.staticDuration) ?? seconds;
   return json({ seconds, staticSeconds, meters: rt.distanceMeters, traffic }, 200, cors);
 }
