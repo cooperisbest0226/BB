@@ -37,7 +37,7 @@ travel-handbook/
 
 只有要分享給家人時才需要這一步。沒部署的話，App 其他功能都能正常使用。
 
-1. 註冊 Cloudflare 帳號，電腦要有 Node.js。
+1. 註冊 Cloudflare 帳號，電腦要有 Node.js。（本專案已部署：`https://travel-handbook-share.cooperisbest0226.workers.dev`）
 2. 進入 `worker/` 資料夾：
    ```bash
    npx wrangler login
@@ -52,7 +52,9 @@ travel-handbook/
    會得到一個網址，例如 `https://travel-handbook-share.你的帳號.workers.dev`。
 6. 讓 App 知道這個網址，擇一即可：
    - 在 App 的「更多 → 分享給家人」貼上網址（只存在這支手機），或
-   - 填進 `index.html` 最上面的 `DEFAULT_API`，所有人的 App 都會自動使用。
+   - 填進 `index.html` 最上面的 `DEFAULT_API`，所有人的 App 都會自動使用（本專案已填好）。
+
+> `worker/.wrangler/`（含 `wrangler-account.json`）是 wrangler 的本機暫存，已經列在 `.gitignore`，不要推上 GitHub。
 
 免費額度：KV 每天可以寫入 1,000 次、讀取 100,000 次，家庭使用綽綽有餘。App 在你改完行程約 2.5 秒後才上傳一次，連續修改只會算一次寫入。
 
@@ -104,7 +106,7 @@ travel-handbook/
 - **家人加入主畫面**：
   - 用分享連結打開時，App 會在 Safari 裡移除 manifest，讓 iOS 用「含分享碼的網址」當作主畫面的啟動網址。
   - 如果加入後還是看不到行程，首頁提示條上有分享碼，可以到「加入分享給我的行程」貼上。
-  - ⚠ 移除 manifest 這個做法還沒在實機上驗證過。
+  - 這個做法已在 iPhone 實機驗證可行。
 - **Wake Lock 螢幕常亮**需要 iOS 16.4 以上。在部分 iOS 版本的主畫面模式下可能無效，這時看票模式會顯示「請手動調亮螢幕」。網頁沒辦法幫你調亮度。
 - **系統可能清除資料**：iOS 在空間不足時可能清除網站資料。App 會呼叫 `navigator.storage.persist()` 請求保留，但出發前還是建議匯出一份完整備份。
 - **附件大小**：圖片長邊超過 1800px 或檔案大於 1.5 MB，會自動壓縮成 JPEG。單一檔案上限 20 MB。

@@ -1,7 +1,7 @@
 /* 旅行手冊 Service Worker
  * 發新版時：CACHE_NAME 要跟 index.html 的 APP_VERSION 一起改。
  */
-const CACHE_NAME = 'travel-handbook-v1.0.0';
+const CACHE_NAME = 'travel-handbook-v1.0.1';
 const APP_SHELL = [
   './',
   './index.html',
@@ -15,8 +15,9 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' }))))
   );
+  // cache: 'reload' 繞過瀏覽器 HTTP 快取（GitHub Pages 預設快取 10 分鐘），確保抓到新版檔案
   // 不自動 skipWaiting：讓 App 顯示「有新版本」後由使用者決定何時更新
 });
 

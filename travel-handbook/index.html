@@ -324,7 +324,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -332,6 +332,15 @@ const DEFAULT_API = 'https://travel-handbook-share.cooperisbest0226.workers.dev'
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.0.1', date: '2026-09-24', notes: [
+    ['fix', '修改旅程名稱、日期、天數、時區後，畫面要重開 App 才會更新'],
+    ['fix', '編輯行程時如果背景剛好下載好新版，更新提示會把編輯視窗關掉'],
+    ['fix', '出發前「距離出發」天數和下一站倒數天數不一致'],
+    ['fix', '更新時可能抓到瀏覽器快取裡的舊檔案'],
+    ['imp', '檢查更新改成立即回報結果，新版在背景下載'],
+    ['imp', '新增項目時，若當天順序已手動調整，會放在時間最接近的項目後面'],
+    ['add', '歡迎畫面新增「從備份還原」，換新手機可以直接匯入']
+  ]},
   { v: '1.0.0', date: '2026-09-24', notes: [
     ['add', '今日頁：登機證風「下一站」卡片、倒數時間、當地與台灣時間對照'],
     ['add', '行程頁：按天分組、拖曳排序、每天可自訂標題'],
@@ -570,7 +579,7 @@ async function selectTrip(id, save = true) {
   if (save) await metaSet('currentTrip', id);
 }
 async function saveSettings() { await metaSet('settings', S.settings); }
-async function saveTrip(trip) { trip.updatedAt = Date.now(); await dbPut('trips', trip); const i = S.trips.findIndex((t) => t.id === trip.id); if (i >= 0) S.trips[i] = trip; else S.trips.push(trip); }
+async function saveTrip(trip) { trip.updatedAt = Date.now(); await dbPut('trips', trip); const i = S.trips.findIndex((t) => t.id === trip.id); if (i >= 0) S.trips[i] = trip; else S.trips.push(trip); if (S.trip && S.trip.id === trip.id) S.trip = trip; }
 async function saveItems(arr) { const now = Date.now(); arr.forEach((i) => { i.updatedAt = now; }); await dbPutMany('items', arr); arr.forEach((it) => { const i = S.items.findIndex((x) => x.id === it.id); if (i >= 0) S.items[i] = it; else S.items.push(it); }); markDirty(); }
 
 /* ---------------------------------------------------------------- today logic */
@@ -615,6 +624,7 @@ function renderWelcome() {
     <button class="btn primary" data-act="newTrip">${icon('plus')}<span>建立旅程</span></button>
     <button class="btn" data-act="joinShare">${icon('link')}<span>加入分享給我的行程</span></button>
     <button class="btn" data-act="loadSample">${icon('eye')}<span>先看範例行程</span></button>
+    <button class="btn" data-act="importJson" style="border-style:dashed">${icon('upload')}<span>從備份還原</span></button>
     ${installBanner(true)}
   </div>`;
 }
@@ -727,7 +737,9 @@ function subLine(it) {
 function passCard(it, startMs) {
   const t = S.trip; const T = TYPES[it.type] || TYPES.note;
   const viewer = isViewer(); const atts = viewer ? [] : attsOf(it.id);
-  const cd = countdownText(startMs - Date.now());
+  const msLeft = startMs - Date.now();
+  let cd = countdownText(msLeft);
+  if (msLeft >= 86400000) { const dd = daysBetween(tzParts(t.tz).date, dateOfDay(t, it.day)); cd = dd <= 1 ? '明天' : `${dd} 天後`; }
   const dayNote = it.day !== todayInfo().day ? `Day ${it.day} · ` : '';
   let body;
   if (it.type === 'transit' && (it.from || it.to)) {
@@ -1439,18 +1451,25 @@ async function registerSW() {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloading || !_applying) return; reloading = true; location.reload(); });
   } catch {}
 }
-let _applying = false;
+let _applying = false, _latest = null;
 function showUpdateReady(latest) {
-  openSheet('有新版本', `<div class="card"><p style="margin:0">${latest ? `v${APP_VERSION} → <b>v${latest}</b>` : '新版本已經下載好了'}。更新只會重新載入 App，你的行程資料不受影響。</p></div><div style="height:12px"></div>
+  latest = latest || _latest;
+  const open = $('#sheet');
+  // 已經在顯示更新提示就不重開；使用者正在編輯或看其他視窗時不打斷，只用提示文字
+  if (open && open.dataset.kind === 'update') return;
+  if (open || $('#ticket')) { toast('新版本已下載，關閉視窗後到「更多 → 檢查更新」即可更新', 3500); return; }
+  const sh = openSheet('有新版本', `<div class="card"><p style="margin:0">${latest ? `v${APP_VERSION} → <b>v${latest}</b>` : '新版本已經下載好了'}。更新只會重新載入 App，你的行程資料不受影響。</p></div><div style="height:12px"></div>
     <div class="btn-row"><button class="btn" data-act="closeSheet">稍後</button><button class="btn primary" data-act="applyUpdate">立即更新</button></div>`);
+  sh.parentElement.dataset.kind = 'update';
 }
 async function checkUpdate() {
   if (!navigator.onLine) { toast('目前離線，需要網路才能檢查更新'); return; }
   toast('檢查中…');
   try {
     const txt = await (await fetch('index.html?_=' + Date.now(), { cache: 'no-store' })).text();
-    const m = txt.match(/APP_VERSION\s*=\s*'([\d.]+)'/); const latest = m && m[1];
-    if (_reg) { try { await _reg.update(); } catch {} }
+    const m = txt.match(/APP_VERSION\s*=\s*'([\d.]+)'/); const latest = m && m[1]; if (latest && cmpVer(latest, APP_VERSION) > 0) _latest = latest;
+    // 先回報結果，新版在背景下載（按「立即更新」時會等它裝好）
+    if (_reg) _reg.update().catch(() => {});
     if (latest && cmpVer(latest, APP_VERSION) > 0) showUpdateReady(latest);
     else if (_reg && _reg.waiting) showUpdateReady();
     else toast(`已是最新版本 v${APP_VERSION}`);
@@ -1458,8 +1477,9 @@ async function checkUpdate() {
 }
 async function applyUpdate() {
   _applying = true; closeSheet(true); toast('更新中…');
+  if (_reg && !_reg.waiting && !_reg.installing) { try { await _reg.update(); } catch {} }
   const w = _reg && (_reg.waiting || _reg.installing);
-  if (w) { w.postMessage('SKIP_WAITING'); setTimeout(() => location.reload(), 2000); return; }
+  if (w) { w.postMessage('SKIP_WAITING'); setTimeout(() => location.reload(), 5000); return; }
   try { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); if (_reg) await _reg.update(); } catch {}
   setTimeout(() => location.reload(), 600);
 }
