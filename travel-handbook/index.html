@@ -156,6 +156,25 @@ svg{display:block;flex-shrink:0}
 .tl-sub{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap}
 .tl-sub span{overflow:hidden;text-overflow:ellipsis}
 .badge{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:6px;background:var(--soft2);color:var(--muted);font-weight:600;font-size:11px;flex-shrink:0}
+.leg{display:flex;align-items:center;gap:6px;width:100%;min-height:30px;padding:0 4px 0 58px;border:0;background:none;text-align:left;font-size:12px;color:var(--muted);font-family:inherit}
+.leg .ln{white-space:nowrap}
+.leg .note{margin-left:auto;white-space:nowrap}
+.leg.bad{color:#C8432C}.leg.bad .note{font-weight:700}
+.leg.tight .note{color:var(--warn);font-weight:600}
+.leg.wait{color:var(--dim)}
+.tl-leg{display:flex;gap:10px}
+.tl-leg .tl-time{padding-top:0}
+.tl-leg .leg{padding:0 0 8px 4px;min-height:26px;align-items:flex-start}
+.ilist.dragging-list .leg{display:none}
+.leave{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--soft2);font-size:14px;color:var(--ink)}
+.leave.now{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.leave small{color:var(--muted);font-size:12px}
+.tmode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.tmode button{height:42px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:600}
+.tmode button.on{border-color:var(--c-transit);color:var(--c-transit);background:var(--card)}
+.drive-out{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--c-transit-bg);color:var(--c-transit);font-size:14px;font-weight:600;min-height:44px}
+.drive-out.err{background:var(--warn-soft);color:var(--warn)}
+.drive-out button{margin-left:auto;border:0;background:none;color:inherit;font-weight:700;font-size:13px;padding:6px}
 .empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px;border:1.5px dashed var(--line2);border-radius:16px}
 
 /* ---------- itinerary ---------- */
@@ -324,7 +343,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -332,6 +351,14 @@ const DEFAULT_API = 'https://travel-handbook-share.cooperisbest0226.workers.dev'
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.1.0', date: '2026-09-24', notes: [
+    ['add', '行程之間自動顯示開車車程與距離（Google 地圖），時間排太緊會標紅提醒'],
+    ['add', '交通項目新增「開車」：填出發地和目的地，自動算車程並帶入抵達時間（未來時段含路況預估）'],
+    ['add', '今日頁下一站顯示建議出發時間（含 10 分鐘緩衝），時間到了會提示「該出發了」'],
+    ['add', '點車程列可以直接開啟開車導航'],
+    ['add', '旅程設定新增「自動計算景點之間的車程」開關，搭大眾運輸的旅程可以關掉'],
+    ['imp', '車程算過就存在手機裡，離線也看得到；分享時一併帶給家人，不會重複查詢']
+  ]},
   { v: '1.0.1', date: '2026-09-24', notes: [
     ['fix', '修改旅程名稱、日期、天數、時區後，畫面要重開 App 才會更新'],
     ['fix', '編輯行程時如果背景剛好下載好新版，更新提示會把編輯視窗關掉'],
@@ -371,6 +398,7 @@ const IC = {
   qr: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
   clip: '<path d="M21 12l-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/>',
   grip: '<path d="M5 8h14M5 12h14M5 16h14"/>',
+  car: '<path d="M5 17H3v-5l2.5-5.5A2 2 0 0 1 7.3 5h9.4a2 2 0 0 1 1.8 1.5L21 12v5h-2"/><path d="M3 12h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   route: '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8a3 3 0 0 0 0-6H8a3 3 0 0 1 0-6h8"/>',
   list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',
@@ -411,7 +439,7 @@ const TYPES = {
 const FLIGHT_RE = /^[A-Z0-9]{2}\s?\d{1,4}[A-Z]?$/i;
 function typeIcon(it, size = 18) {
   const t = TYPES[it.type] || TYPES.note;
-  const name = it.type === 'transit' && FLIGHT_RE.test((it.vehicle || '').trim()) ? 'plane' : t.icon;
+  const name = it.type === 'transit' && it.mode === 'drive' ? 'car' : it.type === 'transit' && FLIGHT_RE.test((it.vehicle || '').trim()) ? 'plane' : t.icon;
   return icon(name, size);
 }
 
@@ -427,6 +455,10 @@ const TZS = [
 ];
 const CURS = { TWD: 'NT$', JPY: '¥', KRW: '₩', USD: 'US$', EUR: '€', GBP: '£', HKD: 'HK$', CNY: 'CN¥', SGD: 'S$', THB: '฿', VND: '₫', MYR: 'RM', PHP: '₱', IDR: 'Rp', AUD: 'A$', NZD: 'NZ$', CHF: 'CHF', TRY: '₺', AED: 'AED', CZK: 'Kč', CAD: 'C$' };
 const TZ_CUR = { 'Asia/Taipei': 'TWD', 'Asia/Tokyo': 'JPY', 'Asia/Seoul': 'KRW', 'Asia/Hong_Kong': 'HKD', 'Asia/Shanghai': 'CNY', 'Asia/Singapore': 'SGD', 'Asia/Kuala_Lumpur': 'MYR', 'Asia/Bangkok': 'THB', 'Asia/Ho_Chi_Minh': 'VND', 'Asia/Manila': 'PHP', 'Asia/Makassar': 'IDR', 'Asia/Jakarta': 'IDR', 'Asia/Dubai': 'AED', 'Europe/Istanbul': 'TRY', 'Europe/London': 'GBP', 'Europe/Paris': 'EUR', 'Europe/Berlin': 'EUR', 'Europe/Rome': 'EUR', 'Europe/Madrid': 'EUR', 'Europe/Zurich': 'CHF', 'Europe/Prague': 'CZK', 'Australia/Sydney': 'AUD', 'Australia/Brisbane': 'AUD', 'Pacific/Auckland': 'NZD', 'Pacific/Guam': 'USD', 'Pacific/Honolulu': 'USD', 'America/Los_Angeles': 'USD', 'America/Vancouver': 'CAD', 'America/New_York': 'USD', 'America/Chicago': 'USD' };
+
+// 時區 → Google 地圖地區碼（讓「上野駅」這類地名優先在當地搜尋）
+const TZ_REGION = { 'Asia/Taipei': 'tw', 'Asia/Tokyo': 'jp', 'Asia/Seoul': 'kr', 'Asia/Hong_Kong': 'hk', 'Asia/Shanghai': 'cn', 'Asia/Singapore': 'sg', 'Asia/Kuala_Lumpur': 'my', 'Asia/Bangkok': 'th', 'Asia/Ho_Chi_Minh': 'vn', 'Asia/Manila': 'ph', 'Asia/Makassar': 'id', 'Asia/Jakarta': 'id', 'Asia/Dubai': 'ae', 'Europe/Istanbul': 'tr', 'Europe/London': 'uk', 'Europe/Paris': 'fr', 'Europe/Berlin': 'de', 'Europe/Rome': 'it', 'Europe/Madrid': 'es', 'Europe/Zurich': 'ch', 'Europe/Prague': 'cz', 'Australia/Sydney': 'au', 'Australia/Brisbane': 'au', 'Pacific/Auckland': 'nz', 'Pacific/Guam': 'gu', 'Pacific/Honolulu': 'us', 'America/Los_Angeles': 'us', 'America/Vancouver': 'ca', 'America/New_York': 'us', 'America/Chicago': 'us' };
+const DRIVE_BUFFER_MIN = 10; // 建議出發時間多留的緩衝
 
 const BUILTIN_TEMPLATES = [
   { id: 'tpl_intl', name: '出國基本', builtin: true, items: [
@@ -553,7 +585,7 @@ const S = {
   trips: [], trip: null, items: [], checks: [], atts: [],
   tab: 'today', selDay: 1, checkEdit: false,
   settings: { homeTz: HOME_TZ_DEFAULT, showHome: true, mapApp: 'apple', api: '', planner: '' },
-  templates: [], dismissed: {}, online: navigator.onLine
+  templates: [], dismissed: {}, routes: {}, online: navigator.onLine
 };
 const isViewer = () => S.trip && S.trip.role === 'viewer';
 const liveItems = () => S.items.filter((i) => !i.deleted);
@@ -564,6 +596,9 @@ async function loadAll() {
   S.trips = (await dbAll('trips')).sort((a, b) => (a.start || '').localeCompare(b.start || ''));
   S.settings = Object.assign(S.settings, await metaGet('settings', {}));
   S.templates = await metaGet('templates', []);
+  S.routes = await metaGet('routes', {});
+  // 清掉 90 天前的車程快取
+  const old = Date.now() - 90 * 86400000; Object.keys(S.routes).forEach((k) => { if (!S.routes[k].at || S.routes[k].at < old) delete S.routes[k]; });
   S.dismissed = await metaGet('dismissed', {});
   const cur = await metaGet('currentTrip', null);
   await selectTrip(S.trips.find((t) => t.id === cur) ? cur : (S.trips[0] && S.trips[0].id), false);
@@ -581,6 +616,100 @@ async function selectTrip(id, save = true) {
 async function saveSettings() { await metaSet('settings', S.settings); }
 async function saveTrip(trip) { trip.updatedAt = Date.now(); await dbPut('trips', trip); const i = S.trips.findIndex((t) => t.id === trip.id); if (i >= 0) S.trips[i] = trip; else S.trips.push(trip); if (S.trip && S.trip.id === trip.id) S.trip = trip; }
 async function saveItems(arr) { const now = Date.now(); arr.forEach((i) => { i.updatedAt = now; }); await dbPutMany('items', arr); arr.forEach((it) => { const i = S.items.findIndex((x) => x.id === it.id); if (i >= 0) S.items[i] = it; else S.items.push(it); }); markDirty(); }
+
+/* ---------------------------------------------------------------- 車程（Google 地圖，經由 Worker）
+ * 景點之間：不含路況（Essentials 計費），算過就快取在手機裡，分享時一併帶給家人
+ * 「開車」項目：出發時間在未來時用含路況預估（Pro 計費） */
+const driveOn = (trip = S.trip) => !!trip && trip.drive !== false;
+const regionOf = (trip = S.trip) => (trip && TZ_REGION[trip.tz]) || '';
+function routeKey(from, to) { return `${regionOf()}|${from.trim()}|${to.trim()}`; }
+function locEnd(it) { return (it.type === 'transit' ? (it.to || it.place) : it.place) || ''; }
+function locStart(it) { return (it.type === 'transit' ? (it.from || it.place) : it.place) || ''; }
+function fmtKm(m) { if (m == null) return ''; return m >= 1000 ? `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km` : `${m} m`; }
+function addMinHM(hm, min) { const [H, M] = hm.split(':').map(Number); const t = ((H * 60 + M + min) % 1440 + 1440) % 1440; return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; }
+let _wantRoutes = [], _routeQ = new Map(), _routeBusy = false, _mapsOff = false;
+function queueRoutes(pairs) {
+  if (!S.trip || isViewer() || !driveOn() || !apiBase() || _mapsOff || !navigator.onLine) return;
+  for (const [f, t] of pairs) {
+    const k = routeKey(f, t); const r = S.routes[k];
+    if (r && (!r.err || Date.now() - r.at < 86400000)) continue;
+    _routeQ.set(k, [f, t]);
+  }
+  runRouteQ();
+}
+async function runRouteQ() {
+  if (_routeBusy) return; _routeBusy = true; let changed = false;
+  try {
+    while (_routeQ.size && navigator.onLine) {
+      const [k, [f, t]] = _routeQ.entries().next().value; _routeQ.delete(k);
+      if (S.routes[k] && !S.routes[k].err) continue;
+      try {
+        const r = await api('POST', '/route', { from: f, to: t, region: regionOf() });
+        S.routes[k] = { s: r.staticSeconds || r.seconds, m: r.meters, at: Date.now() };
+      } catch (err) {
+        if (err.status === 501 || err.status === 403 || err.message === 'no_api' || err.message === 'maps_denied') { _mapsOff = true; _routeQ.clear(); break; }
+        if (err.status === 429) { _routeQ.clear(); break; }
+        if (!navigator.onLine) break;
+        S.routes[k] = { err: err.message === 'no_route' ? 'no_route' : 'fail', at: Date.now() };
+      }
+      changed = true;
+    }
+  } finally {
+    _routeBusy = false;
+    if (changed) {
+      await metaSet('routes', S.routes); markDirty();
+      if (!$('#sheet') && !$('#ticket') && !document.querySelector('.irow.dragging')) render();
+    }
+  }
+}
+// 兩個項目之間的開車資訊
+function legInfo(a, b) {
+  if (!driveOn() || !a || !b) return null;
+  const f = locEnd(a), t = locStart(b);
+  if (!f || !t || f.trim() === t.trim()) return null;
+  if (b.type === 'transit' && b.mode === 'drive' && (b.from || '').trim() === f.trim()) return null;
+  _wantRoutes.push([f, t]);
+  const r = S.routes[routeKey(f, t)];
+  const out = { f, t, r, slack: null };
+  if (r && !r.err && a.time && b.time) {
+    const aEnd = a.type === 'transit' && a.arrTime ? itemEnd(S.trip, a) : itemStart(S.trip, a);
+    const bS = itemStart(S.trip, b);
+    if (aEnd != null && bS != null) out.slack = Math.round((bS - aEnd) / 60000 - r.s / 60);
+  }
+  return out;
+}
+function legHtml(a, b) {
+  const L = legInfo(a, b); if (!L) return '';
+  let cls = '', main, note = '';
+  if (L.r && !L.r.err) {
+    main = `開車 ${durText(L.r.s * 1000) || '1 分'} · ${fmtKm(L.r.m)}`;
+    if (L.slack != null) {
+      const stay = a.type === 'transit' ? '抵達後空檔' : '可停留';
+      if (L.slack < 0) { cls = 'bad'; note = `時間不夠，差 ${durText(-L.slack * 60000)}`; }
+      else if (L.slack < 15) { cls = 'tight'; note = `${stay} ${L.slack} 分`; }
+      else note = `${stay} ${durText(L.slack * 60000)}`;
+    }
+  } else if (L.r && L.r.err) { cls = 'wait'; main = L.r.err === 'no_route' ? '找不到開車路線（地點寫完整一點，例如加上城市）' : '車程暫時算不出來'; }
+  else if (!isViewer() && apiBase() && !_mapsOff && navigator.onLine) { cls = 'wait'; main = '計算車程中…'; }
+  else return '';
+  return `<button class="leg ${cls}" data-act="navLeg" data-f="${h(L.f)}" data-t="${h(L.t)}" aria-label="開車導航：${h(L.f)} 到 ${h(L.t)}">${icon('car', 14)}<span class="ln">${main}</span>${note ? `<span class="note">${note}</span>` : ''}</button>`;
+}
+// 下一站的前一個有地點的項目（當天沒有就往前找，通常是前一晚的住宿）
+function prevLocItem(it) {
+  const same = dayItems(it.day); const idx = same.findIndex((x) => x.id === it.id);
+  for (let i = idx - 1; i >= 0; i--) if (locEnd(same[i])) return same[i];
+  for (let d = it.day - 1; d >= 1; d--) { const arr = dayItems(d); for (let i = arr.length - 1; i >= 0; i--) if (locEnd(arr[i])) return arr[i]; }
+  return null;
+}
+function leaveHtml(it, startMs) {
+  if (!driveOn() || (it.type === 'transit' && it.mode === 'drive')) return '';
+  const prev = prevLocItem(it); if (!prev) return '';
+  const L = legInfo(prev, it); if (!L || !L.r || L.r.err) return '';
+  let leave = startMs - (L.r.s + DRIVE_BUFFER_MIN * 60) * 1000; leave = Math.floor(leave / 300000) * 300000;
+  const hm = tzParts(S.trip.tz, leave).hm;
+  const now = Date.now() >= leave;
+  return `<div class="leave ${now ? 'now' : ''}">${icon('car', 18)}<span>${now ? '該出發了' : `建議 <b class="mono">${hm}</b> 出發`}<br><small>從 ${h(L.f)} 開車 ${durText(L.r.s * 1000)}，含 ${DRIVE_BUFFER_MIN} 分緩衝</small></span></div>`;
+}
 
 /* ---------------------------------------------------------------- today logic */
 function todayInfo(trip = S.trip) {
@@ -607,7 +736,9 @@ function render() {
   $('#tabbar').classList.remove('hidden');
   renderTabbar();
   const views = { today: renderToday, itin: renderItin, checks: renderChecks, more: renderMore };
+  _wantRoutes = [];
   app.innerHTML = (views[S.tab] || renderToday)();
+  if (_wantRoutes.length) { const w = _wantRoutes; setTimeout(() => queueRoutes(w), 0); }
   if (S.tab === 'itin') { const sel = $('.day-chip.sel'); if (sel) sel.scrollIntoView({ inline: 'center', block: 'nearest' }); }
 }
 function renderTabbar() {
@@ -712,10 +843,11 @@ function renderToday() {
     ${!isViewer() ? `<button class="chip-btn" data-act="newItem" data-day="${listDay}">${icon('plus', 16, 2.2)}<span>新增</span></button>` : ''}</div>`;
   if (!items.length) html += `<div class="empty">這天還沒有安排${!isViewer() ? '，點右上「新增」加入第一個行程' : ''}</div>`;
   else {
-    html += '<div class="tl">' + items.map((it) => {
+    html += '<div class="tl">' + items.map((it, n) => {
       const st = itemStart(t, it);
+      const leg = n ? legHtml(items[n - 1], it) : '';
       const cls = it.done ? 'done' : (next && next.it.id === it.id) ? 'next' : (st != null && st < now) ? 'past' : '';
-      return `<div class="tl-row ${cls}">
+      return `${leg ? `<div class="tl-leg"><div class="tl-time"></div><div class="tl-rail"></div>${leg}</div>` : ''}<div class="tl-row ${cls}">
         <div class="tl-time">${h(it.time || '—')}</div>
         <div class="tl-rail"><button class="tl-node ${it.done ? 'done' : ''}" data-act="toggleDone" data-id="${it.id}" ${isViewer() ? 'disabled' : ''} aria-label="${it.done ? '取消完成' : '標記完成'}：${h(it.title)}">${it.done ? icon('check', 12, 3) : ''}</button></div>
         <button class="tl-card" data-act="openItem" data-id="${it.id}">${tIco(it)}<div class="t-body"><div class="tl-title">${h(it.title)}</div><div class="tl-sub">${subLine(it)}</div></div></button>
@@ -728,7 +860,8 @@ function renderToday() {
 function tIco(it) { const T = TYPES[it.type] || TYPES.note; return `<div class="t-ico" style="background:${T.bg};color:${T.c}">${typeIcon(it)}</div>`; }
 function subLine(it) {
   const T = TYPES[it.type] || TYPES.note; const parts = [T.label];
-  if (it.type === 'transit') { const cs = [it.car, it.seat].filter(Boolean).join(' '); if (cs) parts.push(cs); else if (it.vehicle) parts.push(it.vehicle); }
+  if (it.type === 'transit' && it.mode === 'drive') { parts.push('開車'); if (it.driveSec) parts.push(`${durText(it.driveSec * 1000)} · ${fmtKm(it.driveM)}`); }
+  else if (it.type === 'transit') { const cs = [it.car, it.seat].filter(Boolean).join(' '); if (cs) parts.push(cs); else if (it.vehicle) parts.push(it.vehicle); }
   else if (it.place && it.place !== it.title) parts.push(it.place);
   if (it.cost) parts.push(fmtMoney(it.cost, it.cur || S.trip.currency));
   const n = attsOf(it.id).length;
@@ -749,19 +882,22 @@ function passCard(it, startMs) {
       <div class="mid">${typeIcon(it, 22)}<div class="dash"></div><small>${endMs ? durText(endMs - startMs) : '&nbsp;'}</small></div>
       <div class="stop r"><div class="city">${h(it.to || '抵達')}</div><div class="t">${h(it.arrTime || '')}</div></div>
     </div>`;
-    const kv = [['車次／航班', it.vehicle], ['車廂／登機門', it.car], ['座位', it.seat]].filter((x) => x[1]);
+    const kv = it.mode === 'drive'
+      ? [['交通方式', '開車'], ['車程', it.driveSec ? durText(it.driveSec * 1000) : ''], ['距離', fmtKm(it.driveM)]].filter((x) => x[1])
+      : [['車次／航班', it.vehicle], ['車廂／登機門', it.car], ['座位', it.seat]].filter((x) => x[1]);
     if (kv.length) body += `<div class="pass-grid">${kv.map(([k, v]) => `<div class="kv"><small>${k}</small><b ${k === '座位' ? 'class="mono"' : ''}>${h(v)}</b></div>`).join('')}</div>`;
   } else {
     body = `<div class="pass-title">${h(it.title)}</div><div class="pass-sub"><span class="t">${h(it.time)}</span>${it.place ? `<span>${icon('pin', 14)}</span><span>${h(it.place)}</span>` : ''}</div>`;
   }
   const home = homeHM(t, it, it.time);
-  const navTarget = it.place || it.from;
+  const navTarget = it.mode === 'drive' ? (it.to || it.place) : (it.place || it.from);
+  const leave = leaveHtml(it, startMs);
   let stub;
   if (viewer) {
-    stub = `<div class="lock-note">${icon('lock', 16)}<span>訂位代號與票券只存在規劃者手機</span></div>
+    stub = `${leave}<div class="lock-note">${icon('lock', 16)}<span>訂位代號與票券只存在規劃者手機</span></div>
       ${navTarget ? `<button class="btn dark" data-act="navigate" data-id="${it.id}">${icon('nav')}<span>導航到${h(navTarget.length > 10 ? '目的地' : navTarget)}</span></button>` : ''}`;
   } else {
-    stub = `<div class="stub-row">
+    stub = `${leave}<div class="stub-row">
         <div class="kv">${it.ref ? `<small>訂位代號</small><div class="ref">${h(it.ref)}</div>` : `<small>地點</small><b>${h(navTarget || '—')}</b>`}</div>
         ${home && S.settings.showHome ? `<div class="clock" style="text-align:right">台灣時間 ${home}</div>` : ''}
       </div>
@@ -796,9 +932,9 @@ function renderItin() {
   const title = (t.dayTitles && t.dayTitles[d]) || '';
   const costSum = items.filter((i) => i.cost && (i.cur || t.currency) === t.currency).reduce((s, i) => s + Number(i.cost), 0);
   let prevTime = '';
-  const rows = items.map((it) => {
+  const rows = items.map((it, n) => {
     const bad = it.time && prevTime && it.time < prevTime; if (it.time) prevTime = it.time;
-    return `<div class="irow" data-id="${it.id}">
+    return `${n ? legHtml(items[n - 1], it) : ''}<div class="irow" data-id="${it.id}">
       <div class="it ${bad ? 'bad' : ''}" ${bad ? 'title="時間比前一項早"' : ''}>${h(it.time || '—')}${bad ? ' !' : ''}</div>
       <button class="open" data-act="openItem" data-id="${it.id}">${tIco(it)}<div class="t-body"><div class="tl-title">${h(it.title)}</div><div class="tl-sub">${subLine(it)}</div></div></button>
       ${!isViewer() ? `<button class="drag" aria-label="拖曳排序：${h(it.title)}">${icon('grip', 18)}</button>` : '<span style="width:8px"></span>'}
@@ -945,6 +1081,7 @@ function openTripEditor(trip) {
       <label class="field"><span>天數</span><input type="number" name="days" value="${t.days}" min="1" max="60" inputmode="numeric" required></label></div>
       <label class="field"><span>目的地時區</span><select name="tz">${tzOptions(t.tz)}</select></label>
       <label class="field"><span>主要幣別</span><select name="currency">${curOptions(t.currency)}</select></label>
+      <label style="display:flex;align-items:center;gap:12px;min-height:44px"><span style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px">${icon('car', 16).replace('<svg', '<svg style="display:inline;vertical-align:-3px;margin-right:4px"')}自動計算景點之間的車程</span><small style="font-size:12px;color:var(--muted)">開車旅行時打開；全程搭大眾運輸可以關掉</small></span><span class="switch"><input type="checkbox" name="drive" ${t.drive !== false ? 'checked' : ''} aria-label="自動計算景點之間的車程"><i></i></span></label>
     </div>
     <button class="btn dark" type="submit">${isNew ? '建立' : '儲存'}</button>
     ${!isNew ? `<button class="btn danger" type="button" data-act="deleteTrip">${icon('trash')}<span>刪除這趟旅程</span></button>` : ''}
@@ -954,7 +1091,7 @@ function openTripEditor(trip) {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const days = Math.max(1, Math.min(60, parseInt(f.days.value, 10) || 1));
-    const nt = Object.assign(trip ? { ...trip } : { id: uid('t_'), role: 'owner', dayTitles: {}, createdAt: Date.now() }, { name: f.name.value.trim() || '未命名旅程', start: f.start.value, days, tz: f.tz.value, currency: f.currency.value });
+    const nt = Object.assign(trip ? { ...trip } : { id: uid('t_'), role: 'owner', dayTitles: {}, createdAt: Date.now() }, { name: f.name.value.trim() || '未命名旅程', start: f.start.value, days, tz: f.tz.value, currency: f.currency.value, drive: f.drive.checked });
     if (!isNew && days < trip.days) {
       const lost = liveItems().filter((i) => i.day > days);
       if (lost.length && !(await confirmSheet('縮短天數', `Day ${days} 之後還有 ${lost.length} 個項目，會移到 Day ${days}。確定嗎？`, '確定'))) return;
@@ -976,13 +1113,14 @@ function openItemDetail(id) {
   const home = homeHM(t, it, it.time); const tzLabel = it.tz && it.tz !== t.tz ? `（${tzName(it.tz)}時間）` : '';
   const rows = [];
   rows.push(['時間', `Day ${it.day} · ${mdLabel(date)}（${wd(date)}）${it.time ? ' ' + it.time + tzLabel : ''}${it.arrTime ? ' → ' + it.arrTime : ''}${home && S.settings.showHome ? `\n台灣 ${home}` : ''}`]);
+  if (it.type === 'transit' && it.mode === 'drive') { rows.push(['交通方式', '開車']); if (it.driveSec) rows.push(['車程', `${durText(it.driveSec * 1000)} · ${fmtKm(it.driveM)}${it.driveTraffic ? '（含路況預估）' : ''}`]); }
   if (it.type === 'transit') { if (it.from || it.to) rows.push(['路線', `${it.from || '？'} → ${it.to || '？'}`]); if (it.vehicle) rows.push(['車次／航班', it.vehicle]); if (it.car) rows.push(['車廂／登機門', it.car]); if (it.seat) rows.push(['座位', it.seat]); }
   if (it.place) rows.push(['地點', it.place]);
   if (!viewer && it.ref) rows.push(['訂位代號', `<span class="mono" style="font-weight:700;letter-spacing:.06em">${h(it.ref)}</span>`, true]);
   if (it.cost) rows.push(['費用', fmtMoney(it.cost, it.cur || t.currency)]);
   if (it.url) rows.push(['連結', `<a href="${h(safeUrl(it.url))}" target="_blank" rel="noopener">${h(it.url)}</a>`, true]);
   if (it.note) rows.push(['備註', it.note]);
-  const nav = it.place || it.from;
+  const nav = it.mode === 'drive' ? (it.to || it.place) : (it.place || it.from);
   openSheet(`<span class="type-chip" style="color:${T.c};margin-right:8px">${typeIcon(it, 16)}${T.label}</span>${h(it.title)}`, `
     <div class="card"><div class="info">${rows.map(([k, v, raw]) => `<div class="ir"><small>${k}</small><div>${raw ? v : h(v)}</div></div>`).join('')}</div></div>
     ${atts.length ? `<div style="height:12px"></div><div class="card"><div class="field"><span>${icon('clip', 14)}附件（${atts.length}）</span></div><div class="atts">${atts.map((a, i) => attThumb(a, `data-act="openTicket" data-id="${it.id}" data-i="${i}"`)).join('')}</div></div>` : ''}
@@ -1018,11 +1156,15 @@ function openItemEditor(id, day) {
       <label class="field"><span>名稱</span><input name="title" value="${h(it.title)}" placeholder="例如：淺草寺、新幹線到京都"></label>
       <div class="two"><label class="field"><span>哪一天</span><select name="day">${dayOpts}</select></label>
       <label class="field"><span>時間</span><input type="time" name="time" value="${h(it.time || '')}"></label></div>
+      <div class="transit-only field"><span>交通方式</span><div class="tmode" role="radiogroup" aria-label="交通方式">
+        <button type="button" role="radio" data-mode="" class="${it.mode !== 'drive' ? 'on' : ''}" aria-checked="${it.mode !== 'drive'}">${icon('train', 18)}<span>大眾運輸／飛機</span></button>
+        <button type="button" role="radio" data-mode="drive" class="${it.mode === 'drive' ? 'on' : ''}" aria-checked="${it.mode === 'drive'}">${icon('car', 18)}<span>開車</span></button></div></div>
       <div class="transit-only two"><label class="field"><span>出發地</span><input name="from" value="${h(it.from || '')}" placeholder="東京"></label>
       <label class="field"><span>目的地</span><input name="to" value="${h(it.to || '')}" placeholder="京都"></label></div>
       <div class="transit-only two"><label class="field"><span>抵達時間</span><input type="time" name="arrTime" value="${h(it.arrTime || '')}"></label>
-      <label class="field"><span>出發時間是</span><select name="tz"><option value="">當地時間</option>${t.tz !== home ? `<option value="${home}" ${it.tz === home ? 'selected' : ''}>台灣時間</option>` : ''}</select></label></div>
-      <div class="transit-only three"><label class="field"><span>車次／航班</span><input name="vehicle" value="${h(it.vehicle || '')}" placeholder="のぞみ 23"></label>
+      <label class="field pt-only"><span>出發時間是</span><select name="tz"><option value="">當地時間</option>${t.tz !== home ? `<option value="${home}" ${it.tz === home ? 'selected' : ''}>台灣時間</option>` : ''}</select></label></div>
+      <div class="drive-only drive-out" id="driveOut" role="status"></div>
+      <div class="transit-only pt-only three"><label class="field"><span>車次／航班</span><input name="vehicle" value="${h(it.vehicle || '')}" placeholder="のぞみ 23"></label>
       <label class="field"><span>車廂／登機門</span><input name="car" value="${h(it.car || '')}" placeholder="7 號車"></label>
       <label class="field"><span>座位</span><input name="seat" value="${h(it.seat || '')}" placeholder="12A"></label></div>
       <label class="field"><span>地點（導航用）</span><input name="place" value="${h(it.place || '')}" placeholder="店名或地址，導航會用這個搜尋"></label>
@@ -1039,7 +1181,22 @@ function openItemEditor(id, day) {
     ${orig ? `<button class="btn danger" type="button" data-act="deleteItem" data-id="${it.id}">${icon('trash')}<span>刪除這個行程</span></button>` : ''}
   </form>`, () => { _edit = null; });
   const f = sh.querySelector('form');
-  const syncType = () => { $$('.transit-only', f).forEach((el) => el.classList.toggle('hidden', _edit.item.type !== 'transit')); };
+  const syncType = () => {
+    const tr = _edit.item.type === 'transit', dr = tr && _edit.item.mode === 'drive';
+    $$('.transit-only', f).forEach((el) => el.classList.toggle('hidden', !tr));
+    $$('.pt-only', f).forEach((el) => el.classList.toggle('hidden', !tr || dr));
+    $$('.drive-only', f).forEach((el) => el.classList.toggle('hidden', !dr));
+    f.from.placeholder = dr ? '例如：台北車站、飯店地址' : '東京'; f.to.placeholder = dr ? '例如：日月潭向山遊客中心' : '京都';
+    if (dr) showDriveOut(f);
+  };
+  sh.querySelector('.tmode').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mode]'); if (!b) return;
+    _edit.item.mode = b.dataset.mode || undefined;
+    $$('.tmode button', sh).forEach((x) => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on); });
+    syncType(); if (_edit.item.mode === 'drive') calcDrive(f);
+  });
+  ['from', 'to', 'time', 'day'].forEach((n) => f[n].addEventListener('change', () => calcDrive(f)));
+  sh.addEventListener('click', (e) => { if (e.target.closest('[data-k=recalc]')) { e.preventDefault(); calcDrive(f, true); } });
   sh.querySelector('.seg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-type]'); if (!b) return;
     _edit.item.type = b.dataset.type;
@@ -1048,6 +1205,44 @@ function openItemEditor(id, day) {
   });
   syncType(); renderAttGrid();
   f.addEventListener('submit', (e) => { e.preventDefault(); saveItemForm(f); });
+}
+function showDriveOut(f, msg, err) {
+  const out = $('#driveOut'); if (!out || !_edit) return;
+  const it = _edit.item;
+  if (msg) { out.className = 'drive-only drive-out' + (err ? ' err' : ''); out.innerHTML = `${icon('car', 18)}<span>${msg}</span>`; return; }
+  if (it.driveSec) {
+    const arr = f.time.value ? `，預計 ${addMinHM(f.time.value, Math.round(it.driveSec / 60))} 抵達` : '';
+    out.className = 'drive-only drive-out';
+    out.innerHTML = `${icon('car', 18)}<span>車程 ${durText(it.driveSec * 1000)} · ${fmtKm(it.driveM)}${it.driveTraffic ? '（含路況）' : ''}${arr}</span><button type="button" data-k="recalc">重新計算</button>`;
+  } else showDriveOut(f, '填好出發地和目的地，會自動用 Google 地圖算車程');
+}
+let _driveSeq = 0;
+async function calcDrive(f, force) {
+  const e = _edit; if (!e || e.item.type !== 'transit' || e.item.mode !== 'drive') return;
+  const from = f.from.value.trim(), to = f.to.value.trim();
+  if (!from || !to) { delete e.item.driveSec; showDriveOut(f); return; }
+  if (!apiBase()) { showDriveOut(f, '要先設定分享伺服器，才能算車程', true); return; }
+  if (!navigator.onLine) { showDriveOut(f, '離線中，連上網路後按「重新計算」', true); return; }
+  const day = parseInt(f.day.value, 10) || 1, time = f.time.value;
+  let depart = null;
+  if (time) { const ms = localToUtc(dateOfDay(S.trip, day), time, S.trip.tz); if (ms > Date.now() + 120000) depart = new Date(ms).toISOString(); }
+  const sig = [from, to, depart || ''].join('|');
+  if (!force && e.driveSig === sig && e.item.driveSec) { showDriveOut(f); return; }
+  const seq = ++_driveSeq; showDriveOut(f, '用 Google 地圖計算車程中…');
+  try {
+    const r = await api('POST', '/route', { from, to, region: regionOf(), depart, traffic: !!depart });
+    if (seq !== _driveSeq || _edit !== e) return;
+    Object.assign(e.item, { driveSec: Math.round(r.seconds), driveM: r.meters, driveTraffic: !!r.traffic }); e.driveSig = sig;
+    S.routes[routeKey(from, to)] = { s: r.staticSeconds || r.seconds, m: r.meters, at: Date.now() }; metaSet('routes', S.routes);
+    if (time) f.arrTime.value = addMinHM(time, Math.round(r.seconds / 60));
+    showDriveOut(f);
+  } catch (err) {
+    if (seq !== _driveSeq) return;
+    delete e.item.driveSec;
+    showDriveOut(f, err.message === 'no_route' ? '找不到開車路線，請把地點寫完整一點（例如加上城市）'
+      : err.status === 501 ? '伺服器還沒設定 Google 地圖金鑰（見 README）'
+      : err.status === 429 ? '今天的車程查詢次數已達上限' : '計算失敗，稍後按「重新計算」', true);
+  }
 }
 function renderAttGrid() {
   const g = $('#attGrid'); if (!g || !_edit) return;
@@ -1061,9 +1256,15 @@ async function saveItemForm(f) {
   const it = e.item; const v = (n) => (f[n] ? f[n].value.trim() : '');
   const oldDay = it.day, oldTime = it.time;
   Object.assign(it, { title: v('title'), day: parseInt(v('day'), 10) || 1, time: v('time'), place: v('place'), ref: v('ref'), cost: v('cost').replace(/,/g, ''), cur: v('cur'), url: v('url'), note: f.note.value.trim() });
-  if (it.type === 'transit') Object.assign(it, { from: v('from'), to: v('to'), arrTime: v('arrTime'), vehicle: v('vehicle'), car: v('car'), seat: v('seat'), tz: v('tz') });
-  else { ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz'].forEach((k) => delete it[k]); }
-  if (!it.title) it.title = it.type === 'transit' && (it.from || it.to) ? `${it.from || '？'} → ${it.to || '？'}` : TYPES[it.type].label;
+  if (it.type === 'transit' && it.mode === 'drive') {
+    Object.assign(it, { from: v('from'), to: v('to'), arrTime: v('arrTime') });
+    ['vehicle', 'car', 'seat', 'tz'].forEach((k) => delete it[k]);
+    if (!it.driveSec) ['driveM', 'driveTraffic'].forEach((k) => delete it[k]);
+  } else if (it.type === 'transit') {
+    Object.assign(it, { from: v('from'), to: v('to'), arrTime: v('arrTime'), vehicle: v('vehicle'), car: v('car'), seat: v('seat'), tz: v('tz') });
+    ['mode', 'driveSec', 'driveM', 'driveTraffic'].forEach((k) => delete it[k]);
+  } else { ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'mode', 'driveSec', 'driveM', 'driveTraffic'].forEach((k) => delete it[k]); }
+  if (!it.title) it.title = it.type === 'transit' && (it.from || it.to) ? `${it.mode === 'drive' ? '開車 ' : ''}${it.from || '？'} → ${it.to || '？'}` : TYPES[it.type].label;
   if (it.cost && isNaN(Number(it.cost))) { toast('費用請輸入數字'); return; }
   const changed = [it];
   if (e.isNew || oldDay !== it.day || oldTime !== it.time) {
@@ -1129,12 +1330,15 @@ function closeTicket() { const el = $('#ticket'); if (el) el.remove(); document.
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && _ticketItem) requestWake(); });
 
 /* ----- navigation ----- */
+function mapUrl(dest, origin, drive) {
+  const g = S.settings.mapApp === 'google';
+  if (g) return `https://www.google.com/maps/dir/?api=1${origin ? '&origin=' + encodeURIComponent(origin) : ''}&destination=${encodeURIComponent(dest)}${drive ? '&travelmode=driving' : ''}`;
+  return `https://maps.apple.com/?${origin ? 'saddr=' + encodeURIComponent(origin) + '&' : ''}daddr=${encodeURIComponent(dest)}${drive ? '&dirflg=d' : ''}`;
+}
 function navigateTo(it) {
+  if (it.type === 'transit' && it.mode === 'drive') { window.open(mapUrl(it.to || it.place || it.title, it.from, true), '_blank', 'noopener'); return; }
   const q = it.place || it.from || it.title;
-  const url = S.settings.mapApp === 'google'
-    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`
-    : `https://maps.apple.com/?daddr=${encodeURIComponent(q)}`;
-  window.open(url, '_blank', 'noopener');
+  window.open(mapUrl(q, null, driveOn()), '_blank', 'noopener');
 }
 
 /* ---------------------------------------------------------------- drag reorder */
@@ -1142,6 +1346,7 @@ function initDrag() {
   document.addEventListener('pointerdown', (e) => {
     const hnd = e.target.closest('.drag'); if (!hnd || isViewer()) return;
     const row = hnd.closest('.irow'); const list = row.parentElement;
+    list.classList.add('dragging-list');
     const rows = $$('.irow', list); const idx = rows.indexOf(row);
     const rects = rows.map((r) => r.getBoundingClientRect());
     const gap = rows.length > 1 ? rects[1].top - rects[0].bottom : 8;
@@ -1157,7 +1362,7 @@ function initDrag() {
     const up = async () => {
       hnd.removeEventListener('pointermove', move); hnd.removeEventListener('pointerup', up); hnd.removeEventListener('pointercancel', up);
       rows.forEach((r) => { r.style.transform = ''; }); row.classList.remove('dragging');
-      if (target === idx) return;
+      if (target === idx) { list.classList.remove('dragging-list'); return; }
       const ids = rows.map((r) => r.dataset.id); const [m] = ids.splice(idx, 1); ids.splice(target, 0, m);
       const changed = [];
       ids.forEach((id, i) => { const it = S.items.find((x) => x.id === id); if (it.order !== i * 10) { it.order = i * 10; changed.push(it); } });
@@ -1200,10 +1405,13 @@ function sharePayload(trip) {
   // 訂位代號（ref）、附件、清單都不上傳
   const items = S.items.filter((i) => i.tripId === trip.id && !i.deleted).map((i) => {
     const o = { id: i.id, day: i.day, order: i.order, type: i.type, title: i.title, time: i.time || '', done: !!i.done };
-    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note'].forEach((k) => { if (i[k]) o[k] = i[k]; });
+    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic'].forEach((k) => { if (i[k]) o[k] = i[k]; });
     return o;
   });
-  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {} }, items, publishedAt: Date.now() };
+  // 帶上算好的車程，家人那邊不必再查（也不用花額度）
+  const routes = {}; const pref = (TZ_REGION[trip.tz] || '') + '|';
+  Object.entries(S.routes).forEach(([k, r]) => { if (k.startsWith(pref) && r && !r.err) routes[k] = { s: r.s, m: r.m }; });
+  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {}, drive: trip.drive !== false }, items, routes, publishedAt: Date.now() };
 }
 async function api(method, path, body, key) {
   const base = arguments[4] || apiBase();
@@ -1308,7 +1516,8 @@ async function viewerRefresh(silent) {
   try {
     const r = await api('GET', '/trips/' + t.viewer.shareId, null, null, t.viewer.api);
     const d = r.data || {}; const tp = d.trip || {};
-    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {} });
+    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {}, drive: tp.drive !== false });
+    if (d.routes) { Object.entries(d.routes).forEach(([k, r]) => { S.routes[k] = { ...r, at: Date.now() }; }); await metaSet('routes', S.routes); }
     t.viewer.syncedAt = Date.now(); t.viewer.planner = d.planner || ''; t.viewer.gone = false;
     const items = (d.items || []).map((i) => ({ ...i, tripId: t.id, id: t.id + ':' + i.id }));
     await tx(['items'], 'readwrite', (x) => { const s = x.objectStore('items'); S.items.forEach((i) => s.delete(i.id)); items.forEach((i) => s.put(i)); });
@@ -1390,7 +1599,7 @@ function sampleQrBlob(seed) {
 }
 async function loadSample() {
   const tz = 'Asia/Tokyo'; const today = tzParts(tz).date; const start = addDays(today, -3);
-  const trip = { id: uid('t_'), role: 'owner', name: '東京・京都 7 日（範例）', start, days: 7, tz, currency: 'JPY', createdAt: Date.now(),
+  const trip = { id: uid('t_'), role: 'owner', name: '東京・京都 7 日（範例）', start, days: 7, tz, currency: 'JPY', drive: false, createdAt: Date.now(),
     dayTitles: { 1: '出發・上野', 2: '淺草・晴空塔', 3: '明治神宮・澀谷', 4: '東京 → 京都', 5: '伏見・祇園', 6: '嵐山・金閣寺', 7: '回家' } };
   const I = (day, time, type, title, extra = {}) => ({ id: uid('i_'), tripId: trip.id, day, time, type, title, done: false, createdAt: Date.now(), ...extra });
   const items = [
@@ -1520,6 +1729,7 @@ const A = {
   openTicket: (el) => openTicket(el.dataset.id, parseInt(el.dataset.i || '0', 10)),
   closeTicket: () => closeTicket(),
   navigate: (el) => navigateTo(S.items.find((i) => i.id === el.dataset.id)),
+  navLeg: (el) => window.open(mapUrl(el.dataset.t, el.dataset.f, true), '_blank', 'noopener'),
   selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); render(); },
   editDayTitle: async (el) => {
     const d = parseInt(el.dataset.d, 10); const t = S.trip;
