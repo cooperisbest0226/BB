@@ -166,6 +166,17 @@ svg{display:block;flex-shrink:0}
 .tl-leg .tl-time{padding-top:0}
 .tl-leg .leg{padding:0 0 8px 4px;min-height:26px;align-items:flex-start}
 .ilist.dragging-list .leg{display:none}
+.map-box{position:relative;height:min(52vh,420px);border-radius:16px;overflow:hidden;background:var(--soft2);flex-shrink:0}
+.map-box.sm{height:180px}
+.map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.map-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;color:var(--muted);font-size:14px}
+.stops{gap:0;padding:6px}
+.stop-row{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 8px;border:0;border-radius:10px;background:none;color:var(--ink);text-align:left;font-size:15px;font-family:inherit}
+.stop-row.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.stop-row .lt{width:24px;height:24px;border-radius:12px;background:var(--soft2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.stop-row .q{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stop-row small{margin-left:auto;padding-left:8px;color:var(--muted);font-size:12px;font-weight:400;white-space:nowrap}
+.head-btns{display:flex;gap:8px;flex-shrink:0}
 .leave{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--soft2);font-size:14px;color:var(--ink)}
 .leave.now{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .leave small{color:var(--muted);font-size:12px}
@@ -343,14 +354,25 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
 const DEFAULT_API = 'https://travel-handbook-share.cooperisbest0226.workers.dev';
+// 內嵌地圖（Google Maps Embed API，免費不限次數）。把金鑰貼在下面引號裡。
+// 這把金鑰會出現在網頁原始碼，Google Cloud 一定要限制：
+//   API 限制只勾「Maps Embed API」；應用程式限制選「HTTP 參照網址」，填 https://cooperisbest0226.github.io/*
+// 留空就不顯示內嵌地圖。
+const MAPS_EMBED_KEY = '';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.2.0', date: '2026-09-24', notes: [
+    ['add', '行程頁和今日頁新增「地圖」：一次看整天路線，從前一晚的住宿出發，字母對應每個地點'],
+    ['add', '地圖下方點任一地點可以單獨查看，點「全天路線」回到總覽'],
+    ['add', '行程詳細資訊裡顯示小地圖；開車項目顯示開車路線'],
+    ['imp', '內嵌地圖免費、不花車程額度，家人的唯讀行程也看得到；離線時會顯示提示']
+  ]},
   { v: '1.1.1', date: '2026-09-24', notes: [
     ['fix', '唯讀行程更新到一半就切換旅程，可能誤刪另一趟旅程的項目'],
     ['fix', '離線時改的行程，之後重開 App 不會自動同步給家人'],
@@ -856,7 +878,7 @@ function renderToday() {
   const items = dayItems(listDay);
   const now = Date.now();
   html += `<section class="sec" aria-label="${listTitle}"><div class="sec-head"><div class="l"><h2>${listTitle}</h2><span class="n">${items.length} 項${items.length ? ` · 完成 ${items.filter((i) => i.done).length}` : ''}</span></div>
-    ${!isViewer() ? `<button class="chip-btn" data-act="newItem" data-day="${listDay}">${icon('plus', 16, 2.2)}<span>新增</span></button>` : ''}</div>`;
+    <div class="head-btns">${mapBtn(listDay)}${!isViewer() ? `<button class="chip-btn" data-act="newItem" data-day="${listDay}">${icon('plus', 16, 2.2)}<span>新增</span></button>` : ''}</div></div>`;
   if (!items.length) html += `<div class="empty">這天還沒有安排${!isViewer() ? '，點右上「新增」加入第一個行程' : ''}</div>`;
   else {
     html += '<div class="tl">' + items.map((it, n) => {
@@ -962,9 +984,9 @@ function renderItin() {
       ${!isViewer() ? `<button class="icon-btn" data-act="editTrip" aria-label="旅程設定">${icon('pencil')}</button>` : ''}</div></header>
     <div class="days" role="tablist" aria-label="選擇日期">${chips}</div>
     <section class="sec" style="padding-top:14px">
-      <div class="sec-head" style="flex-direction:column;align-items:flex-start;gap:2px">
+      <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">
         ${!isViewer() ? `<button class="day-title-btn" data-act="editDayTitle" data-d="${d}" style="max-width:100%"><h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>${icon('pencil', 14)}</button>` : `<h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>`}
-        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span></div>
+        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span></div>${mapBtn(d)}</div>
       <div class="ilist" id="ilist">${rows || `<div class="empty">這天還沒有安排</div>`}</div>
       ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="${d}">${icon('plus', 16, 2.2)}<span>新增到 Day ${d}</span></button>` : ''}
     </section>`;
@@ -1139,8 +1161,14 @@ function openItemDetail(id) {
   if (it.url) rows.push(['連結', `<a href="${h(safeUrl(it.url))}" target="_blank" rel="noopener">${h(it.url)}</a>`, true]);
   if (it.note) rows.push(['備註', it.note]);
   const nav = it.mode === 'drive' ? (it.to || it.place) : (it.place || it.from);
+  let mini = '';
+  if (MAPS_EMBED_KEY) {
+    if (it.type === 'transit' && it.mode === 'drive' && it.from && it.to) mini = mapFrame(embedUrl('directions', { origin: it.from, destination: it.to, mode: 'driving' }), '開車路線', true);
+    else if (nav) mini = mapFrame(embedUrl('place', { q: nav }), '地點地圖', true);
+  }
   openSheet(`<span class="type-chip" style="color:${T.c};margin-right:8px">${typeIcon(it, 16)}${T.label}</span>${h(it.title)}`, `
     <div class="card"><div class="info">${rows.map(([k, v, raw]) => `<div class="ir"><small>${k}</small><div>${raw ? v : h(v)}</div></div>`).join('')}</div></div>
+    ${mini ? `<div style="height:12px"></div>${mini}` : ''}
     ${atts.length ? `<div style="height:12px"></div><div class="card"><div class="field"><span>${icon('clip', 14)}附件（${atts.length}）</span></div><div class="atts">${atts.map((a, i) => attThumb(a, `data-act="openTicket" data-id="${it.id}" data-i="${i}"`)).join('')}</div></div>` : ''}
     <div style="height:12px"></div>
     <div class="form">
@@ -1357,6 +1385,67 @@ function navigateTo(it) {
   if (it.type === 'transit' && it.mode === 'drive') { window.open(mapUrl(it.to || it.place || it.title, it.from, true), '_blank', 'noopener'); return; }
   const q = it.place || it.from || it.title;
   window.open(mapUrl(q, null, driveOn()), '_blank', 'noopener');
+}
+
+/* ----- 內嵌地圖（Google Maps Embed API）
+ * 只在按「地圖」或打開項目時才載入，離線時顯示提示；不經過 Worker、不花車程額度，家人也看得到 */
+const EMBED_MAX_STOPS = 22; // 起點 + 20 個中途點 + 終點（Embed API 上限）
+const isFlight = (it) => it.type === 'transit' && it.mode !== 'drive' && FLIGHT_RE.test((it.vehicle || '').trim());
+function embedUrl(mode, params) {
+  const p = new URLSearchParams({ key: MAPS_EMBED_KEY, language: 'zh-TW', ...params });
+  const rg = regionOf(); if (rg) p.set('region', rg);
+  return `https://www.google.com/maps/embed/v1/${mode}?${p}`;
+}
+function mapFrame(src, title, sm) {
+  if (!navigator.onLine) return `<div class="map-box ${sm ? 'sm' : ''}"><div class="map-off">${icon('wifiOff', 22)}<span>地圖需要網路${sm ? '' : '，離線時可以用行程裡的「導航」'}</span></div></div>`;
+  return `<div class="map-box ${sm ? 'sm' : ''}"><iframe src="${h(src)}" title="${h(title)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>`;
+}
+// 一天依序經過的地點（去掉連續重複）。飛機會把一天切段：只畫落地之後那段；當天最後是搭機離開，就停在出發機場
+function dayStops(day) {
+  const items = dayItems(day).filter((it) => locStart(it) || locEnd(it));
+  let stops = [];
+  const push = (q, tag) => { q = (q || '').trim(); if (q && (!stops.length || stops[stops.length - 1].q !== q)) stops.push({ q, tag }); };
+  items.forEach((it, i) => {
+    if (isFlight(it)) {
+      if (i === items.length - 1) push(it.place || it.from, '搭機');
+      else { stops = []; push(it.to, '落地'); }
+      return;
+    }
+    push(locStart(it)); push(locEnd(it));
+  });
+  // 從前一晚的住宿出發（當天第一段是飛機就不加）
+  if (items.length && !isFlight(items[0])) {
+    let stay = null;
+    for (let d = day - 1; d >= 1 && !stay; d--) stay = dayItems(d).filter((x) => x.type === 'stay' && x.place).pop() || null;
+    if (stay && stay.place.trim() !== (stops[0] && stops[0].q)) stops.unshift({ q: stay.place.trim(), tag: '住宿' });
+  }
+  return stops;
+}
+function openDayMap(day) {
+  const all = dayStops(day);
+  if (!all.length) { toast('這天的行程還沒有填地點'); return; }
+  const stops = all.slice(0, EMBED_MAX_STOPS); const drive = driveOn();
+  // 大眾運輸路線不能經過多個地點；沒開車的旅程也用開車路線畫線（比步行少斷路），只當位置和順序的示意
+  const overview = () => stops.length === 1 ? embedUrl('place', { q: stops[0].q })
+    : embedUrl('directions', { origin: stops[0].q, destination: stops[stops.length - 1].q, mode: 'driving', ...(stops.length > 2 ? { waypoints: stops.slice(1, -1).map((x) => x.q).join('|') } : {}) });
+  const letter = (i) => String.fromCharCode(65 + i);
+  const title = `Day ${day} 地圖`;
+  const note = stops.length === 1 ? '' : drive ? '開車路線，字母對應下方地點' : '線條只用來看位置和順序，不是建議路線；搭車方式請點行程裡的各段查看';
+  const sh = openSheet(title, `${mapFrame(overview(), title)}
+    ${note || all.length > stops.length ? `<p class="note-p" style="margin:8px 4px 0">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
+    <div style="height:10px"></div>
+    <div class="card stops">${stops.length > 1 ? `<button class="stop-row on" data-si="all"><span class="lt">${icon('route', 14)}</span><span class="q">全天路線</span></button>` : ''}
+      ${stops.map((x, i) => `<button class="stop-row ${stops.length === 1 ? 'on' : ''}" data-si="${i}"><span class="lt">${stops.length > 1 ? letter(i) : icon('pin', 14)}</span><span class="q">${h(x.q)}</span>${x.tag ? `<small>${x.tag}</small>` : ''}</button>`).join('')}</div>`);
+  sh.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-si]'); if (!b) return;
+    const fr = sh.querySelector('iframe'); if (!fr) { toast('地圖需要網路'); return; }
+    fr.src = b.dataset.si === 'all' ? overview() : embedUrl('place', { q: stops[+b.dataset.si].q });
+    $$('.stop-row', sh).forEach((x) => x.classList.toggle('on', x === b));
+  });
+}
+function mapBtn(day) {
+  if (!MAPS_EMBED_KEY || !dayStops(day).length) return '';
+  return `<button class="chip-btn" data-act="dayMap" data-d="${day}" aria-label="Day ${day} 地圖">${icon('map', 16, 2.2)}<span>地圖</span></button>`;
 }
 
 /* ---------------------------------------------------------------- drag reorder */
@@ -1757,6 +1846,7 @@ const A = {
   openTicket: (el) => openTicket(el.dataset.id, parseInt(el.dataset.i || '0', 10)),
   closeTicket: () => closeTicket(),
   navigate: (el) => navigateTo(S.items.find((i) => i.id === el.dataset.id)),
+  dayMap: (el) => openDayMap(parseInt(el.dataset.d, 10)),
   navLeg: (el) => window.open(mapUrl(el.dataset.t, el.dataset.f, true), '_blank', 'noopener'),
   selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); render(); },
   editDayTitle: async (el) => {
