@@ -1,0 +1,1630 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>旅行手冊</title>
+<meta name="description" content="離線也能用的旅行行程手冊">
+<meta name="theme-color" content="#F3F4F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121519" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="旅行手冊">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest" id="manifestLink">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+:root{
+  --bg:#F3F4F1; --card:#FFFFFF; --ink:#1C2433; --muted:#5A6270; --faint:#6B7280; --dim:#9AA0A9;
+  --line:#E1E3DE; --line2:#DADDD6; --soft:#E6E8E3; --soft2:#F1F2F0;
+  --accent:#C8432C; --accent-ink:#FFFFFF; --accent-soft:#F8E4DF;
+  --ok:#2F8A5C; --ok-ink:#1F6B45; --ok-soft:#E3F1E9; --warn:#9A6212; --warn-soft:#F6EBDA;
+  --dark-btn:#1C2433; --dark-btn-ink:#FFFFFF;
+  --c-transit:#2F6FB0; --c-transit-bg:#E4EDF7;
+  --c-stay:#7A5AA8; --c-stay-bg:#EEE8F5;
+  --c-sight:#2F8A5C; --c-sight-bg:#E3F0E8;
+  --c-food:#9A6212; --c-food-bg:#F6EBDA;
+  --c-note:#5A6270; --c-note-bg:#ECEEEA;
+  --shadow:0 1px 2px rgba(28,36,51,.06),0 8px 24px rgba(28,36,51,.07);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#121519; --card:#1C2027; --ink:#ECEEF1; --muted:#A3AAB5; --faint:#8F97A3; --dim:#6E7682;
+    --line:#2C313A; --line2:#363C46; --soft:#262B33; --soft2:#232830;
+    --accent:#EE7A5F; --accent-ink:#1A0B07; --accent-soft:#3A2420;
+    --ok:#5CC08C; --ok-ink:#7DD3A4; --ok-soft:#1D3328; --warn:#E3AE5B; --warn-soft:#3A2F1C;
+    --dark-btn:#ECEEF1; --dark-btn-ink:#121519;
+    --c-transit:#7FB2E6; --c-transit-bg:#1F2E40;
+    --c-stay:#B79BE0; --c-stay-bg:#2C2540;
+    --c-sight:#6CCB98; --c-sight-bg:#1D3328;
+    --c-food:#E3AE5B; --c-food-bg:#3A2F1C;
+    --c-note:#A3AAB5; --c-note-bg:#262B33;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+body.lock{overflow:hidden}
+button,input,select,textarea{font-family:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+svg{display:block;flex-shrink:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-bottom:calc(96px + var(--sab))}
+.hidden{display:none!important}
+
+/* ---------- header ---------- */
+.top{padding:calc(18px + var(--sat)) 20px 12px;display:flex;flex-direction:column;gap:10px}
+.top-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.top-meta{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.top-title{margin:2px 0 0;padding:0;border:0;background:none;display:block;font-size:26px;line-height:1.2;font-weight:700;text-align:left;color:var(--ink)}
+.top-title svg{color:var(--dim);display:inline-block;vertical-align:middle;margin-left:4px}
+.icon-btn{width:44px;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.pills{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--soft);color:var(--muted);border:0}
+.pill .dot{width:7px;height:7px;border-radius:4px;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok-ink)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ro{background:var(--card);border:1px solid var(--line)}
+.clock{font-size:12px;color:var(--muted)}
+
+/* ---------- banners ---------- */
+.banner{position:relative;margin:0 16px 14px;padding:12px 8px 12px 14px;border-radius:16px;background:var(--dark-btn);color:var(--dark-btn-ink);display:flex;align-items:center;gap:12px}
+.banner .b-ico{width:36px;height:36px;flex-shrink:0;border-radius:10px;background:rgba(127,127,127,.22);display:flex;align-items:center;justify-content:center}
+.banner .b-body{flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.banner b{font-size:14px}
+.banner span{font-size:12px;opacity:.8}
+.banner .b-x{width:44px;height:44px;border:0;background:transparent;color:inherit;opacity:.7;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.banner.accent{background:var(--accent);color:var(--accent-ink)}
+
+/* ---------- boarding pass ---------- */
+.pass{margin:0 16px;background:var(--card);border-radius:20px;box-shadow:var(--shadow);position:relative}
+.pass-top{padding:16px 20px 18px;display:flex;flex-direction:column;gap:16px}
+.pass-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pass-head .l{display:flex;align-items:center;gap:8px;min-width:0}
+.tag-next{padding:4px 9px;border-radius:6px;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.countdown{font-size:14px;font-weight:700;color:var(--accent);white-space:nowrap}
+.type-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap}
+.route{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.route .stop{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:42%}
+.route .stop.r{align-items:flex-end;text-align:right}
+.route .city{font-size:28px;font-weight:800;line-height:1.15;overflow-wrap:anywhere}
+.route .t{font-family:var(--mono);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.route .mid{flex-grow:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding-bottom:12px;color:var(--c-transit);min-width:40px}
+.route .mid .dash{width:100%;border-top:2px dashed var(--line2)}
+.route .mid small{font-size:11px;color:var(--muted);white-space:nowrap}
+.pass-title{font-size:26px;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.pass-sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.pass-sub .t{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink)}
+.pass-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kv{display:flex;flex-direction:column;gap:2px;min-width:0}
+.kv small{font-size:11px;color:var(--muted)}
+.kv b{font-size:15px;font-weight:700;overflow-wrap:anywhere}
+.perf{position:relative;height:0;border-top:2px dashed var(--line);margin:0 16px}
+.perf::before,.perf::after{content:"";position:absolute;top:-12px;width:22px;height:22px;border-radius:11px;background:var(--bg)}
+.perf::before{left:-28px}.perf::after{right:-28px}
+.pass-stub{padding:14px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.stub-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.ref{font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:.08em;overflow-wrap:anywhere}
+.lock-note{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.btn-row{display:flex;gap:10px}
+.btn{height:48px;border-radius:14px;border:1.5px solid var(--line2);background:var(--card);color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;flex:none;text-decoration:none;padding:0 14px}
+.btn-row>.btn{flex:1 1 0;min-width:0}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.dark{background:var(--dark-btn);border-color:var(--dark-btn);color:var(--dark-btn-ink)}
+.btn.danger{color:#C8432C;border-color:var(--line2)}
+.btn.sm{height:40px;font-size:14px;border-radius:12px}
+.btn:disabled{opacity:.45}
+.hero{margin:0 16px;padding:22px 20px;border-radius:20px;background:var(--card);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.hero .big{font-size:40px;font-weight:800;font-family:var(--mono);line-height:1.1}
+.hero .muted{color:var(--muted);font-size:14px}
+
+/* ---------- sections / timeline ---------- */
+.sec{padding:22px 16px 0;display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px}
+.sec-head .l{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
+.sec-head h2{margin:0;font-size:18px;font-weight:700}
+.sec-head .n{font-size:13px;color:var(--muted)}
+.chip-btn{height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;flex-shrink:0}
+.tl{display:flex;flex-direction:column}
+.tl-row{display:flex;gap:10px}
+.tl-time{width:44px;padding-top:16px;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;flex-shrink:0}
+.tl-row.next .tl-time{color:var(--accent);font-weight:700;padding-top:18px}
+.tl-rail{width:22px;position:relative;display:flex;justify-content:center;flex-shrink:0}
+.tl-rail::before{content:"";position:absolute;top:0;bottom:0;left:10px;width:2px;background:var(--line2)}
+.tl-row:last-child .tl-rail::before{bottom:auto;height:26px}
+.tl-row:first-child .tl-rail::before{top:14px}
+.tl-node{position:relative;margin-top:14px;width:20px;height:20px;border-radius:10px;border:2px solid var(--dim);background:var(--bg);padding:0;display:flex;align-items:center;justify-content:center;color:#fff}
+.tl-node.done{background:var(--ok);border-color:var(--ok)}
+.tl-row.next .tl-node{border:5px solid var(--accent);background:var(--card);margin-top:16px}
+.tl-node[disabled]{cursor:default}
+.tl-card{flex-grow:1;min-width:0;margin-bottom:8px;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid transparent;display:flex;align-items:center;gap:12px;text-align:left;color:var(--ink);font-size:15px}
+.tl-row.done .tl-card{background:transparent;border-color:var(--line)}
+.tl-row.done .tl-title{color:var(--muted);text-decoration:line-through}
+.tl-row.past .tl-time{color:var(--dim)}
+.tl-row.next .tl-card{border:2px solid var(--accent);padding:9px 11px}
+.t-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t-body{display:flex;flex-direction:column;gap:1px;min-width:0;flex-grow:1}
+.tl-title{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-sub{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap}
+.tl-sub span{overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:6px;background:var(--soft2);color:var(--muted);font-weight:600;font-size:11px;flex-shrink:0}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px;border:1.5px dashed var(--line2);border-radius:16px}
+
+/* ---------- itinerary ---------- */
+.days{display:flex;gap:6px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;scroll-snap-type:x proximity}
+.days::-webkit-scrollbar{display:none}
+.day-chip{flex:0 0 auto;width:48px;height:58px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;scroll-snap-align:center;padding:0}
+.day-chip small{font-size:11px;font-weight:600;color:var(--muted)}
+.day-chip b{font-family:var(--mono);font-size:14px}
+.day-chip.past{background:var(--soft);border-color:transparent;color:var(--muted)}
+.day-chip.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.day-chip.sel small{color:var(--accent-ink)}
+.day-chip.today:not(.sel){border:2px solid var(--accent)}
+.ilist{display:flex;flex-direction:column;gap:8px}
+.irow{padding:8px 4px 8px 12px;border-radius:14px;background:var(--card);display:flex;align-items:center;gap:10px;position:relative;transition:transform .18s ease;touch-action:pan-y}
+.irow .it{width:44px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0}
+.irow .it.bad{color:var(--warn)}
+.irow .open{flex-grow:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;text-align:left;color:var(--ink)}
+.irow.dragging{transition:none;z-index:5;box-shadow:0 14px 30px rgba(28,36,51,.22);outline:2px solid var(--accent);transform-origin:center}
+.drag{width:40px;height:44px;border:0;background:transparent;color:var(--dim);display:flex;align-items:center;justify-content:center;touch-action:none;flex-shrink:0;cursor:grab}
+.add-row{height:48px;border-radius:14px;border:1.5px dashed var(--line2);background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:600;width:100%}
+.day-title-btn{border:0;background:none;padding:0;display:flex;align-items:center;gap:6px;color:var(--ink);text-align:left;min-width:0}
+.day-title-btn h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day-title-btn svg{color:var(--dim)}
+
+/* ---------- checklist ---------- */
+.progress{margin:0 16px;padding:14px 16px;border-radius:16px;background:var(--card);display:flex;flex-direction:column;gap:8px}
+.bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:4px}
+.cgroup{background:var(--card);border-radius:16px;overflow:hidden}
+.cgroup h3{margin:0;padding:12px 16px 6px;font-size:13px;color:var(--muted);font-weight:700;display:flex;justify-content:space-between}
+.crow{display:flex;align-items:center;gap:4px;border-top:1px solid var(--line);min-height:48px;padding-right:4px}
+.crow:first-of-type{border-top:0}
+.cbox{flex-grow:1;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;background:none;border:0;text-align:left;color:var(--ink);font-size:15px;min-width:0}
+.cbox .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--dim);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+.crow.on .box{background:var(--ok);border-color:var(--ok)}
+.crow.on .ctext{color:var(--muted);text-decoration:line-through}
+.ctext{overflow-wrap:anywhere}
+.cdel{width:40px;height:40px;border:0;background:none;color:var(--dim);display:flex;align-items:center;justify-content:center}
+.cadd{display:flex;gap:8px;padding:8px 12px 12px 16px;border-top:1px solid var(--line)}
+.cadd input{flex-grow:1;min-width:0;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:16px}
+
+/* ---------- more / lists ---------- */
+.group{margin:0 16px;background:var(--card);border-radius:16px;overflow:hidden}
+.group-title{margin:22px 20px 8px;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 16px;border-top:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;color:var(--ink);font-size:15px}
+.group .row:first-child{border-top:0}
+.row .grow{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.row .grow small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.row .val{color:var(--muted);font-size:14px;text-align:right}
+.row .ico{width:30px;height:30px;border-radius:8px;background:var(--soft2);color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.row.danger{color:#C8432C}
+.switch{position:relative;width:51px;height:31px;flex-shrink:0}
+.switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;inset:0;z-index:1;cursor:pointer}
+.switch i{position:absolute;inset:0;border-radius:16px;background:var(--line2);transition:background .2s}
+.switch i::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked+i{background:var(--ok)}
+.switch input:checked+i::after{transform:translateX(20px)}
+.note-p{margin:8px 20px 0;font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ---------- tab bar ---------- */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);padding:6px 12px calc(6px + var(--sab))}
+.tabbar-in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.tab{height:54px;border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600}
+.tab.on{color:var(--accent);font-weight:700}
+
+/* ---------- sheet ---------- */
+.backdrop{position:fixed;inset:0;z-index:40;background:rgba(10,14,20,.45);display:flex;align-items:flex-end;justify-content:center;animation:fade .18s ease}
+.sheet{width:100%;max-width:520px;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--bg);border-radius:22px 22px 0 0;padding:8px 16px calc(20px + var(--sab));animation:up .22s cubic-bezier(.2,.8,.2,1)}
+.grip{width:40px;height:5px;border-radius:3px;background:var(--line2);margin:4px auto 8px}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 4px 12px}
+.sheet-head h3{margin:0;font-size:18px;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.sheet-head .x{width:40px;height:40px;border-radius:20px;border:0;background:var(--soft);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.form{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span{font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px}
+.field input,.field select,.field textarea{width:100%;min-width:0;max-width:100%;font-size:16px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 12px;height:46px;-webkit-appearance:none;appearance:none;color:var(--ink)}
+.field input[type=date],.field input[type=time]{display:block;line-height:46px;text-align:left}
+.field input::-webkit-date-and-time-value{text-align:left}
+.field textarea{height:auto;min-height:88px;padding:10px 12px;resize:vertical;line-height:1.45}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239AA0A9' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.seg button{height:56px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;padding:0}
+.seg button.on{border-color:currentColor;background:var(--card)}
+.atts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.att{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--soft);border:0;padding:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.att img{width:100%;height:100%;object-fit:cover}
+.att-wrap{position:relative}
+.rmb{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:14px;border:0;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.att.add{border:1.5px dashed var(--line2);background:transparent;flex-direction:column;gap:4px}
+.info{display:flex;flex-direction:column}
+.info .ir{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:15px}
+.info .ir:first-child{border-top:0;padding-top:0}
+.info .ir small{width:72px;flex-shrink:0;color:var(--muted);font-size:13px;padding-top:1px}
+.info .ir div{flex-grow:1;min-width:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.check-list{display:flex;flex-direction:column;gap:2px}
+.chk{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.chk:first-child{border-top:0}
+.chk .st{width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+.chk .st.y{background:var(--ok)}.chk .st.n{background:var(--warn)}
+.chk b{display:block;font-size:15px}.chk small{color:var(--muted);font-size:13px}
+.trip-opt{display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:14px;border:1.5px solid transparent;background:var(--card);text-align:left;color:var(--ink);margin-bottom:8px}
+.trip-opt.on{border-color:var(--accent)}
+.trip-opt .grow{flex-grow:1;min-width:0}
+.trip-opt b{display:block;font-size:16px}
+.trip-opt small{color:var(--muted);font-size:13px}
+.cl-list{position:relative;padding-left:22px}
+.cl-list::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:var(--line2)}
+.cl-ver{position:relative;margin-bottom:18px}
+.cl-ver::before{content:"";position:absolute;left:-21px;top:5px;width:12px;height:12px;border-radius:6px;background:var(--card);border:2px solid var(--dim)}
+.cl-ver.cur::before{background:var(--accent);border-color:var(--accent)}
+.cl-ver h4{margin:0 0 2px;font-size:16px;display:flex;align-items:center;gap:8px}
+.cl-ver .d{font-size:12px;color:var(--muted);font-weight:400}
+.cl-ver ul{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.cl-ver li{display:flex;gap:8px;font-size:14px;align-items:flex-start}
+.tagc{font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-top:1px}
+.tag-add{background:var(--ok-soft);color:var(--ok-ink)}.tag-fix{background:var(--accent-soft);color:var(--accent)}
+.tag-imp{background:var(--warn-soft);color:var(--warn)}.tag-chg{background:var(--c-transit-bg);color:var(--c-transit)}
+
+/* ---------- welcome ---------- */
+.welcome{padding:calc(56px + var(--sat)) 24px 24px;display:flex;flex-direction:column;gap:16px;align-items:stretch}
+.welcome img{width:88px;height:88px;border-radius:22px;box-shadow:var(--shadow)}
+.welcome h1{margin:8px 0 0;font-size:30px}
+.welcome p{margin:0;color:var(--muted)}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;bottom:calc(100px + var(--sab));transform:translateX(-50%);z-index:80;background:var(--dark-btn);color:var(--dark-btn-ink);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;max-width:calc(100vw - 32px);box-shadow:0 8px 24px rgba(0,0,0,.25);animation:fade .2s}
+
+/* ---------- ticket view (always light) ---------- */
+.ticket{position:fixed;inset:0;z-index:60;background:#FFFFFF;color:#1C2433;display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab)}
+.ticket .tk-top{padding:12px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ticket .tk-x{width:44px;height:44px;border-radius:22px;border:0;background:#F1F2F0;color:#1C2433;display:flex;align-items:center;justify-content:center}
+.ticket .tk-wake{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#F1F2F0;color:#5A6270}
+.ticket .tk-wake.on{background:#E3F1E9;color:#1F6B45}
+.ticket .tk-head{text-align:center;padding:12px 20px 0}
+.ticket .tk-head small{font-size:14px;color:#5A6270}
+.ticket .tk-head b{display:block;font-size:20px;font-weight:800}
+.ticket .tk-slides{flex-grow:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;min-height:0}
+.ticket .tk-slides::-webkit-scrollbar{display:none}
+.ticket .tk-slide{flex:0 0 100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;padding:14px 16px;min-height:0}
+.ticket .tk-slide img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.ticket .tk-pdf{display:flex;flex-direction:column;align-items:center;gap:12px;color:#5A6270}
+.ticket .tk-info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 20px}
+.ticket .tk-info>div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;border-radius:14px;background:#F3F4F1}
+.ticket .tk-info small{font-size:12px;color:#5A6270}
+.ticket .tk-info b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-align:center}
+.ticket .tk-info b.mono{font-family:var(--mono);letter-spacing:.04em}
+.ticket .tk-foot{padding:12px 20px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;color:#5A6270}
+.ticket .tk-dots{display:flex;gap:6px}
+.ticket .tk-dots i{width:6px;height:6px;border-radius:3px;background:#C9CDD4;transition:width .2s}
+.ticket .tk-dots i.on{width:18px;background:#1C2433}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<nav class="tabbar hidden" id="tabbar" aria-label="主要分頁"><div class="tabbar-in" id="tabbarIn"></div></nav>
+<input type="file" id="fileAtt" accept="image/*,application/pdf" multiple class="hidden">
+<input type="file" id="fileImport" accept="application/json,.json" class="hidden">
+<script>
+'use strict';
+/* =====================================================================
+ * 旅行手冊 — 發新版檢查表：
+ *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
+ * ===================================================================== */
+const APP_VERSION = '1.0.0';
+const APP_AUTHOR = 'Henry';
+// 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
+// 留空也可以：到「更多 → 分享」手動填入。
+const DEFAULT_API = '';
+const HOME_TZ_DEFAULT = 'Asia/Taipei';
+
+const CHANGELOG = [
+  { v: '1.0.0', date: '2026-09-24', notes: [
+    ['add', '今日頁：登機證風「下一站」卡片、倒數時間、當地與台灣時間對照'],
+    ['add', '行程頁：按天分組、拖曳排序、每天可自訂標題'],
+    ['add', '附件存在手機本機；看票模式全螢幕顯示並嘗試保持螢幕常亮'],
+    ['add', '分享唯讀連結給家人，訂位代號與附件不會上傳'],
+    ['add', '行李清單與範本、離線就緒檢查、JSON 備份匯出入'],
+    ['add', '深色模式、檢查更新、版本更新紀錄']
+  ]}
+];
+const TAGS = { add: '新增', fix: '修正', imp: '優化', chg: '調整' };
+
+/* ---------------------------------------------------------------- icons */
+const IC = {
+  train: '<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><path d="M9 21l-2-4M15 21l2-4"/>',
+  plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  pin: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  food: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 21V3c-2 0-4 2.5-4 6v4h4"/>',
+  bed: '<path d="M3 18V6M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.5"/>',
+  note: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  share: '<path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+  wifiOff: '<path d="M2 2l20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.8"/><path d="M19 12.9a10 10 0 0 0-2.4-1.7"/><path d="M12 20h.01"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  nav: '<path d="M3 11l18-8-8 18-2-8-8-2z"/>',
+  qr: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
+  clip: '<path d="M21 12l-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/>',
+  grip: '<path d="M5 8h14M5 12h14M5 16h14"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  route: '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8a3 3 0 0 0 0-6H8a3 3 0 0 1 0-6h8"/>',
+  list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',
+  more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  down: '<path d="M6 9l6 6 6-6"/>',
+  right: '<path d="M9 6l6 6-6 6"/>',
+  pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  download: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  upload: '<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+  copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+  bag: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  map: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
+  wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h.01M3 10h18"/>',
+  storage: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'
+};
+function icon(name, size = 20, sw = 2) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[name] || ''}</svg>`;
+}
+
+const TYPES = {
+  transit: { label: '交通', icon: 'train', c: 'var(--c-transit)', bg: 'var(--c-transit-bg)' },
+  stay:    { label: '住宿', icon: 'bed',   c: 'var(--c-stay)',    bg: 'var(--c-stay-bg)' },
+  sight:   { label: '景點', icon: 'pin',   c: 'var(--c-sight)',   bg: 'var(--c-sight-bg)' },
+  food:    { label: '餐廳', icon: 'food',  c: 'var(--c-food)',    bg: 'var(--c-food-bg)' },
+  note:    { label: '備註', icon: 'note',  c: 'var(--c-note)',    bg: 'var(--c-note-bg)' }
+};
+const FLIGHT_RE = /^[A-Z0-9]{2}\s?\d{1,4}[A-Z]?$/i;
+function typeIcon(it, size = 18) {
+  const t = TYPES[it.type] || TYPES.note;
+  const name = it.type === 'transit' && FLIGHT_RE.test((it.vehicle || '').trim()) ? 'plane' : t.icon;
+  return icon(name, size);
+}
+
+const TZS = [
+  ['Asia/Taipei', '台灣'], ['Asia/Tokyo', '日本'], ['Asia/Seoul', '韓國'], ['Asia/Hong_Kong', '香港／澳門'],
+  ['Asia/Shanghai', '中國'], ['Asia/Singapore', '新加坡'], ['Asia/Kuala_Lumpur', '馬來西亞'], ['Asia/Bangkok', '泰國'],
+  ['Asia/Ho_Chi_Minh', '越南'], ['Asia/Manila', '菲律賓'], ['Asia/Makassar', '峇里島'], ['Asia/Jakarta', '雅加達'],
+  ['Asia/Dubai', '杜拜'], ['Europe/Istanbul', '土耳其'], ['Europe/London', '英國'], ['Europe/Paris', '法國'],
+  ['Europe/Berlin', '德國'], ['Europe/Rome', '義大利'], ['Europe/Madrid', '西班牙'], ['Europe/Zurich', '瑞士'],
+  ['Europe/Prague', '捷克'], ['Australia/Sydney', '雪梨'], ['Australia/Brisbane', '布里斯本'], ['Pacific/Auckland', '紐西蘭'],
+  ['Pacific/Guam', '關島'], ['Pacific/Honolulu', '夏威夷'], ['America/Los_Angeles', '美西'], ['America/Vancouver', '溫哥華'],
+  ['America/New_York', '美東'], ['America/Chicago', '美中']
+];
+const CURS = { TWD: 'NT$', JPY: '¥', KRW: '₩', USD: 'US$', EUR: '€', GBP: '£', HKD: 'HK$', CNY: 'CN¥', SGD: 'S$', THB: '฿', VND: '₫', MYR: 'RM', PHP: '₱', IDR: 'Rp', AUD: 'A$', NZD: 'NZ$', CHF: 'CHF', TRY: '₺', AED: 'AED', CZK: 'Kč', CAD: 'C$' };
+const TZ_CUR = { 'Asia/Taipei': 'TWD', 'Asia/Tokyo': 'JPY', 'Asia/Seoul': 'KRW', 'Asia/Hong_Kong': 'HKD', 'Asia/Shanghai': 'CNY', 'Asia/Singapore': 'SGD', 'Asia/Kuala_Lumpur': 'MYR', 'Asia/Bangkok': 'THB', 'Asia/Ho_Chi_Minh': 'VND', 'Asia/Manila': 'PHP', 'Asia/Makassar': 'IDR', 'Asia/Jakarta': 'IDR', 'Asia/Dubai': 'AED', 'Europe/Istanbul': 'TRY', 'Europe/London': 'GBP', 'Europe/Paris': 'EUR', 'Europe/Berlin': 'EUR', 'Europe/Rome': 'EUR', 'Europe/Madrid': 'EUR', 'Europe/Zurich': 'CHF', 'Europe/Prague': 'CZK', 'Australia/Sydney': 'AUD', 'Australia/Brisbane': 'AUD', 'Pacific/Auckland': 'NZD', 'Pacific/Guam': 'USD', 'Pacific/Honolulu': 'USD', 'America/Los_Angeles': 'USD', 'America/Vancouver': 'CAD', 'America/New_York': 'USD', 'America/Chicago': 'USD' };
+
+const BUILTIN_TEMPLATES = [
+  { id: 'tpl_intl', name: '出國基本', builtin: true, items: [
+    ['證件', '護照（效期 6 個月以上）'], ['證件', '機票／電子票證截圖'], ['證件', '住宿確認信'], ['證件', '旅遊保險'],
+    ['電子', '手機充電線'], ['電子', '行動電源（隨身）'], ['電子', '轉接頭'], ['電子', '網卡／eSIM'],
+    ['衣物', '換洗衣物'], ['衣物', '外套'], ['衣物', '好走的鞋'],
+    ['其他', '常備藥品'], ['其他', '外幣現金'], ['其他', '信用卡'], ['其他', '雨具']
+  ]},
+  { id: 'tpl_local', name: '國內兩天一夜', builtin: true, items: [
+    ['證件', '身分證'], ['證件', '健保卡'], ['電子', '充電線'], ['電子', '行動電源'],
+    ['衣物', '換洗衣物'], ['衣物', '盥洗用品'], ['其他', '雨具'], ['其他', '零錢']
+  ]}
+];
+
+/* ---------------------------------------------------------------- utils */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+function h(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function uid(p = '') { const a = crypto.getRandomValues(new Uint8Array(10)); return p + Date.now().toString(36) + [...a].map((b) => (b % 36).toString(36)).join(''); }
+function cmpVer(a, b) { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; }
+function pad(n) { return String(n).padStart(2, '0'); }
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+function isIOS() { return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function fmtMoney(n, cur) { if (n == null || n === '' || isNaN(n)) return ''; const sym = CURS[cur] || cur || ''; return `${sym} ${Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })}`; }
+function relTime(ms) {
+  if (!ms) return '從未';
+  const d = Math.max(0, Date.now() - ms) / 60000;
+  if (d < 1) return '剛剛';
+  if (d < 60) return `${Math.floor(d)} 分鐘前`;
+  if (d < 1440) return `${Math.floor(d / 60)} 小時前`;
+  return `${Math.floor(d / 1440)} 天前`;
+}
+function tzName(tz) { const f = TZS.find((t) => t[0] === tz); return f ? f[1] : tz; }
+
+/* ---------------------------------------------------------------- time
+ * 行程時間一律存「當地時間字串 HH:MM」＋時區，不存 Date。
+ * 需要比大小（倒數、下一站）時才用 localToUtc 換成絕對時間。 */
+const _dtf = {};
+function tzParts(tz, ms = Date.now()) {
+  const f = _dtf[tz] || (_dtf[tz] = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }));
+  const p = {}; for (const x of f.formatToParts(new Date(ms))) p[x.type] = x.value;
+  const hour = p.hour === '24' ? '00' : p.hour;
+  return { date: `${p.year}-${p.month}-${p.day}`, hm: `${hour}:${p.minute}`, y: +p.year, mo: +p.month, d: +p.day, H: +hour, M: +p.minute, S: +p.second };
+}
+function tzOffsetMin(tz, ms) { const p = tzParts(tz, ms); return Math.round((Date.UTC(p.y, p.mo - 1, p.d, p.H, p.M, p.S) - Math.floor(ms / 1000) * 1000) / 60000); }
+function localToUtc(dateStr, hm, tz) {
+  const [y, mo, d] = dateStr.split('-').map(Number); const [H, M] = (hm || '00:00').split(':').map(Number);
+  const guess = Date.UTC(y, mo - 1, d, H, M);
+  const off1 = tzOffsetMin(tz, guess);
+  let t = guess - off1 * 60000;
+  const off2 = tzOffsetMin(tz, t);
+  if (off2 !== off1) t = guess - off2 * 60000;
+  return t;
+}
+function addDays(dateStr, n) { const [y, m, d] = dateStr.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + n)); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`; }
+function daysBetween(a, b) { const [y1, m1, d1] = a.split('-').map(Number); const [y2, m2, d2] = b.split('-').map(Number); return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000); }
+function wd(dateStr) { const [y, m, d] = dateStr.split('-').map(Number); return '日一二三四五六'[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; }
+function mdLabel(dateStr) { const [, m, d] = dateStr.split('-').map(Number); return `${m}/${d}`; }
+function dateOfDay(trip, day) { return addDays(trip.start, day - 1); }
+function itemTz(trip, it) { return it.tz || trip.tz; }
+function itemStart(trip, it) { return it.time ? localToUtc(dateOfDay(trip, it.day), it.time, itemTz(trip, it)) : null; }
+function itemEnd(trip, it) {
+  if (!it.arrTime) return null;
+  let t = localToUtc(dateOfDay(trip, it.day), it.arrTime, trip.tz);
+  const s = itemStart(trip, it);
+  if (s != null && t < s) t = localToUtc(addDays(dateOfDay(trip, it.day), 1), it.arrTime, trip.tz);
+  return t;
+}
+function homeHM(trip, it, hm, tzOverride) {
+  const tz = tzOverride || itemTz(trip, it); const home = S.settings.homeTz;
+  if (!hm || tz === home) return '';
+  const date = dateOfDay(trip, it.day); const t = localToUtc(date, hm, tz); const p = tzParts(home, t);
+  const dd = daysBetween(date, p.date);
+  return p.hm + (dd > 0 ? '（+1）' : dd < 0 ? '（-1）' : '');
+}
+function durText(ms) { const m = Math.round(ms / 60000); if (m <= 0) return ''; const hh = Math.floor(m / 60), mm = m % 60; return hh ? `${hh} 小時${mm ? ` ${mm} 分` : ''}` : `${mm} 分`; }
+function countdownText(ms) {
+  const m = Math.ceil(ms / 60000);
+  if (m <= 0) return '即將開始';
+  if (m < 60) return `還有 ${m} 分`;
+  if (m < 60 * 24) { const hh = Math.floor(m / 60), mm = m % 60; return `還有 ${hh} 小時${mm ? ` ${mm} 分` : ''}`; }
+  return `還有 ${Math.floor(m / 1440)} 天`;
+}
+
+/* ---------------------------------------------------------------- IndexedDB */
+const DB_NAME = 'travel_handbook';
+let _db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      db.createObjectStore('trips', { keyPath: 'id' });
+      db.createObjectStore('items', { keyPath: 'id' }).createIndex('tripId', 'tripId');
+      db.createObjectStore('checks', { keyPath: 'id' }).createIndex('tripId', 'tripId');
+      const a = db.createObjectStore('atts', { keyPath: 'id' }); a.createIndex('tripId', 'tripId'); a.createIndex('itemId', 'itemId');
+      db.createObjectStore('meta', { keyPath: 'key' });
+    };
+    r.onsuccess = () => { _db = r.result; res(_db); };
+    r.onerror = () => rej(r.error);
+  });
+}
+function tx(stores, mode, fn) {
+  return new Promise((res, rej) => {
+    const t = _db.transaction(stores, mode); let out;
+    t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    out = fn(t);
+  });
+}
+function reqP(r) { return new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function dbAll(store, index, key) {
+  const t = _db.transaction(store); const s = t.objectStore(store);
+  return reqP(index ? s.index(index).getAll(key) : s.getAll());
+}
+async function dbGet(store, key) { return reqP(_db.transaction(store).objectStore(store).get(key)); }
+function dbPut(store, obj) { return tx([store], 'readwrite', (t) => { t.objectStore(store).put(obj); }); }
+function dbPutMany(store, arr) { return tx([store], 'readwrite', (t) => { const s = t.objectStore(store); arr.forEach((o) => s.put(o)); }); }
+function dbDel(store, key) { return tx([store], 'readwrite', (t) => { t.objectStore(store).delete(key); }); }
+async function metaGet(key, def) { const r = await dbGet('meta', key); return r ? r.value : def; }
+function metaSet(key, value) { return dbPut('meta', { key, value }); }
+
+/* ---------------------------------------------------------------- state */
+const S = {
+  trips: [], trip: null, items: [], checks: [], atts: [],
+  tab: 'today', selDay: 1, checkEdit: false,
+  settings: { homeTz: HOME_TZ_DEFAULT, showHome: true, mapApp: 'apple', api: '', planner: '' },
+  templates: [], dismissed: {}, online: navigator.onLine
+};
+const isViewer = () => S.trip && S.trip.role === 'viewer';
+const liveItems = () => S.items.filter((i) => !i.deleted);
+function dayItems(day) { return liveItems().filter((i) => i.day === day).sort((a, b) => a.order - b.order); }
+function attsOf(itemId) { return S.atts.filter((a) => a.itemId === itemId).sort((a, b) => a.createdAt - b.createdAt); }
+
+async function loadAll() {
+  S.trips = (await dbAll('trips')).sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  S.settings = Object.assign(S.settings, await metaGet('settings', {}));
+  S.templates = await metaGet('templates', []);
+  S.dismissed = await metaGet('dismissed', {});
+  const cur = await metaGet('currentTrip', null);
+  await selectTrip(S.trips.find((t) => t.id === cur) ? cur : (S.trips[0] && S.trips[0].id), false);
+}
+async function selectTrip(id, save = true) {
+  S.trip = S.trips.find((t) => t.id === id) || null;
+  if (!S.trip) { S.items = []; S.checks = []; S.atts = []; return; }
+  S.items = await dbAll('items', 'tripId', id);
+  S.checks = await dbAll('checks', 'tripId', id);
+  S.atts = await dbAll('atts', 'tripId', id);
+  const td = todayInfo();
+  S.selDay = td.status === 'during' ? td.day : 1;
+  if (save) await metaSet('currentTrip', id);
+}
+async function saveSettings() { await metaSet('settings', S.settings); }
+async function saveTrip(trip) { trip.updatedAt = Date.now(); await dbPut('trips', trip); const i = S.trips.findIndex((t) => t.id === trip.id); if (i >= 0) S.trips[i] = trip; else S.trips.push(trip); }
+async function saveItems(arr) { const now = Date.now(); arr.forEach((i) => { i.updatedAt = now; }); await dbPutMany('items', arr); arr.forEach((it) => { const i = S.items.findIndex((x) => x.id === it.id); if (i >= 0) S.items[i] = it; else S.items.push(it); }); markDirty(); }
+
+/* ---------------------------------------------------------------- today logic */
+function todayInfo(trip = S.trip) {
+  if (!trip) return { status: 'none' };
+  const now = tzParts(trip.tz);
+  const day = daysBetween(trip.start, now.date) + 1;
+  const status = day < 1 ? 'before' : day > trip.days ? 'after' : 'during';
+  return { status, day, now, daysLeft: 1 - day };
+}
+function findNext() {
+  const now = Date.now(); let best = null, bestT = Infinity;
+  for (const it of liveItems()) {
+    if (it.done || !it.time || it.day < 1 || it.day > S.trip.days) continue;
+    const t = itemStart(S.trip, it);
+    if (t >= now - 60000 && t < bestT) { best = it; bestT = t; }
+  }
+  return best ? { it: best, t: bestT } : null;
+}
+
+/* ---------------------------------------------------------------- rendering */
+function render() {
+  const app = $('#app');
+  if (!S.trip) { $('#tabbar').classList.add('hidden'); app.innerHTML = renderWelcome(); return; }
+  $('#tabbar').classList.remove('hidden');
+  renderTabbar();
+  const views = { today: renderToday, itin: renderItin, checks: renderChecks, more: renderMore };
+  app.innerHTML = (views[S.tab] || renderToday)();
+  if (S.tab === 'itin') { const sel = $('.day-chip.sel'); if (sel) sel.scrollIntoView({ inline: 'center', block: 'nearest' }); }
+}
+function renderTabbar() {
+  const tabs = [['today', '今日', 'sun'], ['itin', '行程', 'route'], ['checks', '清單', 'list'], ['more', '更多', 'more']];
+  $('#tabbarIn').innerHTML = tabs.map(([k, l, i]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-act="tab" data-k="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${icon(i, 22)}<span>${l}</span></button>`).join('');
+}
+
+function renderWelcome() {
+  return `<div class="welcome">
+    <img src="icons/icon-180.png" alt="">
+    <h1>旅行手冊</h1>
+    <p>把行程、票券和行李清單放在手機裡，沒網路也看得到。也可以分享唯讀連結給同行的家人。</p>
+    <div style="height:8px"></div>
+    <button class="btn primary" data-act="newTrip">${icon('plus')}<span>建立旅程</span></button>
+    <button class="btn" data-act="joinShare">${icon('link')}<span>加入分享給我的行程</span></button>
+    <button class="btn" data-act="loadSample">${icon('eye')}<span>先看範例行程</span></button>
+    ${installBanner(true)}
+  </div>`;
+}
+
+function syncPills() {
+  const t = S.trip; const out = [];
+  if (t.role === 'viewer') {
+    const v = t.viewer || {};
+    if (v.gone) out.push(`<span class="pill warn">${icon('info', 14, 2.2)}<span>規劃者已停止分享 · 顯示最後版本</span></span>`);
+    else if (!S.online) out.push(`<span class="pill">${icon('wifiOff', 14, 2.2)}<span>離線 · 顯示 ${v.syncedAt ? fmtClock(v.syncedAt) : '—'} 的版本</span></span>`);
+    else out.push(`<button class="pill ok" data-act="viewerRefresh"><span class="dot"></span><span>${v.syncedAt ? relTime(v.syncedAt) + '更新' : '載入中…'}</span></button>`);
+    out.push(`<span class="pill ro">${icon('eye', 14, 2.2)}<span>唯讀${v.planner ? ' · 由 ' + h(v.planner) + ' 規劃' : ''}</span></span>`);
+  } else if (t.share && t.share.id) {
+    if (!S.online) out.push(`<span class="pill">${icon('wifiOff', 14, 2.2)}<span>離線${t.share.dirty ? ' · 有變更待上傳' : ''}</span></span>`);
+    else if (t.share.dirty) out.push(`<button class="pill warn" data-act="shareSync"><span class="dot"></span><span>${_syncing ? '同步中…' : '有變更待同步'}</span></button>`);
+    else out.push(`<span class="pill ok"><span class="dot"></span><span>已同步 · ${relTime(t.share.syncedAt)}</span></span>`);
+  } else {
+    out.push(`<span class="pill">${icon('lock', 14, 2.2)}<span>僅存本機</span></span>`);
+  }
+  return out.join('');
+}
+function fmtClock(ms) { const p = tzParts(S.settings.homeTz, ms); return p.hm; }
+function clockLine() {
+  const t = S.trip; const home = S.settings.homeTz;
+  const local = tzParts(t.tz).hm;
+  if (t.tz === home || !S.settings.showHome) return `<span class="clock">當地 ${local}</span>`;
+  return `<span class="clock">當地 ${local} · 台灣 ${tzParts(home).hm}</span>`;
+}
+
+function header(metaText) {
+  const t = S.trip;
+  return `<header class="top">
+    <div class="top-row">
+      <div style="min-width:0">
+        <div class="top-meta">${metaText}</div>
+        <button class="top-title" data-act="tripSwitcher" aria-label="切換旅程"><span>${h(t.name || '未命名旅程')}</span>${icon('down', 18, 2.4)}</button>
+      </div>
+      ${t.role === 'owner' ? `<button class="icon-btn" data-act="openShare" aria-label="分享行程">${icon('share')}</button>` : ''}
+    </div>
+    <div class="pills">${syncPills()}${clockLine()}</div>
+  </header>`;
+}
+
+function installBanner(welcome) {
+  if (isStandalone() || S.dismissed.install) return '';
+  const viewer = S.trip && S.trip.role === 'viewer';
+  const code = viewer ? S.trip.viewer.shareId : '';
+  const body = isIOS()
+    ? `點 Safari 下方「分享」${icon('share', 12, 2.4).replace('<svg', '<svg style="display:inline;vertical-align:-1px"')} →「加入主畫面」`
+    : '從瀏覽器選單選「安裝應用程式／加到主畫面」';
+  return `<div class="banner" ${welcome ? 'style="margin:8px 0 0"' : ''}>
+    <div class="b-ico">${icon('download', 18)}</div>
+    <div class="b-body"><b>加入主畫面，沒網路也能看</b><span>${body}</span>${code ? `<span>若加入後看不到行程，請貼上分享碼 <b class="mono" style="font-size:12px">${h(code)}</b></span>` : ''}</div>
+    <button class="b-x" data-act="dismiss" data-k="install" aria-label="關閉提示">${icon('x', 18, 2.2)}</button>
+  </div>`;
+}
+function updateBanner() {
+  if (!_updatedFrom) return '';
+  return `<div class="banner accent"><div class="b-ico">${icon('history', 18)}</div><div class="b-body"><b>已更新到 v${APP_VERSION}</b><span>點這裡看更新了什麼</span></div>
+  <button class="b-x" data-act="changelog" aria-label="查看更新紀錄" style="position:absolute;inset:0;width:auto;height:auto;opacity:0"></button>
+  <button class="b-x" data-act="dismissUpdate" aria-label="關閉" style="position:relative;z-index:1">${icon('x', 18, 2.2)}</button></div>`;
+}
+
+/* ----- today ----- */
+function renderToday() {
+  const t = S.trip; const td = todayInfo();
+  let meta, listDay, listTitle;
+  if (td.status === 'during') { meta = `DAY ${td.day} / ${t.days} · ${mdLabel(td.now.date)} 週${wd(td.now.date)}`; listDay = td.day; listTitle = '今日行程'; }
+  else if (td.status === 'before') { meta = `${mdLabel(t.start)} 出發 · 共 ${t.days} 天`; listDay = 1; listTitle = 'Day 1 預覽'; }
+  else { meta = `${mdLabel(t.start)} – ${mdLabel(dateOfDay(t, t.days))} · 已結束`; listDay = null; }
+  const next = findNext();
+  let html = header(meta) + updateBanner() + installBanner();
+  if (td.status === 'before' && (!next || td.daysLeft > 1)) {
+    html += `<div class="hero"><span class="muted">距離出發</span><span class="big">${td.daysLeft} 天</span><span class="muted">${mdLabel(t.start)}（${wd(t.start)}）· ${h(tzName(t.tz))}</span></div><div style="height:14px"></div>`;
+  }
+  if (td.status === 'after') {
+    html += `<div class="hero"><span class="big" style="font-family:var(--sans);font-size:28px">旅程已結束</span><span class="muted">共 ${t.days} 天、${liveItems().length} 個行程項目。可以到「行程」回顧，或建立下一趟旅程。</span></div>`;
+    return html;
+  }
+  if (next) html += passCard(next.it, next.t);
+  else if (td.status === 'during') html += `<div class="hero"><span class="big" style="font-family:var(--sans);font-size:24px">今天的行程都走完了</span><span class="muted">好好休息，明天見。</span></div>`;
+  const items = dayItems(listDay);
+  const now = Date.now();
+  html += `<section class="sec" aria-label="${listTitle}"><div class="sec-head"><div class="l"><h2>${listTitle}</h2><span class="n">${items.length} 項${items.length ? ` · 完成 ${items.filter((i) => i.done).length}` : ''}</span></div>
+    ${!isViewer() ? `<button class="chip-btn" data-act="newItem" data-day="${listDay}">${icon('plus', 16, 2.2)}<span>新增</span></button>` : ''}</div>`;
+  if (!items.length) html += `<div class="empty">這天還沒有安排${!isViewer() ? '，點右上「新增」加入第一個行程' : ''}</div>`;
+  else {
+    html += '<div class="tl">' + items.map((it) => {
+      const st = itemStart(t, it);
+      const cls = it.done ? 'done' : (next && next.it.id === it.id) ? 'next' : (st != null && st < now) ? 'past' : '';
+      return `<div class="tl-row ${cls}">
+        <div class="tl-time">${h(it.time || '—')}</div>
+        <div class="tl-rail"><button class="tl-node ${it.done ? 'done' : ''}" data-act="toggleDone" data-id="${it.id}" ${isViewer() ? 'disabled' : ''} aria-label="${it.done ? '取消完成' : '標記完成'}：${h(it.title)}">${it.done ? icon('check', 12, 3) : ''}</button></div>
+        <button class="tl-card" data-act="openItem" data-id="${it.id}">${tIco(it)}<div class="t-body"><div class="tl-title">${h(it.title)}</div><div class="tl-sub">${subLine(it)}</div></div></button>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  html += '</section>';
+  return html;
+}
+function tIco(it) { const T = TYPES[it.type] || TYPES.note; return `<div class="t-ico" style="background:${T.bg};color:${T.c}">${typeIcon(it)}</div>`; }
+function subLine(it) {
+  const T = TYPES[it.type] || TYPES.note; const parts = [T.label];
+  if (it.type === 'transit') { const cs = [it.car, it.seat].filter(Boolean).join(' '); if (cs) parts.push(cs); else if (it.vehicle) parts.push(it.vehicle); }
+  else if (it.place && it.place !== it.title) parts.push(it.place);
+  if (it.cost) parts.push(fmtMoney(it.cost, it.cur || S.trip.currency));
+  const n = attsOf(it.id).length;
+  return `<span>${h(parts.join(' · '))}</span>${n && !isViewer() ? `<span class="badge">${icon('clip', 11, 2.4)}${n}</span>` : ''}`;
+}
+function passCard(it, startMs) {
+  const t = S.trip; const T = TYPES[it.type] || TYPES.note;
+  const viewer = isViewer(); const atts = viewer ? [] : attsOf(it.id);
+  const cd = countdownText(startMs - Date.now());
+  const dayNote = it.day !== todayInfo().day ? `Day ${it.day} · ` : '';
+  let body;
+  if (it.type === 'transit' && (it.from || it.to)) {
+    const endMs = itemEnd(t, it);
+    body = `<div class="route">
+      <div class="stop"><div class="city">${h(it.from || '出發')}</div><div class="t">${h(it.time || '')}</div></div>
+      <div class="mid">${typeIcon(it, 22)}<div class="dash"></div><small>${endMs ? durText(endMs - startMs) : '&nbsp;'}</small></div>
+      <div class="stop r"><div class="city">${h(it.to || '抵達')}</div><div class="t">${h(it.arrTime || '')}</div></div>
+    </div>`;
+    const kv = [['車次／航班', it.vehicle], ['車廂／登機門', it.car], ['座位', it.seat]].filter((x) => x[1]);
+    if (kv.length) body += `<div class="pass-grid">${kv.map(([k, v]) => `<div class="kv"><small>${k}</small><b ${k === '座位' ? 'class="mono"' : ''}>${h(v)}</b></div>`).join('')}</div>`;
+  } else {
+    body = `<div class="pass-title">${h(it.title)}</div><div class="pass-sub"><span class="t">${h(it.time)}</span>${it.place ? `<span>${icon('pin', 14)}</span><span>${h(it.place)}</span>` : ''}</div>`;
+  }
+  const home = homeHM(t, it, it.time);
+  const navTarget = it.place || it.from;
+  let stub;
+  if (viewer) {
+    stub = `<div class="lock-note">${icon('lock', 16)}<span>訂位代號與票券只存在規劃者手機</span></div>
+      ${navTarget ? `<button class="btn dark" data-act="navigate" data-id="${it.id}">${icon('nav')}<span>導航到${h(navTarget.length > 10 ? '目的地' : navTarget)}</span></button>` : ''}`;
+  } else {
+    stub = `<div class="stub-row">
+        <div class="kv">${it.ref ? `<small>訂位代號</small><div class="ref">${h(it.ref)}</div>` : `<small>地點</small><b>${h(navTarget || '—')}</b>`}</div>
+        ${home && S.settings.showHome ? `<div class="clock" style="text-align:right">台灣時間 ${home}</div>` : ''}
+      </div>
+      <div class="btn-row">
+        ${atts.length ? `<button class="btn primary" data-act="openTicket" data-id="${it.id}">${icon('qr')}<span>看票</span></button>` : ''}
+        ${navTarget ? `<button class="btn ${atts.length ? '' : 'primary'}" data-act="navigate" data-id="${it.id}">${icon('nav')}<span>導航</span></button>` : ''}
+        ${!atts.length && !navTarget ? `<button class="btn" data-act="openItem" data-id="${it.id}">${icon('info')}<span>詳細資訊</span></button>` : ''}
+      </div>`;
+  }
+  return `<section class="pass" aria-label="下一站">
+    <div class="pass-top">
+      <div class="pass-head"><div class="l"><span class="tag-next">下一站</span><span class="countdown">${dayNote}${cd}</span></div>
+      <span class="type-chip" style="color:${T.c}">${typeIcon(it, 16)}<span>${T.label}</span></span></div>
+      <button data-act="openItem" data-id="${it.id}" style="all:unset;display:flex;flex-direction:column;gap:16px;cursor:pointer">${body}</button>
+    </div>
+    <div class="perf"></div>
+    <div class="pass-stub">${stub}</div>
+  </section>`;
+}
+
+/* ----- itinerary ----- */
+function renderItin() {
+  const t = S.trip; const td = todayInfo();
+  if (S.selDay > t.days) S.selDay = t.days;
+  const chips = Array.from({ length: t.days }, (_, i) => {
+    const d = i + 1; const date = dateOfDay(t, d);
+    const past = td.status === 'after' || (td.status === 'during' && d < td.day);
+    const today = td.status === 'during' && d === td.day;
+    return `<button class="day-chip ${past ? 'past' : ''} ${today ? 'today' : ''} ${d === S.selDay ? 'sel' : ''}" data-act="selDay" data-d="${d}" aria-label="Day ${d} ${mdLabel(date)}"><small>${today ? '今天' : 'D' + d}</small><b>${date.slice(8)}</b></button>`;
+  }).join('');
+  const d = S.selDay; const date = dateOfDay(t, d); const items = dayItems(d);
+  const title = (t.dayTitles && t.dayTitles[d]) || '';
+  const costSum = items.filter((i) => i.cost && (i.cur || t.currency) === t.currency).reduce((s, i) => s + Number(i.cost), 0);
+  let prevTime = '';
+  const rows = items.map((it) => {
+    const bad = it.time && prevTime && it.time < prevTime; if (it.time) prevTime = it.time;
+    return `<div class="irow" data-id="${it.id}">
+      <div class="it ${bad ? 'bad' : ''}" ${bad ? 'title="時間比前一項早"' : ''}>${h(it.time || '—')}${bad ? ' !' : ''}</div>
+      <button class="open" data-act="openItem" data-id="${it.id}">${tIco(it)}<div class="t-body"><div class="tl-title">${h(it.title)}</div><div class="tl-sub">${subLine(it)}</div></div></button>
+      ${!isViewer() ? `<button class="drag" aria-label="拖曳排序：${h(it.title)}">${icon('grip', 18)}</button>` : '<span style="width:8px"></span>'}
+    </div>`;
+  }).join('');
+  return `<header class="top"><div class="top-row"><div style="min-width:0">
+      <div class="top-meta">${mdLabel(t.start)} – ${mdLabel(dateOfDay(t, t.days))} · ${t.days} 天 · ${h(tzName(t.tz))}</div>
+      <button class="top-title" data-act="tripSwitcher"><span>${h(t.name)}</span>${icon('down', 18, 2.4)}</button></div>
+      ${!isViewer() ? `<button class="icon-btn" data-act="editTrip" aria-label="旅程設定">${icon('pencil')}</button>` : ''}</div></header>
+    <div class="days" role="tablist" aria-label="選擇日期">${chips}</div>
+    <section class="sec" style="padding-top:14px">
+      <div class="sec-head" style="flex-direction:column;align-items:flex-start;gap:2px">
+        ${!isViewer() ? `<button class="day-title-btn" data-act="editDayTitle" data-d="${d}" style="max-width:100%"><h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>${icon('pencil', 14)}</button>` : `<h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>`}
+        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span></div>
+      <div class="ilist" id="ilist">${rows || `<div class="empty">這天還沒有安排</div>`}</div>
+      ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="${d}">${icon('plus', 16, 2.2)}<span>新增到 Day ${d}</span></button>` : ''}
+    </section>`;
+}
+
+/* ----- checklist ----- */
+function renderChecks() {
+  const live = S.checks.filter((c) => !c.deleted).sort((a, b) => a.order - b.order);
+  const groups = []; live.forEach((c) => { let g = groups.find((x) => x.name === c.group); if (!g) groups.push(g = { name: c.group, items: [] }); g.items.push(c); });
+  const done = live.filter((c) => c.done).length; const pct = live.length ? Math.round((done / live.length) * 100) : 0;
+  let html = `<header class="top"><div class="top-row"><div style="min-width:0"><div class="top-meta">行李與待辦 · 只存在這支手機</div><h1 class="top-title" style="cursor:default">清單</h1></div>
+    <button class="icon-btn" data-act="checkMenu" aria-label="清單選項">${icon('more')}</button></div></header>`;
+  if (!live.length) {
+    return html + `<section class="sec" style="padding-top:4px"><div class="empty">還沒有清單項目<br><br>
+      <button class="btn primary" data-act="applyTemplate" style="max-width:260px;margin:0 auto">${icon('bag')}<span>從範本建立</span></button><br>
+      <button class="btn" data-act="addGroup" style="max-width:260px;margin:0 auto">${icon('plus')}<span>自己新增分類</span></button></div></section>`;
+  }
+  html += `<div class="progress"><div style="display:flex;justify-content:space-between;font-size:14px"><b>${done} / ${live.length} 已完成</b><span style="color:var(--muted)">${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+  html += `<section class="sec" style="padding-top:14px">` + groups.map((g) => `<div class="cgroup"><h3><span>${h(g.name)}</span><span>${g.items.filter((c) => c.done).length}/${g.items.length}</span></h3>
+    ${g.items.map((c) => `<div class="crow ${c.done ? 'on' : ''}"><button class="cbox" data-act="checkToggle" data-id="${c.id}" aria-pressed="${!!c.done}"><span class="box">${c.done ? icon('check', 14, 3) : ''}</span><span class="ctext">${h(c.text)}</span></button>
+      ${S.checkEdit ? `<button class="cdel" data-act="checkDel" data-id="${c.id}" aria-label="刪除 ${h(c.text)}">${icon('trash', 18)}</button>` : ''}</div>`).join('')}
+    ${S.checkEdit ? `<form class="cadd" data-act-submit="checkAdd" data-g="${h(g.name)}"><input name="t" placeholder="新增到「${h(g.name)}」" enterkeyhint="done" aria-label="新增項目到 ${h(g.name)}"><button class="chip-btn" type="submit">${icon('plus', 16, 2.2)}</button></form>` : ''}
+  </div>`).join('') + `
+    <div class="btn-row"><button class="btn sm" data-act="toggleCheckEdit">${icon(S.checkEdit ? 'check' : 'pencil', 18)}<span>${S.checkEdit ? '完成編輯' : '編輯清單'}</span></button>
+    ${S.checkEdit ? `<button class="btn sm" data-act="addGroup">${icon('plus', 18)}<span>新增分類</span></button>` : ''}</div></section>`;
+  return html;
+}
+
+/* ----- more ----- */
+function row(act, ico, title, sub, val, extra = '') {
+  return `<button class="row ${extra}" data-act="${act}"><span class="ico">${icon(ico, 18)}</span><span class="grow"><span>${title}</span>${sub ? `<small>${sub}</small>` : ''}</span>${val ? `<span class="val">${val}</span>` : ''}${icon('right', 16)}</button>`;
+}
+function renderMore() {
+  const t = S.trip; const viewer = isViewer();
+  let html = `<header class="top"><div class="top-row"><div style="min-width:0"><div class="top-meta">設定與資料</div><h1 class="top-title" style="cursor:default">更多</h1></div></div></header>`;
+  html += `<div class="group-title">目前旅程</div><div class="group">`;
+  html += row('tripSwitcher', 'route', h(t.name), viewer ? '分享給我的唯讀行程' : `${mdLabel(t.start)} 起 ${t.days} 天 · ${tzName(t.tz)}`, '切換');
+  if (!viewer) {
+    html += row('editTrip', 'pencil', '旅程設定', '名稱、日期、天數、時區、幣別');
+    html += row('openShare', 'share', '分享給家人', t.share && t.share.id ? '已建立唯讀連結' : '產生唯讀連結', t.share && t.share.id ? (t.share.dirty ? '待同步' : '已同步') : '');
+  } else {
+    html += row('viewerRefresh', 'refresh', '重新載入行程', `上次更新：${relTime(t.viewer.syncedAt)}`);
+    html += row('removeTrip', 'trash', '從這支手機移除', '不影響規劃者的行程', '', 'danger');
+  }
+  html += `</div>`;
+  html += `<div class="group-title">出發前</div><div class="group">${row('offlineCheck', 'shield', '離線就緒檢查', '確認沒網路時也打得開、票券都在手機裡')}</div>`;
+  html += `<div class="group-title">偏好</div><div class="group">
+    <label class="row"><span class="ico">${icon('clock', 18)}</span><span class="grow"><span>顯示台灣時間</span><small>在當地時間旁邊對照顯示</small></span><span class="switch"><input type="checkbox" data-pref="showHome" ${S.settings.showHome ? 'checked' : ''} aria-label="顯示台灣時間"><i></i></span></label>
+    ${row('prefMap', 'map', '導航使用', '', S.settings.mapApp === 'google' ? 'Google 地圖' : 'Apple 地圖')}
+    ${!viewer ? row('prefPlanner', 'user', '規劃者名稱', '家人會看到「由 ___ 規劃」', h(S.settings.planner || '未設定')) : ''}
+  </div>`;
+  html += `<div class="group-title">資料備份</div><div class="group">
+    ${row('exportJson', 'download', '匯出行程 JSON', '全部旅程與清單，不含附件')}
+    ${row('exportFull', 'download', '完整備份', '含附件圖片，檔案較大')}
+    ${row('importJson', 'upload', '匯入備份', '同一趟旅程會以匯入的版本取代')}
+  </div><p class="note-p">資料只存在這支手機的 App 裡。換手機或清除 Safari 資料前，記得先匯出備份。</p>`;
+  html += `<div class="group-title">應用程式</div><div class="group">
+    ${row('changelog', 'history', '更新紀錄', '', 'v' + APP_VERSION)}
+    ${row('checkUpdate', 'refresh', '檢查更新', S.online ? '' : '目前離線，需要網路')}
+    ${row('storageInfo', 'storage', '儲存空間', '', '<span id="storageVal">—</span>')}
+    <div class="row" style="cursor:default"><span class="ico">${icon('user', 18)}</span><span class="grow"><span>作者</span></span><span class="val">${APP_AUTHOR}</span></div>
+  </div><div style="height:24px"></div>`;
+  setTimeout(fillStorage, 0);
+  return html;
+}
+async function fillStorage() {
+  const el = $('#storageVal'); if (!el || !navigator.storage || !navigator.storage.estimate) return;
+  try { const e = await navigator.storage.estimate(); el.textContent = `${(e.usage / 1048576).toFixed(1)} MB`; } catch {}
+}
+
+/* ---------------------------------------------------------------- sheets */
+let _sheetClose = null;
+function openSheet(title, inner, onClose) {
+  closeSheet(true);
+  const bd = document.createElement('div'); bd.className = 'backdrop'; bd.id = 'sheet';
+  bd.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${h(title)}"><div class="grip"></div><div class="sheet-head"><h3>${title}</h3><button class="x" data-act="closeSheet" aria-label="關閉">${icon('x', 18, 2.2)}</button></div>${inner}</div>`;
+  bd.addEventListener('click', (e) => { if (e.target === bd) closeSheet(); });
+  document.body.appendChild(bd); document.body.classList.add('lock');
+  _sheetClose = onClose || null;
+  return bd.querySelector('.sheet');
+}
+function closeSheet(silent) {
+  const el = $('#sheet'); if (!el) return;
+  el.remove(); document.body.classList.remove('lock');
+  const fn = _sheetClose; _sheetClose = null; if (fn && !silent) fn();
+}
+function toast(msg, ms = 2200) {
+  $$('.toast').forEach((t) => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+function confirmSheet(title, msg, okText, danger) {
+  return new Promise((res) => {
+    const sh = openSheet(title, `<div class="card"><p style="margin:0">${msg}</p></div><div style="height:12px"></div><div class="btn-row"><button class="btn" data-k="no">取消</button><button class="btn ${danger ? 'primary' : 'dark'}" data-k="yes">${okText}</button></div>`, () => res(false));
+    sh.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (!b) return; _sheetClose = null; closeSheet(true); res(b.dataset.k === 'yes'); });
+  });
+}
+function promptSheet(title, label, value, placeholder = '') {
+  return new Promise((res) => {
+    const sh = openSheet(title, `<form class="form"><div class="card"><label class="field"><span>${label}</span><input name="v" value="${h(value || '')}" placeholder="${h(placeholder)}" autocomplete="off"></label></div><button class="btn dark" type="submit">儲存</button></form>`, () => res(null));
+    const inp = sh.querySelector('input'); setTimeout(() => inp.focus(), 150);
+    sh.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); _sheetClose = null; closeSheet(true); res(inp.value.trim()); });
+  });
+}
+
+/* ----- trip switcher & editor ----- */
+function openTripSwitcher() {
+  const list = S.trips.map((t) => `<button class="trip-opt ${S.trip && t.id === S.trip.id ? 'on' : ''}" data-act="selectTrip" data-id="${t.id}">
+      <span class="t-ico" style="background:${t.role === 'viewer' ? 'var(--c-transit-bg)' : 'var(--accent-soft)'};color:${t.role === 'viewer' ? 'var(--c-transit)' : 'var(--accent)'}">${icon(t.role === 'viewer' ? 'eye' : 'route', 18)}</span>
+      <span class="grow"><b>${h(t.name || '未命名旅程')}</b><small>${t.start ? mdLabel(t.start) + ' 起 ' + t.days + ' 天' : ''}${t.role === 'viewer' ? ' · 唯讀' : ''}</small></span>
+      ${S.trip && t.id === S.trip.id ? icon('check', 18, 2.4) : ''}</button>`).join('');
+  openSheet('我的旅程', `${list}<div style="height:6px"></div><div class="form">
+    <button class="btn dark" data-act="newTrip">${icon('plus')}<span>建立新旅程</span></button>
+    <button class="btn" data-act="joinShare">${icon('link')}<span>加入分享給我的行程</span></button>
+    <button class="btn" data-act="loadSample">${icon('eye')}<span>載入範例行程</span></button></div>`);
+}
+function tzOptions(sel) {
+  const list = TZS.some((t) => t[0] === sel) ? TZS : [[sel, sel], ...TZS];
+  return list.map(([v, l]) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${l}（${v.split('/').pop().replace(/_/g, ' ')}）</option>`).join('');
+}
+function curOptions(sel) { return Object.keys(CURS).map((c) => `<option value="${c}" ${c === sel ? 'selected' : ''}>${c} ${CURS[c]}</option>`).join(''); }
+function openTripEditor(trip) {
+  const isNew = !trip;
+  const local = tzParts(S.settings.homeTz).date;
+  const t = trip || { name: '', start: addDays(local, 7), days: 5, tz: 'Asia/Tokyo', currency: 'JPY' };
+  const sh = openSheet(isNew ? '建立旅程' : '旅程設定', `<form class="form" id="tripForm">
+    <div class="card">
+      <label class="field"><span>旅程名稱</span><input name="name" value="${h(t.name)}" placeholder="例如：東京・京都 7 日" required></label>
+      <div class="two"><label class="field"><span>出發日</span><input type="date" name="start" value="${t.start}" required></label>
+      <label class="field"><span>天數</span><input type="number" name="days" value="${t.days}" min="1" max="60" inputmode="numeric" required></label></div>
+      <label class="field"><span>目的地時區</span><select name="tz">${tzOptions(t.tz)}</select></label>
+      <label class="field"><span>主要幣別</span><select name="currency">${curOptions(t.currency)}</select></label>
+    </div>
+    <button class="btn dark" type="submit">${isNew ? '建立' : '儲存'}</button>
+    ${!isNew ? `<button class="btn danger" type="button" data-act="deleteTrip">${icon('trash')}<span>刪除這趟旅程</span></button>` : ''}
+  </form>`);
+  const f = sh.querySelector('form');
+  f.tz.addEventListener('change', () => { const c = TZ_CUR[f.tz.value]; if (c && isNew) f.currency.value = c; });
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const days = Math.max(1, Math.min(60, parseInt(f.days.value, 10) || 1));
+    const nt = Object.assign(trip ? { ...trip } : { id: uid('t_'), role: 'owner', dayTitles: {}, createdAt: Date.now() }, { name: f.name.value.trim() || '未命名旅程', start: f.start.value, days, tz: f.tz.value, currency: f.currency.value });
+    if (!isNew && days < trip.days) {
+      const lost = liveItems().filter((i) => i.day > days);
+      if (lost.length && !(await confirmSheet('縮短天數', `Day ${days} 之後還有 ${lost.length} 個項目，會移到 Day ${days}。確定嗎？`, '確定'))) return;
+      lost.forEach((i) => { i.day = days; i.order = 100000 + (i.order || 0); });
+      if (lost.length) await saveItems(lost);
+    }
+    await saveTrip(nt); if (!isNew) markDirty();
+    closeSheet(true);
+    if (isNew) { await selectTrip(nt.id); S.tab = 'itin'; S.selDay = 1; }
+    render(); toast(isNew ? '已建立旅程' : '已儲存');
+  });
+}
+
+/* ----- item detail & editor ----- */
+function openItemDetail(id) {
+  const it = S.items.find((i) => i.id === id); if (!it) return;
+  const t = S.trip; const T = TYPES[it.type] || TYPES.note; const viewer = isViewer();
+  const date = dateOfDay(t, it.day); const atts = viewer ? [] : attsOf(it.id);
+  const home = homeHM(t, it, it.time); const tzLabel = it.tz && it.tz !== t.tz ? `（${tzName(it.tz)}時間）` : '';
+  const rows = [];
+  rows.push(['時間', `Day ${it.day} · ${mdLabel(date)}（${wd(date)}）${it.time ? ' ' + it.time + tzLabel : ''}${it.arrTime ? ' → ' + it.arrTime : ''}${home && S.settings.showHome ? `\n台灣 ${home}` : ''}`]);
+  if (it.type === 'transit') { if (it.from || it.to) rows.push(['路線', `${it.from || '？'} → ${it.to || '？'}`]); if (it.vehicle) rows.push(['車次／航班', it.vehicle]); if (it.car) rows.push(['車廂／登機門', it.car]); if (it.seat) rows.push(['座位', it.seat]); }
+  if (it.place) rows.push(['地點', it.place]);
+  if (!viewer && it.ref) rows.push(['訂位代號', `<span class="mono" style="font-weight:700;letter-spacing:.06em">${h(it.ref)}</span>`, true]);
+  if (it.cost) rows.push(['費用', fmtMoney(it.cost, it.cur || t.currency)]);
+  if (it.url) rows.push(['連結', `<a href="${h(safeUrl(it.url))}" target="_blank" rel="noopener">${h(it.url)}</a>`, true]);
+  if (it.note) rows.push(['備註', it.note]);
+  const nav = it.place || it.from;
+  openSheet(`<span class="type-chip" style="color:${T.c};margin-right:8px">${typeIcon(it, 16)}${T.label}</span>${h(it.title)}`, `
+    <div class="card"><div class="info">${rows.map(([k, v, raw]) => `<div class="ir"><small>${k}</small><div>${raw ? v : h(v)}</div></div>`).join('')}</div></div>
+    ${atts.length ? `<div style="height:12px"></div><div class="card"><div class="field"><span>${icon('clip', 14)}附件（${atts.length}）</span></div><div class="atts">${atts.map((a, i) => attThumb(a, `data-act="openTicket" data-id="${it.id}" data-i="${i}"`)).join('')}</div></div>` : ''}
+    <div style="height:12px"></div>
+    <div class="form">
+      <div class="btn-row">
+        ${atts.length ? `<button class="btn primary" data-act="openTicket" data-id="${it.id}">${icon('qr')}<span>看票</span></button>` : ''}
+        ${nav ? `<button class="btn" data-act="navigate" data-id="${it.id}">${icon('nav')}<span>導航</span></button>` : ''}
+      </div>
+      ${!viewer ? `<div class="btn-row"><button class="btn" data-act="toggleDone" data-id="${it.id}" data-close="1">${icon('check')}<span>${it.done ? '取消完成' : '標記完成'}</span></button>
+      <button class="btn dark" data-act="editItem" data-id="${it.id}">${icon('pencil')}<span>編輯</span></button></div>` : ''}
+    </div>`);
+}
+function safeUrl(u) { return /^https?:\/\//i.test(u) ? u : 'https://' + u; }
+const _urls = new Map();
+function attUrl(a) { if (!_urls.has(a.id)) _urls.set(a.id, URL.createObjectURL(a.blob)); return _urls.get(a.id); }
+function attThumb(a, attrs) {
+  const isImg = (a.type || '').startsWith('image/');
+  return `<button class="att" ${attrs} aria-label="附件 ${h(a.name || '')}">${isImg ? `<img src="${attUrl(a)}" alt="">` : `<span style="display:flex;flex-direction:column;align-items:center;gap:4px">${icon('file', 22)}PDF</span>`}</button>`;
+}
+
+let _edit = null; // { item, pendingAdd: [{id,blob,name,type}], pendingDel: Set }
+function openItemEditor(id, day) {
+  const t = S.trip;
+  const orig = id ? S.items.find((i) => i.id === id) : null;
+  const it = orig ? { ...orig } : { id: uid('i_'), tripId: t.id, day: day || S.selDay || 1, type: 'sight', title: '', time: '', done: false, order: 0, createdAt: Date.now() };
+  _edit = { item: it, isNew: !orig, pendingAdd: [], pendingDel: new Set() };
+  const dayOpts = Array.from({ length: t.days }, (_, i) => { const d = i + 1, dt = dateOfDay(t, d); return `<option value="${d}" ${d === it.day ? 'selected' : ''}>D${d} · ${mdLabel(dt)}（${wd(dt)}）</option>`; }).join('');
+  const home = S.settings.homeTz;
+  const sh = openSheet(orig ? '編輯行程' : '新增行程', `<form class="form" id="itemForm" autocomplete="off">
+    <div class="seg" role="radiogroup" aria-label="類型">${Object.entries(TYPES).map(([k, T]) => `<button type="button" role="radio" aria-checked="${it.type === k}" class="${it.type === k ? 'on' : ''}" data-type="${k}" style="${it.type === k ? `color:${T.c}` : ''}">${icon(T.icon, 20)}<span>${T.label}</span></button>`).join('')}</div>
+    <div class="card">
+      <label class="field"><span>名稱</span><input name="title" value="${h(it.title)}" placeholder="例如：淺草寺、新幹線到京都"></label>
+      <div class="two"><label class="field"><span>哪一天</span><select name="day">${dayOpts}</select></label>
+      <label class="field"><span>時間</span><input type="time" name="time" value="${h(it.time || '')}"></label></div>
+      <div class="transit-only two"><label class="field"><span>出發地</span><input name="from" value="${h(it.from || '')}" placeholder="東京"></label>
+      <label class="field"><span>目的地</span><input name="to" value="${h(it.to || '')}" placeholder="京都"></label></div>
+      <div class="transit-only two"><label class="field"><span>抵達時間</span><input type="time" name="arrTime" value="${h(it.arrTime || '')}"></label>
+      <label class="field"><span>出發時間是</span><select name="tz"><option value="">當地時間</option>${t.tz !== home ? `<option value="${home}" ${it.tz === home ? 'selected' : ''}>台灣時間</option>` : ''}</select></label></div>
+      <div class="transit-only three"><label class="field"><span>車次／航班</span><input name="vehicle" value="${h(it.vehicle || '')}" placeholder="のぞみ 23"></label>
+      <label class="field"><span>車廂／登機門</span><input name="car" value="${h(it.car || '')}" placeholder="7 號車"></label>
+      <label class="field"><span>座位</span><input name="seat" value="${h(it.seat || '')}" placeholder="12A"></label></div>
+      <label class="field"><span>地點（導航用）</span><input name="place" value="${h(it.place || '')}" placeholder="店名或地址，導航會用這個搜尋"></label>
+    </div>
+    <div class="card">
+      <label class="field"><span>${icon('lock', 13)}訂位代號（只存本機，不分享）</span><input name="ref" value="${h(it.ref || '')}" autocapitalize="characters" class="mono"></label>
+      <div class="two"><label class="field"><span>費用</span><input name="cost" value="${h(it.cost || '')}" inputmode="decimal"></label>
+      <label class="field"><span>幣別</span><select name="cur">${curOptions(it.cur || t.currency)}</select></label></div>
+      <label class="field"><span>連結</span><input name="url" value="${h(it.url || '')}" inputmode="url" placeholder="訂位網址、官網…"></label>
+      <label class="field"><span>備註</span><textarea name="note">${h(it.note || '')}</textarea></label>
+    </div>
+    <div class="card"><div class="field"><span>${icon('lock', 13)}附件：票券截圖、QR code、PDF（只存本機）</span></div><div class="atts" id="attGrid"></div></div>
+    <button class="btn dark" type="submit">儲存</button>
+    ${orig ? `<button class="btn danger" type="button" data-act="deleteItem" data-id="${it.id}">${icon('trash')}<span>刪除這個行程</span></button>` : ''}
+  </form>`, () => { _edit = null; });
+  const f = sh.querySelector('form');
+  const syncType = () => { $$('.transit-only', f).forEach((el) => el.classList.toggle('hidden', _edit.item.type !== 'transit')); };
+  sh.querySelector('.seg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-type]'); if (!b) return;
+    _edit.item.type = b.dataset.type;
+    $$('.seg button', sh).forEach((x) => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on); x.style.color = on ? TYPES[x.dataset.type].c : ''; });
+    syncType();
+  });
+  syncType(); renderAttGrid();
+  f.addEventListener('submit', (e) => { e.preventDefault(); saveItemForm(f); });
+}
+function renderAttGrid() {
+  const g = $('#attGrid'); if (!g || !_edit) return;
+  const existing = attsOf(_edit.item.id).filter((a) => !_edit.pendingDel.has(a.id));
+  const all = [...existing, ..._edit.pendingAdd];
+  g.innerHTML = all.map((a) => `<div class="att-wrap">${attThumb(a, 'type="button" tabindex="-1"')}<button type="button" class="rmb" data-act="attRemove" data-aid="${a.id}" aria-label="移除附件">${icon('x', 14, 2.6)}</button></div>`).join('')
+    + `<button type="button" class="att add" data-act="attAdd">${icon('plus', 22)}<span>加入</span></button>`;
+}
+async function saveItemForm(f) {
+  const e = _edit; if (!e) return;
+  const it = e.item; const v = (n) => (f[n] ? f[n].value.trim() : '');
+  const oldDay = it.day, oldTime = it.time;
+  Object.assign(it, { title: v('title'), day: parseInt(v('day'), 10) || 1, time: v('time'), place: v('place'), ref: v('ref'), cost: v('cost').replace(/,/g, ''), cur: v('cur'), url: v('url'), note: f.note.value.trim() });
+  if (it.type === 'transit') Object.assign(it, { from: v('from'), to: v('to'), arrTime: v('arrTime'), vehicle: v('vehicle'), car: v('car'), seat: v('seat'), tz: v('tz') });
+  else { ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz'].forEach((k) => delete it[k]); }
+  if (!it.title) it.title = it.type === 'transit' && (it.from || it.to) ? `${it.from || '？'} → ${it.to || '？'}` : TYPES[it.type].label;
+  if (it.cost && isNaN(Number(it.cost))) { toast('費用請輸入數字'); return; }
+  const changed = [it];
+  if (e.isNew || oldDay !== it.day || oldTime !== it.time) {
+    // 依時間插入到當天適當位置，其他項目重新編號
+    const others = dayItems(it.day).filter((x) => x.id !== it.id);
+    let idx = others.length;
+    if (it.time) {
+      // 放在「最後一個時間 ≤ 新時間」的項目後面；都比較晚就放在第一個有時間的項目前面
+      let k = -1; others.forEach((x, j) => { if (x.time && x.time <= it.time) k = j; });
+      idx = k >= 0 ? k + 1 : Math.max(0, others.findIndex((x) => x.time));
+    }
+    others.splice(idx, 0, it);
+    others.forEach((x, i) => { if (x.order !== i * 10) { x.order = i * 10; if (x !== it) changed.push(x); } });
+    it.order = idx * 10;
+  }
+  // 附件
+  for (const id of e.pendingDel) { await dbDel('atts', id); S.atts = S.atts.filter((a) => a.id !== id); }
+  for (const a of e.pendingAdd) { const rec = { id: a.id, tripId: it.tripId, itemId: it.id, name: a.name, type: a.type, blob: a.blob, createdAt: a.createdAt }; await dbPut('atts', rec); S.atts.push(rec); }
+  await saveItems(changed);
+  _edit = null; _sheetClose = null; closeSheet(true);
+  S.selDay = it.day; render(); toast('已儲存');
+}
+async function prepareFile(file) {
+  const base = { id: uid('a_'), name: file.name || 'file', createdAt: Date.now() };
+  if (!file.type.startsWith('image/')) return { ...base, type: file.type || 'application/pdf', blob: file };
+  try {
+    const bmp = await (window.createImageBitmap ? createImageBitmap(file) : loadImg(file));
+    const w = bmp.width, hgt = bmp.height, max = 1800;
+    if (Math.max(w, hgt) <= max && file.size < 1.5 * 1048576) return { ...base, type: file.type, blob: file };
+    const s = Math.min(1, max / Math.max(w, hgt));
+    const c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(hgt * s);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+    return { ...base, type: 'image/jpeg', blob: blob || file };
+  } catch { return { ...base, type: file.type, blob: file }; }
+}
+function loadImg(file) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }); }
+
+/* ----- ticket mode ----- */
+let _wake = null, _ticketItem = null;
+async function requestWake() {
+  const pill = $('#tkWake');
+  try { if ('wakeLock' in navigator) { _wake = await navigator.wakeLock.request('screen'); _wake.addEventListener('release', () => { if (pill) pill.classList.remove('on'); }); if (pill) { pill.classList.add('on'); pill.lastElementChild.textContent = '螢幕常亮'; } return; } } catch {}
+  if (pill) pill.lastElementChild.textContent = '請手動調亮螢幕';
+}
+function openTicket(id, start = 0) {
+  const it = S.items.find((i) => i.id === id); const atts = attsOf(id); if (!it || !atts.length) return;
+  closeSheet(true); _ticketItem = id;
+  const el = document.createElement('div'); el.className = 'ticket'; el.id = 'ticket'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '看票模式');
+  const info = [['車廂／座位', [it.car, it.seat].filter(Boolean).join(' · ')], ['訂位代號', it.ref]].filter((x) => x[1]);
+  el.innerHTML = `<div class="tk-top"><button class="tk-x" data-act="closeTicket" aria-label="關閉看票模式">${icon('x', 20, 2.2)}</button><b style="font-size:15px">看票模式</b><span class="tk-wake" id="tkWake">${icon('sun', 14, 2.2)}<span>螢幕常亮</span></span></div>
+    <div class="tk-head"><small>${h(it.vehicle || TYPES[it.type].label)}</small><b>${h(it.type === 'transit' && (it.from || it.to) ? `${it.from || ''} ${it.time || ''} → ${it.to || ''} ${it.arrTime || ''}` : it.title)}</b></div>
+    <div class="tk-slides" id="tkSlides">${atts.map((a) => `<div class="tk-slide">${(a.type || '').startsWith('image/') ? `<img src="${attUrl(a)}" alt="票券 ${h(a.name)}">` : `<div class="tk-pdf">${icon('file', 48, 1.5)}<b>${h(a.name)}</b><a class="btn dark" style="flex:none;width:200px" href="${attUrl(a)}" target="_blank" rel="noopener">開啟 PDF</a></div>`}</div>`).join('')}</div>
+    ${info.length ? `<div class="tk-info" style="${info.length === 1 ? 'grid-template-columns:1fr' : ''}">${info.map(([k, v]) => `<div><small>${k}</small><b class="${k === '訂位代號' ? 'mono' : ''}">${h(v)}</b></div>`).join('')}</div>` : ''}
+    <div class="tk-foot">${atts.length > 1 ? `<div class="tk-dots" id="tkDots">${atts.map((_, i) => `<i class="${i === start ? 'on' : ''}"></i>`).join('')}</div><span id="tkCount">${start + 1} / ${atts.length} · 左右滑看其他張</span>` : ''}<span>建議調高螢幕亮度，方便掃描</span></div>`;
+  document.body.appendChild(el); document.body.classList.add('lock');
+  const sl = $('#tkSlides');
+  requestAnimationFrame(() => { sl.scrollLeft = sl.clientWidth * start; });
+  sl.addEventListener('scroll', () => { const i = Math.round(sl.scrollLeft / sl.clientWidth); $$('#tkDots i').forEach((d, k) => d.classList.toggle('on', k === i)); const c = $('#tkCount'); if (c) c.textContent = `${i + 1} / ${atts.length} · 左右滑看其他張`; }, { passive: true });
+  requestWake();
+}
+function closeTicket() { const el = $('#ticket'); if (el) el.remove(); document.body.classList.remove('lock'); _ticketItem = null; if (_wake) { _wake.release().catch(() => {}); _wake = null; } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && _ticketItem) requestWake(); });
+
+/* ----- navigation ----- */
+function navigateTo(it) {
+  const q = it.place || it.from || it.title;
+  const url = S.settings.mapApp === 'google'
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`
+    : `https://maps.apple.com/?daddr=${encodeURIComponent(q)}`;
+  window.open(url, '_blank', 'noopener');
+}
+
+/* ---------------------------------------------------------------- drag reorder */
+function initDrag() {
+  document.addEventListener('pointerdown', (e) => {
+    const hnd = e.target.closest('.drag'); if (!hnd || isViewer()) return;
+    const row = hnd.closest('.irow'); const list = row.parentElement;
+    const rows = $$('.irow', list); const idx = rows.indexOf(row);
+    const rects = rows.map((r) => r.getBoundingClientRect());
+    const gap = rows.length > 1 ? rects[1].top - rects[0].bottom : 8;
+    const step = rects[idx].height + gap; const startY = e.clientY; let target = idx;
+    row.classList.add('dragging'); hnd.setPointerCapture(e.pointerId); e.preventDefault();
+    const move = (ev) => {
+      const dy = ev.clientY - startY; row.style.transform = `translateY(${dy}px) scale(1.02)`;
+      const center = rects[idx].top + rects[idx].height / 2 + dy;
+      target = idx;
+      for (let j = 0; j < rows.length; j++) { if (j === idx) continue; const c = rects[j].top + rects[j].height / 2; if (j > idx && center > c) target = Math.max(target, j); if (j < idx && center < c) target = Math.min(target, j); }
+      rows.forEach((r, j) => { if (j === idx) return; const s = (j > idx && j <= target) ? -step : (j < idx && j >= target) ? step : 0; r.style.transform = s ? `translateY(${s}px)` : ''; });
+    };
+    const up = async () => {
+      hnd.removeEventListener('pointermove', move); hnd.removeEventListener('pointerup', up); hnd.removeEventListener('pointercancel', up);
+      rows.forEach((r) => { r.style.transform = ''; }); row.classList.remove('dragging');
+      if (target === idx) return;
+      const ids = rows.map((r) => r.dataset.id); const [m] = ids.splice(idx, 1); ids.splice(target, 0, m);
+      const changed = [];
+      ids.forEach((id, i) => { const it = S.items.find((x) => x.id === id); if (it.order !== i * 10) { it.order = i * 10; changed.push(it); } });
+      await saveItems(changed); render();
+      if (navigator.vibrate) navigator.vibrate(10);
+    };
+    hnd.addEventListener('pointermove', move); hnd.addEventListener('pointerup', up); hnd.addEventListener('pointercancel', up);
+  });
+}
+
+/* ---------------------------------------------------------------- checklist actions */
+async function saveChecks(arr) { const now = Date.now(); arr.forEach((c) => { c.updatedAt = now; const i = S.checks.findIndex((x) => x.id === c.id); if (i >= 0) S.checks[i] = c; else S.checks.push(c); }); await dbPutMany('checks', arr); }
+async function applyTemplate(tpl) {
+  const live = S.checks.filter((c) => !c.deleted);
+  const maxO = live.reduce((m, c) => Math.max(m, c.order), 0);
+  const add = tpl.items.filter(([g, tx]) => !live.some((c) => c.group === g && c.text === tx))
+    .map(([g, tx], i) => ({ id: uid('c_'), tripId: S.trip.id, group: g, text: tx, done: false, order: maxO + (i + 1) * 10 }));
+  await saveChecks(add); return add.length;
+}
+function openTemplatePicker() {
+  const all = [...BUILTIN_TEMPLATES, ...S.templates];
+  const sh = openSheet('套用範本', `${all.map((t) => `<button class="trip-opt" data-tpl="${t.id}"><span class="t-ico" style="background:var(--ok-soft);color:var(--ok)">${icon('bag', 18)}</span><span class="grow"><b>${h(t.name)}</b><small>${t.items.length} 項${t.builtin ? ' · 內建' : ''}</small></span>${!t.builtin ? `<span data-deltpl="${t.id}" role="button" aria-label="刪除範本" style="padding:8px;color:var(--dim)">${icon('trash', 18)}</span>` : ''}</button>`).join('')}
+    <p class="note-p" style="margin:4px 4px 0">已經有的項目不會重複加入。</p>`);
+  sh.addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-deltpl]');
+    if (del) { e.stopPropagation(); S.templates = S.templates.filter((t) => t.id !== del.dataset.deltpl); await metaSet('templates', S.templates); openTemplatePicker(); return; }
+    const b = e.target.closest('[data-tpl]'); if (!b) return;
+    const n = await applyTemplate(all.find((t) => t.id === b.dataset.tpl)); closeSheet(true); render(); toast(`加入了 ${n} 項`);
+  });
+}
+
+/* ---------------------------------------------------------------- share (方案 A：一人編輯、家人唯讀) */
+function apiBase() { return (S.settings.api || DEFAULT_API || '').replace(/\/+$/, ''); }
+function shareLink(trip) {
+  const base = location.origin + location.pathname.replace(/index\.html$/, '');
+  const api = trip.share.api || apiBase();
+  return `${base}?s=${trip.share.id}${api && api !== DEFAULT_API.replace(/\/+$/, '') ? '&a=' + encodeURIComponent(api) : ''}`;
+}
+function sharePayload(trip) {
+  // 訂位代號（ref）、附件、清單都不上傳
+  const items = S.items.filter((i) => i.tripId === trip.id && !i.deleted).map((i) => {
+    const o = { id: i.id, day: i.day, order: i.order, type: i.type, title: i.title, time: i.time || '', done: !!i.done };
+    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note'].forEach((k) => { if (i[k]) o[k] = i[k]; });
+    return o;
+  });
+  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {} }, items, publishedAt: Date.now() };
+}
+async function api(method, path, body, key) {
+  const base = arguments[4] || apiBase();
+  if (!base) throw new Error('no_api');
+  const r = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: 'Bearer ' + key } : {}) }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const err = new Error(j.error || 'http_' + r.status); err.status = r.status; throw err; }
+  return j;
+}
+let _syncTimer = null, _syncing = false;
+function markDirty() {
+  const t = S.trip; if (!t || t.role !== 'owner' || !t.share || !t.share.id) return;
+  if (!t.share.dirty) { t.share.dirty = true; dbPut('trips', t); }
+  clearTimeout(_syncTimer); _syncTimer = setTimeout(() => publish(), 2500);
+}
+async function publish(manual) {
+  const t = S.trip; if (!t || t.role !== 'owner' || !t.share || !t.share.id) return;
+  if (!navigator.onLine) { if (manual) toast('目前離線，恢復連線後會自動同步'); return; }
+  if (_syncing) return; _syncing = true;
+  try {
+    const r = await api('PUT', '/trips/' + t.share.id, { data: sharePayload(t) }, t.share.key, t.share.api);
+    t.share.dirty = false; t.share.syncedAt = r.updatedAt || Date.now(); await dbPut('trips', t);
+    if (manual) toast('已同步');
+  } catch (err) {
+    if (err.status === 404 || err.status === 403) { t.share = null; await dbPut('trips', t); toast('分享已失效，請重新建立'); }
+    else if (manual) toast('同步失敗，稍後會再試');
+  } finally { _syncing = false; if (!$('#sheet') && (S.tab === 'today' || S.tab === 'more')) render(); else refreshShareSheet(); }
+}
+function openShare() {
+  const t = S.trip; const shared = t.share && t.share.id;
+  let inner;
+  if (!apiBase() && !shared) {
+    inner = `<div class="card"><p style="margin:0">要分享行程，需要先部署一個免費的分享伺服器（Cloudflare Worker，步驟在 README）。部署好後把網址貼在下面。</p>
+      <label class="field"><span>分享伺服器網址</span><input id="apiInput" inputmode="url" placeholder="https://travel-handbook-share.xxx.workers.dev"></label></div>
+      <div style="height:12px"></div><button class="btn dark" data-act="saveApi">儲存</button>`;
+  } else if (!shared) {
+    inner = `<div class="card"><p style="margin:0">產生一個唯讀連結，家人打開就能看到行程，你改了之後他們連上網就會自動更新。</p>
+      <div class="info"><div class="ir"><small>會分享</small><div>行程名稱、日期、每個項目的時間、地點、交通資訊、費用、備註</div></div>
+      <div class="ir"><small>不會分享</small><div>訂位代號、附件（票券）、行李清單</div></div></div></div>
+      <div style="height:12px"></div>
+      ${!S.settings.planner ? `<div class="card"><label class="field"><span>你的名字（家人會看到「由 ___ 規劃」）</span><input id="plannerInput" placeholder="例如：Henry"></label></div><div style="height:12px"></div>` : ''}
+      <button class="btn primary" data-act="shareCreate">${icon('link')}<span>建立分享連結</span></button>
+      <p class="note-p">伺服器：${h(apiBase())} · <a href="#" data-act="changeApi">更改</a></p>`;
+  } else {
+    const link = shareLink(t);
+    inner = `<div class="card"><div class="field"><span>唯讀連結</span><input readonly value="${h(link)}" id="shareLinkInput" style="font-size:14px"></div>
+      <div class="info"><div class="ir"><small>分享碼</small><div class="mono" style="font-weight:700">${h(t.share.id)}</div></div>
+      <div class="ir"><small>同步狀態</small><div id="shareState">${t.share.dirty ? (_syncing ? '同步中…' : '有變更待同步') : '已同步 · ' + relTime(t.share.syncedAt)}</div></div></div></div>
+      <div style="height:12px"></div>
+      <div class="form">
+        <div class="btn-row"><button class="btn primary" data-act="shareNative">${icon('share')}<span>傳給家人</span></button><button class="btn" data-act="shareCopy">${icon('copy')}<span>複製連結</span></button></div>
+        <button class="btn" data-act="shareSync">${icon('refresh')}<span>立即同步</span></button>
+        <button class="btn danger" data-act="shareStop">${icon('x')}<span>停止分享</span></button>
+      </div>
+      <p class="note-p">拿到連結的人都看得到行程內容。訂位代號和票券不會上傳。</p>`;
+  }
+  openSheet('分享給家人', inner);
+}
+function refreshShareSheet() { const s = $('#shareState'); const t = S.trip; if (s && t && t.share) s.textContent = t.share.dirty ? (_syncing ? '同步中…' : '有變更待同步') : '已同步 · ' + relTime(t.share.syncedAt); }
+async function shareCreate() {
+  const t = S.trip; const pi = $('#plannerInput');
+  if (pi && pi.value.trim()) { S.settings.planner = pi.value.trim(); await saveSettings(); }
+  if (!navigator.onLine) { toast('需要網路才能建立分享'); return; }
+  try {
+    const base = apiBase();
+    const r = await api('POST', '/trips', { data: sharePayload(t) });
+    t.share = { id: r.id, key: r.key, api: base, syncedAt: r.updatedAt, dirty: false };
+    await dbPut('trips', t); openShare(); toast('已建立分享連結');
+  } catch (err) { toast(err.message === 'no_api' ? '請先設定分享伺服器' : '建立失敗，請確認伺服器網址'); }
+}
+async function shareStop() {
+  const t = S.trip;
+  if (!(await confirmSheet('停止分享', '家人的 App 會保留最後一版，但之後不會再更新。確定停止嗎？', '停止分享', true))) { openShare(); return; }
+  try { await api('DELETE', '/trips/' + t.share.id, null, t.share.key, t.share.api); } catch (err) { if (err.status !== 404) { toast('需要網路才能停止分享'); return; } }
+  t.share = null; await dbPut('trips', t); render(); toast('已停止分享');
+}
+
+/* ----- viewer ----- */
+function parseShareInput(txt) {
+  txt = (txt || '').trim(); if (!txt) return null;
+  try { if (/^https?:\/\//i.test(txt)) { const u = new URL(txt); const s = u.searchParams.get('s'); if (s) return { code: s, api: u.searchParams.get('a') || '' }; } } catch {}
+  const m = txt.match(/[A-Za-z0-9]{16}/); return m ? { code: m[0], api: '' } : null;
+}
+async function joinShared(code, apiParam) {
+  const id = 'v_' + code;
+  let trip = S.trips.find((t) => t.id === id);
+  if (!trip) {
+    const a = (apiParam || apiBase()).replace(/\/+$/, '');
+    if (!a) { toast('這個分享連結缺少伺服器位址'); return false; }
+    trip = { id, role: 'viewer', name: '載入中…', start: tzParts(HOME_TZ_DEFAULT).date, days: 1, tz: HOME_TZ_DEFAULT, currency: 'TWD', dayTitles: {}, viewer: { shareId: code, api: a, syncedAt: 0, planner: '' }, createdAt: Date.now() };
+    await saveTrip(trip);
+  }
+  await selectTrip(id); S.tab = 'today';
+  await viewerRefresh(true);
+  return true;
+}
+let _lastViewerFetch = 0;
+async function viewerRefresh(silent) {
+  const t = S.trip; if (!t || t.role !== 'viewer') return;
+  if (!navigator.onLine) { if (!silent) toast('目前離線，顯示最後一次下載的版本'); render(); return; }
+  _lastViewerFetch = Date.now();
+  try {
+    const r = await api('GET', '/trips/' + t.viewer.shareId, null, null, t.viewer.api);
+    const d = r.data || {}; const tp = d.trip || {};
+    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {} });
+    t.viewer.syncedAt = Date.now(); t.viewer.planner = d.planner || ''; t.viewer.gone = false;
+    const items = (d.items || []).map((i) => ({ ...i, tripId: t.id, id: t.id + ':' + i.id }));
+    await tx(['items'], 'readwrite', (x) => { const s = x.objectStore('items'); S.items.forEach((i) => s.delete(i.id)); items.forEach((i) => s.put(i)); });
+    S.items = items; await saveTrip(t);
+    const td = todayInfo(); if (td.status === 'during' && S.selDay === 1) S.selDay = td.day;
+    if (!silent) toast('已更新到最新版本');
+  } catch (err) {
+    if (err.status === 404) { t.viewer.gone = true; await saveTrip(t); }
+    else if (!silent) toast('更新失敗，顯示最後一次下載的版本');
+  }
+  if (!$('#sheet')) render();
+}
+
+/* ---------------------------------------------------------------- offline check */
+async function offlineCheck() {
+  const res = [];
+  res.push([isStandalone(), '已加入主畫面', isStandalone() ? '從主畫面圖示開啟，離線時也能啟動' : 'Safari 的網頁資料可能被系統清掉，建議「分享 → 加入主畫面」後從圖示開啟']);
+  let shell = false; try { shell = !!(navigator.serviceWorker && navigator.serviceWorker.controller) && !!(await caches.match('./index.html') || await caches.match(location.pathname)); } catch {}
+  res.push([shell, '離線快取', shell ? 'App 本體已存在手機裡' : '還沒完成快取，請連網時重新開一次 App']);
+  let persisted = false; try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false; if (!persisted && navigator.storage && navigator.storage.persist) persisted = await navigator.storage.persist(); } catch {}
+  res.push([persisted, '資料保護', persisted ? '系統不會自動清除這個 App 的資料' : '系統空間不足時可能清除資料；加入主畫面並常開啟可降低風險，出發前記得匯出備份']);
+  if (!isViewer()) {
+    let ok = 0, bad = 0; for (const a of S.atts) { try { const b = await a.blob.slice(0, 1).arrayBuffer(); if (b.byteLength || a.blob.size === 0) ok++; else bad++; } catch { bad++; } }
+    res.push([bad === 0, '附件', S.atts.length ? (bad ? `${bad} 個附件讀不到，請重新加入` : `${ok} 個附件都在手機裡`) : '沒有附件（票券截圖可以在行程裡加入）']);
+    if (S.trip.share && S.trip.share.id) res.push([!S.trip.share.dirty, '分享同步', S.trip.share.dirty ? '有變更還沒上傳，連網後會自動同步' : `家人看到的是最新版（${relTime(S.trip.share.syncedAt)}）`]);
+  } else {
+    const v = S.trip.viewer; const fresh = v.syncedAt && Date.now() - v.syncedAt < 86400000;
+    res.push([!!fresh, '行程版本', v.syncedAt ? `最後更新 ${relTime(v.syncedAt)}${fresh ? '' : '，出發前連網打開一次可取得最新版'}` : '還沒下載過行程']);
+  }
+  const all = res.every((r) => r[0]);
+  openSheet('離線就緒檢查', `<div class="card" style="flex-direction:row;align-items:center;gap:12px"><span class="chk"><span class="st ${all ? 'y' : 'n'}" style="width:36px;height:36px;border-radius:18px">${icon(all ? 'check' : 'info', 20, 2.6)}</span></span><b style="font-size:17px">${all ? '可以安心出發' : '還有幾項可以處理'}</b></div><div style="height:12px"></div>
+    <div class="card"><div class="check-list">${res.map(([ok, t, d]) => `<div class="chk"><span class="st ${ok ? 'y' : 'n'}">${icon(ok ? 'check' : 'info', 14, 3)}</span><div><b>${t}</b><small>${h(d)}</small></div></div>`).join('')}</div></div>`);
+}
+
+/* ---------------------------------------------------------------- backup */
+function blobToB64(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
+function b64ToBlob(b64, type) { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); }
+async function exportData(full) {
+  toast('準備中…');
+  const trips = await dbAll('trips'); const items = await dbAll('items'); const checks = await dbAll('checks');
+  const data = { app: 'travel-handbook', version: APP_VERSION, exportedAt: new Date().toISOString(), trips, items, checks, templates: S.templates, settings: S.settings };
+  if (full) { const atts = await dbAll('atts'); data.atts = []; for (const a of atts) data.atts.push({ id: a.id, tripId: a.tripId, itemId: a.itemId, name: a.name, type: a.type, createdAt: a.createdAt, data: await blobToB64(a.blob) }); }
+  const stamp = tzParts(S.settings.homeTz).date.replace(/-/g, '');
+  const name = `旅行手冊_${full ? '完整備份' : '行程'}_v${APP_VERSION}_${stamp}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  if (navigator.canShare && isIOS() && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function importData(file) {
+  let data; try { data = JSON.parse(await file.text()); } catch { toast('檔案格式不正確'); return; }
+  if (!data || data.app !== 'travel-handbook' || !Array.isArray(data.trips)) { toast('這不是旅行手冊的備份檔'); return; }
+  if (!(await confirmSheet('匯入備份', `檔案內有 ${data.trips.length} 趟旅程${data.atts ? `、${data.atts.length} 個附件` : ''}。同一趟旅程會被匯入的版本取代，確定嗎？`, '匯入'))) return;
+  const ids = new Set(data.trips.map((t) => t.id));
+  await tx(['trips', 'items', 'checks', 'atts'], 'readwrite', (x) => {
+    const it = x.objectStore('items'), ch = x.objectStore('checks');
+    data.trips.forEach((t) => x.objectStore('trips').put(t));
+    // 先刪除這些旅程的舊項目，再寫入
+    ids.forEach((tid) => {
+      it.index('tripId').getAllKeys(tid).onsuccess = (e) => e.target.result.forEach((k) => it.delete(k));
+      ch.index('tripId').getAllKeys(tid).onsuccess = (e) => e.target.result.forEach((k) => ch.delete(k));
+    });
+  });
+  await dbPutMany('items', data.items || []); await dbPutMany('checks', data.checks || []);
+  if (data.atts) await dbPutMany('atts', data.atts.map((a) => ({ id: a.id, tripId: a.tripId, itemId: a.itemId, name: a.name, type: a.type, createdAt: a.createdAt, blob: b64ToBlob(a.data, a.type) })));
+  if (data.templates) { S.templates = data.templates; await metaSet('templates', S.templates); }
+  await loadAll(); if (!S.trip && S.trips[0]) await selectTrip(S.trips[0].id);
+  render(); toast('匯入完成');
+}
+
+/* ---------------------------------------------------------------- sample */
+function sampleQrBlob(seed) {
+  const N = 29, sc = 12, q = 4; const c = document.createElement('canvas'); c.width = c.height = (N + q * 2) * sc;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#111418';
+  let s = seed; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
+  const fin = (r, cc) => { for (const [br, bc] of [[0, 0], [0, N - 7], [N - 7, 0]]) { const y = r - br, xx = cc - bc; if (y >= -1 && y <= 7 && xx >= -1 && xx <= 7) { if (y < 0 || y > 6 || xx < 0 || xx > 6) return 0; return (y === 0 || y === 6 || xx === 0 || xx === 6 || (y >= 2 && y <= 4 && xx >= 2 && xx <= 4)) ? 1 : 0; } } return -1; };
+  for (let r = 0; r < N; r++) for (let cc = 0; cc < N; cc++) { const f = fin(r, cc); const on = f >= 0 ? f === 1 : r === 6 ? cc % 2 === 0 : cc === 6 ? r % 2 === 0 : rnd() > 0.52; if (on) x.fillRect((cc + q) * sc, (r + q) * sc, sc, sc); }
+  x.fillStyle = '#5A6270'; x.font = `${sc * 1.6}px sans-serif`; x.textAlign = 'center'; x.fillText('範例 QR（非真實票券）', c.width / 2, c.height - sc * 1.2);
+  return new Promise((r) => c.toBlob(r, 'image/png'));
+}
+async function loadSample() {
+  const tz = 'Asia/Tokyo'; const today = tzParts(tz).date; const start = addDays(today, -3);
+  const trip = { id: uid('t_'), role: 'owner', name: '東京・京都 7 日（範例）', start, days: 7, tz, currency: 'JPY', createdAt: Date.now(),
+    dayTitles: { 1: '出發・上野', 2: '淺草・晴空塔', 3: '明治神宮・澀谷', 4: '東京 → 京都', 5: '伏見・祇園', 6: '嵐山・金閣寺', 7: '回家' } };
+  const I = (day, time, type, title, extra = {}) => ({ id: uid('i_'), tripId: trip.id, day, time, type, title, done: false, createdAt: Date.now(), ...extra });
+  const items = [
+    I(1, '08:50', 'transit', '長榮 桃園 → 成田', { from: '桃園', to: '成田', arrTime: '13:05', tz: 'Asia/Taipei', vehicle: 'BR198', car: 'D5', seat: '32K', ref: 'X4TQ9P', place: '桃園國際機場第二航廈' }),
+    I(1, '15:30', 'stay', '上野飯店 Check-in', { place: '上野駅', note: '行李先寄放，晚上再整理' }),
+    I(1, '18:00', 'food', '阿美橫丁晚餐', { place: 'アメ横商店街', cost: '6000' }),
+    I(2, '09:00', 'sight', '淺草寺', { place: '浅草寺', note: '雷門拍照 → 仲見世通吃點心' }),
+    I(2, '11:30', 'sight', '晴空塔展望台', { place: '東京スカイツリー', cost: '3100', ref: 'SKY-8K3Q2' }),
+    I(2, '15:00', 'sight', '秋葉原', { place: '秋葉原駅' }),
+    I(3, '09:30', 'sight', '明治神宮', { place: '明治神宮' }),
+    I(3, '13:00', 'food', '澀谷午餐', { place: '渋谷駅', cost: '4500' }),
+    I(3, '16:00', 'sight', '新宿御苑', { place: '新宿御苑', cost: '500' }),
+    I(4, '09:30', 'sight', '築地場外市場', { place: '築地場外市場', done: true }),
+    I(4, '11:30', 'food', '海鮮丼午餐', { place: '築地場外市場', cost: '2800', done: true }),
+    I(4, '14:03', 'transit', '新幹線 東京 → 京都', { from: '東京', to: '京都', arrTime: '16:18', vehicle: 'のぞみ 23', car: '7 號車', seat: '12A', ref: 'K7Q-2X9M', place: '東京駅' }),
+    I(4, '16:50', 'stay', '飯店 Check-in', { place: '京都駅', note: '京都站步行 5 分' }),
+    I(4, '18:30', 'food', '先斗町晚餐', { place: '先斗町', note: '已訂位 4 人', cost: '12000' }),
+    I(5, '08:00', 'sight', '伏見稻荷大社', { place: '伏見稲荷大社', note: '早去人少' }),
+    I(5, '12:00', 'food', '錦市場', { place: '錦市場' }),
+    I(5, '17:00', 'sight', '祇園散步', { place: '祇園' }),
+    I(6, '09:00', 'sight', '嵐山竹林', { place: '嵐山 竹林の小径' }),
+    I(6, '14:00', 'sight', '金閣寺', { place: '金閣寺', cost: '500' }),
+    I(7, '10:00', 'stay', '退房', { place: '京都駅' }),
+    I(7, '15:40', 'transit', '關西機場 → 桃園', { from: '關西', to: '桃園', arrTime: '17:50', vehicle: 'BR131', seat: '41A', place: '関西国際空港' })
+  ];
+  // 範例的「今天」項目完成狀態依現在時間決定，讓今日頁看起來合理
+  const byDay = {}; items.forEach((i) => { (byDay[i.day] = byDay[i.day] || []).push(i); });
+  Object.values(byDay).forEach((arr) => arr.forEach((i, k) => { i.order = k * 10; }));
+  const nowMs = Date.now();
+  items.forEach((i) => { i.done = localToUtc(addDays(start, i.day - 1), i.time, i.tz || tz) < nowMs - 90 * 60000; });
+  await dbPut('trips', trip); await dbPutMany('items', items.map((i) => ({ ...i, updatedAt: Date.now() })));
+  const train = items.find((i) => i.vehicle === 'のぞみ 23'); const flight = items.find((i) => i.vehicle === 'BR198');
+  const atts = [];
+  for (const [it, seed, nm] of [[train, 20261015, '新幹線車票.png'], [train, 777, '指定席券.png'], [flight, 4242, '登機證.png']]) atts.push({ id: uid('a_'), tripId: trip.id, itemId: it.id, name: nm, type: 'image/png', blob: await sampleQrBlob(seed), createdAt: Date.now() + atts.length });
+  await dbPutMany('atts', atts);
+  const tpl = BUILTIN_TEMPLATES[0];
+  await dbPutMany('checks', tpl.items.map(([g, t], i) => ({ id: uid('c_'), tripId: trip.id, group: g, text: t, done: i % 3 !== 2, order: i * 10, updatedAt: Date.now() })));
+  S.trips.push(trip); await selectTrip(trip.id); S.tab = 'today'; closeSheet(true); render(); toast('已載入範例行程');
+}
+
+/* ---------------------------------------------------------------- changelog & update */
+function openChangelog() {
+  openSheet('更新紀錄', `<div class="card"><div class="cl-list">${CHANGELOG.map((c, i) => {
+    const counts = {}; c.notes.forEach(([t]) => { counts[t] = (counts[t] || 0) + 1; });
+    return `<div class="cl-ver ${i === 0 ? 'cur' : ''}"><h4>v${c.v}<span class="d">${c.date}${i === 0 ? ' · 目前版本' : ''}</span></h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${Object.entries(counts).map(([t, n]) => `<span class="tagc tag-${t}">${TAGS[t]} ${n}</span>`).join('')}</div>
+      <ul>${c.notes.map(([t, n]) => `<li><span class="tagc tag-${t}">${TAGS[t]}</span><span>${h(n)}</span></li>`).join('')}</ul></div>`;
+  }).join('')}</div></div>`);
+}
+let _reg = null, _updatedFrom = null;
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    _reg = await navigator.serviceWorker.register('./sw.js');
+    if (_reg.waiting && navigator.serviceWorker.controller) showUpdateReady();
+    _reg.addEventListener('updatefound', () => { const w = _reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdateReady(); }); });
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloading || !_applying) return; reloading = true; location.reload(); });
+  } catch {}
+}
+let _applying = false;
+function showUpdateReady(latest) {
+  openSheet('有新版本', `<div class="card"><p style="margin:0">${latest ? `v${APP_VERSION} → <b>v${latest}</b>` : '新版本已經下載好了'}。更新只會重新載入 App，你的行程資料不受影響。</p></div><div style="height:12px"></div>
+    <div class="btn-row"><button class="btn" data-act="closeSheet">稍後</button><button class="btn primary" data-act="applyUpdate">立即更新</button></div>`);
+}
+async function checkUpdate() {
+  if (!navigator.onLine) { toast('目前離線，需要網路才能檢查更新'); return; }
+  toast('檢查中…');
+  try {
+    const txt = await (await fetch('index.html?_=' + Date.now(), { cache: 'no-store' })).text();
+    const m = txt.match(/APP_VERSION\s*=\s*'([\d.]+)'/); const latest = m && m[1];
+    if (_reg) { try { await _reg.update(); } catch {} }
+    if (latest && cmpVer(latest, APP_VERSION) > 0) showUpdateReady(latest);
+    else if (_reg && _reg.waiting) showUpdateReady();
+    else toast(`已是最新版本 v${APP_VERSION}`);
+  } catch { toast('檢查失敗，請稍後再試'); }
+}
+async function applyUpdate() {
+  _applying = true; closeSheet(true); toast('更新中…');
+  const w = _reg && (_reg.waiting || _reg.installing);
+  if (w) { w.postMessage('SKIP_WAITING'); setTimeout(() => location.reload(), 2000); return; }
+  try { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); if (_reg) await _reg.update(); } catch {}
+  setTimeout(() => location.reload(), 600);
+}
+
+/* ---------------------------------------------------------------- actions */
+const A = {
+  tab: (el) => { S.tab = el.dataset.k; closeSheet(true); render(); window.scrollTo(0, 0); },
+  closeSheet: () => closeSheet(),
+  tripSwitcher: () => openTripSwitcher(),
+  selectTrip: async (el) => { closeSheet(true); await selectTrip(el.dataset.id); S.tab = 'today'; render(); if (isViewer()) viewerRefresh(true); },
+  newTrip: () => openTripEditor(null),
+  editTrip: () => openTripEditor(S.trip),
+  deleteTrip: async () => {
+    const t = S.trip;
+    if (!(await confirmSheet('刪除旅程', `確定刪除「${h(t.name)}」？所有行程、附件、清單都會刪除，無法復原。`, '刪除', true))) return;
+    if (t.share && t.share.id && navigator.onLine) { try { await api('DELETE', '/trips/' + t.share.id, null, t.share.key, t.share.api); } catch {} }
+    await removeTripData(t.id); render(); toast('已刪除');
+  },
+  removeTrip: async () => { if (!(await confirmSheet('移除行程', '只會從這支手機移除，規劃者的行程不受影響。之後可以用分享連結重新加入。', '移除', true))) return; await removeTripData(S.trip.id); render(); },
+  loadSample: () => loadSample(),
+  joinShare: async () => {
+    const v = await promptSheet('加入分享的行程', '貼上家人傳來的連結或分享碼', '', 'https://… 或 16 碼分享碼');
+    if (v == null) return; const p = parseShareInput(v); if (!p) { toast('看不懂這個連結或分享碼'); return; }
+    if (!navigator.onLine) { toast('第一次加入需要網路'); return; }
+    await joinShared(p.code, p.api);
+  },
+  openItem: (el) => openItemDetail(el.dataset.id),
+  editItem: (el) => openItemEditor(el.dataset.id),
+  newItem: (el) => openItemEditor(null, parseInt(el.dataset.day, 10) || S.selDay),
+  deleteItem: async (el) => {
+    const it = S.items.find((i) => i.id === el.dataset.id);
+    if (!(await confirmSheet('刪除行程', `確定刪除「${h(it.title)}」和它的附件？`, '刪除', true))) { openItemEditor(it.id); return; }
+    it.deleted = true; await saveItems([it]);
+    for (const a of attsOf(it.id)) await dbDel('atts', a.id);
+    S.atts = S.atts.filter((a) => a.itemId !== it.id); _edit = null; render(); toast('已刪除');
+  },
+  toggleDone: async (el) => { if (isViewer()) return; const it = S.items.find((i) => i.id === el.dataset.id); it.done = !it.done; await saveItems([it]); if (el.dataset.close) closeSheet(true); render(); },
+  openTicket: (el) => openTicket(el.dataset.id, parseInt(el.dataset.i || '0', 10)),
+  closeTicket: () => closeTicket(),
+  navigate: (el) => navigateTo(S.items.find((i) => i.id === el.dataset.id)),
+  selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); render(); },
+  editDayTitle: async (el) => {
+    const d = parseInt(el.dataset.d, 10); const t = S.trip;
+    const v = await promptSheet(`Day ${d} 標題`, '例如：東京 → 京都', (t.dayTitles || {})[d] || '');
+    if (v == null) return; t.dayTitles = t.dayTitles || {}; if (v) t.dayTitles[d] = v; else delete t.dayTitles[d];
+    await saveTrip(t); markDirty(); render();
+  },
+  attAdd: () => $('#fileAtt').click(),
+  attRemove: (el) => { const id = el.dataset.aid; if (!_edit) return; const i = _edit.pendingAdd.findIndex((a) => a.id === id); if (i >= 0) _edit.pendingAdd.splice(i, 1); else _edit.pendingDel.add(id); renderAttGrid(); },
+  checkToggle: async (el) => { const c = S.checks.find((x) => x.id === el.dataset.id); c.done = !c.done; await saveChecks([c]); render(); },
+  checkDel: async (el) => { const c = S.checks.find((x) => x.id === el.dataset.id); c.deleted = true; await saveChecks([c]); render(); },
+  toggleCheckEdit: () => { S.checkEdit = !S.checkEdit; render(); },
+  addGroup: async () => {
+    const g = await promptSheet('新增分類', '分類名稱', '', '例如：證件、電子、衣物'); if (!g) return;
+    const t = await promptSheet(`新增到「${g}」`, '第一個項目', ''); if (!t) return;
+    const maxO = S.checks.reduce((m, c) => Math.max(m, c.order || 0), 0);
+    await saveChecks([{ id: uid('c_'), tripId: S.trip.id, group: g, text: t, done: false, order: maxO + 10 }]); S.checkEdit = true; render();
+  },
+  applyTemplate: () => openTemplatePicker(),
+  checkMenu: () => {
+    const sh = openSheet('清單選項', `<div class="group" style="margin:0">
+      <button class="row" data-k="tpl"><span class="ico">${icon('bag', 18)}</span><span class="grow"><span>套用範本</span><small>出國基本、國內兩天一夜，或你存的範本</small></span></button>
+      <button class="row" data-k="save"><span class="ico">${icon('download', 18)}</span><span class="grow"><span>把目前清單存成範本</span><small>下次旅行可以直接套用</small></span></button>
+      <button class="row" data-k="reset"><span class="ico">${icon('refresh', 18)}</span><span class="grow"><span>全部取消勾選</span><small>回程收行李時用</small></span></button></div>`);
+    sh.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-k]'); if (!b) return;
+      if (b.dataset.k === 'tpl') openTemplatePicker();
+      if (b.dataset.k === 'save') {
+        closeSheet(true); const live = S.checks.filter((c) => !c.deleted).sort((a, b2) => a.order - b2.order);
+        if (!live.length) { toast('清單是空的'); return; }
+        const name = await promptSheet('存成範本', '範本名稱', S.trip.name); if (!name) return;
+        S.templates.push({ id: uid('tpl_'), name, items: live.map((c) => [c.group, c.text]) }); await metaSet('templates', S.templates); toast('已存成範本');
+      }
+      if (b.dataset.k === 'reset') { closeSheet(true); const on = S.checks.filter((c) => c.done && !c.deleted); on.forEach((c) => { c.done = false; }); await saveChecks(on); render(); toast('已全部取消勾選'); }
+    });
+  },
+  openShare: () => openShare(),
+  saveApi: async () => { const v = ($('#apiInput').value || '').trim(); if (!/^https:\/\//i.test(v) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(v)) { toast('請輸入 https:// 開頭的網址'); return; } S.settings.api = v.replace(/\/+$/, ''); await saveSettings(); openShare(); },
+  changeApi: async (el, e) => { e.preventDefault(); const v = await promptSheet('分享伺服器網址', 'Cloudflare Worker 網址', S.settings.api || DEFAULT_API); if (v == null) { openShare(); return; } S.settings.api = v.replace(/\/+$/, ''); await saveSettings(); openShare(); },
+  shareCreate: () => shareCreate(),
+  shareCopy: async () => { const link = shareLink(S.trip); try { await navigator.clipboard.writeText(link); toast('已複製連結'); } catch { const i = $('#shareLinkInput'); if (i) { i.select(); document.execCommand('copy'); toast('已複製連結'); } } },
+  shareNative: async () => { const link = shareLink(S.trip); if (navigator.share) { try { await navigator.share({ title: S.trip.name, text: `「${S.trip.name}」的行程（唯讀）`, url: link }); } catch {} } else A.shareCopy(); },
+  shareSync: () => publish(true),
+  shareStop: () => shareStop(),
+  viewerRefresh: () => viewerRefresh(false),
+  offlineCheck: () => offlineCheck(),
+  prefMap: async () => { S.settings.mapApp = S.settings.mapApp === 'google' ? 'apple' : 'google'; await saveSettings(); render(); toast(`導航改用 ${S.settings.mapApp === 'google' ? 'Google 地圖' : 'Apple 地圖'}`); },
+  prefPlanner: async () => { const v = await promptSheet('規劃者名稱', '家人會看到「由 ___ 規劃」', S.settings.planner); if (v == null) return; S.settings.planner = v; await saveSettings(); markDirty(); render(); },
+  exportJson: () => exportData(false),
+  exportFull: () => exportData(true),
+  importJson: () => $('#fileImport').click(),
+  changelog: () => openChangelog(),
+  checkUpdate: () => checkUpdate(),
+  applyUpdate: () => applyUpdate(),
+  storageInfo: () => fillStorage(),
+  dismiss: async (el) => { S.dismissed[el.dataset.k] = true; await metaSet('dismissed', S.dismissed); render(); },
+  dismissUpdate: () => { _updatedFrom = null; render(); }
+};
+async function removeTripData(id) {
+  const ids = (await dbAll('items', 'tripId', id)).map((i) => i.id), cs = (await dbAll('checks', 'tripId', id)).map((c) => c.id), as = (await dbAll('atts', 'tripId', id)).map((a) => a.id);
+  await tx(['trips', 'items', 'checks', 'atts'], 'readwrite', (x) => { x.objectStore('trips').delete(id); ids.forEach((k) => x.objectStore('items').delete(k)); cs.forEach((k) => x.objectStore('checks').delete(k)); as.forEach((k) => x.objectStore('atts').delete(k)); });
+  S.trips = S.trips.filter((t) => t.id !== id); closeSheet(true);
+  await selectTrip(S.trips[0] ? S.trips[0].id : null); S.tab = 'today';
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const fn = A[el.dataset.act]; if (!fn) return;
+  if (el.tagName === 'A' && el.getAttribute('href') === '#') e.preventDefault();
+  fn(el, e);
+});
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest('[data-act-submit="checkAdd"]'); if (!f) return;
+  e.preventDefault(); const v = f.t.value.trim(); if (!v) return;
+  const g = f.dataset.g; const inGroup = S.checks.filter((c) => !c.deleted && c.group === g);
+  const maxO = inGroup.reduce((m, c) => Math.max(m, c.order || 0), 0);
+  // 插在同分類最後面
+  const later = S.checks.filter((c) => !c.deleted && c.group !== g && c.order > maxO);
+  later.forEach((c) => { c.order += 10; });
+  await saveChecks([...later, { id: uid('c_'), tripId: S.trip.id, group: g, text: v, done: false, order: maxO + 5 }]);
+  render(); const nf = $(`[data-act-submit="checkAdd"][data-g="${CSS.escape(g)}"] input`); if (nf) nf.focus();
+});
+document.addEventListener('change', async (e) => {
+  const p = e.target.dataset && e.target.dataset.pref;
+  if (p) { S.settings[p] = e.target.checked; await saveSettings(); return; }
+  if (e.target.id === 'fileAtt') {
+    const files = [...e.target.files]; e.target.value = ''; if (!_edit) return;
+    for (const f of files) { if (f.size > 20 * 1048576) { toast(`${f.name} 太大（超過 20 MB）`); continue; } _edit.pendingAdd.push(await prepareFile(f)); }
+    renderAttGrid();
+  }
+  if (e.target.id === 'fileImport') { const f = e.target.files[0]; e.target.value = ''; if (f) importData(f); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#ticket')) closeTicket(); else closeSheet(); } });
+window.addEventListener('online', () => { S.online = true; if (S.trip && S.trip.share && S.trip.share.dirty) publish(); if (isViewer()) viewerRefresh(true); else if (!$('#sheet')) render(); });
+window.addEventListener('offline', () => { S.online = false; if (!$('#sheet')) render(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !S.trip) return;
+  if (isViewer() && Date.now() - _lastViewerFetch > 60000) viewerRefresh(true);
+  else if (!$('#sheet') && !$('#ticket')) render();
+});
+setInterval(() => { if (document.visibilityState === 'visible' && S.trip && S.tab === 'today' && !$('#sheet') && !$('#ticket') && !document.querySelector('.irow.dragging')) render(); }, 30000);
+
+/* ---------------------------------------------------------------- boot */
+(async function boot() {
+  try { await openDB(); } catch { $('#app').innerHTML = '<div class="welcome"><h1>無法開啟資料庫</h1><p>請確認不是在私密瀏覽模式，或到設定清除網站資料後再試。</p></div>'; return; }
+  await loadAll();
+  const seen = await metaGet('seenVer', null);
+  if (seen && cmpVer(APP_VERSION, seen) > 0) _updatedFrom = seen;
+  await metaSet('seenVer', APP_VERSION);
+  initDrag();
+  const q = new URLSearchParams(location.search);
+  const code = q.get('s');
+  if (code && /^[A-Za-z0-9]{16}$/.test(code)) {
+    // 讓 iOS「加入主畫面」記住含分享碼的網址：在 Safari 裡移除 manifest，iOS 會改用目前網址當啟動網址
+    if (!isStandalone()) { const ml = $('#manifestLink'); if (ml) ml.remove(); }
+    const existing = S.trips.find((t) => t.id === 'v_' + code);
+    if (existing) { await selectTrip(existing.id); render(); viewerRefresh(true); }
+    else { render(); if (navigator.onLine) await joinShared(code, q.get('a') || ''); else toast('第一次開啟分享連結需要網路'); }
+  } else {
+    render();
+    if (isViewer()) viewerRefresh(true);
+  }
+  registerSW();
+  try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) navigator.storage.persist(); } catch {}
+})();
+</script>
+</body>
+</html>
