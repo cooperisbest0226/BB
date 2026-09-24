@@ -343,7 +343,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -351,6 +351,14 @@ const DEFAULT_API = 'https://travel-handbook-share.cooperisbest0226.workers.dev'
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.1.1', date: '2026-09-24', notes: [
+    ['fix', '唯讀行程更新到一半就切換旅程，可能誤刪另一趟旅程的項目'],
+    ['fix', '離線時改的行程，之後重開 App 不會自動同步給家人'],
+    ['fix', '網路不穩時算車程失敗，要等一天才會重算；現在 10 分鐘後重試'],
+    ['fix', 'Google 地圖設定修好後，要重開 App 才會開始算車程'],
+    ['imp', '分享時只帶這趟旅程用到的車程，不會帶到其他旅程的地點'],
+    ['imp', '讀螢幕軟體不再唸出視窗標題裡的程式碼']
+  ]},
   { v: '1.1.0', date: '2026-09-24', notes: [
     ['add', '行程之間自動顯示開車車程與距離（Google 地圖），時間排太緊會標紅提醒'],
     ['add', '交通項目新增「開車」：填出發地和目的地，自動算車程並帶入抵達時間（未來時段含路況預估）'],
@@ -604,6 +612,8 @@ async function loadAll() {
   await selectTrip(S.trips.find((t) => t.id === cur) ? cur : (S.trips[0] && S.trips[0].id), false);
 }
 async function selectTrip(id, save = true) {
+  // 切換前先把這趟還沒上傳的變更送出去（publish 會在第一個 await 前算好內容）
+  if (_syncTimer) { clearTimeout(_syncTimer); _syncTimer = null; publish(); }
   S.trip = S.trips.find((t) => t.id === id) || null;
   if (!S.trip) { S.items = []; S.checks = []; S.atts = []; return; }
   S.items = await dbAll('items', 'tripId', id);
@@ -612,6 +622,8 @@ async function selectTrip(id, save = true) {
   const td = todayInfo();
   S.selDay = td.status === 'during' ? td.day : 1;
   if (save) await metaSet('currentTrip', id);
+  // 上次離線時改的東西，開 App 或切回來時補上傳（不會有 online 事件）
+  if (S.trip.role === 'owner' && S.trip.share && S.trip.share.dirty) { clearTimeout(_syncTimer); _syncTimer = setTimeout(() => { _syncTimer = null; publish(); }, 2500); }
 }
 async function saveSettings() { await metaSet('settings', S.settings); }
 async function saveTrip(trip) { trip.updatedAt = Date.now(); await dbPut('trips', trip); const i = S.trips.findIndex((t) => t.id === trip.id); if (i >= 0) S.trips[i] = trip; else S.trips.push(trip); if (S.trip && S.trip.id === trip.id) S.trip = trip; }
@@ -627,12 +639,16 @@ function locEnd(it) { return (it.type === 'transit' ? (it.to || it.place) : it.p
 function locStart(it) { return (it.type === 'transit' ? (it.from || it.place) : it.place) || ''; }
 function fmtKm(m) { if (m == null) return ''; return m >= 1000 ? `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km` : `${m} m`; }
 function addMinHM(hm, min) { const [H, M] = hm.split(':').map(Number); const t = ((H * 60 + M + min) % 1440 + 1440) % 1440; return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; }
-let _wantRoutes = [], _routeQ = new Map(), _routeBusy = false, _mapsOff = false;
+let _wantRoutes = [], _routeQ = new Map(), _routeBusy = false, _mapsOffAt = 0;
+// 金鑰／伺服器設定有問題時先停 10 分鐘，修好後不用重開 App 就會恢復
+const mapsOff = () => Date.now() - _mapsOffAt < 600000;
+// 查不到路線：一天內不重試；網路或伺服器暫時失敗：10 分鐘後重試
+const routeRetryMs = (r) => (r.err === 'no_route' ? 86400000 : 600000);
 function queueRoutes(pairs) {
-  if (!S.trip || isViewer() || !driveOn() || !apiBase() || _mapsOff || !navigator.onLine) return;
+  if (!S.trip || isViewer() || !driveOn() || !apiBase() || mapsOff() || !navigator.onLine) return;
   for (const [f, t] of pairs) {
     const k = routeKey(f, t); const r = S.routes[k];
-    if (r && (!r.err || Date.now() - r.at < 86400000)) continue;
+    if (r && (!r.err || Date.now() - r.at < routeRetryMs(r))) continue;
     _routeQ.set(k, [f, t]);
   }
   runRouteQ();
@@ -647,7 +663,7 @@ async function runRouteQ() {
         const r = await api('POST', '/route', { from: f, to: t, region: regionOf() });
         S.routes[k] = { s: r.staticSeconds || r.seconds, m: r.meters, at: Date.now() };
       } catch (err) {
-        if (err.status === 501 || err.status === 403 || err.message === 'no_api' || err.message === 'maps_denied') { _mapsOff = true; _routeQ.clear(); break; }
+        if (err.status === 501 || err.status === 403 || err.message === 'no_api' || err.message === 'maps_denied') { _mapsOffAt = Date.now(); _routeQ.clear(); break; }
         if (err.status === 429) { _routeQ.clear(); break; }
         if (!navigator.onLine) break;
         S.routes[k] = { err: err.message === 'no_route' ? 'no_route' : 'fail', at: Date.now() };
@@ -690,7 +706,7 @@ function legHtml(a, b) {
       else note = `${stay} ${durText(L.slack * 60000)}`;
     }
   } else if (L.r && L.r.err) { cls = 'wait'; main = L.r.err === 'no_route' ? '找不到開車路線（地點寫完整一點，例如加上城市）' : '車程暫時算不出來'; }
-  else if (!isViewer() && apiBase() && !_mapsOff && navigator.onLine) { cls = 'wait'; main = '計算車程中…'; }
+  else if (!isViewer() && apiBase() && !mapsOff() && navigator.onLine) { cls = 'wait'; main = '計算車程中…'; }
   else return '';
   return `<button class="leg ${cls}" data-act="navLeg" data-f="${h(L.f)}" data-t="${h(L.t)}" aria-label="開車導航：${h(L.f)} 到 ${h(L.t)}">${icon('car', 14)}<span class="ln">${main}</span>${note ? `<span class="note">${note}</span>` : ''}</button>`;
 }
@@ -1024,7 +1040,9 @@ let _sheetClose = null;
 function openSheet(title, inner, onClose) {
   closeSheet(true);
   const bd = document.createElement('div'); bd.className = 'backdrop'; bd.id = 'sheet';
-  bd.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${h(title)}"><div class="grip"></div><div class="sheet-head"><h3>${title}</h3><button class="x" data-act="closeSheet" aria-label="關閉">${icon('x', 18, 2.2)}</button></div>${inner}</div>`;
+  bd.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grip"></div><div class="sheet-head"><h3>${title}</h3><button class="x" data-act="closeSheet" aria-label="關閉">${icon('x', 18, 2.2)}</button></div>${inner}</div>`;
+  // 標題可能含圖示 HTML，aria-label 取純文字
+  bd.firstElementChild.setAttribute('aria-label', bd.querySelector('.sheet-head h3').textContent.trim());
   bd.addEventListener('click', (e) => { if (e.target === bd) closeSheet(); });
   document.body.appendChild(bd); document.body.classList.add('lock');
   _sheetClose = onClose || null;
@@ -1409,8 +1427,14 @@ function sharePayload(trip) {
     return o;
   });
   // 帶上算好的車程，家人那邊不必再查（也不用花額度）
+  // 只帶這趟旅程地點之間的路線，別的旅程（例如自家地址）不外流，也不會撐爆 256 KB 上限
   const routes = {}; const pref = (TZ_REGION[trip.tz] || '') + '|';
-  Object.entries(S.routes).forEach(([k, r]) => { if (k.startsWith(pref) && r && !r.err) routes[k] = { s: r.s, m: r.m }; });
+  const locs = new Set(); items.forEach((i) => { [locStart(i), locEnd(i)].forEach((x) => { if (x) locs.add(x.trim()); }); });
+  Object.entries(S.routes).forEach(([k, r]) => {
+    if (!k.startsWith(pref) || !r || r.err) return;
+    const [, f, t] = k.split('|');
+    if (locs.has(f) && locs.has(t)) routes[k] = { s: r.s, m: r.m };
+  });
   return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {}, drive: trip.drive !== false }, items, routes, publishedAt: Date.now() };
 }
 async function api(method, path, body, key) {
@@ -1425,7 +1449,7 @@ let _syncTimer = null, _syncing = false;
 function markDirty() {
   const t = S.trip; if (!t || t.role !== 'owner' || !t.share || !t.share.id) return;
   if (!t.share.dirty) { t.share.dirty = true; dbPut('trips', t); }
-  clearTimeout(_syncTimer); _syncTimer = setTimeout(() => publish(), 2500);
+  clearTimeout(_syncTimer); _syncTimer = setTimeout(() => { _syncTimer = null; publish(); }, 2500);
 }
 async function publish(manual) {
   const t = S.trip; if (!t || t.role !== 'owner' || !t.share || !t.share.id) return;
@@ -1520,15 +1544,19 @@ async function viewerRefresh(silent) {
     if (d.routes) { Object.entries(d.routes).forEach(([k, r]) => { S.routes[k] = { ...r, at: Date.now() }; }); await metaSet('routes', S.routes); }
     t.viewer.syncedAt = Date.now(); t.viewer.planner = d.planner || ''; t.viewer.gone = false;
     const items = (d.items || []).map((i) => ({ ...i, tripId: t.id, id: t.id + ':' + i.id }));
-    await tx(['items'], 'readwrite', (x) => { const s = x.objectStore('items'); S.items.forEach((i) => s.delete(i.id)); items.forEach((i) => s.put(i)); });
-    S.items = items; await saveTrip(t);
+    // 用 tripId 找舊項目來刪：下載期間使用者可能已切到別的旅程，S.items 不一定是這趟的
+    const oldIds = (await dbAll('items', 'tripId', t.id)).map((i) => i.id);
+    await tx(['items'], 'readwrite', (x) => { const s = x.objectStore('items'); oldIds.forEach((k) => s.delete(k)); items.forEach((i) => s.put(i)); });
+    if (S.trip && S.trip.id === t.id) S.items = items;
+    await saveTrip(t);
+    if (!S.trip || S.trip.id !== t.id) return;
     const td = todayInfo(); if (td.status === 'during' && S.selDay === 1) S.selDay = td.day;
     if (!silent) toast('已更新到最新版本');
   } catch (err) {
     if (err.status === 404) { t.viewer.gone = true; await saveTrip(t); }
     else if (!silent) toast('更新失敗，顯示最後一次下載的版本');
   }
-  if (!$('#sheet')) render();
+  if (!$('#sheet') && S.trip && S.trip.id === t.id) render();
 }
 
 /* ---------------------------------------------------------------- offline check */

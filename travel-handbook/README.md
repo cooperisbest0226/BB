@@ -107,6 +107,27 @@ App 會盡量省額度：
 - 地點寫得越完整越準，例如「日月潭向山遊客中心」比「向山」好。App 會依旅程的時區優先在當地搜尋（日本的旅程會優先找日本的地名）。
 - 全程搭大眾運輸的旅程（例如日本鐵路旅行），建議把開關關掉，免得出現用不到的開車時間。
 
+### 車程算不出來時
+
+| 錯誤 | 原因 | 處理 |
+|---|---|---|
+| `no_maps_key` | Worker 沒有金鑰 | 在 `worker/` 執行 `npx wrangler secret put GOOGLE_MAPS_KEY` 再 `npx wrangler deploy` |
+| `maps_denied` | Google 拒絕（403） | 確認已啟用 **Routes API**、已綁帳單、金鑰的「應用程式限制」是「無」、「API 限制」有勾 Routes API。改完等幾分鐘 |
+| `no_route` | Google 找不到路線 | 地點寫完整一點；或兩地之間無法開車（例如隔海） |
+| `maps_quota` | 超過每日上限 | 隔天再試，或調高 Google Cloud 的配額 |
+| `Required Worker name missing` | 不在 `worker/` 資料夾執行 wrangler | 先 `cd worker`，或加 `--name travel-handbook-share` |
+
+想看 Google 回的原始錯誤：在 `worker/` 執行 `npx wrangler tail`，再到 App 觸發一次車程計算。
+
+用 Windows PowerShell 手動測試時，中文地址要先轉 UTF-8，否則會變成 `???` 而得到 `no_route`：
+
+```powershell
+$body = @{ from = "台北車站"; to = "台北101"; region = "tw" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "https://travel-handbook-share.cooperisbest0226.workers.dev/route" `
+  -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) `
+  -Headers @{ Origin = "https://cooperisbest0226.github.io" }
+```
+
 ### 分享 API
 
 | 方法 | 路徑 | 說明 |
