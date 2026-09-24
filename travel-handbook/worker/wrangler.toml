@@ -5,10 +5,10 @@ compatibility_date = "2026-09-01"
 # 允許呼叫這個 API 的網站來源，多個用逗號分隔。
 # 部署前改成你的 GitHub Pages 網址，例如 "https://你的帳號.github.io"
 [vars]
-ALLOWED_ORIGINS = "*"
+ALLOWED_ORIGINS = "https://cooperisbest0226.github.io"
 
 # 先執行：npx wrangler kv namespace create TRIPS
 # 再把指令印出的 id 貼到下面
 [[kv_namespaces]]
 binding = "TRIPS"
-id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"
+id = "6c519d8fcb624d2d936e411c9856ec27"
