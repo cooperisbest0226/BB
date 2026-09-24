@@ -1,7 +1,7 @@
 /* 旅行手冊 Service Worker
  * 發新版時：CACHE_NAME 要跟 index.html 的 APP_VERSION 一起改。
  */
-const CACHE_NAME = 'travel-handbook-v1.2.0';
+const CACHE_NAME = 'travel-handbook-v1.2.1';
 const APP_SHELL = [
   './',
   './index.html',

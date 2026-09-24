@@ -354,7 +354,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -367,6 +367,9 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.2.1', date: '2026-09-24', notes: [
+    ['fix', 'iPhone 上按「導航」或車程列開地圖後，回到 App 會被一層空白頁蓋住、看起來像卡住']
+  ]},
   { v: '1.2.0', date: '2026-09-24', notes: [
     ['add', '行程頁和今日頁新增「地圖」：一次看整天路線，從前一晚的住宿出發，字母對應每個地點'],
     ['add', '地圖下方點任一地點可以單獨查看，點「全天路線」回到總覽'],
@@ -1381,10 +1384,24 @@ function mapUrl(dest, origin, drive) {
   if (g) return `https://www.google.com/maps/dir/?api=1${origin ? '&origin=' + encodeURIComponent(origin) : ''}&destination=${encodeURIComponent(dest)}${drive ? '&travelmode=driving' : ''}`;
   return `https://maps.apple.com/?${origin ? 'saddr=' + encodeURIComponent(origin) + '&' : ''}daddr=${encodeURIComponent(dest)}${drive ? '&dirflg=d' : ''}`;
 }
+// iPhone 上用 window.open 開地圖，會先開一層 App 內瀏覽器再轉去地圖 App，回來時那層空白頁還蓋在畫面上（看起來像卡住）。
+// iOS 改用地圖 App 的網址（maps:// / comgooglemaps://）直接開，不經過瀏覽器
+function appMapUrl(dest, origin, drive) {
+  const g = S.settings.mapApp === 'google';
+  const qs = [origin ? 'saddr=' + encodeURIComponent(origin) : '', 'daddr=' + encodeURIComponent(dest), drive ? (g ? 'directionsmode=driving' : 'dirflg=d') : ''].filter(Boolean).join('&');
+  return (g ? 'comgooglemaps://?' : 'maps://?') + qs;
+}
+function openMap(dest, origin, drive) {
+  const web = mapUrl(dest, origin, drive);
+  if (!isIOS()) { window.open(web, '_blank', 'noopener'); return; }
+  location.href = appMapUrl(dest, origin, drive);
+  // 沒裝 Google 地圖 App 時打不開，改開網頁版
+  if (S.settings.mapApp === 'google') setTimeout(() => { if (document.visibilityState === 'visible') window.open(web, '_blank', 'noopener'); }, 1500);
+}
 function navigateTo(it) {
-  if (it.type === 'transit' && it.mode === 'drive') { window.open(mapUrl(it.to || it.place || it.title, it.from, true), '_blank', 'noopener'); return; }
+  if (it.type === 'transit' && it.mode === 'drive') { openMap(it.to || it.place || it.title, it.from, true); return; }
   const q = it.place || it.from || it.title;
-  window.open(mapUrl(q, null, driveOn()), '_blank', 'noopener');
+  openMap(q, null, driveOn());
 }
 
 /* ----- 內嵌地圖（Google Maps Embed API）
@@ -1847,7 +1864,7 @@ const A = {
   closeTicket: () => closeTicket(),
   navigate: (el) => navigateTo(S.items.find((i) => i.id === el.dataset.id)),
   dayMap: (el) => openDayMap(parseInt(el.dataset.d, 10)),
-  navLeg: (el) => window.open(mapUrl(el.dataset.t, el.dataset.f, true), '_blank', 'noopener'),
+  navLeg: (el) => openMap(el.dataset.t, el.dataset.f, true),
   selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); render(); },
   editDayTitle: async (el) => {
     const d = parseInt(el.dataset.d, 10); const t = S.trip;
