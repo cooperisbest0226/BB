@@ -190,6 +190,21 @@ svg{display:block;flex-shrink:0}
 .rate-row{display:flex;align-items:center;gap:8px;font-size:15px;white-space:nowrap}
 .rate-row input{flex:1;min-width:0;height:42px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 12px;font-size:16px;color:var(--ink)}
 .info .ir div small{color:var(--muted);margin-left:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative;display:inline-flex}
+.chip input{position:absolute;opacity:0;inset:0;margin:0}
+.chip span{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:18px;border:1.5px solid var(--line2);font-size:14px;font-weight:600;color:var(--muted)}
+.chip input:checked+span{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.sos-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.sos-row:first-child{border-top:0;padding-top:0}
+.sos-row .grow{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:15px}
+.sos-row .grow small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.sos-row .num{font-family:var(--mono);font-weight:700;font-size:16px}
+.call{display:inline-flex;align-items:center;gap:4px;height:40px;padding:0 14px;border-radius:20px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;text-decoration:none;flex-shrink:0}
+.call.soft{background:var(--soft2);color:var(--ink)}
+.settle{display:flex;align-items:center;gap:8px;font-size:15px;padding:8px 0;border-top:1px solid var(--line)}
+.settle:first-child{border-top:0}
+.settle b.amt{margin-left:auto;font-family:var(--mono)}
 .leave{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--soft2);font-size:14px;color:var(--ink)}
 .leave.now{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .leave small{color:var(--muted);font-size:12px}
@@ -371,7 +386,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -384,6 +399,11 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.5.0', date: '2026-09-24', notes: [
+    ['add', '緊急資訊：當地報案／救護電話、外交部急難救助、保險、緊急聯絡人、住宿，一鍵撥打，離線也能看'],
+    ['add', '分帳：設定成員，每筆費用選誰付、誰分攤，自動算出誰該給誰多少'],
+    ['add', '匯率自動更新：旅費統計自動換算台幣，也可以填實際換匯的匯率']
+  ]},
   { v: '1.4.0', date: '2026-09-24', notes: [
     ['add', '分享連結加上 QR code：家人用相機掃描就能打開，點一下可以全螢幕顯示'],
     ['add', '家人的唯讀行程也能顯示 QR code，轉給其他家人（更多 → 給其他家人掃描）']
@@ -489,6 +509,7 @@ const IC = {
   map: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
   file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
   wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h.01M3 10h18"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   storage: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'
@@ -668,7 +689,7 @@ async function loadAll() {
   S.routes = await metaGet('routes', {});
   // 清掉 90 天前的車程快取
   const old = Date.now() - 90 * 86400000; Object.keys(S.routes).forEach((k) => { if (!S.routes[k].at || S.routes[k].at < old) delete S.routes[k]; });
-  S.geo = await metaGet('geo', {}); S.wx = await metaGet('wx', {});
+  S.geo = await metaGet('geo', {}); S.wx = await metaGet('wx', {}); S.fx = await metaGet('fx', null);
   Object.keys(S.wx).forEach((k) => { if (!S.wx[k].at || S.wx[k].at < Date.now() - 2 * 86400000) delete S.wx[k]; });
   S.dismissed = await metaGet('dismissed', {});
   const cur = await metaGet('currentTrip', null);
@@ -1083,7 +1104,7 @@ function renderMore() {
     ${row('shareText', 'copy', '傳送文字版行程', '貼到 LINE 給沒裝 App 的人看')}
     ${row('dupTrip', 'route', viewer ? '複製成我的旅程' : '複製這趟旅程', viewer ? '變成自己可以編輯的行程' : '行程和清單一起複製，改日期就能再用')}
   </div>`;
-  html += `<div class="group-title">出發前</div><div class="group">${row('offlineCheck', 'shield', '離線就緒檢查', '確認沒網路時也打得開、票券都在手機裡')}</div>`;
+  html += `<div class="group-title">出發前</div><div class="group">${row('offlineCheck', 'shield', '離線就緒檢查', '確認沒網路時也打得開、票券都在手機裡')}${row('emergency', 'phone', '緊急資訊', '當地報案／救護電話、急難救助、保險、住宿')}</div>`;
   html += `<div class="group-title">偏好</div><div class="group">
     <label class="row"><span class="ico">${icon('clock', 18)}</span><span class="grow"><span>顯示台灣時間</span><small>在當地時間旁邊對照顯示</small></span><span class="switch"><input type="checkbox" data-pref="showHome" ${S.settings.showHome ? 'checked' : ''} aria-label="顯示台灣時間"><i></i></span></label>
     ${row('prefMap', 'map', '導航使用', '', S.settings.mapApp === 'google' ? 'Google 地圖' : 'Apple 地圖')}
@@ -1271,6 +1292,8 @@ function openItemEditor(id, day) {
       <div class="two"><label class="field"><span>費用</span><input name="cost" value="${h(it.cost || '')}" inputmode="decimal"></label>
       <label class="field"><span>幣別</span><select name="cur">${curOptions(it.cur || t.currency)}</select></label></div>
       <label class="paid-row"><input type="checkbox" name="paid" ${it.paid ? 'checked' : ''}><span>已付款<small style="color:var(--muted)">（沒勾代表現場付）</small></span></label>
+      ${(t.people || []).length >= 2 ? `<label class="field"><span>誰付的（分帳用）</span><select name="payer"><option value="">未指定</option>${t.people.map((pp) => `<option value="${h(pp)}" ${it.payer === pp ? 'selected' : ''}>${h(pp)}</option>`).join('')}</select></label>
+      <div class="field"><span>誰分攤</span><div class="chips">${t.people.map((pp) => `<label class="chip"><input type="checkbox" name="split" value="${h(pp)}" ${!it.split || it.split.includes(pp) ? 'checked' : ''}><span>${h(pp)}</span></label>`).join('')}</div></div>` : ''}
       <label class="field"><span>連結</span><input name="url" value="${h(it.url || '')}" inputmode="url" placeholder="訂位網址、官網…"></label>
       <label class="field"><span>備註</span><textarea name="note">${h(it.note || '')}</textarea></label>
     </div>
@@ -1356,6 +1379,12 @@ async function saveItemForm(f) {
   const oldDay = it.day, oldTime = it.time;
   Object.assign(it, { title: v('title'), day: parseInt(v('day'), 10) || 1, time: v('time'), place: v('place'), ref: v('ref'), cost: v('cost').replace(/,/g, ''), cur: v('cur'), url: v('url'), note: f.note.value.trim() });
   if (f.paid.checked && it.cost) it.paid = true; else delete it.paid;
+  if (f.payer) {
+    if (f.payer.value && it.cost) it.payer = f.payer.value; else delete it.payer;
+    const sp = $$('input[name=split]', f).filter((x) => x.checked).map((x) => x.value);
+    // 全部勾（或都沒勾）= 所有人平分，不另外存
+    if (sp.length && sp.length < S.trip.people.length) it.split = sp; else delete it.split;
+  }
   if (it.type === 'transit' && it.mode === 'drive') {
     Object.assign(it, { from: v('from'), to: v('to'), arrTime: v('arrTime') });
     ['vehicle', 'car', 'seat', 'tz'].forEach((k) => delete it[k]);
@@ -1601,7 +1630,7 @@ function sharePayload(trip) {
   // 訂位代號（ref）、附件、清單都不上傳
   const items = S.items.filter((i) => i.tripId === trip.id && !i.deleted).map((i) => {
     const o = { id: i.id, day: i.day, order: i.order, type: i.type, title: i.title, time: i.time || '', done: !!i.done };
-    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic', 'paid'].forEach((k) => { if (i[k]) o[k] = i[k]; });
+    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic', 'paid', 'payer', 'split'].forEach((k) => { if (i[k]) o[k] = i[k]; });
     return o;
   });
   // 帶上算好的車程，家人那邊不必再查（也不用花額度）
@@ -1613,7 +1642,7 @@ function sharePayload(trip) {
     const [, f, t] = k.split('|');
     if (locs.has(f) && locs.has(t)) routes[k] = { s: r.s, m: r.m };
   });
-  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {}, drive: trip.drive !== false, rates: trip.rates || {} }, items, routes, publishedAt: Date.now() };
+  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {}, drive: trip.drive !== false, rates: trip.rates || {}, people: trip.people || [], emergency: sharedEmergency(trip) }, items, routes, publishedAt: Date.now() };
 }
 async function api(method, path, body, key) {
   const base = arguments[4] || apiBase();
@@ -1720,7 +1749,7 @@ async function viewerRefresh(silent) {
   try {
     const r = await api('GET', '/trips/' + t.viewer.shareId, null, null, t.viewer.api);
     const d = r.data || {}; const tp = d.trip || {};
-    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {}, drive: tp.drive !== false, rates: tp.rates || {} });
+    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {}, drive: tp.drive !== false, rates: tp.rates || {}, people: tp.people || [], emergency: tp.emergency || {} });
     if (d.routes) { Object.entries(d.routes).forEach(([k, r]) => { S.routes[k] = { ...r, at: Date.now() }; }); await metaSet('routes', S.routes); }
     t.viewer.syncedAt = Date.now(); t.viewer.planner = d.planner || ''; t.viewer.gone = false;
     const items = (d.items || []).map((i) => ({ ...i, tripId: t.id, id: t.id + ':' + i.id }));
@@ -2003,6 +2032,23 @@ function openDuePicker(id) {
 
 /* ---------------------------------------------------------------- 旅費統計 */
 const HOME_CUR = 'TWD';
+// 匯率：連網時自動抓（ExchangeRate-API 免費版，每天更新、不用金鑰），手動填的優先
+const FX_TTL = 12 * 3600000;
+let _fxBusy = false;
+async function refreshFx(force) {
+  const fx = await metaGet('fx', null);
+  if (fx) S.fx = fx;
+  if (_fxBusy || !navigator.onLine || (!force && S.fx && Date.now() - S.fx.at < FX_TTL)) return false;
+  _fxBusy = true;
+  try {
+    const r = await getJson('https://open.er-api.com/v6/latest/' + HOME_CUR);
+    if (r.result !== 'success' || !r.rates) return false;
+    const rates = {}; Object.entries(r.rates).forEach(([c, v]) => { if (v > 0) rates[c] = 1 / v; }); // 1 外幣 = ? 台幣
+    S.fx = { at: Date.now(), date: r.time_last_update_unix ? r.time_last_update_unix * 1000 : Date.now(), rates };
+    await metaSet('fx', S.fx); return true;
+  } catch { return false; } finally { _fxBusy = false; }
+}
+function effRates(t = S.trip) { return { ...((S.fx && S.fx.rates) || {}), ...(t.rates || {}) }; }
 function sumCur(list) { const m = {}; list.forEach((i) => { const c = i.cur || S.trip.currency; m[c] = (m[c] || 0) + Number(i.cost); }); return m; }
 function toHome(m, rates) { let tot = 0; for (const [c, v] of Object.entries(m)) { if (c === HOME_CUR) tot += v; else if (rates[c]) tot += v * rates[c]; else return null; } return tot; }
 function fmtCurMap(m, rates) {
@@ -2010,27 +2056,132 @@ function fmtCurMap(m, rates) {
   const home = toHome(m, rates);
   return home != null && Object.keys(m).some((c) => c !== HOME_CUR) ? `${parts}<small>≈ ${h(fmtMoney(Math.round(home), HOME_CUR))}</small>` : parts;
 }
+const fmtRate = (v) => (v >= 1 ? v.toFixed(3) : v >= 0.01 ? v.toFixed(4) : v.toPrecision(3));
+// 分帳：算每個人多付／少付多少，再用最少筆數互相轉帳結清
+function settle(its, people, rates) {
+  const withPayer = its.filter((i) => i.payer && people.includes(i.payer));
+  const allConv = withPayer.every((i) => { const c = i.cur || S.trip.currency; return c === HOME_CUR || rates[c]; });
+  const groups = {};
+  withPayer.forEach((i) => {
+    const c = i.cur || S.trip.currency; const cur = allConv ? HOME_CUR : c;
+    const amt = allConv && c !== HOME_CUR ? Number(i.cost) * rates[c] : Number(i.cost);
+    const g = groups[cur] || (groups[cur] = Object.fromEntries(people.map((p) => [p, 0])));
+    let who = (i.split || people).filter((p) => people.includes(p)); if (!who.length) who = people;
+    g[i.payer] += amt; who.forEach((p) => { g[p] -= amt / who.length; });
+  });
+  const out = Object.entries(groups).map(([cur, bal]) => {
+    const dec = ['JPY', 'KRW', 'VND', 'IDR', 'TWD'].includes(cur) ? 0 : 2; const rnd = (v) => Math.round(v * 10 ** dec) / 10 ** dec;
+    const cr = Object.entries(bal).filter(([, v]) => v > 0.005).map(([p, v]) => [p, v]).sort((a, b) => b[1] - a[1]);
+    const db = Object.entries(bal).filter(([, v]) => v < -0.005).map(([p, v]) => [p, -v]).sort((a, b) => b[1] - a[1]);
+    const moves = [];
+    while (cr.length && db.length) {
+      const x = Math.min(cr[0][1], db[0][1]);
+      if (rnd(x) > 0) moves.push([db[0][0], cr[0][0], rnd(x)]);
+      cr[0][1] -= x; db[0][1] -= x;
+      if (cr[0][1] < 0.005) cr.shift(); if (db.length && db[0][1] < 0.005) db.shift();
+    }
+    return { cur, bal, moves };
+  });
+  return { groups: out, skipped: its.length - withPayer.length };
+}
 function openExpenses() {
-  const t = S.trip; const rates = t.rates || {};
+  const t = S.trip; const rates = effRates(); const people = t.people || [];
   const its = liveItems().filter((i) => i.cost && Number(i.cost));
-  if (!its.length) { openSheet('旅費統計', `<div class="card"><p style="margin:0">還沒有填費用。編輯行程項目時填「費用」，這裡就會自動加總。</p></div>`); return; }
+  const peopleCard = !isViewer() ? `<div class="card"><div class="field"><span>分帳成員</span></div><div style="display:flex;align-items:center;gap:10px"><span style="flex-grow:1;font-size:15px">${people.length ? people.map(h).join('、') : '<span style="color:var(--muted)">還沒設定（兩人以上才能分帳）</span>'}</span><button class="btn sm" data-k="people" style="flex:none">${icon('pencil', 16)}<span>編輯</span></button></div></div>` : '';
+  if (!its.length) {
+    openSheet('旅費統計', `<div class="card"><p style="margin:0">還沒有填費用。編輯行程項目時填「費用」，這裡就會自動加總。</p></div><div style="height:12px"></div>${peopleCard}`);
+    bindExpenseSheet(); return;
+  }
   const all = sumCur(its), paid = sumCur(its.filter((i) => i.paid)), unpaid = sumCur(its.filter((i) => !i.paid));
   const ir = (k, m) => `<div class="ir"><small>${k}</small><div>${fmtCurMap(m, rates)}</div></div>`;
   const foreign = Object.keys(all).filter((c) => c !== HOME_CUR);
+  const auto = (S.fx && S.fx.rates) || {}; const manual = t.rates || {};
   let html = `<div class="card"><div class="info">${ir('總計', all)}${Object.keys(paid).length ? ir('已付款', paid) : ''}${Object.keys(unpaid).length ? ir('現場付', unpaid) : ''}</div></div>`;
-  if (foreign.length) html += `<div style="height:12px"></div><div class="card"><div class="field"><span>匯率（換算成台幣）</span></div>
-    ${foreign.map((c) => `<label class="rate-row"><span>1 ${c} =</span><input name="${c}" value="${rates[c] || ''}" inputmode="decimal" ${isViewer() ? 'readonly' : ''}><span>TWD</span></label>`).join('')}
+  if (people.length >= 2) {
+    const st = settle(its, people, rates);
+    html += `<div style="height:12px"></div><div class="card"><div class="field"><span>分帳結算</span></div>`;
+    if (!st.groups.length) html += `<p style="margin:0;font-size:14px;color:var(--muted)">還沒有指定「誰付的」。編輯有費用的項目，選付款人和分攤的人。</p>`;
+    st.groups.forEach((g) => {
+      html += `<div class="info">${Object.entries(g.bal).map(([p, v]) => `<div class="ir"><small>${h(p)}</small><div>${Math.abs(v) < 0.5 ? '剛好' : v > 0 ? `多付 ${h(fmtMoney(Math.round(v), g.cur))}` : `少付 ${h(fmtMoney(Math.round(-v), g.cur))}`}</div></div>`).join('')}</div>`;
+      html += g.moves.length ? `<div>${g.moves.map(([a, b, x]) => `<div class="settle">${h(a)} ${icon('right', 14)} ${h(b)}<b class="amt">${h(fmtMoney(x, g.cur))}</b></div>`).join('')}</div>` : `<p style="margin:0;font-size:14px;color:var(--ok)">已經結清，不用互相轉帳</p>`;
+    });
+    if (st.skipped) html += `<p style="margin:0;font-size:12px;color:var(--muted)">還有 ${st.skipped} 筆費用沒指定付款人，沒算進去。</p>`;
+    if (st.groups.length > 1) html += `<p style="margin:0;font-size:12px;color:var(--muted)">有幣別還沒有匯率，所以按幣別分開結算。</p>`;
+    html += `</div>`;
+  }
+  if (peopleCard) html += `<div style="height:12px"></div>${peopleCard}`;
+  if (foreign.length) html += `<div style="height:12px"></div><div class="card"><div class="field"><span>匯率（1 外幣 = ? 台幣）</span></div>
+    ${foreign.map((c) => `<label class="rate-row"><span>1 ${c} =</span><input name="${c}" value="${manual[c] || ''}" placeholder="${auto[c] ? '自動 ' + fmtRate(auto[c]) : '請填匯率'}" inputmode="decimal" ${isViewer() ? 'readonly' : ''}><span>TWD</span></label>`).join('')}
+    <small style="font-size:12px;color:var(--muted)">${S.fx ? `自動匯率：${h(new Date(S.fx.date).toLocaleDateString('zh-TW'))} 更新 · 來源 <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>` : '連上網路後會自動抓匯率'}。${!isViewer() ? '自己填的匯率（例如實際換匯的匯率）會優先使用，清空就回到自動。' : ''}</small>
     ${!isViewer() ? `<button class="btn sm dark" data-k="saveRates">儲存匯率</button>` : ''}</div>`;
   const types = Object.keys(TYPES).filter((k) => its.some((i) => i.type === k));
   html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依類別</span></div><div class="info">${types.map((k) => ir(TYPES[k].label, sumCur(its.filter((i) => i.type === k)))).join('')}</div></div>`;
   const days = [...new Set(its.map((i) => i.day))].sort((a, b) => a - b);
   html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依天</span></div><div class="info">${days.map((d) => ir(`Day ${d}`, sumCur(its.filter((i) => i.day === d)))).join('')}</div></div>
     <p class="note-p">只算有填費用的行程項目。沒勾「已付款」的都算現場付，就是出發後還要準備的錢。</p>`;
-  const sh = openSheet('旅費統計', html);
+  openSheet('旅費統計', html); bindExpenseSheet();
+  // 匯率太舊就在背景更新，抓到後重畫
+  if (foreign.length) refreshFx().then((ok) => { if (ok && $('#sheet') && $('#sheet .rate-row')) openExpenses(); });
+}
+function bindExpenseSheet() {
+  const sh = $('#sheet .sheet'); const t = S.trip;
   sh.addEventListener('click', async (e) => {
-    if (!e.target.closest('[data-k=saveRates]')) return;
-    const r = {}; $$('.rate-row input', sh).forEach((i) => { const v = parseFloat(i.value.replace(/,/g, '')); if (v > 0) r[i.name] = v; });
-    t.rates = r; await saveTrip(t); markDirty(); openExpenses(); toast('已儲存匯率');
+    if (e.target.closest('[data-k=saveRates]')) {
+      const r = {}; $$('.rate-row input', sh).forEach((i) => { const v = parseFloat(i.value.replace(/,/g, '')); if (v > 0) r[i.name] = v; });
+      t.rates = r; await saveTrip(t); markDirty(); openExpenses(); toast('已儲存匯率');
+    }
+    if (e.target.closest('[data-k=people]')) {
+      const v = await promptSheet('分帳成員', '用頓號或逗號分開，例如：Henry、媽媽、小明', (t.people || []).join('、'));
+      if (v != null) { t.people = [...new Set(v.split(/[、,，\s]+/).map((x) => x.trim()).filter(Boolean))]; await saveTrip(t); markDirty(); }
+      openExpenses();
+    }
+  });
+}
+
+/* ---------------------------------------------------------------- 緊急資訊（離線可用） */
+// 各地報案／救護電話（常見號碼，出發前建議再確認一次）
+const TZ_SOS = {
+  'Asia/Taipei': [['報案', '110'], ['救護／消防', '119']], 'Asia/Tokyo': [['報案', '110'], ['救護／消防', '119']], 'Asia/Seoul': [['報案', '112'], ['救護／消防', '119']],
+  'Asia/Hong_Kong': [['報案／救護／消防', '999']], 'Asia/Shanghai': [['報案', '110'], ['救護', '120'], ['消防', '119']], 'Asia/Singapore': [['報案', '999'], ['救護／消防', '995']],
+  'Asia/Kuala_Lumpur': [['報案／救護／消防', '999']], 'Asia/Bangkok': [['報案', '191'], ['救護', '1669'], ['觀光警察', '1155']], 'Asia/Ho_Chi_Minh': [['報案', '113'], ['救護', '115'], ['消防', '114']],
+  'Asia/Manila': [['報案／救護／消防', '911']], 'Asia/Makassar': [['緊急電話', '112']], 'Asia/Jakarta': [['緊急電話', '112']], 'Asia/Dubai': [['報案', '999'], ['救護', '998']],
+  'Europe/Istanbul': [['緊急電話', '112']], 'Europe/London': [['緊急電話', '999'], ['歐盟通用', '112']], 'Europe/Paris': [['緊急電話', '112']], 'Europe/Berlin': [['緊急電話', '112']],
+  'Europe/Rome': [['緊急電話', '112']], 'Europe/Madrid': [['緊急電話', '112']], 'Europe/Zurich': [['緊急電話', '112'], ['報案', '117'], ['救護', '144']], 'Europe/Prague': [['緊急電話', '112']],
+  'Australia/Sydney': [['緊急電話', '000']], 'Australia/Brisbane': [['緊急電話', '000']], 'Pacific/Auckland': [['緊急電話', '111']], 'Pacific/Guam': [['緊急電話', '911']],
+  'Pacific/Honolulu': [['緊急電話', '911']], 'America/Los_Angeles': [['緊急電話', '911']], 'America/Vancouver': [['緊急電話', '911']], 'America/New_York': [['緊急電話', '911']], 'America/Chicago': [['緊急電話', '911']]
+};
+const TW_HELP = [['外交部急難救助 · 全球免付費', '+800-0885-0885'], ['外交部急難救助 · 付費專線', '+886-800-085-095']];
+const SOS_FIELDS = [['insurer', '保險公司'], ['policy', '保單號碼', true], ['insPhone', '保險理賠／海外救援電話'], ['office', '駐外館處（例如：台北駐日經濟文化代表處）'], ['officePhone', '駐外館處電話'], ['contactName', '台灣緊急聯絡人'], ['contactPhone', '聯絡人電話'], ['passport', '護照號碼', true], ['note', '其他（過敏、用藥、血型…）']];
+// 分享給家人時，保單號碼和護照號碼不上傳
+function sharedEmergency(t) { const e = { ...(t.emergency || {}) }; SOS_FIELDS.filter((f) => f[2]).forEach(([k]) => delete e[k]); return e; }
+const telHref = (n) => 'tel:' + String(n).replace(/[^\d+]/g, '');
+function sosRow(label, num, sub) { return `<div class="sos-row"><span class="grow"><span>${h(label)}</span>${sub ? `<small>${h(sub)}</small>` : ''}</span>${num ? `<a class="call" href="${telHref(num)}">${icon('phone', 14, 2.4)}<span class="num">${h(num)}</span></a>` : ''}</div>`; }
+function openEmergency() {
+  const t = S.trip; const e = t.emergency || {}; const abroad = t.tz !== 'Asia/Taipei';
+  const local = TZ_SOS[t.tz] || [];
+  const stays = []; liveItems().filter((i) => i.type === 'stay' && i.place).sort((a, b) => a.day - b.day || a.order - b.order).forEach((i) => { if (!stays.some((x) => x.place === i.place)) stays.push(i); });
+  let html = `<div class="card"><div class="field"><span>${h(tzName(t.tz))} 當地</span></div><div>${local.length ? local.map(([l, n]) => sosRow(l, n)).join('') : `<p style="margin:0;font-size:14px;color:var(--muted)">沒有內建這個地區的號碼，請自己查好填在下面「其他」。</p>`}</div></div>`;
+  if (abroad) html += `<div style="height:12px"></div><div class="card"><div class="field"><span>中華民國外交部</span></div><div>${TW_HELP.map(([l, n]) => sosRow(l, n)).join('')}${e.office || e.officePhone ? sosRow(e.office || '駐外館處', e.officePhone) : ''}</div></div>`;
+  const mine = [];
+  if (e.insurer || e.insPhone || e.policy) mine.push(sosRow(e.insurer || '旅遊保險', e.insPhone, e.policy && !isViewer() ? '保單號碼 ' + e.policy : ''));
+  if (e.contactName || e.contactPhone) mine.push(sosRow(e.contactName || '緊急聯絡人', e.contactPhone, '台灣緊急聯絡人'));
+  if (e.passport && !isViewer()) mine.push(sosRow('護照號碼', '', e.passport));
+  if (e.note) mine.push(sosRow('其他', '', e.note));
+  html += `<div style="height:12px"></div><div class="card"><div class="field"><span>保險與聯絡人</span></div><div>${mine.length ? mine.join('') : `<p style="margin:0;font-size:14px;color:var(--muted)">還沒填${!isViewer() ? '，點下面「編輯」加上保險、聯絡人' : ''}。</p>`}</div></div>`;
+  if (stays.length) html += `<div style="height:12px"></div><div class="card"><div class="field"><span>住宿</span></div><div>${stays.map((i) => `<div class="sos-row"><span class="grow"><span>${h(i.title)}</span><small>Day ${i.day} · ${h(i.place)}</small></span><button class="call soft" data-act="navigate" data-id="${i.id}">${icon('nav', 14, 2.4)}<span>導航</span></button></div>`).join('')}</div></div>`;
+  html += `<div style="height:12px"></div>${!isViewer() ? `<button class="btn dark" data-k="editSos">${icon('pencil')}<span>編輯</span></button>` : ''}
+    <p class="note-p">這頁離線也能打開。${!isViewer() ? '保單號碼和護照號碼只存在這支手機，不會分享給家人。' : ''}當地號碼是常見的緊急電話，出發前建議再確認一次。</p>`;
+  const sh = openSheet('緊急資訊', html);
+  sh.addEventListener('click', (ev) => { if (ev.target.closest('[data-k=editSos]')) openEmergencyEditor(); });
+}
+function openEmergencyEditor() {
+  const t = S.trip; const e = t.emergency || {};
+  const sh = openSheet('編輯緊急資訊', `<form class="form"><div class="card">${SOS_FIELDS.map(([k, l, priv]) => `<label class="field"><span>${priv ? icon('lock', 13) : ''}${h(l)}${priv ? '（只存本機）' : ''}</span>${k === 'note' ? `<textarea name="${k}">${h(e[k] || '')}</textarea>` : `<input name="${k}" value="${h(e[k] || '')}" ${/Phone$/.test(k) ? 'inputmode="tel"' : ''} autocomplete="off">`}</label>`).join('')}</div>
+    <button class="btn dark" type="submit">儲存</button></form>`);
+  sh.querySelector('form').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const f = ev.target; const ne = {};
+    SOS_FIELDS.forEach(([k]) => { const v = f[k].value.trim(); if (v) ne[k] = v; });
+    t.emergency = ne; await saveTrip(t); markDirty(); openEmergency(); toast('已儲存');
   });
 }
 
@@ -2150,7 +2301,7 @@ function openDupDay(day) {
 async function duplicateTrip() {
   const src = S.trip; const viewer = isViewer();
   if (!(await confirmSheet(viewer ? '複製成我的旅程' : '複製旅程', `把「${h(src.name)}」複製成一趟新的旅程，行程${viewer ? '' : '和清單'}會一起複製；附件和分享連結不會。複製後可以改名稱和日期。`, '複製'))) return;
-  const nt = { id: uid('t_'), role: 'owner', name: `${src.name.replace(/（範例）$/, '')}（複本）`, start: src.start, days: src.days, tz: src.tz, currency: src.currency, drive: src.drive, dayTitles: { ...(src.dayTitles || {}) }, rates: { ...(src.rates || {}) }, createdAt: Date.now() };
+  const nt = { id: uid('t_'), role: 'owner', name: `${src.name.replace(/（範例）$/, '')}（複本）`, start: src.start, days: src.days, tz: src.tz, currency: src.currency, drive: src.drive, dayTitles: { ...(src.dayTitles || {}) }, rates: { ...(src.rates || {}) }, people: [...(src.people || [])], emergency: { ...(src.emergency || {}) }, createdAt: Date.now() };
   const now = Date.now();
   const items = liveItems().map((i) => ({ ...i, id: uid('i_'), tripId: nt.id, done: false, updatedAt: now }));
   const checks = viewer ? [] : S.checks.filter((c) => !c.deleted).map((c) => ({ ...c, id: uid('c_'), tripId: nt.id, done: false, updatedAt: now }));
@@ -2198,6 +2349,7 @@ const A = {
   dupDay: (el) => openDupDay(parseInt(el.dataset.day, 10)),
   dupTrip: () => duplicateTrip(),
   expenses: () => openExpenses(),
+  emergency: () => openEmergency(),
   exportIcs: () => openIcsExport(),
   shareText: () => shareTripText(),
   checkDue: (el) => openDuePicker(el.dataset.id),
