@@ -6,7 +6,7 @@
 - **行程**：按天分組、拖曳排序、每天可以自訂標題
 - **看票模式**：票券截圖全螢幕顯示，並嘗試讓螢幕保持常亮（Wake Lock）
 - **清單**：行李清單，可以套用範本，也可以把目前清單存成範本
-- **分享**：產生唯讀連結給家人，訂位代號、附件、清單都不會上傳
+- **分享**：產生唯讀連結和 QR code 給家人，訂位代號、附件、清單都不會上傳
 - **開車車程**：行程之間自動顯示 Google 地圖車程、時間不夠會標紅；「開車」交通項目自動帶入抵達時間；今日頁建議出發時間
 - **地圖**：行程頁、今日頁點「地圖」看整天路線（Google 地圖內嵌，免費）；行程詳細資訊有小地圖
 - **每日摘要**：行程頁每天顯示開車總時數與距離，時間不夠／很趕的路段會標出來
@@ -25,6 +25,7 @@ travel-handbook/
 ├── index.html            主程式（HTML + CSS + JS 單檔）
 ├── sw.js                 Service Worker（離線快取）
 ├── manifest.webmanifest
+├── vendor/qrcode.js     QR code 產生器（qrcode-generator 1.4.4，Kazuhiko Arase，MIT 授權）
 ├── icons/                App 圖示（180 / 192 / 512 / maskable / favicon）
 ├── worker/               分享後端（Cloudflare Worker），不是必要的
 │   ├── worker.js

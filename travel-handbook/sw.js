@@ -1,7 +1,7 @@
 /* 旅行手冊 Service Worker
  * 發新版時：CACHE_NAME 要跟 index.html 的 APP_VERSION 一起改。
  */
-const CACHE_NAME = 'travel-handbook-v1.3.1';
+const CACHE_NAME = 'travel-handbook-v1.4.0';
 const APP_SHELL = [
   './',
   './index.html',
@@ -10,7 +10,8 @@ const APP_SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
-  './icons/favicon-32.png'
+  './icons/favicon-32.png',
+  './vendor/qrcode.js'
 ];
 
 self.addEventListener('install', (event) => {
