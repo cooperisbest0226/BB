@@ -332,7 +332,7 @@ svg{display:block;flex-shrink:0}
 .toast{position:fixed;left:50%;bottom:calc(100px + var(--sab));transform:translateX(-50%);z-index:80;background:var(--dark-btn);color:var(--dark-btn-ink);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;max-width:calc(100vw - 32px);box-shadow:0 8px 24px rgba(0,0,0,.25);animation:fade .2s}
 
 /* ---------- ticket view (always light) ---------- */
-.ticket{position:fixed;inset:0;z-index:60;background:#FFFFFF;color:#1C2433;display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab)}
+.ticket{position:fixed;inset:0;z-index:60;background:#FFFFFF;color:#1C2433;color-scheme:light;display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab)}
 .ticket .tk-top{padding:12px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ticket .tk-x{width:44px;height:44px;border-radius:22px;border:0;background:#F1F2F0;color:#1C2433;display:flex;align-items:center;justify-content:center}
 .ticket .tk-wake{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#F1F2F0;color:#5A6270}
@@ -367,7 +367,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -380,6 +380,9 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.3.1', date: '2026-09-24', notes: [
+    ['imp', '看票模式在深色模式下，最上面的狀態列也改成白色，整個畫面都是白底']
+  ]},
   { v: '1.3.0', date: '2026-09-24', notes: [
     ['add', '行程頁每天顯示開車總時數與距離，時間不夠或很趕的路段會標出來'],
     ['add', '天氣預報：出發前 7 天起，今日頁和行程頁顯示每天的天氣、溫度和降雨機率'],
@@ -1409,12 +1412,15 @@ function openTicket(id, start = 0) {
     ${info.length ? `<div class="tk-info" style="${info.length === 1 ? 'grid-template-columns:1fr' : ''}">${info.map(([k, v]) => `<div><small>${k}</small><b class="${k === '訂位代號' ? 'mono' : ''}">${h(v)}</b></div>`).join('')}</div>` : ''}
     <div class="tk-foot">${atts.length > 1 ? `<div class="tk-dots" id="tkDots">${atts.map((_, i) => `<i class="${i === start ? 'on' : ''}"></i>`).join('')}</div><span id="tkCount">${start + 1} / ${atts.length} · 左右滑看其他張</span>` : ''}<span>建議調高螢幕亮度，方便掃描</span></div>`;
   document.body.appendChild(el); document.body.classList.add('lock');
+  // 深色模式時最上面的狀態列也改成白色，整個畫面都是白底，QR code 最亮
+  $$('meta[name=theme-color]').forEach((m) => { if (!m.dataset.orig) m.dataset.orig = m.content; m.content = '#FFFFFF'; });
   const sl = $('#tkSlides');
   requestAnimationFrame(() => { sl.scrollLeft = sl.clientWidth * start; });
   sl.addEventListener('scroll', () => { const i = Math.round(sl.scrollLeft / sl.clientWidth); $$('#tkDots i').forEach((d, k) => d.classList.toggle('on', k === i)); const c = $('#tkCount'); if (c) c.textContent = `${i + 1} / ${atts.length} · 左右滑看其他張`; }, { passive: true });
   requestWake();
 }
-function closeTicket() { const el = $('#ticket'); if (el) el.remove(); document.body.classList.remove('lock'); _ticketItem = null; if (_wake) { _wake.release().catch(() => {}); _wake = null; } }
+function closeTicket() { const el = $('#ticket'); if (el) el.remove(); document.body.classList.remove('lock');
+  $$('meta[name=theme-color]').forEach((m) => { if (m.dataset.orig) m.content = m.dataset.orig; }); _ticketItem = null; if (_wake) { _wake.release().catch(() => {}); _wake = null; } }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && _ticketItem) requestWake(); });
 
 /* ----- navigation ----- */
