@@ -10,6 +10,12 @@
  * - id：16 碼隨機，放在分享連結裡，知道 id 就能讀（唯讀）
  * - key：32 碼隨機，只存在規劃者手機，KV 裡只存它的 SHA-256
  * - 單份行程上限 256 KB（附件本來就不上傳，純文字綽綽有餘）
+ *
+ *   POST   /route          計算開車車程（Google Routes API）
+ *                          body: { from, to, region?, depart?, traffic? } → { seconds, staticSeconds, meters, traffic }
+ *   - 需要 secret：npx wrangler secret put GOOGLE_MAPS_KEY
+ *   - traffic=true 且 depart 在未來 → 含路況預估（Pro 計費）；其餘不含路況（Essentials 計費）
+ *   - 只接受 ALLOWED_ORIGINS 來源的請求（設為 * 時不檢查）
  */
 
 const MAX_BYTES = 256 * 1024;
@@ -60,6 +66,52 @@ async function readBody(req) {
   }
 }
 
+function parseSec(d) { const n = parseFloat(String(d || '').replace(/s$/, '')); return isFinite(n) ? Math.round(n) : null; }
+
+async function route(req, env, cors) {
+  const allowed = (env.ALLOWED_ORIGINS || '*').split(',').map((s) => s.trim());
+  if (!allowed.includes('*') && !allowed.includes(req.headers.get('Origin') || '')) return json({ error: 'forbidden_origin' }, 403, cors);
+  if (!env.GOOGLE_MAPS_KEY) return json({ error: 'no_maps_key' }, 501, cors);
+  let body;
+  try { body = JSON.parse(await req.text()); } catch { return json({ error: 'bad_json' }, 400, cors); }
+  const from = String(body.from || '').trim().slice(0, 200);
+  const to = String(body.to || '').trim().slice(0, 200);
+  if (!from || !to) return json({ error: 'bad_body' }, 400, cors);
+  const region = /^[a-z]{2}$/i.test(body.region || '') ? body.region.toLowerCase() : undefined;
+  const departMs = body.depart ? Date.parse(body.depart) : NaN;
+  const traffic = !!body.traffic && isFinite(departMs) && departMs > Date.now() + 60000;
+  const gReq = {
+    origin: { address: from },
+    destination: { address: to },
+    travelMode: 'DRIVE',
+    routingPreference: traffic ? 'TRAFFIC_AWARE' : 'TRAFFIC_UNAWARE',
+    languageCode: 'zh-TW',
+    units: 'METRIC'
+  };
+  if (traffic) gReq.departureTime = new Date(departMs).toISOString();
+  if (region) gReq.regionCode = region;
+  const r = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY,
+      'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters'
+    },
+    body: JSON.stringify(gReq)
+  });
+  const g = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    // 地址查不到時 Google 回 400/404；金鑰或計費問題回 403
+    if (r.status === 403) return json({ error: 'maps_denied' }, 502, cors);
+    if (r.status === 429) return json({ error: 'maps_quota' }, 429, cors);
+    return json({ error: 'no_route' }, 422, cors);
+  }
+  const rt = g.routes && g.routes[0];
+  if (!rt || rt.distanceMeters == null) return json({ error: 'no_route' }, 422, cors);
+  const seconds = parseSec(rt.duration), staticSeconds = parseSec(rt.staticDuration) ?? seconds;
+  return json({ seconds, staticSeconds, meters: rt.distanceMeters, traffic }, 200, cors);
+}
+
 async function authorized(req, record) {
   const auth = req.headers.get('Authorization') || '';
   const key = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -74,6 +126,9 @@ export default {
 
     const url = new URL(req.url);
     const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    if (parts[0] === 'route' && parts.length === 1 && req.method === 'POST') {
+      try { return await route(req, env, cors); } catch { return json({ error: 'server_error' }, 500, cors); }
+    }
     if (parts[0] !== 'trips') return json({ error: 'not_found' }, 404, cors);
 
     try {

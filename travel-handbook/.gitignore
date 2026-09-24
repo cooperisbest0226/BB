@@ -1,0 +1,5 @@
+# 個人備份檔不要進 repo
+旅行手冊_*.json
+worker/.wrangler/
+node_modules/
+.DS_Store
