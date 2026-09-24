@@ -16,6 +16,8 @@
  *   - 需要 secret：npx wrangler secret put GOOGLE_MAPS_KEY
  *   - traffic=true 且 depart 在未來 → 含路況預估（Pro 計費）；其餘不含路況（Essentials 計費）
  *   - 只接受 ALLOWED_ORIGINS 來源的請求（設為 * 時不檢查）
+ *   - 限流：wrangler.toml 的 [[ratelimits]]（每個 IP 每分鐘 20 次、全部加起來每分鐘 60 次），超過回 429 rate_limited
+ *     Origin 標頭可以被偽造（例如 PowerShell / curl），所以真正擋住濫用的是限流 + Google Cloud 的每日配額
  */
 
 const MAX_BYTES = 256 * 1024;
@@ -66,12 +68,23 @@ async function readBody(req) {
   }
 }
 
+// 限流（wrangler.toml 沒設 [[ratelimits]] 時直接放行）
+async function rateLimited(env, req) {
+  const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+  try {
+    if (env.ROUTE_LIMIT_IP && !(await env.ROUTE_LIMIT_IP.limit({ key: ip })).success) return true;
+    if (env.ROUTE_LIMIT_ALL && !(await env.ROUTE_LIMIT_ALL.limit({ key: 'all' })).success) return true;
+  } catch (e) { console.log('ratelimit_error', String(e)); }
+  return false;
+}
+
 function parseSec(d) { const n = parseFloat(String(d || '').replace(/s$/, '')); return isFinite(n) ? Math.round(n) : null; }
 
 async function route(req, env, cors) {
   const allowed = (env.ALLOWED_ORIGINS || '*').split(',').map((s) => s.trim());
   if (!allowed.includes('*') && !allowed.includes(req.headers.get('Origin') || '')) return json({ error: 'forbidden_origin' }, 403, cors);
   if (!env.GOOGLE_MAPS_KEY) return json({ error: 'no_maps_key' }, 501, cors);
+  if (await rateLimited(env, req)) return json({ error: 'rate_limited' }, 429, cors);
   let body;
   try { body = JSON.parse(await req.text()); } catch { return json({ error: 'bad_json' }, 400, cors); }
   const from = String(body.from || '').trim().slice(0, 200);
