@@ -177,6 +177,19 @@ svg{display:block;flex-shrink:0}
 .stop-row .q{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stop-row small{margin-left:auto;padding-left:8px;color:var(--muted);font-size:12px;font-weight:400;white-space:nowrap}
 .head-btns{display:flex;gap:8px;flex-shrink:0}
+.wx{font-size:13px;color:var(--ink);font-weight:600}
+.wx small{color:var(--muted);font-weight:400;margin-left:2px}
+.sum-bad{color:#C8432C}.sum-tight{color:var(--warn)}
+.cbadge{display:inline-flex;align-items:center;gap:3px;margin-left:8px;padding:1px 7px;border-radius:8px;background:var(--soft2);color:var(--muted);font-size:11px;font-weight:600;vertical-align:1px}
+.cbadge.late{background:var(--warn-soft);color:var(--warn)}
+.todo{gap:0;padding:12px 0 4px}
+.todo .sec-head{padding:0 16px 6px}
+.todo .sec-head h2{font-size:16px;display:flex;align-items:center;gap:6px}
+.paid-row{display:flex;align-items:center;gap:10px;min-height:40px;font-size:15px}
+.paid-row input{width:20px;height:20px;accent-color:var(--accent);flex-shrink:0}
+.rate-row{display:flex;align-items:center;gap:8px;font-size:15px;white-space:nowrap}
+.rate-row input{flex:1;min-width:0;height:42px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 12px;font-size:16px;color:var(--ink)}
+.info .ir div small{color:var(--muted);margin-left:4px}
 .leave{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--soft2);font-size:14px;color:var(--ink)}
 .leave.now{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .leave small{color:var(--muted);font-size:12px}
@@ -354,7 +367,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.3.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -367,6 +380,16 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.3.0', date: '2026-09-24', notes: [
+    ['add', '行程頁每天顯示開車總時數與距離，時間不夠或很趕的路段會標出來'],
+    ['add', '天氣預報：出發前 7 天起，今日頁和行程頁顯示每天的天氣、溫度和降雨機率'],
+    ['add', '匯出到手機行事曆（.ics），可以設出發前提醒'],
+    ['add', '旅費統計：依類別、天數加總，可以填匯率換算台幣；項目可以標「已付款」'],
+    ['add', '清單項目可以設「出發前 N 天」提醒，時間到會出現在今日頁「該做的事」'],
+    ['add', '複製一天的行程到其他天；複製整趟旅程（家人也可以把分享的行程複製成自己的）'],
+    ['add', '傳送文字版行程，貼到 LINE 給沒裝 App 的人看'],
+    ['imp', '車程查詢太頻繁時會暫停一分鐘後自動恢復']
+  ]},
   { v: '1.2.1', date: '2026-09-24', notes: [
     ['fix', 'iPhone 上按「導航」或車程列開地圖後，回到 App 會被一層空白頁蓋住、看起來像卡住']
   ]},
@@ -456,6 +479,7 @@ const IC = {
   file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
   wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h.01M3 10h18"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   storage: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'
 };
 function icon(name, size = 20, sw = 2) {
@@ -498,7 +522,8 @@ const BUILTIN_TEMPLATES = [
     ['證件', '護照（效期 6 個月以上）'], ['證件', '機票／電子票證截圖'], ['證件', '住宿確認信'], ['證件', '旅遊保險'],
     ['電子', '手機充電線'], ['電子', '行動電源（隨身）'], ['電子', '轉接頭'], ['電子', '網卡／eSIM'],
     ['衣物', '換洗衣物'], ['衣物', '外套'], ['衣物', '好走的鞋'],
-    ['其他', '常備藥品'], ['其他', '外幣現金'], ['其他', '信用卡'], ['其他', '雨具']
+    ['其他', '常備藥品'], ['其他', '外幣現金'], ['其他', '信用卡'], ['其他', '雨具'],
+    ['行前', '確認住宿與交通訂位', 3], ['行前', '換外幣', 3], ['行前', '線上報到', 1], ['行前', '網卡／eSIM 開通', 1]
   ]},
   { id: 'tpl_local', name: '國內兩天一夜', builtin: true, items: [
     ['證件', '身分證'], ['證件', '健保卡'], ['電子', '充電線'], ['電子', '行動電源'],
@@ -618,7 +643,7 @@ const S = {
   trips: [], trip: null, items: [], checks: [], atts: [],
   tab: 'today', selDay: 1, checkEdit: false,
   settings: { homeTz: HOME_TZ_DEFAULT, showHome: true, mapApp: 'apple', api: '', planner: '' },
-  templates: [], dismissed: {}, routes: {}, online: navigator.onLine
+  templates: [], dismissed: {}, routes: {}, geo: {}, wx: {}, online: navigator.onLine
 };
 const isViewer = () => S.trip && S.trip.role === 'viewer';
 const liveItems = () => S.items.filter((i) => !i.deleted);
@@ -632,6 +657,8 @@ async function loadAll() {
   S.routes = await metaGet('routes', {});
   // 清掉 90 天前的車程快取
   const old = Date.now() - 90 * 86400000; Object.keys(S.routes).forEach((k) => { if (!S.routes[k].at || S.routes[k].at < old) delete S.routes[k]; });
+  S.geo = await metaGet('geo', {}); S.wx = await metaGet('wx', {});
+  Object.keys(S.wx).forEach((k) => { if (!S.wx[k].at || S.wx[k].at < Date.now() - 2 * 86400000) delete S.wx[k]; });
   S.dismissed = await metaGet('dismissed', {});
   const cur = await metaGet('currentTrip', null);
   await selectTrip(S.trips.find((t) => t.id === cur) ? cur : (S.trips[0] && S.trips[0].id), false);
@@ -664,9 +691,9 @@ function locEnd(it) { return (it.type === 'transit' ? (it.to || it.place) : it.p
 function locStart(it) { return (it.type === 'transit' ? (it.from || it.place) : it.place) || ''; }
 function fmtKm(m) { if (m == null) return ''; return m >= 1000 ? `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km` : `${m} m`; }
 function addMinHM(hm, min) { const [H, M] = hm.split(':').map(Number); const t = ((H * 60 + M + min) % 1440 + 1440) % 1440; return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; }
-let _wantRoutes = [], _routeQ = new Map(), _routeBusy = false, _mapsOffAt = 0;
-// 金鑰／伺服器設定有問題時先停 10 分鐘，修好後不用重開 App 就會恢復
-const mapsOff = () => Date.now() - _mapsOffAt < 600000;
+let _wantRoutes = [], _routeQ = new Map(), _routeBusy = false, _routesPausedUntil = 0;
+// 金鑰／伺服器設定有問題時先停 10 分鐘、查太頻繁（伺服器限流）停 1 分鐘；之後自動恢復，不用重開 App
+const mapsOff = () => Date.now() < _routesPausedUntil;
 // 查不到路線：一天內不重試；網路或伺服器暫時失敗：10 分鐘後重試
 const routeRetryMs = (r) => (r.err === 'no_route' ? 86400000 : 600000);
 function queueRoutes(pairs) {
@@ -688,8 +715,8 @@ async function runRouteQ() {
         const r = await api('POST', '/route', { from: f, to: t, region: regionOf() });
         S.routes[k] = { s: r.staticSeconds || r.seconds, m: r.meters, at: Date.now() };
       } catch (err) {
-        if (err.status === 501 || err.status === 403 || err.message === 'no_api' || err.message === 'maps_denied') { _mapsOffAt = Date.now(); _routeQ.clear(); break; }
-        if (err.status === 429) { _routeQ.clear(); break; }
+        if (err.status === 501 || err.status === 403 || err.message === 'no_api' || err.message === 'maps_denied') { _routesPausedUntil = Date.now() + 600000; _routeQ.clear(); break; }
+        if (err.status === 429) { _routesPausedUntil = Date.now() + (err.message === 'rate_limited' ? 60000 : 600000); _routeQ.clear(); break; }
         if (!navigator.onLine) break;
         S.routes[k] = { err: err.message === 'no_route' ? 'no_route' : 'fail', at: Date.now() };
       }
@@ -780,6 +807,7 @@ function render() {
   _wantRoutes = [];
   app.innerHTML = (views[S.tab] || renderToday)();
   if (_wantRoutes.length) { const w = _wantRoutes; setTimeout(() => queueRoutes(w), 0); }
+  if (_wxWant.size) setTimeout(runWx, 0);
   if (S.tab === 'itin') { const sel = $('.day-chip.sel'); if (sel) sel.scrollIntoView({ inline: 'center', block: 'nearest' }); }
 }
 function renderTabbar() {
@@ -868,7 +896,7 @@ function renderToday() {
   else if (td.status === 'before') { meta = `${mdLabel(t.start)} 出發 · 共 ${t.days} 天`; listDay = 1; listTitle = 'Day 1 預覽'; }
   else { meta = `${mdLabel(t.start)} – ${mdLabel(dateOfDay(t, t.days))} · 已結束`; listDay = null; }
   const next = findNext();
-  let html = header(meta) + updateBanner() + installBanner();
+  let html = header(meta) + updateBanner() + installBanner() + todoCard();
   if (td.status === 'before' && (!next || td.daysLeft > 1)) {
     html += `<div class="hero"><span class="muted">距離出發</span><span class="big">${td.daysLeft} 天</span><span class="muted">${mdLabel(t.start)}（${wd(t.start)}）· ${h(tzName(t.tz))}</span></div><div style="height:14px"></div>`;
   }
@@ -880,7 +908,7 @@ function renderToday() {
   else if (td.status === 'during') html += `<div class="hero"><span class="big" style="font-family:var(--sans);font-size:24px">今天的行程都走完了</span><span class="muted">好好休息，明天見。</span></div>`;
   const items = dayItems(listDay);
   const now = Date.now();
-  html += `<section class="sec" aria-label="${listTitle}"><div class="sec-head"><div class="l"><h2>${listTitle}</h2><span class="n">${items.length} 項${items.length ? ` · 完成 ${items.filter((i) => i.done).length}` : ''}</span></div>
+  html += `<section class="sec" aria-label="${listTitle}"><div class="sec-head"><div class="l"><h2>${listTitle}</h2><span class="n">${items.length} 項${items.length ? ` · 完成 ${items.filter((i) => i.done).length}` : ''}</span>${wxHtml(listDay)}</div>
     <div class="head-btns">${mapBtn(listDay)}${!isViewer() ? `<button class="chip-btn" data-act="newItem" data-day="${listDay}">${icon('plus', 16, 2.2)}<span>新增</span></button>` : ''}</div></div>`;
   if (!items.length) html += `<div class="empty">這天還沒有安排${!isViewer() ? '，點右上「新增」加入第一個行程' : ''}</div>`;
   else {
@@ -989,9 +1017,10 @@ function renderItin() {
     <section class="sec" style="padding-top:14px">
       <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">
         ${!isViewer() ? `<button class="day-title-btn" data-act="editDayTitle" data-d="${d}" style="max-width:100%"><h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>${icon('pencil', 14)}</button>` : `<h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>`}
-        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span></div>${mapBtn(d)}</div>
+        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span>${sumLine(d)}${wxHtml(d)}</div>${mapBtn(d)}</div>
       <div class="ilist" id="ilist">${rows || `<div class="empty">這天還沒有安排</div>`}</div>
       ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="${d}">${icon('plus', 16, 2.2)}<span>新增到 Day ${d}</span></button>` : ''}
+      ${!isViewer() && items.length && t.days > 1 ? `<button class="add-row" data-act="dupDay" data-day="${d}" style="border:0;height:40px">${icon('copy', 16, 2.2)}<span>複製這天到其他天</span></button>` : ''}
     </section>`;
 }
 
@@ -1009,7 +1038,8 @@ function renderChecks() {
   }
   html += `<div class="progress"><div style="display:flex;justify-content:space-between;font-size:14px"><b>${done} / ${live.length} 已完成</b><span style="color:var(--muted)">${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
   html += `<section class="sec" style="padding-top:14px">` + groups.map((g) => `<div class="cgroup"><h3><span>${h(g.name)}</span><span>${g.items.filter((c) => c.done).length}/${g.items.length}</span></h3>
-    ${g.items.map((c) => `<div class="crow ${c.done ? 'on' : ''}"><button class="cbox" data-act="checkToggle" data-id="${c.id}" aria-pressed="${!!c.done}"><span class="box">${c.done ? icon('check', 14, 3) : ''}</span><span class="ctext">${h(c.text)}</span></button>
+    ${g.items.map((c) => `<div class="crow ${c.done ? 'on' : ''}"><button class="cbox" data-act="checkToggle" data-id="${c.id}" aria-pressed="${!!c.done}"><span class="box">${c.done ? icon('check', 14, 3) : ''}</span><span class="ctext">${h(c.text)}${dueBadge(c)}</span></button>
+      ${S.checkEdit ? `<button class="cdel" data-act="checkDue" data-id="${c.id}" aria-label="設定提醒：${h(c.text)}">${icon('clock', 18)}</button>` : ''}
       ${S.checkEdit ? `<button class="cdel" data-act="checkDel" data-id="${c.id}" aria-label="刪除 ${h(c.text)}">${icon('trash', 18)}</button>` : ''}</div>`).join('')}
     ${S.checkEdit ? `<form class="cadd" data-act-submit="checkAdd" data-g="${h(g.name)}"><input name="t" placeholder="新增到「${h(g.name)}」" enterkeyhint="done" aria-label="新增項目到 ${h(g.name)}"><button class="chip-btn" type="submit">${icon('plus', 16, 2.2)}</button></form>` : ''}
   </div>`).join('') + `
@@ -1035,6 +1065,12 @@ function renderMore() {
     html += row('removeTrip', 'trash', '從這支手機移除', '不影響規劃者的行程', '', 'danger');
   }
   html += `</div>`;
+  html += `<div class="group-title">行程工具</div><div class="group">
+    ${row('expenses', 'wallet', '旅費統計', '依類別、天數加總，可換算台幣')}
+    ${row('exportIcs', 'calendar', '匯出到行事曆', '每個行程變成行事曆事件，可以設提醒')}
+    ${row('shareText', 'copy', '傳送文字版行程', '貼到 LINE 給沒裝 App 的人看')}
+    ${row('dupTrip', 'route', viewer ? '複製成我的旅程' : '複製這趟旅程', viewer ? '變成自己可以編輯的行程' : '行程和清單一起複製，改日期就能再用')}
+  </div>`;
   html += `<div class="group-title">出發前</div><div class="group">${row('offlineCheck', 'shield', '離線就緒檢查', '確認沒網路時也打得開、票券都在手機裡')}</div>`;
   html += `<div class="group-title">偏好</div><div class="group">
     <label class="row"><span class="ico">${icon('clock', 18)}</span><span class="grow"><span>顯示台灣時間</span><small>在當地時間旁邊對照顯示</small></span><span class="switch"><input type="checkbox" data-pref="showHome" ${S.settings.showHome ? 'checked' : ''} aria-label="顯示台灣時間"><i></i></span></label>
@@ -1160,7 +1196,7 @@ function openItemDetail(id) {
   if (it.type === 'transit') { if (it.from || it.to) rows.push(['路線', `${it.from || '？'} → ${it.to || '？'}`]); if (it.vehicle) rows.push(['車次／航班', it.vehicle]); if (it.car) rows.push(['車廂／登機門', it.car]); if (it.seat) rows.push(['座位', it.seat]); }
   if (it.place) rows.push(['地點', it.place]);
   if (!viewer && it.ref) rows.push(['訂位代號', `<span class="mono" style="font-weight:700;letter-spacing:.06em">${h(it.ref)}</span>`, true]);
-  if (it.cost) rows.push(['費用', fmtMoney(it.cost, it.cur || t.currency)]);
+  if (it.cost) rows.push(['費用', fmtMoney(it.cost, it.cur || t.currency) + (it.paid ? ' · 已付款' : ' · 現場付')]);
   if (it.url) rows.push(['連結', `<a href="${h(safeUrl(it.url))}" target="_blank" rel="noopener">${h(it.url)}</a>`, true]);
   if (it.note) rows.push(['備註', it.note]);
   const nav = it.mode === 'drive' ? (it.to || it.place) : (it.place || it.from);
@@ -1222,6 +1258,7 @@ function openItemEditor(id, day) {
       <label class="field"><span>${icon('lock', 13)}訂位代號（只存本機，不分享）</span><input name="ref" value="${h(it.ref || '')}" autocapitalize="characters" class="mono"></label>
       <div class="two"><label class="field"><span>費用</span><input name="cost" value="${h(it.cost || '')}" inputmode="decimal"></label>
       <label class="field"><span>幣別</span><select name="cur">${curOptions(it.cur || t.currency)}</select></label></div>
+      <label class="paid-row"><input type="checkbox" name="paid" ${it.paid ? 'checked' : ''}><span>已付款<small style="color:var(--muted)">（沒勾代表現場付）</small></span></label>
       <label class="field"><span>連結</span><input name="url" value="${h(it.url || '')}" inputmode="url" placeholder="訂位網址、官網…"></label>
       <label class="field"><span>備註</span><textarea name="note">${h(it.note || '')}</textarea></label>
     </div>
@@ -1290,6 +1327,7 @@ async function calcDrive(f, force) {
     delete e.item.driveSec;
     showDriveOut(f, err.message === 'no_route' ? '找不到開車路線，請把地點寫完整一點（例如加上城市）'
       : err.status === 501 ? '伺服器還沒設定 Google 地圖金鑰（見 README）'
+      : err.message === 'rate_limited' ? '查詢太頻繁，請一分鐘後再按「重新計算」'
       : err.status === 429 ? '今天的車程查詢次數已達上限' : '計算失敗，稍後按「重新計算」', true);
   }
 }
@@ -1305,6 +1343,7 @@ async function saveItemForm(f) {
   const it = e.item; const v = (n) => (f[n] ? f[n].value.trim() : '');
   const oldDay = it.day, oldTime = it.time;
   Object.assign(it, { title: v('title'), day: parseInt(v('day'), 10) || 1, time: v('time'), place: v('place'), ref: v('ref'), cost: v('cost').replace(/,/g, ''), cur: v('cur'), url: v('url'), note: f.note.value.trim() });
+  if (f.paid.checked && it.cost) it.paid = true; else delete it.paid;
   if (it.type === 'transit' && it.mode === 'drive') {
     Object.assign(it, { from: v('from'), to: v('to'), arrTime: v('arrTime') });
     ['vehicle', 'car', 'seat', 'tz'].forEach((k) => delete it[k]);
@@ -1503,7 +1542,7 @@ async function applyTemplate(tpl) {
   const live = S.checks.filter((c) => !c.deleted);
   const maxO = live.reduce((m, c) => Math.max(m, c.order), 0);
   const add = tpl.items.filter(([g, tx]) => !live.some((c) => c.group === g && c.text === tx))
-    .map(([g, tx], i) => ({ id: uid('c_'), tripId: S.trip.id, group: g, text: tx, done: false, order: maxO + (i + 1) * 10 }));
+    .map(([g, tx, due], i) => ({ id: uid('c_'), tripId: S.trip.id, group: g, text: tx, done: false, order: maxO + (i + 1) * 10, ...(typeof due === 'number' ? { due } : {}) }));
   await saveChecks(add); return add.length;
 }
 function openTemplatePicker() {
@@ -1529,7 +1568,7 @@ function sharePayload(trip) {
   // 訂位代號（ref）、附件、清單都不上傳
   const items = S.items.filter((i) => i.tripId === trip.id && !i.deleted).map((i) => {
     const o = { id: i.id, day: i.day, order: i.order, type: i.type, title: i.title, time: i.time || '', done: !!i.done };
-    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic'].forEach((k) => { if (i[k]) o[k] = i[k]; });
+    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic', 'paid'].forEach((k) => { if (i[k]) o[k] = i[k]; });
     return o;
   });
   // 帶上算好的車程，家人那邊不必再查（也不用花額度）
@@ -1541,7 +1580,7 @@ function sharePayload(trip) {
     const [, f, t] = k.split('|');
     if (locs.has(f) && locs.has(t)) routes[k] = { s: r.s, m: r.m };
   });
-  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {}, drive: trip.drive !== false }, items, routes, publishedAt: Date.now() };
+  return { v: 1, planner: S.settings.planner || '', trip: { name: trip.name, start: trip.start, days: trip.days, tz: trip.tz, currency: trip.currency, dayTitles: trip.dayTitles || {}, drive: trip.drive !== false, rates: trip.rates || {} }, items, routes, publishedAt: Date.now() };
 }
 async function api(method, path, body, key) {
   const base = arguments[4] || apiBase();
@@ -1646,7 +1685,7 @@ async function viewerRefresh(silent) {
   try {
     const r = await api('GET', '/trips/' + t.viewer.shareId, null, null, t.viewer.api);
     const d = r.data || {}; const tp = d.trip || {};
-    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {}, drive: tp.drive !== false });
+    Object.assign(t, { name: tp.name || '未命名旅程', start: tp.start || t.start, days: tp.days || 1, tz: tp.tz || t.tz, currency: tp.currency || 'TWD', dayTitles: tp.dayTitles || {}, drive: tp.drive !== false, rates: tp.rates || {} });
     if (d.routes) { Object.entries(d.routes).forEach(([k, r]) => { S.routes[k] = { ...r, at: Date.now() }; }); await metaSet('routes', S.routes); }
     t.viewer.syncedAt = Date.now(); t.viewer.planner = d.planner || ''; t.viewer.gone = false;
     const items = (d.items || []).map((i) => ({ ...i, tripId: t.id, id: t.id + ':' + i.id }));
@@ -1770,7 +1809,7 @@ async function loadSample() {
   for (const [it, seed, nm] of [[train, 20261015, '新幹線車票.png'], [train, 777, '指定席券.png'], [flight, 4242, '登機證.png']]) atts.push({ id: uid('a_'), tripId: trip.id, itemId: it.id, name: nm, type: 'image/png', blob: await sampleQrBlob(seed), createdAt: Date.now() + atts.length });
   await dbPutMany('atts', atts);
   const tpl = BUILTIN_TEMPLATES[0];
-  await dbPutMany('checks', tpl.items.map(([g, t], i) => ({ id: uid('c_'), tripId: trip.id, group: g, text: t, done: i % 3 !== 2, order: i * 10, updatedAt: Date.now() })));
+  await dbPutMany('checks', tpl.items.map(([g, t, due], i) => ({ id: uid('c_'), tripId: trip.id, group: g, text: t, done: i % 3 !== 2, order: i * 10, updatedAt: Date.now(), ...(due != null ? { due } : {}) })));
   S.trips.push(trip); await selectTrip(trip.id); S.tab = 'today'; closeSheet(true); render(); toast('已載入範例行程');
 }
 
@@ -1827,6 +1866,263 @@ async function applyUpdate() {
   setTimeout(() => location.reload(), 600);
 }
 
+/* ---------------------------------------------------------------- 每日摘要：開車總時數、距離、太趕的路段 */
+function daySummary(day) {
+  const items = dayItems(day); const out = { sec: 0, m: 0, n: 0, bad: 0, tight: 0 };
+  items.forEach((it, i) => {
+    if (it.type === 'transit' && it.mode === 'drive' && it.driveSec) { out.sec += it.driveSec; out.m += it.driveM || 0; out.n++; }
+    const L = i ? legInfo(items[i - 1], it) : null;
+    if (L && L.r && !L.r.err) { out.sec += L.r.s; out.m += L.r.m || 0; out.n++; if (L.slack != null) { if (L.slack < 0) out.bad++; else if (L.slack < 15) out.tight++; } }
+  });
+  return out;
+}
+function sumLine(day) {
+  if (!driveOn()) return '';
+  const s = daySummary(day); if (!s.n) return '';
+  return `<span class="n">開車共 ${durText(s.sec * 1000) || '1 分'} · ${fmtKm(Math.round(s.m))}${s.bad ? ` · <b class="sum-bad">${s.bad} 段時間不夠</b>` : s.tight ? ` · <b class="sum-tight">${s.tight} 段很趕</b>` : ''}</span>`;
+}
+
+/* ---------------------------------------------------------------- 天氣（Open-Meteo，免費、不用金鑰）
+ * 只顯示今天起 7 天內的日子。地點先用當天行程的地點查座標，查不到就用旅程時區的代表城市 */
+const TZ_COORD = { 'Asia/Taipei': [25.03, 121.56, '台北'], 'Asia/Tokyo': [35.68, 139.69, '東京'], 'Asia/Seoul': [37.57, 126.98, '首爾'], 'Asia/Hong_Kong': [22.32, 114.17, '香港'], 'Asia/Shanghai': [31.23, 121.47, '上海'], 'Asia/Singapore': [1.35, 103.82, '新加坡'], 'Asia/Kuala_Lumpur': [3.14, 101.69, '吉隆坡'], 'Asia/Bangkok': [13.76, 100.5, '曼谷'], 'Asia/Ho_Chi_Minh': [10.82, 106.63, '胡志明市'], 'Asia/Manila': [14.6, 120.98, '馬尼拉'], 'Asia/Makassar': [-8.65, 115.22, '峇里島'], 'Asia/Jakarta': [-6.2, 106.85, '雅加達'], 'Asia/Dubai': [25.2, 55.27, '杜拜'], 'Europe/Istanbul': [41.01, 28.98, '伊斯坦堡'], 'Europe/London': [51.51, -0.13, '倫敦'], 'Europe/Paris': [48.86, 2.35, '巴黎'], 'Europe/Berlin': [52.52, 13.4, '柏林'], 'Europe/Rome': [41.9, 12.5, '羅馬'], 'Europe/Madrid': [40.42, -3.7, '馬德里'], 'Europe/Zurich': [47.38, 8.54, '蘇黎世'], 'Europe/Prague': [50.08, 14.44, '布拉格'], 'Australia/Sydney': [-33.87, 151.21, '雪梨'], 'Australia/Brisbane': [-27.47, 153.03, '布里斯本'], 'Pacific/Auckland': [-36.85, 174.76, '奧克蘭'], 'Pacific/Guam': [13.44, 144.79, '關島'], 'Pacific/Honolulu': [21.31, -157.86, '檀香山'], 'America/Los_Angeles': [34.05, -118.24, '洛杉磯'], 'America/Vancouver': [49.28, -123.12, '溫哥華'], 'America/New_York': [40.71, -74.01, '紐約'], 'America/Chicago': [41.88, -87.63, '芝加哥'] };
+const WX_DAYS = 7, WX_TTL = 3 * 3600000;
+const WMO = [[[0], '☀️', '晴'], [[1, 2], '🌤️', '晴時多雲'], [[3], '☁️', '陰'], [[45, 48], '🌫️', '霧'], [[51, 53, 55, 56, 57], '🌦️', '毛毛雨'], [[61, 63, 65, 66, 67], '🌧️', '雨'], [[71, 73, 75, 77], '🌨️', '雪'], [[80, 81, 82], '🌦️', '陣雨'], [[85, 86], '🌨️', '陣雪'], [[95, 96, 99], '⛈️', '雷雨']];
+function wmo(c) { const f = WMO.find(([cs]) => cs.includes(c)); return f ? { e: f[1], t: f[2] } : { e: '🌡️', t: '' }; }
+let _wxWant = new Set(), _wxBusy = false, _wxFailAt = 0;
+// 回傳座標；{ need: 地名 } 表示還要先查座標
+function wxLoc(day) {
+  for (const q of dayStops(day).map((x) => x.q).slice(0, 3)) {
+    const g = S.geo[q];
+    if (!g) return { need: q };
+    if (!g.none) return g;
+  }
+  const c = TZ_COORD[S.trip.tz]; return c ? { lat: c[0], lon: c[1], name: c[2] } : null;
+}
+const wxKey = (loc) => `${loc.lat.toFixed(2)},${loc.lon.toFixed(2)}`;
+function wxFor(day) {
+  if (!S.trip || !day) return null;
+  const date = dateOfDay(S.trip, day); const ahead = daysBetween(tzParts(S.trip.tz).date, date);
+  if (ahead < 0 || ahead > WX_DAYS) return null;
+  const loc = wxLoc(day); if (!loc) return null;
+  if (loc.need) { _wxWant.add(day); return null; }
+  const w = S.wx[wxKey(loc)];
+  if (!w || Date.now() - w.at > WX_TTL) _wxWant.add(day);
+  const d = w && w.days[date];
+  return d && d.hi != null ? { ...d, name: loc.name } : null;
+}
+function wxHtml(day) {
+  const w = wxFor(day); if (!w) return '';
+  const m = wmo(w.c);
+  return `<span class="wx" title="${h(m.t)}">${m.e} ${Math.round(w.hi)}°/${Math.round(w.lo)}°${w.p != null ? ` · 降雨 ${w.p}%` : ''}<small> · ${h(w.name)}</small></span>`;
+}
+async function getJson(u) { const r = await fetch(u); if (!r.ok) throw new Error('http_' + r.status); return r.json(); }
+async function runWx() {
+  if (_wxBusy) return;
+  if (!navigator.onLine || !S.trip || Date.now() - _wxFailAt < 600000) { _wxWant.clear(); return; }
+  _wxBusy = true; let changed = false; const tripId = S.trip.id;
+  try {
+    for (const day of [..._wxWant]) {
+      _wxWant.delete(day); if (!S.trip || S.trip.id !== tripId) break;
+      let loc = wxLoc(day);
+      while (loc && loc.need) {
+        const q = loc.need; const rg = regionOf(); const cc = (rg === 'uk' ? 'gb' : rg).toUpperCase();
+        const r = await getJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=zh&format=json${cc ? '&countryCode=' + cc : ''}`);
+        const g = r.results && r.results[0];
+        S.geo[q] = g ? { lat: g.latitude, lon: g.longitude, name: g.name || q, at: Date.now() } : { none: true, at: Date.now() };
+        changed = true; loc = wxLoc(day);
+      }
+      if (!loc) continue;
+      const k = wxKey(loc); if (S.wx[k] && Date.now() - S.wx[k].at < WX_TTL) continue;
+      const r = await getJson(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`);
+      const dl = r.daily || {}; const days = {};
+      (dl.time || []).forEach((d, i) => { days[d] = { c: dl.weather_code[i], hi: dl.temperature_2m_max[i], lo: dl.temperature_2m_min[i], p: dl.precipitation_probability_max ? dl.precipitation_probability_max[i] : null }; });
+      S.wx[k] = { at: Date.now(), days }; changed = true;
+    }
+  } catch { _wxFailAt = Date.now(); _wxWant.clear(); } finally {
+    _wxBusy = false;
+    if (changed) { await metaSet('geo', S.geo); await metaSet('wx', S.wx); if (!$('#sheet') && !$('#ticket') && !document.querySelector('.irow.dragging')) render(); }
+  }
+}
+
+/* ---------------------------------------------------------------- 行前待辦（清單項目設「出發前 N 天」提醒） */
+const DUE_OPTS = [[null, '不提醒'], [0, '出發當天'], [1, '出發前 1 天'], [2, '出發前 2 天'], [3, '出發前 3 天'], [5, '出發前 5 天'], [7, '出發前 1 週'], [14, '出發前 2 週'], [30, '出發前 1 個月']];
+function dueLabel(n) { const f = DUE_OPTS.find((o) => o[0] === n); return f ? f[1] : `出發前 ${n} 天`; }
+function dueBadge(c) { return c.due != null ? `<span class="cbadge">${icon('clock', 11, 2.4)}${dueLabel(c.due)}</span>` : ''; }
+function todoCard() {
+  if (!S.trip || isViewer() || todayInfo().status === 'after') return '';
+  const today = tzParts(S.settings.homeTz).date;
+  const list = S.checks.filter((c) => !c.deleted && !c.done && c.due != null && addDays(S.trip.start, -c.due) <= today).sort((a, b) => b.due - a.due);
+  if (!list.length) return '';
+  return `<section class="sec" style="padding-top:0;padding-bottom:14px" aria-label="該做的事"><div class="card todo">
+    <div class="sec-head"><div class="l"><h2>${icon('clock', 16)}該做的事</h2><span class="n">${list.length} 項</span></div></div>
+    ${list.map((c) => { const late = daysBetween(addDays(S.trip.start, -c.due), today); return `<div class="crow"><button class="cbox" data-act="checkToggle" data-id="${c.id}" aria-pressed="false"><span class="box"></span><span class="ctext">${h(c.text)}<span class="cbadge ${late > 0 ? 'late' : ''}">${late > 0 ? `已過 ${late} 天` : '今天'}</span></span></button></div>`; }).join('')}
+  </div></section>`;
+}
+function openDuePicker(id) {
+  const c = S.checks.find((x) => x.id === id); if (!c) return;
+  const cur = c.due == null ? null : c.due;
+  const sh = openSheet(`提醒：${h(c.text)}`, `<div class="group" style="margin:0">${DUE_OPTS.map(([v, l]) => { const d = v == null ? '' : addDays(S.trip.start, -v); return `<button class="row" data-due="${v == null ? '' : v}"><span class="grow"><span>${l}</span>${d ? `<small>${mdLabel(d)}（${wd(d)}）</small>` : ''}</span>${cur === v ? icon('check', 18, 2.4) : ''}</button>`; }).join('')}</div>
+    <p class="note-p">到了那天會出現在今日頁的「該做的事」；匯出行事曆時也可以一起加進去。</p>`);
+  sh.addEventListener('click', async (e) => { const b = e.target.closest('[data-due]'); if (!b) return; if (b.dataset.due === '') delete c.due; else c.due = +b.dataset.due; await saveChecks([c]); closeSheet(true); render(); });
+}
+
+/* ---------------------------------------------------------------- 旅費統計 */
+const HOME_CUR = 'TWD';
+function sumCur(list) { const m = {}; list.forEach((i) => { const c = i.cur || S.trip.currency; m[c] = (m[c] || 0) + Number(i.cost); }); return m; }
+function toHome(m, rates) { let tot = 0; for (const [c, v] of Object.entries(m)) { if (c === HOME_CUR) tot += v; else if (rates[c]) tot += v * rates[c]; else return null; } return tot; }
+function fmtCurMap(m, rates) {
+  const parts = Object.entries(m).map(([c, v]) => h(fmtMoney(v, c))).join(' + ');
+  const home = toHome(m, rates);
+  return home != null && Object.keys(m).some((c) => c !== HOME_CUR) ? `${parts}<small>≈ ${h(fmtMoney(Math.round(home), HOME_CUR))}</small>` : parts;
+}
+function openExpenses() {
+  const t = S.trip; const rates = t.rates || {};
+  const its = liveItems().filter((i) => i.cost && Number(i.cost));
+  if (!its.length) { openSheet('旅費統計', `<div class="card"><p style="margin:0">還沒有填費用。編輯行程項目時填「費用」，這裡就會自動加總。</p></div>`); return; }
+  const all = sumCur(its), paid = sumCur(its.filter((i) => i.paid)), unpaid = sumCur(its.filter((i) => !i.paid));
+  const ir = (k, m) => `<div class="ir"><small>${k}</small><div>${fmtCurMap(m, rates)}</div></div>`;
+  const foreign = Object.keys(all).filter((c) => c !== HOME_CUR);
+  let html = `<div class="card"><div class="info">${ir('總計', all)}${Object.keys(paid).length ? ir('已付款', paid) : ''}${Object.keys(unpaid).length ? ir('現場付', unpaid) : ''}</div></div>`;
+  if (foreign.length) html += `<div style="height:12px"></div><div class="card"><div class="field"><span>匯率（換算成台幣）</span></div>
+    ${foreign.map((c) => `<label class="rate-row"><span>1 ${c} =</span><input name="${c}" value="${rates[c] || ''}" inputmode="decimal" ${isViewer() ? 'readonly' : ''}><span>TWD</span></label>`).join('')}
+    ${!isViewer() ? `<button class="btn sm dark" data-k="saveRates">儲存匯率</button>` : ''}</div>`;
+  const types = Object.keys(TYPES).filter((k) => its.some((i) => i.type === k));
+  html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依類別</span></div><div class="info">${types.map((k) => ir(TYPES[k].label, sumCur(its.filter((i) => i.type === k)))).join('')}</div></div>`;
+  const days = [...new Set(its.map((i) => i.day))].sort((a, b) => a - b);
+  html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依天</span></div><div class="info">${days.map((d) => ir(`Day ${d}`, sumCur(its.filter((i) => i.day === d)))).join('')}</div></div>
+    <p class="note-p">只算有填費用的行程項目。沒勾「已付款」的都算現場付，就是出發後還要準備的錢。</p>`;
+  const sh = openSheet('旅費統計', html);
+  sh.addEventListener('click', async (e) => {
+    if (!e.target.closest('[data-k=saveRates]')) return;
+    const r = {}; $$('.rate-row input', sh).forEach((i) => { const v = parseFloat(i.value.replace(/,/g, '')); if (v > 0) r[i.name] = v; });
+    t.rates = r; await saveTrip(t); markDirty(); openExpenses(); toast('已儲存匯率');
+  });
+}
+
+/* ---------------------------------------------------------------- 匯出到行事曆（.ics） */
+function icsEsc(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsFold(line) {
+  // 每行最多 75 bytes（中文一個字 3 bytes），超過要折行
+  const enc = new TextEncoder(); if (enc.encode(line).length <= 75) return line;
+  const out = []; let cur = '', len = 0;
+  for (const ch of line) { const b = enc.encode(ch).length; if (len + b > (out.length ? 74 : 75)) { out.push(cur); cur = ''; len = 0; } cur += ch; len += b; }
+  out.push(cur); return out.join('\r\n ');
+}
+const icsTime = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+const icsDate = (d) => d.replace(/-/g, '');
+function buildIcs(trip, items, todos, alarmMin) {
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//travel-handbook//zh-TW', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + icsEsc(trip.name)];
+  const stamp = icsTime(Date.now());
+  const sorted = [...items].sort((a, b) => a.day - b.day || a.order - b.order);
+  for (const it of sorted) {
+    const date = dateOfDay(trip, it.day);
+    L.push('BEGIN:VEVENT', `UID:${it.id}@travel-handbook`, `DTSTAMP:${stamp}`);
+    if (it.time) {
+      const s = itemStart(trip, it); let e = itemEnd(trip, it);
+      if (e == null || e <= s) e = s + (it.driveSec ? it.driveSec * 1000 : 3600000);
+      L.push(`DTSTART:${icsTime(s)}`, `DTEND:${icsTime(e)}`);
+    } else L.push(`DTSTART;VALUE=DATE:${icsDate(date)}`, `DTEND;VALUE=DATE:${icsDate(addDays(date, 1))}`);
+    L.push('SUMMARY:' + icsEsc(it.title));
+    const loc = it.type === 'transit' && it.mode === 'drive' ? it.from : (it.place || it.from);
+    if (loc) L.push('LOCATION:' + icsEsc(loc));
+    const desc = [];
+    if (it.type === 'transit' && (it.from || it.to)) desc.push(`${it.from || '？'} → ${it.to || '？'}${it.arrTime ? `（${it.arrTime} 抵達）` : ''}`);
+    if (it.vehicle) desc.push('車次／航班：' + it.vehicle);
+    if (it.car || it.seat) desc.push([it.car, it.seat].filter(Boolean).join(' · '));
+    if (it.mode === 'drive' && it.driveSec) desc.push(`開車 ${durText(it.driveSec * 1000)} · ${fmtKm(it.driveM)}`);
+    if (it.ref) desc.push('訂位代號：' + it.ref);
+    if (it.note) desc.push(it.note);
+    if (it.url) desc.push(safeUrl(it.url));
+    if (desc.length) L.push('DESCRIPTION:' + icsEsc(desc.join('\n')));
+    if (alarmMin && it.time) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEsc(it.title), `TRIGGER:-PT${alarmMin}M`, 'END:VALARM');
+    L.push('END:VEVENT');
+  }
+  for (const c of todos) {
+    const d = addDays(trip.start, -c.due);
+    L.push('BEGIN:VEVENT', `UID:${c.id}@travel-handbook`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${icsDate(d)}`, `DTEND;VALUE=DATE:${icsDate(addDays(d, 1))}`,
+      'SUMMARY:' + icsEsc('待辦：' + c.text), 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEsc(c.text), 'TRIGGER:PT9H', 'END:VALARM', 'END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.map(icsFold).join('\r\n') + '\r\n';
+}
+async function deliverFile(content, name, type) {
+  const file = new File([content], name.replace(/[\\/:*?"<>|]/g, '_'), { type });
+  if (navigator.canShare && isIOS() && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: file.name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function openIcsExport() {
+  const t = S.trip; const items = liveItems();
+  if (!items.length) { toast('這趟旅程還沒有行程'); return; }
+  const todos = isViewer() ? [] : S.checks.filter((c) => !c.deleted && !c.done && c.due != null);
+  const sh = openSheet('匯出到行事曆', `<form class="form"><div class="card">
+    <p style="margin:0">把 ${items.length} 個行程項目加到手機行事曆，時間會自動換成手機所在的時區。沒填時間的項目會變成整天的事件。</p>
+    <label class="field"><span>提醒</span><select name="alarm"><option value="0">不提醒</option><option value="15">15 分鐘前</option><option value="30" selected>30 分鐘前</option><option value="60">1 小時前</option><option value="120">2 小時前</option></select></label>
+    ${todos.length ? `<label class="paid-row"><input type="checkbox" name="todos" checked><span>包含 ${todos.length} 個行前待辦（當天早上 9 點提醒）</span></label>` : ''}
+  </div><button class="btn dark" type="submit">${icon('calendar')}<span>匯出 .ics 檔</span></button>
+  <p class="note-p">iPhone：分享選單有「行事曆」就直接選；沒有的話選「儲存到檔案」，再到「檔案」App 點開這個檔案，選「加入全部」。<br>行程改了以後要再匯出一次，行事曆不會自動同步。</p></form>`);
+  sh.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target;
+    const ics = buildIcs(t, items, f.todos && f.todos.checked ? todos : [], +f.alarm.value);
+    closeSheet(true); await deliverFile(ics, `${t.name || '旅程'}.ics`, 'text/calendar');
+  });
+}
+
+/* ---------------------------------------------------------------- 文字版行程（貼到 LINE） */
+function tripText(t) {
+  const end = dateOfDay(t, t.days);
+  const L = [`【${t.name}】`, `${mdLabel(t.start)}（${wd(t.start)}）– ${mdLabel(end)}（${wd(end)}）· ${t.days} 天`];
+  for (let d = 1; d <= t.days; d++) {
+    const items = dayItems(d); const title = (t.dayTitles || {})[d];
+    if (!items.length && !title) continue;
+    const date = dateOfDay(t, d);
+    L.push('', `▍Day ${d} · ${mdLabel(date)}（${wd(date)}）${title ? ' ' + title : ''}`);
+    items.forEach((it, i) => {
+      const L0 = i ? legInfo(items[i - 1], it) : null;
+      if (L0 && L0.r && !L0.r.err) L.push(`　　↓ 開車 ${durText(L0.r.s * 1000) || '1 分'}`);
+      let line = `${it.time || '－－:－－'}  ${it.title}`;
+      const extra = [];
+      if (it.type === 'transit') { if (it.vehicle) extra.push(it.vehicle); if (it.arrTime) extra.push(`${it.arrTime} 抵達`); if (it.mode === 'drive' && it.driveSec) extra.push(`開車 ${durText(it.driveSec * 1000)}`); }
+      if (extra.length) line += `（${extra.join('，')}）`;
+      L.push(line);
+      if (it.place && it.place !== it.title) L.push(`　　📍 ${it.place}`);
+      if (it.note) L.push(`　　📝 ${it.note.split('\n')[0]}`);
+    });
+  }
+  L.push('', '— 旅行手冊');
+  return L.join('\n');
+}
+async function shareTripText() {
+  const text = tripText(S.trip);
+  if (navigator.share) { try { await navigator.share({ title: S.trip.name, text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(text); toast('已複製文字版行程，可以直接貼上'); }
+  catch { openSheet('文字版行程', `<div class="card"><label class="field"><span>長按全選後複製</span><textarea readonly style="min-height:50vh">${h(text)}</textarea></label></div>`); }
+}
+
+/* ---------------------------------------------------------------- 複製一天／整趟旅程 */
+function openDupDay(day) {
+  const t = S.trip; const src = dayItems(day); if (!src.length) return;
+  const opts = Array.from({ length: t.days }, (_, i) => i + 1).filter((d) => d !== day)
+    .map((d) => { const dt = dateOfDay(t, d); return `<option value="${d}">Day ${d} · ${mdLabel(dt)}（${wd(dt)}）${dayItems(d).length ? `・已有 ${dayItems(d).length} 項` : ''}</option>`; }).join('');
+  const sh = openSheet(`複製 Day ${day}`, `<form class="form"><div class="card"><p style="margin:0">把這天的 ${src.length} 個項目複製到另一天，會接在那天原有項目的後面。附件不會複製，完成狀態會清掉。</p>
+    <label class="field"><span>複製到</span><select name="to">${opts}</select></label></div><button class="btn dark" type="submit">${icon('copy')}<span>複製</span></button></form>`);
+  sh.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const to = +e.target.to.value;
+    const base = dayItems(to).reduce((m, x) => Math.max(m, x.order || 0), -10);
+    const copies = src.map((it, i) => ({ ...it, id: uid('i_'), day: to, done: false, order: base + (i + 1) * 10, createdAt: Date.now() }));
+    await saveItems(copies); closeSheet(true); S.selDay = to; render(); toast(`已複製 ${copies.length} 項到 Day ${to}`);
+  });
+}
+async function duplicateTrip() {
+  const src = S.trip; const viewer = isViewer();
+  if (!(await confirmSheet(viewer ? '複製成我的旅程' : '複製旅程', `把「${h(src.name)}」複製成一趟新的旅程，行程${viewer ? '' : '和清單'}會一起複製；附件和分享連結不會。複製後可以改名稱和日期。`, '複製'))) return;
+  const nt = { id: uid('t_'), role: 'owner', name: `${src.name.replace(/（範例）$/, '')}（複本）`, start: src.start, days: src.days, tz: src.tz, currency: src.currency, drive: src.drive, dayTitles: { ...(src.dayTitles || {}) }, rates: { ...(src.rates || {}) }, createdAt: Date.now() };
+  const now = Date.now();
+  const items = liveItems().map((i) => ({ ...i, id: uid('i_'), tripId: nt.id, done: false, updatedAt: now }));
+  const checks = viewer ? [] : S.checks.filter((c) => !c.deleted).map((c) => ({ ...c, id: uid('c_'), tripId: nt.id, done: false, updatedAt: now }));
+  await saveTrip(nt); await dbPutMany('items', items); if (checks.length) await dbPutMany('checks', checks);
+  await selectTrip(nt.id); S.tab = 'itin'; S.selDay = 1; render(); openTripEditor(nt); toast('已複製，可以改名稱和日期');
+}
+
 /* ---------------------------------------------------------------- actions */
 const A = {
   tab: (el) => { S.tab = el.dataset.k; closeSheet(true); render(); window.scrollTo(0, 0); },
@@ -1864,6 +2160,12 @@ const A = {
   closeTicket: () => closeTicket(),
   navigate: (el) => navigateTo(S.items.find((i) => i.id === el.dataset.id)),
   dayMap: (el) => openDayMap(parseInt(el.dataset.d, 10)),
+  dupDay: (el) => openDupDay(parseInt(el.dataset.day, 10)),
+  dupTrip: () => duplicateTrip(),
+  expenses: () => openExpenses(),
+  exportIcs: () => openIcsExport(),
+  shareText: () => shareTripText(),
+  checkDue: (el) => openDuePicker(el.dataset.id),
   navLeg: (el) => openMap(el.dataset.t, el.dataset.f, true),
   selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); render(); },
   editDayTitle: async (el) => {
@@ -1896,7 +2198,7 @@ const A = {
         closeSheet(true); const live = S.checks.filter((c) => !c.deleted).sort((a, b2) => a.order - b2.order);
         if (!live.length) { toast('清單是空的'); return; }
         const name = await promptSheet('存成範本', '範本名稱', S.trip.name); if (!name) return;
-        S.templates.push({ id: uid('tpl_'), name, items: live.map((c) => [c.group, c.text]) }); await metaSet('templates', S.templates); toast('已存成範本');
+        S.templates.push({ id: uid('tpl_'), name, items: live.map((c) => (c.due != null ? [c.group, c.text, c.due] : [c.group, c.text])) }); await metaSet('templates', S.templates); toast('已存成範本');
       }
       if (b.dataset.k === 'reset') { closeSheet(true); const on = S.checks.filter((c) => c.done && !c.deleted); on.forEach((c) => { c.done = false; }); await saveChecks(on); render(); toast('已全部取消勾選'); }
     });

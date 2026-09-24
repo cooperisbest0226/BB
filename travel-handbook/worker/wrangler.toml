@@ -12,3 +12,19 @@ ALLOWED_ORIGINS = "https://cooperisbest0226.github.io"
 [[kv_namespaces]]
 binding = "TRIPS"
 id = "6c519d8fcb624d2d936e411c9856ec27"
+
+# 車程 API 限流：Origin 標頭可以被偽造，靠這裡擋住有人狂查、燒掉 Google 額度
+# period 只能是 10 或 60（秒）；namespace_id 是自己取的數字，同帳號內不重複即可
+[[ratelimits]]
+name = "ROUTE_LIMIT_IP"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "ROUTE_LIMIT_ALL"
+namespace_id = "1002"
+  [ratelimits.simple]
+  limit = 60
+  period = 60
