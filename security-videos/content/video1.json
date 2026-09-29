@@ -1,0 +1,144 @@
+{
+  "id": "video1",
+  "title": "釣魚信辨識",
+  "output": "video1_phishing.mp4",
+  "targetSeconds": 90,
+  "tts": {
+    "engine": "kokoro",
+    "kokoro": {
+      "sid": 45,
+      "speed": 1.1
+    },
+    "edge": {
+      "voice": "zh-TW-HsiaoChenNeural",
+      "rate": "-5%"
+    }
+  },
+  "note": "sub = 字幕（{r:紅} {g:綠} {y:黃} 為強調色）；tts = 旁白原文；say = 選填，實際送進 TTS 的文字（修正破音字）；gapBefore = 與上一句的停頓秒數；cues = 動畫/音效同步點，格式 <錨點>[+/-秒]，錨點可用 start、end、line:N、lineEnd:N、phrase:N.M",
+  "scenes": [
+    {
+      "id": "s1_inbox",
+      "refSeconds": 8,
+      "lead": 1.4,
+      "lines": [
+        {
+          "tts": "主旨說你的帳號快被停用，你會怎麼做？",
+          "sub": "主旨說你的帳號{r:快被停用}　你會怎麼做？"
+        }
+      ],
+      "cues": {
+        "mailArrive": {
+          "at": "start+0.5",
+          "sfx": "chime"
+        },
+        "rowClick": {
+          "at": "end-0.4",
+          "sfx": "click"
+        }
+      }
+    },
+    {
+      "id": "s2_warning",
+      "refSeconds": 7,
+      "lead": 1.0,
+      "lines": [
+        {
+          "tts": "先別急著點，這可能是一封釣魚信。",
+          "sub": "先別急著點　這可能是一封{r:釣魚信}",
+          "say": "先別急着點，這可能是一封釣魚信。"
+        }
+      ]
+    },
+    {
+      "id": "s3_sender",
+      "refSeconds": 15,
+      "lead": 1.5,
+      "lines": [
+        {
+          "tts": "第一看，寄件人。",
+          "sub": "{y:第一看}　寄件人"
+        },
+        {
+          "tts": "名稱像是資訊部，網域卻對不上。",
+          "sub": "名稱像是資訊部　{r:網域卻對不上}",
+          "gapBefore": 1.6
+        }
+      ]
+    },
+    {
+      "id": "s4_link",
+      "refSeconds": 15,
+      "lead": 1.5,
+      "lines": [
+        {
+          "tts": "第二看，連結。",
+          "sub": "{y:第二看}　連結"
+        },
+        {
+          "tts": "滑鼠移上去，不要點，看它真正會去哪裡。",
+          "sub": "滑鼠移上去　{r:不要點}　看它真正會去哪裡",
+          "gapBefore": 1.2
+        }
+      ]
+    },
+    {
+      "id": "s5_tone",
+      "refSeconds": 13,
+      "lead": 1.2,
+      "lines": [
+        {
+          "tts": "第三看，語氣。",
+          "sub": "{y:第三看}　語氣"
+        },
+        {
+          "tts": "催你立刻處理、要你輸入密碼，都很可疑。",
+          "sub": "催你{r:立刻處理}、要你{r:輸入密碼}　都很可疑",
+          "gapBefore": 1.0
+        }
+      ]
+    },
+    {
+      "id": "s6_actions",
+      "refSeconds": 13,
+      "lead": 1.5,
+      "lines": [
+        {
+          "tts": "不點、不回覆、不輸入，直接回報給資訊部。",
+          "sub": "{r:不點}、{r:不回覆}、{r:不輸入}　直接{g:回報給資訊部}"
+        }
+      ],
+      "cues": {
+        "reportClick": {
+          "at": "phrase:1.4+1.1",
+          "sfx": "click"
+        },
+        "reportDone": {
+          "at": "phrase:1.4+1.3",
+          "sfx": "success"
+        }
+      }
+    },
+    {
+      "id": "s7_ending",
+      "refSeconds": 16.5,
+      "lead": 1.2,
+      "lines": [
+        {
+          "tts": "萬一已經點了，也別怕，越快通知越好。",
+          "sub": "萬一已經點了　也別怕　{g:越快通知越好}"
+        },
+        {
+          "tts": "三看一不點，有疑問就回報。",
+          "sub": "{y:三看一不點}　{g:有疑問就回報}",
+          "gapBefore": 1.2
+        }
+      ],
+      "cues": {
+        "shield": {
+          "at": "phrase:1.3",
+          "sfx": "success"
+        }
+      }
+    }
+  ]
+}
