@@ -18,10 +18,19 @@
  *   - 只接受 ALLOWED_ORIGINS 來源的請求（設為 * 時不檢查）
  *   - 限流：wrangler.toml 的 [[ratelimits]]（每個 IP 每分鐘 20 次、全部加起來每分鐘 60 次），超過回 429 rate_limited
  *     Origin 標頭可以被偽造（例如 PowerShell / curl），所以真正擋住濫用的是限流 + Google Cloud 的每日配額
+ *
+ *   PUT    /backup/:id     雲端備份（App 端加密後才上傳，這裡只存看不懂的密文）
+ *   GET    /backup/:id     還原     Authorization: Bearer token（id 和 token 都由使用者的還原碼推算）
+ *   DELETE /backup/:id     刪除備份
+ *   - body: { v, z, iv, data }（data 是 AES-GCM 密文的 base64），上限 8 MB；KV key 為 bk:<id>
+ *   - 第一次上傳時記下 token 的 SHA-256，之後的讀寫都要同一個 token
  */
 
 const MAX_BYTES = 256 * 1024;
 const ID_RE = /^[A-Za-z0-9]{16}$/;
+const BK_ID_RE = /^[a-f0-9]{32}$/;
+const BK_TOKEN_RE = /^[a-f0-9]{96}$/;
+const MAX_BACKUP = 8 * 1024 * 1024;
 
 function randomId(len) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -130,6 +139,35 @@ async function route(req, env, cors) {
   return json({ seconds, staticSeconds, meters: rt.distanceMeters, traffic }, 200, cors);
 }
 
+async function backup(req, env, cors, id) {
+  if (!BK_ID_RE.test(id)) return json({ error: 'not_found' }, 404, cors);
+  const auth = req.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!BK_TOKEN_RE.test(token)) return json({ error: 'forbidden' }, 403, cors);
+  if (await rateLimited(env, req)) return json({ error: 'rate_limited' }, 429, cors);
+  const k = 'bk:' + id; const th = await sha256(token);
+  const raw = await env.TRIPS.get(k); const rec = raw ? JSON.parse(raw) : null;
+  if (rec && rec.authHash !== th) return json({ error: 'forbidden' }, 403, cors);
+  if (req.method === 'GET') {
+    if (!rec) return json({ error: 'not_found' }, 404, cors);
+    return json({ v: rec.v, z: rec.z, iv: rec.iv, data: rec.data, updatedAt: rec.updatedAt }, 200, cors);
+  }
+  if (req.method === 'PUT') {
+    const text = await req.text();
+    if (new TextEncoder().encode(text).length > MAX_BACKUP) return json({ error: 'too_large' }, 413, cors);
+    let b; try { b = JSON.parse(text); } catch { return json({ error: 'bad_json' }, 400, cors); }
+    if (!b || typeof b.data !== 'string' || typeof b.iv !== 'string') return json({ error: 'bad_body' }, 400, cors);
+    const updatedAt = Date.now();
+    await env.TRIPS.put(k, JSON.stringify({ v: b.v || 1, z: b.z ? 1 : 0, iv: b.iv, data: b.data, authHash: th, updatedAt }));
+    return json({ updatedAt }, 200, cors);
+  }
+  if (req.method === 'DELETE') {
+    if (rec) await env.TRIPS.delete(k);
+    return json({ ok: true }, 200, cors);
+  }
+  return json({ error: 'method_not_allowed' }, 405, cors);
+}
+
 async function authorized(req, record) {
   const auth = req.headers.get('Authorization') || '';
   const key = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -146,6 +184,9 @@ export default {
     const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
     if (parts[0] === 'route' && parts.length === 1 && req.method === 'POST') {
       try { return await route(req, env, cors); } catch { return json({ error: 'server_error' }, 500, cors); }
+    }
+    if (parts[0] === 'backup' && parts.length === 2) {
+      try { return await backup(req, env, cors, parts[1]); } catch { return json({ error: 'server_error' }, 500, cors); }
     }
     if (parts[0] !== 'trips') return json({ error: 'not_found' }, 404, cors);
 

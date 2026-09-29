@@ -205,6 +205,14 @@ svg{display:block;flex-shrink:0}
 .settle{display:flex;align-items:center;gap:8px;font-size:15px;padding:8px 0;border-top:1px solid var(--line)}
 .settle:first-child{border-top:0}
 .settle b.amt{margin-left:auto;font-family:var(--mono)}
+.big-card{flex-grow:1;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:20px 24px;text-align:center;overflow:auto;min-height:0}
+.bc-lead{font-size:20px;font-weight:700;color:#5A6270;overflow-wrap:anywhere}
+.bc-big{font-weight:800;line-height:1.35;overflow-wrap:anywhere;color:#111418}
+.bc-sub{font-size:16px;color:#5A6270;overflow-wrap:anywhere}
+.chip-btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.cf-card{display:flex;gap:10px;padding:12px 14px;border-radius:14px;background:var(--warn-soft);color:var(--warn);font-size:14px;line-height:1.5}
+.cf-card svg{flex-shrink:0;margin-top:2px}
+.bk-code{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:.06em;text-align:center;padding:14px 8px;border-radius:12px;background:var(--soft2);user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
 .leave{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--soft2);font-size:14px;color:var(--ink)}
 .leave.now{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .leave small{color:var(--muted);font-size:12px}
@@ -386,7 +394,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -399,6 +407,13 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.6.0', date: '2026-09-29', notes: [
+    ['add', '雲端備份：每天自動加密備份，換手機時用 20 碼還原碼拿回所有行程'],
+    ['add', '給司機看：行程可以填當地文字地址，一鍵大字全螢幕顯示給計程車司機'],
+    ['add', '會話卡：日、韓、泰、越、英文常用句，大字給對方看，也可以自己打字；離線可用'],
+    ['add', '待排清單：先把想去的地方存起來，之後再排入某一天'],
+    ['add', '行程檢查：找出時間重疊、順序排錯、開車來不及的地方；行程頁也會直接提醒']
+  ]},
   { v: '1.5.0', date: '2026-09-24', notes: [
     ['add', '緊急資訊：當地報案／救護電話、外交部急難救助、保險、緊急聯絡人、住宿，一鍵撥打，離線也能看'],
     ['add', '分帳：設定成員，每筆費用選誰付、誰分攤，自動算出誰該給誰多少'],
@@ -510,6 +525,9 @@ const IC = {
   file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/>',
+  cloud: '<path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8.5a4.5 4.5 0 0 1-.5 9.5z"/>',
+  alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
   wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h.01M3 10h18"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   storage: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'
@@ -764,7 +782,7 @@ async function runRouteQ() {
 }
 // 兩個項目之間的開車資訊
 function legInfo(a, b) {
-  if (!driveOn() || !a || !b) return null;
+  if (!driveOn() || !a || !b || !a.day || !b.day) return null;
   const f = locEnd(a), t = locStart(b);
   if (!f || !t || f.trim() === t.trim()) return null;
   if (b.type === 'transit' && b.mode === 'drive' && (b.from || '').trim() === f.trim()) return null;
@@ -856,7 +874,7 @@ function renderWelcome() {
     <button class="btn primary" data-act="newTrip">${icon('plus')}<span>建立旅程</span></button>
     <button class="btn" data-act="joinShare">${icon('link')}<span>加入分享給我的行程</span></button>
     <button class="btn" data-act="loadSample">${icon('eye')}<span>先看範例行程</span></button>
-    <button class="btn" data-act="importJson" style="border-style:dashed">${icon('upload')}<span>從備份還原</span></button>
+    <button class="btn" data-act="restoreMenu" style="border-style:dashed">${icon('upload')}<span>從備份還原</span></button>
     ${installBanner(true)}
   </div>`;
 }
@@ -1029,7 +1047,10 @@ function renderItin() {
     const today = td.status === 'during' && d === td.day;
     return `<button class="day-chip ${past ? 'past' : ''} ${today ? 'today' : ''} ${d === S.selDay ? 'sel' : ''}" data-act="selDay" data-d="${d}" aria-label="Day ${d} ${mdLabel(date)}"><small>${today ? '今天' : 'D' + d}</small><b>${date.slice(8)}</b></button>`;
   }).join('');
-  const d = S.selDay; const date = dateOfDay(t, d); const items = dayItems(d);
+  const d = S.selDay;
+  if (d === 0) return itinTop(t, chips) + wishBody();
+  const date = dateOfDay(t, d); const items = dayItems(d);
+  const cf = dayConflicts(d);
   const title = (t.dayTitles && t.dayTitles[d]) || '';
   const costSum = items.filter((i) => i.cost && (i.cur || t.currency) === t.currency).reduce((s, i) => s + Number(i.cost), 0);
   let prevTime = '';
@@ -1041,19 +1062,86 @@ function renderItin() {
       ${!isViewer() ? `<button class="drag" aria-label="拖曳排序：${h(it.title)}">${icon('grip', 18)}</button>` : '<span style="width:8px"></span>'}
     </div>`;
   }).join('');
-  return `<header class="top"><div class="top-row"><div style="min-width:0">
-      <div class="top-meta">${mdLabel(t.start)} – ${mdLabel(dateOfDay(t, t.days))} · ${t.days} 天 · ${h(tzName(t.tz))}</div>
-      <button class="top-title" data-act="tripSwitcher"><span>${h(t.name)}</span>${icon('down', 18, 2.4)}</button></div>
-      ${!isViewer() ? `<button class="icon-btn" data-act="editTrip" aria-label="旅程設定">${icon('pencil')}</button>` : ''}</div></header>
-    <div class="days" role="tablist" aria-label="選擇日期">${chips}</div>
+  return `${itinTop(t, chips)}
     <section class="sec" style="padding-top:14px">
       <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">
         ${!isViewer() ? `<button class="day-title-btn" data-act="editDayTitle" data-d="${d}" style="max-width:100%"><h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>${icon('pencil', 14)}</button>` : `<h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>`}
         <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span>${sumLine(d)}${wxHtml(d)}</div>${mapBtn(d)}</div>
+      ${cf.length ? `<div class="cf-card" role="alert">${icon('alert', 16)}<div>${cf.map((c) => `<div>${h(c.msg)}</div>`).join('')}</div></div>` : ''}
       <div class="ilist" id="ilist">${rows || `<div class="empty">這天還沒有安排</div>`}</div>
       ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="${d}">${icon('plus', 16, 2.2)}<span>新增到 Day ${d}</span></button>` : ''}
       ${!isViewer() && items.length && t.days > 1 ? `<button class="add-row" data-act="dupDay" data-day="${d}" style="border:0;height:40px">${icon('copy', 16, 2.2)}<span>複製這天到其他天</span></button>` : ''}
     </section>`;
+}
+
+function itinTop(t, chips) {
+  const wishN = dayItems(0).length;
+  const wish = !isViewer() || wishN ? `<button class="day-chip ${S.selDay === 0 ? 'sel' : ''}" data-act="selDay" data-d="0" aria-label="待排清單"><small>待排</small><b>${wishN}</b></button>` : '';
+  return `<header class="top"><div class="top-row"><div style="min-width:0">
+      <div class="top-meta">${mdLabel(t.start)} – ${mdLabel(dateOfDay(t, t.days))} · ${t.days} 天 · ${h(tzName(t.tz))}</div>
+      <button class="top-title" data-act="tripSwitcher"><span>${h(t.name)}</span>${icon('down', 18, 2.4)}</button></div>
+      ${!isViewer() ? `<button class="icon-btn" data-act="editTrip" aria-label="旅程設定">${icon('pencil')}</button>` : ''}</div></header>
+    <div class="days" role="tablist" aria-label="選擇日期">${wish}${chips}</div>`;
+}
+// 待排：想去但還沒決定哪天的地方（day = 0），之後再「排入」某一天
+function wishBody() {
+  const items = dayItems(0);
+  const rows = items.map((it) => `<div class="irow" data-id="${it.id}">
+      <div class="it">${h(it.time || '—')}</div>
+      <button class="open" data-act="openItem" data-id="${it.id}">${tIco(it)}<div class="t-body"><div class="tl-title">${h(it.title)}</div><div class="tl-sub">${subLine(it)}</div></div></button>
+      ${!isViewer() ? `<button class="chip-btn" data-act="scheduleItem" data-id="${it.id}">排入</button>` : '<span style="width:8px"></span>'}
+    </div>`).join('');
+  return `<section class="sec" style="padding-top:14px">
+      <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0"><h2>待排</h2><span class="n">想去但還沒決定哪天 · ${items.length} 項</span></div>${mapBtn(0)}</div>
+      <div class="ilist">${rows || `<div class="empty">還沒有${!isViewer() ? '。先把想去的地方加進來，之後再按「排入」放到某一天' : ''}</div>`}</div>
+      ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="0">${icon('plus', 16, 2.2)}<span>新增想去的地方</span></button>` : ''}
+    </section>`;
+}
+function openSchedule(id) {
+  const it = S.items.find((x) => x.id === id); if (!it) return; const t = S.trip;
+  const sh = openSheet(`排入：${h(it.title)}`, `<div class="group" style="margin:0">${Array.from({ length: t.days }, (_, i) => { const d = i + 1, dt = dateOfDay(t, d); const n = dayItems(d).length; return `<button class="row" data-day="${d}"><span class="grow"><span>Day ${d} · ${mdLabel(dt)}（${wd(dt)}）${(t.dayTitles || {})[d] ? ' ' + h(t.dayTitles[d]) : ''}</span><small>${n ? `已有 ${n} 項` : '還沒有安排'}</small></span>${icon('right', 16)}</button>`; }).join('')}</div>
+    <p class="note-p">有填時間的會依時間排進去，沒填時間的放在那天最後面。</p>`);
+  sh.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-day]'); if (!b) return; const d = +b.dataset.day;
+    const others = dayItems(d); let idx = others.length;
+    if (it.time) { let k = -1; others.forEach((x, j) => { if (x.time && x.time <= it.time) k = j; }); idx = k >= 0 ? k + 1 : Math.max(0, others.findIndex((x) => x.time)); }
+    it.day = d; others.splice(idx, 0, it);
+    const changed = []; others.forEach((x, i) => { if (x.order !== i * 10 || x === it) { x.order = i * 10; changed.push(x); } });
+    await saveItems(changed); closeSheet(true); S.selDay = d; render(); toast(`已排入 Day ${d}`);
+  });
+}
+
+/* ----- 7. 行程檢查：時間重疊、順序錯、開車來不及 */
+function itemEndMs(it) {
+  if (it.type === 'transit' && it.arrTime) return itemEnd(S.trip, it);
+  if (it.mode === 'drive' && it.driveSec && it.time) return itemStart(S.trip, it) + it.driveSec * 1000;
+  return null;
+}
+function dayConflicts(day) {
+  if (!day || !S.trip) return [];
+  const items = dayItems(day); const out = []; let prev = null;
+  items.forEach((it, i) => {
+    if (it.time) {
+      const s0 = itemStart(S.trip, it);
+      if (prev) {
+        const ps = itemStart(S.trip, prev), pe = itemEndMs(prev);
+        if (s0 < ps) out.push({ id: it.id, day, msg: `「${it.title}」${it.time} 比前面的「${prev.title}」${prev.time} 還早，順序可能排錯` });
+        else if (s0 === ps) out.push({ id: it.id, day, msg: `「${prev.title}」和「${it.title}」都是 ${it.time} 開始` });
+        else if (pe != null && pe > s0) out.push({ id: it.id, day, msg: `「${prev.title}」${prev.arrTime ? prev.arrTime + ' ' : ''}才${prev.type === 'transit' ? '抵達' : '結束'}，但「${it.title}」${it.time} 就開始了` });
+      }
+      prev = it;
+    }
+    const L = i ? legInfo(items[i - 1], it) : null;
+    if (L && L.slack != null && L.slack < 0) out.push({ id: it.id, day, msg: `從「${items[i - 1].title}」開車到「${it.title}」時間不夠，差 ${durText(-L.slack * 60000)}` });
+  });
+  return out;
+}
+function openTripCheck() {
+  const all = []; for (let d = 1; d <= S.trip.days; d++) all.push(...dayConflicts(d));
+  const html = all.length
+    ? `<div class="group" style="margin:0">${all.map((c) => `<button class="row" data-act="gotoDay" data-d="${c.day}"><span class="ico" style="color:var(--warn)">${icon('alert', 18)}</span><span class="grow"><span style="white-space:normal">${h(c.msg)}</span><small>Day ${c.day}</small></span>${icon('right', 16)}</button>`).join('')}</div>`
+    : `<div class="card" style="flex-direction:row;align-items:center;gap:12px"><span class="chk"><span class="st y" style="width:36px;height:36px;border-radius:18px">${icon('check', 20, 2.6)}</span></span><b style="font-size:17px">沒有發現時間衝突</b></div>`;
+  openSheet('行程檢查', html + `<p class="note-p">會檢查：時間順序排錯、兩個行程同時開始、交通還沒抵達下一個就開始、開車時間不夠（要先算出車程）。</p>`);
 }
 
 /* ----- checklist ----- */
@@ -1102,6 +1190,8 @@ function renderMore() {
     ${row('expenses', 'wallet', '旅費統計', '依類別、天數加總，可換算台幣')}
     ${row('exportIcs', 'calendar', '匯出到行事曆', '每個行程變成行事曆事件，可以設提醒')}
     ${row('shareText', 'copy', '傳送文字版行程', '貼到 LINE 給沒裝 App 的人看')}
+    ${row('tripCheck', 'alert', '行程檢查', '找出時間重疊、順序錯、開車來不及的地方')}
+    ${row('phrases', 'chat', '會話卡', '常用句子大字給對方看，離線可用')}
     ${row('dupTrip', 'route', viewer ? '複製成我的旅程' : '複製這趟旅程', viewer ? '變成自己可以編輯的行程' : '行程和清單一起複製，改日期就能再用')}
   </div>`;
   html += `<div class="group-title">出發前</div><div class="group">${row('offlineCheck', 'shield', '離線就緒檢查', '確認沒網路時也打得開、票券都在手機裡')}${row('emergency', 'phone', '緊急資訊', '當地報案／救護電話、急難救助、保險、住宿')}</div>`;
@@ -1114,6 +1204,7 @@ function renderMore() {
     ${row('exportJson', 'download', '匯出行程 JSON', '全部旅程與清單，不含附件')}
     ${row('exportFull', 'download', '完整備份', '含附件圖片，檔案較大')}
     ${row('importJson', 'upload', '匯入備份', '同一趟旅程會以匯入的版本取代')}
+    ${row('cloudBackup', 'cloud', '雲端備份', _bk && _bk.code ? `每天自動備份 · 上次 ${relTime(_bk.at)}` : '換手機或資料被清掉時，用還原碼拿回來', _bk && _bk.code ? '已開啟' : '')}
   </div><p class="note-p">資料只存在這支手機的 App 裡。換手機或清除 Safari 資料前，記得先匯出備份。</p>`;
   html += `<div class="group-title">應用程式</div><div class="group">
     ${row('changelog', 'history', '更新紀錄', '', 'v' + APP_VERSION)}
@@ -1228,6 +1319,7 @@ function openItemDetail(id) {
   if (it.type === 'transit' && it.mode === 'drive') { rows.push(['交通方式', '開車']); if (it.driveSec) rows.push(['車程', `${durText(it.driveSec * 1000)} · ${fmtKm(it.driveM)}${it.driveTraffic ? '（含路況預估）' : ''}`]); }
   if (it.type === 'transit') { if (it.from || it.to) rows.push(['路線', `${it.from || '？'} → ${it.to || '？'}`]); if (it.vehicle) rows.push(['車次／航班', it.vehicle]); if (it.car) rows.push(['車廂／登機門', it.car]); if (it.seat) rows.push(['座位', it.seat]); }
   if (it.place) rows.push(['地點', it.place]);
+  if (it.addr) rows.push(['當地地址', it.addr]);
   if (!viewer && it.ref) rows.push(['訂位代號', `<span class="mono" style="font-weight:700;letter-spacing:.06em">${h(it.ref)}</span>`, true]);
   if (it.cost) rows.push(['費用', fmtMoney(it.cost, it.cur || t.currency) + (it.paid ? ' · 已付款' : ' · 現場付')]);
   if (it.url) rows.push(['連結', `<a href="${h(safeUrl(it.url))}" target="_blank" rel="noopener">${h(it.url)}</a>`, true]);
@@ -1247,6 +1339,7 @@ function openItemDetail(id) {
       <div class="btn-row">
         ${atts.length ? `<button class="btn primary" data-act="openTicket" data-id="${it.id}">${icon('qr')}<span>看票</span></button>` : ''}
         ${nav ? `<button class="btn" data-act="navigate" data-id="${it.id}">${icon('nav')}<span>導航</span></button>` : ''}
+        ${driverTarget(it) ? `<button class="btn" data-act="driverCard" data-id="${it.id}">${icon('car')}<span>給司機看</span></button>` : ''}
       </div>
       ${!viewer ? `<div class="btn-row"><button class="btn" data-act="toggleDone" data-id="${it.id}" data-close="1">${icon('check')}<span>${it.done ? '取消完成' : '標記完成'}</span></button>
       <button class="btn dark" data-act="editItem" data-id="${it.id}">${icon('pencil')}<span>編輯</span></button></div>` : ''}
@@ -1264,9 +1357,9 @@ let _edit = null; // { item, pendingAdd: [{id,blob,name,type}], pendingDel: Set 
 function openItemEditor(id, day) {
   const t = S.trip;
   const orig = id ? S.items.find((i) => i.id === id) : null;
-  const it = orig ? { ...orig } : { id: uid('i_'), tripId: t.id, day: day || S.selDay || 1, type: 'sight', title: '', time: '', done: false, order: 0, createdAt: Date.now() };
+  const it = orig ? { ...orig } : { id: uid('i_'), tripId: t.id, day: day ?? S.selDay ?? 1, type: 'sight', title: '', time: '', done: false, order: 0, createdAt: Date.now() };
   _edit = { item: it, isNew: !orig, pendingAdd: [], pendingDel: new Set() };
-  const dayOpts = Array.from({ length: t.days }, (_, i) => { const d = i + 1, dt = dateOfDay(t, d); return `<option value="${d}" ${d === it.day ? 'selected' : ''}>D${d} · ${mdLabel(dt)}（${wd(dt)}）</option>`; }).join('');
+  const dayOpts = Array.from({ length: t.days }, (_, i) => { const d = i + 1, dt = dateOfDay(t, d); return `<option value="${d}" ${d === it.day ? 'selected' : ''}>D${d} · ${mdLabel(dt)}（${wd(dt)}）</option>`; }).join('') + `<option value="0" ${it.day === 0 ? 'selected' : ''}>待排（還沒決定哪天）</option>`;
   const home = S.settings.homeTz;
   const sh = openSheet(orig ? '編輯行程' : '新增行程', `<form class="form" id="itemForm" autocomplete="off">
     <div class="seg" role="radiogroup" aria-label="類型">${Object.entries(TYPES).map(([k, T]) => `<button type="button" role="radio" aria-checked="${it.type === k}" class="${it.type === k ? 'on' : ''}" data-type="${k}" style="${it.type === k ? `color:${T.c}` : ''}">${icon(T.icon, 20)}<span>${T.label}</span></button>`).join('')}</div>
@@ -1286,6 +1379,7 @@ function openItemEditor(id, day) {
       <label class="field"><span>車廂／登機門</span><input name="car" value="${h(it.car || '')}" placeholder="7 號車"></label>
       <label class="field"><span>座位</span><input name="seat" value="${h(it.seat || '')}" placeholder="12A"></label></div>
       <label class="field"><span>地點（導航用）</span><input name="place" value="${h(it.place || '')}" placeholder="店名或地址，導航會用這個搜尋"></label>
+      <label class="field"><span>當地文字地址（給司機看）</span><input name="addr" value="${h(it.addr || '')}" placeholder="例如：京都府京都市下京区東塩小路町"></label>
     </div>
     <div class="card">
       <label class="field"><span>${icon('lock', 13)}訂位代號（只存本機，不分享）</span><input name="ref" value="${h(it.ref || '')}" autocapitalize="characters" class="mono"></label>
@@ -1377,7 +1471,7 @@ async function saveItemForm(f) {
   const e = _edit; if (!e) return;
   const it = e.item; const v = (n) => (f[n] ? f[n].value.trim() : '');
   const oldDay = it.day, oldTime = it.time;
-  Object.assign(it, { title: v('title'), day: parseInt(v('day'), 10) || 1, time: v('time'), place: v('place'), ref: v('ref'), cost: v('cost').replace(/,/g, ''), cur: v('cur'), url: v('url'), note: f.note.value.trim() });
+  Object.assign(it, { title: v('title'), day: ((x) => (isNaN(x) ? 1 : x))(parseInt(v('day'), 10)), time: v('time'), place: v('place'), addr: v('addr'), ref: v('ref'), cost: v('cost').replace(/,/g, ''), cur: v('cur'), url: v('url'), note: f.note.value.trim() });
   if (f.paid.checked && it.cost) it.paid = true; else delete it.paid;
   if (f.payer) {
     if (f.payer.value && it.cost) it.payer = f.payer.value; else delete it.payer;
@@ -1529,7 +1623,7 @@ function openDayMap(day) {
   const overview = () => stops.length === 1 ? embedUrl('place', { q: stops[0].q })
     : embedUrl('directions', { origin: stops[0].q, destination: stops[stops.length - 1].q, mode: 'driving', ...(stops.length > 2 ? { waypoints: stops.slice(1, -1).map((x) => x.q).join('|') } : {}) });
   const letter = (i) => String.fromCharCode(65 + i);
-  const title = `Day ${day} 地圖`;
+  const title = day ? `Day ${day} 地圖` : '待排地點';
   const note = stops.length === 1 ? '' : drive ? '開車路線，字母對應下方地點' : '線條只用來看位置和順序，不是建議路線；搭車方式請點行程裡的各段查看';
   const sh = openSheet(title, `${mapFrame(overview(), title)}
     ${note || all.length > stops.length ? `<p class="note-p" style="margin:8px 4px 0">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
@@ -1630,7 +1724,7 @@ function sharePayload(trip) {
   // 訂位代號（ref）、附件、清單都不上傳
   const items = S.items.filter((i) => i.tripId === trip.id && !i.deleted).map((i) => {
     const o = { id: i.id, day: i.day, order: i.order, type: i.type, title: i.title, time: i.time || '', done: !!i.done };
-    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic', 'paid', 'payer', 'split'].forEach((k) => { if (i[k]) o[k] = i[k]; });
+    ['from', 'to', 'arrTime', 'vehicle', 'car', 'seat', 'tz', 'place', 'cost', 'cur', 'url', 'note', 'mode', 'driveSec', 'driveM', 'driveTraffic', 'paid', 'payer', 'split', 'addr'].forEach((k) => { if (i[k]) o[k] = i[k]; });
     return o;
   });
   // 帶上算好的車程，家人那邊不必再查（也不用花額度）
@@ -1805,8 +1899,11 @@ async function exportData(full) {
 }
 async function importData(file) {
   let data; try { data = JSON.parse(await file.text()); } catch { toast('檔案格式不正確'); return; }
-  if (!data || data.app !== 'travel-handbook' || !Array.isArray(data.trips)) { toast('這不是旅行手冊的備份檔'); return; }
-  if (!(await confirmSheet('匯入備份', `檔案內有 ${data.trips.length} 趟旅程${data.atts ? `、${data.atts.length} 個附件` : ''}。同一趟旅程會被匯入的版本取代，確定嗎？`, '匯入'))) return;
+  await importParsed(data);
+}
+async function importParsed(data, where = '檔案') {
+  if (!data || data.app !== 'travel-handbook' || !Array.isArray(data.trips)) { toast('這不是旅行手冊的備份檔'); return false; }
+  if (!(await confirmSheet('匯入備份', `${where}內有 ${data.trips.length} 趟旅程${data.atts ? `、${data.atts.length} 個附件` : ''}。同一趟旅程會被匯入的版本取代，確定嗎？`, '匯入'))) return false;
   const ids = new Set(data.trips.map((t) => t.id));
   await tx(['trips', 'items', 'checks', 'atts'], 'readwrite', (x) => {
     const it = x.objectStore('items'), ch = x.objectStore('checks');
@@ -1822,6 +1919,7 @@ async function importData(file) {
   if (data.templates) { S.templates = data.templates; await metaSet('templates', S.templates); }
   await loadAll(); if (!S.trip && S.trips[0]) await selectTrip(S.trips[0].id);
   render(); toast('匯入完成');
+  return true;
 }
 
 /* ---------------------------------------------------------------- sample */
@@ -2117,7 +2215,7 @@ function openExpenses() {
   const types = Object.keys(TYPES).filter((k) => its.some((i) => i.type === k));
   html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依類別</span></div><div class="info">${types.map((k) => ir(TYPES[k].label, sumCur(its.filter((i) => i.type === k)))).join('')}</div></div>`;
   const days = [...new Set(its.map((i) => i.day))].sort((a, b) => a - b);
-  html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依天</span></div><div class="info">${days.map((d) => ir(`Day ${d}`, sumCur(its.filter((i) => i.day === d)))).join('')}</div></div>
+  html += `<div style="height:12px"></div><div class="card"><div class="field"><span>依天</span></div><div class="info">${days.map((d) => ir(d ? `Day ${d}` : '待排', sumCur(its.filter((i) => i.day === d)))).join('')}</div></div>
     <p class="note-p">只算有填費用的行程項目。沒勾「已付款」的都算現場付，就是出發後還要準備的錢。</p>`;
   openSheet('旅費統計', html); bindExpenseSheet();
   // 匯率太舊就在背景更新，抓到後重畫
@@ -2237,7 +2335,7 @@ async function deliverFile(content, name, type) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 function openIcsExport() {
-  const t = S.trip; const items = liveItems();
+  const t = S.trip; const items = liveItems().filter((i) => i.day >= 1);
   if (!items.length) { toast('這趟旅程還沒有行程'); return; }
   const todos = isViewer() ? [] : S.checks.filter((c) => !c.deleted && !c.done && c.due != null);
   const sh = openSheet('匯出到行事曆', `<form class="form"><div class="card">
@@ -2309,6 +2407,185 @@ async function duplicateTrip() {
   await selectTrip(nt.id); S.tab = 'itin'; S.selDay = 1; render(); openTripEditor(nt); toast('已複製，可以改名稱和日期');
 }
 
+/* ---------------------------------------------------------------- 大字卡（給司機看、會話卡）：沿用看票模式的白底全螢幕 */
+function openBigCard(o) {
+  closeSheet(true); _ticketItem = null;
+  const n = [...(o.big || '')].length; const size = n <= 10 ? 48 : n <= 24 ? 38 : n <= 48 ? 30 : 24;
+  const el = document.createElement('div'); el.className = 'ticket'; el.id = 'ticket'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', o.head);
+  el.innerHTML = `<div class="tk-top"><button class="tk-x" data-act="closeTicket" aria-label="關閉">${icon('x', 20, 2.2)}</button><b style="font-size:15px">${h(o.head)}</b><span style="width:44px"></span></div>
+    <div class="big-card">${o.lead ? `<div class="bc-lead" ${o.lang ? `lang="${o.lang}"` : ''}>${h(o.lead)}</div>` : ''}<div class="bc-big" ${o.lang ? `lang="${o.lang}"` : ''} style="font-size:${size}px">${h(o.big)}</div>${o.sub ? `<div class="bc-sub">${h(o.sub)}</div>` : ''}</div>
+    <div class="tk-foot">${o.foot ? `<span>${h(o.foot)}</span>` : ''}</div>`;
+  document.body.appendChild(el); document.body.classList.add('lock'); whiteStatusBar(true); requestWake();
+}
+
+/* ----- 3. 會話卡 */
+const TZ_LANG = { 'Asia/Tokyo': 'ja', 'Asia/Seoul': 'ko', 'Asia/Bangkok': 'th', 'Asia/Ho_Chi_Minh': 'vi', 'Asia/Taipei': 'zh', 'Asia/Hong_Kong': 'zh', 'Asia/Shanghai': 'zh' };
+const LANGS = [['ja', '日本語'], ['ko', '한국어'], ['th', 'ภาษาไทย'], ['vi', 'Tiếng Việt'], ['en', 'English']];
+const PHRASES = [
+  { zh: '請問廁所在哪裡？', ja: 'トイレはどこですか？', ko: '화장실이 어디예요?', th: 'ห้องน้ำอยู่ที่ไหน', vi: 'Nhà vệ sinh ở đâu?', en: 'Where is the restroom?' },
+  { zh: '請給我這個', ja: 'これをください', ko: '이거 주세요', th: 'ขออันนี้', vi: 'Cho tôi cái này', en: 'This one, please.' },
+  { zh: '多少錢？', ja: 'いくらですか？', ko: '얼마예요?', th: 'ราคาเท่าไหร่', vi: 'Bao nhiêu tiền?', en: 'How much is it?' },
+  { zh: '可以刷卡嗎？', ja: 'カードは使えますか？', ko: '카드 돼요?', th: 'จ่ายด้วยบัตรได้ไหม', vi: 'Có trả bằng thẻ được không?', en: 'Can I pay by card?' },
+  { zh: '有中文菜單嗎？', ja: '中国語のメニューはありますか？', ko: '중국어 메뉴 있어요?', th: 'มีเมนูภาษาจีนไหม', vi: 'Có thực đơn tiếng Trung không?', en: 'Do you have a Chinese menu?' },
+  { zh: '請不要辣', ja: '辛くしないでください', ko: '안 맵게 해 주세요', th: 'ไม่เผ็ด', vi: 'Không cay', en: 'Not spicy, please.' },
+  { zh: '我不吃牛肉', ja: '牛肉は食べられません', ko: '소고기는 못 먹어요', th: 'ไม่กินเนื้อวัว', vi: 'Tôi không ăn thịt bò', en: "I don't eat beef." },
+  { zh: '請幫我叫計程車', ja: 'タクシーを呼んでください', ko: '택시 좀 불러 주세요', th: 'ช่วยเรียกแท็กซี่ให้หน่อย', vi: 'Gọi taxi giúp tôi', en: 'Could you call a taxi for me?' },
+  { k: 'addr', zh: '請載我到這個地址', ja: 'この住所までお願いします', ko: '이 주소로 가 주세요', th: 'ไปที่อยู่นี้', vi: 'Cho tôi đến địa chỉ này', en: 'Please take me to this address.' },
+  { zh: '可以寄放行李嗎？', ja: '荷物を預かってもらえますか？', ko: '짐 좀 맡길 수 있어요?', th: 'ฝากกระเป๋าได้ไหม', vi: 'Tôi gửi hành lý ở đây được không?', en: 'Can I leave my luggage here?' },
+  { zh: '請給我收據', ja: '領収書をください', ko: '영수증 주세요', th: 'ขอใบเสร็จ', vi: 'Cho tôi hóa đơn', en: 'Receipt, please.' },
+  { zh: '我迷路了', ja: '道に迷いました', ko: '길을 잃었어요', th: 'หลงทาง', vi: 'Tôi bị lạc đường', en: "I'm lost." },
+  { zh: '請幫幫我', ja: '助けてください', ko: '도와주세요', th: 'ช่วยด้วย', vi: 'Cứu tôi với', en: 'Please help me!' },
+  { zh: '請叫救護車', ja: '救急車を呼んでください', ko: '구급차를 불러 주세요', th: 'ช่วยเรียกรถพยาบาลให้หน่อย', vi: 'Gọi xe cấp cứu giúp tôi', en: 'Please call an ambulance.' },
+  { zh: '謝謝', ja: 'ありがとうございます', ko: '감사합니다', th: 'ขอบคุณ', vi: 'Cảm ơn', en: 'Thank you.' }
+];
+let _phLang = null;
+function phraseLang() { const tl = TZ_LANG[S.trip.tz]; return _phLang || (tl && tl !== 'zh' ? tl : 'en'); }
+function openPhrases() {
+  const lang = phraseLang();
+  const sh = openSheet('會話卡', `<div class="chips" role="radiogroup" aria-label="語言">${LANGS.map(([k, l]) => `<button class="chip-btn ${k === lang ? 'on' : ''}" data-lang="${k}" role="radio" aria-checked="${k === lang}" lang="${k}">${l}</button>`).join('')}</div><div style="height:10px"></div>
+    <div class="group" style="margin:0">${PHRASES.map((p, i) => `<button class="row" data-ph="${i}"><span class="grow"><span>${h(p.zh)}</span><small lang="${lang}">${h(p[lang])}</small></span>${icon('right', 16)}</button>`).join('')}</div>
+    <div style="height:12px"></div>
+    <form class="form" id="phFree"><div class="card"><label class="field"><span>自己打字給對方看</span><input name="t" placeholder="例如：我對蝦子過敏、飯店名稱" autocomplete="off"></label></div><button class="btn dark" type="submit">大字顯示</button></form>
+    <p class="note-p">點一句就會大字全螢幕顯示，直接把手機給對方看。這些是常用句子，出發前可以請懂當地語言的人再確認。</p>`);
+  sh.addEventListener('click', (e) => {
+    const lb = e.target.closest('[data-lang]'); if (lb) { _phLang = lb.dataset.lang; openPhrases(); return; }
+    const pb = e.target.closest('[data-ph]'); if (!pb) return;
+    const p = PHRASES[+pb.dataset.ph]; openBigCard({ head: '會話卡', big: p[lang], lang, sub: p.zh, foot: '把螢幕給對方看' });
+  });
+  sh.querySelector('#phFree').addEventListener('submit', (e) => { e.preventDefault(); const v = e.target.t.value.trim(); if (v) openBigCard({ head: '給對方看', big: v, foot: '把螢幕給對方看' }); });
+}
+
+/* ----- 2. 給司機看的地址卡 */
+function driverTarget(it) { return (it.addr || it.place || (it.type === 'transit' ? it.to : '') || '').trim(); }
+function openDriverCard(id) {
+  const it = S.items.find((x) => x.id === id); if (!it) return;
+  const tl = TZ_LANG[S.trip.tz] || 'en'; const p = PHRASES.find((x) => x.k === 'addr');
+  const big = driverTarget(it);
+  const sub = [it.title !== big ? it.title : '', it.addr && it.place && it.place !== it.addr ? it.place : ''].filter(Boolean).join(' · ');
+  openBigCard({ head: '給司機看', lead: p[tl] || p.en, big, lang: tl === 'zh' ? 'zh-Hant' : tl, sub, foot: it.addr ? '' : '沒有填「當地文字地址」，顯示的是地點名稱；編輯行程可以加上當地語言的地址' });
+}
+
+/* ---------------------------------------------------------------- 1. 雲端備份（端對端加密）
+ * 還原碼 20 碼 → PBKDF2 推出：AES-GCM 金鑰、備份 id、存取 token。伺服器只看到密文，沒有還原碼誰都解不開。
+ * 不含附件（太大）；附件請用「完整備份」檔案。 */
+let _bk = null, _bkBusy = false; const _bkKeys = new Map();
+const BK_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function newBackupCode() { return [...crypto.getRandomValues(new Uint8Array(20))].map((x) => BK_ALPHA[x % 32]).join('').match(/.{4}/g).join('-'); }
+const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const fmtCode = (c) => normCode(c).match(/.{1,4}/g).join('-');
+const toHex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, '0')).join('');
+async function bkDerive(code) {
+  const c = normCode(code); if (_bkKeys.has(c)) return _bkKeys.get(c);
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(c), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode('travel-handbook/backup/v1'), iterations: 200000, hash: 'SHA-256' }, base, 768));
+  const r = { key: await crypto.subtle.importKey('raw', bits.slice(0, 32), 'AES-GCM', false, ['encrypt', 'decrypt']), id: toHex(bits.slice(32, 48)), token: toHex(bits.slice(48, 96)) };
+  _bkKeys.set(c, r); return r;
+}
+async function gzip(u8, compress) { const st = new Blob([u8]).stream().pipeThrough(compress ? new CompressionStream('gzip') : new DecompressionStream('gzip')); return new Uint8Array(await new Response(st).arrayBuffer()); }
+async function b64ToU8(b64) { return new Uint8Array(await b64ToBlob(b64, 'application/octet-stream').arrayBuffer()); }
+async function backupNow(manual) {
+  if (!_bk || !_bk.code || _bkBusy) return;
+  if (!navigator.onLine || !apiBase()) { if (manual) toast(apiBase() ? '目前離線，連上網路後會自動備份' : '要先設定分享伺服器'); return; }
+  _bkBusy = true; refreshBackupSheet();
+  try {
+    const data = { app: 'travel-handbook', version: APP_VERSION, trips: await dbAll('trips'), items: await dbAll('items'), checks: await dbAll('checks'), templates: S.templates, settings: S.settings };
+    const sig = toHex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(data)))));
+    if (!manual && sig === _bk.sig) { _bk.checkedAt = Date.now(); await metaSet('backup', _bk); return; }
+    data.exportedAt = new Date().toISOString();
+    const { key, id, token } = await bkDerive(_bk.code);
+    let body = new TextEncoder().encode(JSON.stringify(data)); const z = typeof CompressionStream === 'function';
+    if (z) body = await gzip(body, true);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, body));
+    await api('PUT', '/backup/' + id, { v: 1, z: z ? 1 : 0, iv: await blobToB64(new Blob([iv])), data: await blobToB64(new Blob([ct])) }, token);
+    Object.assign(_bk, { at: Date.now(), checkedAt: Date.now(), sig, size: ct.byteLength }); await metaSet('backup', _bk);
+    if (manual) toast('已備份');
+  } catch (err) {
+    if (manual) toast(err.status === 413 ? '資料太大，無法備份' : err.status === 404 ? '伺服器還沒更新，請重新部署 Worker' : err.status === 429 ? '操作太頻繁，請稍後再試' : '備份失敗，稍後再試');
+  } finally { _bkBusy = false; refreshBackupSheet(); }
+}
+function maybeAutoBackup() {
+  if (!_bk || !_bk.code || !navigator.onLine) return;
+  if (Date.now() - Math.max(_bk.at || 0, _bk.checkedAt || 0) > 12 * 3600000) backupNow(false);
+}
+async function restoreFromCode(code) {
+  const { key, id, token } = await bkDerive(code);
+  const r = await api('GET', '/backup/' + id, null, token);
+  let plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: await b64ToU8(r.iv) }, key, await b64ToU8(r.data)));
+  if (r.z) plain = await gzip(plain, false);
+  return { data: JSON.parse(new TextDecoder().decode(plain)), updatedAt: r.updatedAt };
+}
+function refreshBackupSheet() { const el = $('#bkState'); if (el && _bk) el.textContent = _bkBusy ? '備份中…' : _bk.at ? `上次備份：${relTime(_bk.at)}${_bk.size ? ` · ${Math.max(1, Math.round(_bk.size / 1024))} KB` : ''}` : '還沒備份過'; }
+function openBackup() {
+  if (!_bk || !_bk.code) {
+    const sh = openSheet('雲端備份', `<div class="card"><p style="margin:0">每天自動把行程加密備份到你的分享伺服器。換手機或資料被清掉時，輸入「還原碼」就能拿回來。</p>
+      <div class="info"><div class="ir"><small>會備份</small><div>所有旅程、行程、清單、範本、設定</div></div>
+      <div class="ir"><small>不會備份</small><div>附件（票券截圖）檔案太大，請另外用「完整備份」存一份</div></div>
+      <div class="ir"><small>安全</small><div>在手機上加密後才上傳，伺服器看不到內容；沒有還原碼誰都打不開</div></div></div></div>
+      <div style="height:12px"></div><div class="form"><button class="btn primary" data-k="enable">${icon('cloud')}<span>開啟雲端備份</span></button>
+      <button class="btn" data-k="restore">${icon('download')}<span>我有還原碼，要還原</span></button></div>`);
+    sh.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-k=enable]')) {
+        if (!apiBase()) { toast('要先設定分享伺服器'); return; }
+        _bk = { code: newBackupCode(), at: 0 }; await metaSet('backup', _bk); showBackupCode(true); backupNow(true);
+      }
+      if (e.target.closest('[data-k=restore]')) restoreWithCode();
+    });
+    return;
+  }
+  const sh = openSheet('雲端備份', `<div class="card"><div class="info"><div class="ir"><small>狀態</small><div>已開啟 · 每天自動備份</div></div><div class="ir"><small>備份</small><div id="bkState"></div></div>
+      <div class="ir"><small>還原碼</small><div class="mono">••••-••••-••••-••••-${h(normCode(_bk.code).slice(-4))}</div></div></div></div>
+    <div style="height:12px"></div><div class="form">
+      <div class="btn-row"><button class="btn primary" data-k="now">${icon('refresh')}<span>立即備份</span></button><button class="btn" data-k="show">${icon('eye')}<span>顯示還原碼</span></button></div>
+      <button class="btn" data-k="restore">${icon('download')}<span>用還原碼還原</span></button>
+      <button class="btn danger" data-k="off">${icon('x')}<span>關閉並刪除雲端備份</span></button></div>
+    <p class="note-p">還原碼只存在這支手機。換手機前請確認已經抄下來。</p>`);
+  refreshBackupSheet();
+  sh.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-k=now]')) backupNow(true);
+    if (e.target.closest('[data-k=show]')) showBackupCode(false);
+    if (e.target.closest('[data-k=restore]')) restoreWithCode();
+    if (e.target.closest('[data-k=off]')) {
+      if (!(await confirmSheet('關閉雲端備份', '伺服器上的備份會刪除，之後也不會再自動備份。手機裡的資料不受影響。', '關閉並刪除', true))) { openBackup(); return; }
+      try { const { id, token } = await bkDerive(_bk.code); await api('DELETE', '/backup/' + id, null, token); }
+      catch (err) { if (err.status !== 404) { toast('需要網路才能刪除雲端備份'); openBackup(); return; } }
+      _bk = null; await metaSet('backup', null); render(); toast('已關閉雲端備份');
+    }
+  });
+}
+function showBackupCode(isNew) {
+  const code = fmtCode(_bk.code);
+  const sh = openSheet('還原碼', `<div class="card"><p style="margin:0">${isNew ? '雲端備份已開啟。' : ''}換手機或資料被清掉時，要用這組還原碼才能拿回行程。<b>請截圖或抄下來，存在這支手機以外的地方。</b></p>
+    <div class="bk-code">${h(code)}</div><p style="margin:0;font-size:13px;color:var(--muted)">還原碼不見就沒辦法還原，我們也幫不了忙。不要傳給不相干的人：拿到的人可以看到你所有的行程。</p></div>
+    <div style="height:12px"></div><div class="btn-row"><button class="btn" data-k="copy">${icon('copy')}<span>複製</span></button><button class="btn dark" data-k="ok">${icon('check')}<span>我記下來了</span></button></div>`);
+  sh.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-k=copy]')) { try { await navigator.clipboard.writeText(code); toast('已複製還原碼'); } catch { toast('請長按還原碼複製'); } }
+    if (e.target.closest('[data-k=ok]')) openBackup();
+  });
+}
+async function restoreWithCode() {
+  const v = await promptSheet('用還原碼還原', '輸入 20 碼還原碼', '', 'XXXX-XXXX-XXXX-XXXX-XXXX');
+  if (v == null) return;
+  if (normCode(v).length !== 20) { toast('還原碼是 20 碼英文和數字'); return; }
+  if (!navigator.onLine) { toast('需要網路才能還原'); return; }
+  if (!apiBase()) { toast('要先設定分享伺服器'); return; }
+  toast('下載中…', 4000);
+  let res;
+  try { res = await restoreFromCode(v); }
+  catch (err) { toast(err.status === 404 ? '找不到備份，請確認還原碼' : err.name === 'OperationError' ? '還原碼不對，解不開備份' : '還原失敗，稍後再試'); return; }
+  const ok = await importParsed(res.data, `雲端備份（${new Date(res.updatedAt).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}）`);
+  if (ok) { _bk = { code: fmtCode(v), at: res.updatedAt, checkedAt: Date.now() }; await metaSet('backup', _bk); render(); }
+}
+function openRestoreMenu() {
+  const sh = openSheet('從備份還原', `<div class="group" style="margin:0">
+    <button class="row" data-k="code"><span class="ico">${icon('cloud', 18)}</span><span class="grow"><span>用還原碼（雲端備份）</span><small>輸入 20 碼還原碼</small></span>${icon('right', 16)}</button>
+    <button class="row" data-k="file"><span class="ico">${icon('upload', 18)}</span><span class="grow"><span>從備份檔案</span><small>之前匯出的 .json 檔</small></span>${icon('right', 16)}</button></div>`);
+  sh.addEventListener('click', (e) => {
+    if (e.target.closest('[data-k=code]')) restoreWithCode();
+    if (e.target.closest('[data-k=file]')) { closeSheet(true); $('#fileImport').click(); }
+  });
+}
+
 /* ---------------------------------------------------------------- actions */
 const A = {
   tab: (el) => { S.tab = el.dataset.k; closeSheet(true); render(); window.scrollTo(0, 0); },
@@ -2333,7 +2610,14 @@ const A = {
   },
   openItem: (el) => openItemDetail(el.dataset.id),
   editItem: (el) => openItemEditor(el.dataset.id),
-  newItem: (el) => openItemEditor(null, parseInt(el.dataset.day, 10) || S.selDay),
+  newItem: (el) => { const d = parseInt(el.dataset.day, 10); openItemEditor(null, isNaN(d) ? S.selDay : d); },
+  scheduleItem: (el) => openSchedule(el.dataset.id),
+  gotoDay: (el) => { closeSheet(true); S.tab = 'itin'; S.selDay = +el.dataset.d; render(); window.scrollTo(0, 0); },
+  tripCheck: () => openTripCheck(),
+  phrases: () => openPhrases(),
+  driverCard: (el) => openDriverCard(el.dataset.id),
+  cloudBackup: () => openBackup(),
+  restoreMenu: () => openRestoreMenu(),
   deleteItem: async (el) => {
     const it = S.items.find((i) => i.id === el.dataset.id);
     if (!(await confirmSheet('刪除行程', `確定刪除「${h(it.title)}」和它的附件？`, '刪除', true))) { openItemEditor(it.id); return; }
@@ -2451,7 +2735,9 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#
 window.addEventListener('online', () => { S.online = true; if (S.trip && S.trip.share && S.trip.share.dirty) publish(); if (isViewer()) viewerRefresh(true); else if (!$('#sheet')) render(); });
 window.addEventListener('offline', () => { S.online = false; if (!$('#sheet')) render(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !S.trip) return;
+  if (document.visibilityState !== 'visible') return;
+  maybeAutoBackup();
+  if (!S.trip) return;
   if (isViewer() && Date.now() - _lastViewerFetch > 60000) viewerRefresh(true);
   else if (!$('#sheet') && !$('#ticket')) render();
 });
@@ -2478,6 +2764,7 @@ setInterval(() => { if (document.visibilityState === 'visible' && S.trip && S.ta
     if (isViewer()) viewerRefresh(true);
   }
   registerSW();
+  _bk = await metaGet('backup', null); maybeAutoBackup();
   try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) navigator.storage.persist(); } catch {}
 })();
 </script>
