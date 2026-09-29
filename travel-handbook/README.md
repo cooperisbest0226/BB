@@ -13,6 +13,11 @@
 - **天氣**：出發前 7 天起顯示每天的天氣、溫度、降雨機率（Open-Meteo，免費、不用金鑰）
 - **行事曆**：匯出 .ics 加到手機行事曆，可設提醒
 - **旅費統計**：依類別、天數加總，可填匯率換算台幣；項目可標「已付款」
+- **雲端備份**：每天自動端對端加密備份到自己的 Worker，換手機用 20 碼還原碼拿回（不含附件）
+- **給司機看**：行程可填當地文字地址，大字全螢幕顯示
+- **會話卡**：日、韓、泰、越、英文常用句，大字給對方看，也能自己打字
+- **待排清單**：想去但還沒決定哪天的地方，之後再排入
+- **行程檢查**：時間重疊、順序錯、開車來不及會提醒
 - **緊急資訊**：當地報案／救護電話、外交部急難救助、保險、聯絡人、住宿，一鍵撥打，離線可看（保單號碼、護照號碼不分享）
 - **分帳**：設定成員，每筆費用選誰付、誰分攤，自動算出最少筆數的轉帳
 - **匯率**：連網時自動抓（[ExchangeRate-API](https://www.exchangerate-api.com) 免費版，每天更新），也可以手動填實際換匯匯率
@@ -158,6 +163,7 @@ Invoke-RestMethod -Method Post -Uri "https://travel-handbook-share.cooperisbest0
 | GET | `/trips/:id` | 讀取（唯讀端使用） |
 | PUT | `/trips/:id` | 更新，需要 `Authorization: Bearer key` |
 | DELETE | `/trips/:id` | 停止分享，需要 key |
+| PUT／GET／DELETE | `/backup/:id` | 雲端備份。App 端 AES-GCM 加密後上傳，伺服器只存密文；`id` 和 `Authorization: Bearer token` 都由還原碼推算（PBKDF2），上限 8 MB |
 | POST | `/route` | 算開車車程 `{ from, to, region?, depart?, traffic? }` → `{ seconds, staticSeconds, meters, traffic }`，需要 `GOOGLE_MAPS_KEY`，只接受 `ALLOWED_ORIGINS` 來源 |
 
 - `id` 是 16 碼隨機字元，放在分享連結裡，拿到連結的人都能讀。
