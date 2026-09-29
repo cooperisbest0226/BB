@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import opencc
+from pypinyin import Style, lazy_pinyin
 import soundfile as sf
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -107,8 +108,20 @@ def norm(s: str) -> str:
     return re.sub(r"[^一-鿿0-9a-zA-Z]", "", T2S.convert(s))
 
 
+def pinyin(s: str) -> list[str]:
+    return lazy_pinyin(norm(s), style=Style.TONE3, neutral_tone_with_five=True)
+
+
+def tone_error_rate(ref: str, hyp: str) -> float:
+    """帶聲調拼音的音節錯誤率：同音字（例如 連結／廉潔）不算錯，聲調或聲母韻母不同才算。"""
+    return cer_seq(pinyin(ref), pinyin(hyp))
+
+
 def cer(ref: str, hyp: str) -> float:
-    r, h = norm(ref), norm(hyp)
+    return cer_seq(list(norm(ref)), list(norm(hyp)))
+
+
+def cer_seq(r: list, h: list) -> float:
     dp = list(range(len(h) + 1))
     for i in range(1, len(r) + 1):
         prev, dp[0] = dp[0], i
@@ -231,9 +244,10 @@ def main() -> None:
                 "duration": round(dur, 3),
                 "phrases": phrase_starts(line["tts"], wav, dur, toks),
                 "asr": hyp, "cer": round(cer(line["tts"], hyp), 3),
+                "toneErrorRate": round(tone_error_rate(line["tts"], hyp), 3),
             }
-            flag = "  <-- 請檢查發音" if meta[key]["cer"] > 0.1 else ""
-            print(f"[{'cache' if cached else 'tts'}] {key}  {dur:.2f}s  CER={meta[key]['cer']:.2f}  ASR={hyp}{flag}")
+            flag = "  <-- 請檢查發音" if meta[key]["toneErrorRate"] > 0.1 else ""
+            print(f"[{'cache' if cached else 'tts'}] {key}  {dur:.2f}s  拼音錯誤率={meta[key]['toneErrorRate']:.2f}  ASR={hyp}{flag}")
 
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"wrote {meta_path}")

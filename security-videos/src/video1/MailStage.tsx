@@ -42,12 +42,13 @@ export const MailStage: React.FC<{tl: Timeline}> = ({tl}) => {
 
   // ---------- S2 開信
   const stop2 = s2.lines[0].from; // 「先別急著點」
+  const reach2 = Math.max(stop2, s2.from + 20); // 游標抵達按鈕旁（至少留 20 幀移動）
   const phish = phraseAt(s2, 1, 2); // 「這可能是一封釣魚信」
   const nearBtn = {x: WIN.x + MAIL.button.x + MAIL.button.w + 70, y: WIN.y + MAIL.button.y + MAIL.button.h + 40};
 
   // ---------- S4 連結
   const hoverStart = phraseAt(s4, 2, 1);
-  const hoverAt = hoverStart + 24;
+  const hoverAt = hoverStart + 18;
   const btnPt = {x: WIN.x + MAIL.button.x + MAIL.button.w - 70, y: WIN.y + MAIL.button.y + 40};
 
   // 游標位置與顯示
@@ -57,7 +58,7 @@ export const MailStage: React.FC<{tl: Timeline}> = ({tl}) => {
   let press = 0;
   if (f >= ask - 6 && f < s3.from + 10) {
     cursor = move(f, ask - 6, ask + 20, {x: 1560, y: 860}, rowPt);
-    if (f >= s2.from) cursor = move(f, s2.from + 6, stop2, rowPt, nearBtn);
+    if (f >= s2.from) cursor = move(f, s2.from + 2, reach2, rowPt, nearBtn);
     press = f >= click1 && f < click1 + 5 ? 1 : 0;
     cursorOpacity = Math.min(easeIn(f, ask - 6, 8), easeOut(f, s3.from, 10));
   }
@@ -139,7 +140,7 @@ export const MailStage: React.FC<{tl: Timeline}> = ({tl}) => {
           <Question frame={f} at={ask + 6} x={rowPt.x + 50} y={rowPt.y - 140} out={easeOut(f, s2.from, 10)} />
         )}
         {f >= s2.from && f < s3.from + 10 && (
-          <StopBadge frame={f} at={stop2 + 2} x={nearBtn.x + 34} y={nearBtn.y - 70} opacity={easeOut(f, s3.from, 10)} />
+          <StopBadge frame={f} at={reach2 + 2} x={nearBtn.x + 34} y={nearBtn.y - 70} opacity={easeOut(f, s3.from, 10)} />
         )}
         {f >= s4.from && f < s5.from + 10 && (
           <StopBadge

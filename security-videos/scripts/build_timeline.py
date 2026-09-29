@@ -1,8 +1,7 @@
 """依旁白實際長度排出時間軸（全部以 30fps 幀為單位）。
 
 每個場景長度 = 進場前導(lead) + 各句實長 + 句間停頓(gapBefore) + 收尾停留(tail)。
-收尾停留至少 minTail 秒；若場景加總短於分鏡參考秒數(refSeconds)，
-把差額補在收尾停留（畫面動畫在這段時間完成），讓總長落在規格內。
+收尾停留只保留閱讀畫面說明所需的時間；可選填 minSeconds 當場景最短長度。
 
 用法：python3 scripts/build_timeline.py content/video1.json
 輸出：src/data/<id>.timeline.json、../work/<id>/timeline.md
@@ -16,7 +15,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parents[1]
 WORK = HERE.parent / "work"
 FPS = 30
-MIN_TAIL = 1.0
+DEFAULT_TAIL = 1.0
 
 
 def f(sec: float) -> int:
@@ -64,8 +63,7 @@ def main(content_path: Path) -> None:
                 "phrases": [{"text": p["text"], "from": t + f(p["start"])} for p in m["phrases"]],
             })
             t += dur
-        natural = t + f(MIN_TAIL)
-        length = max(natural, f(scene["refSeconds"]))
+        length = max(t + f(scene.get("tail", DEFAULT_TAIL)), f(scene.get("minSeconds", 0)))
         for ln in lines:
             ln["from"] += cursor
             for ph in ln["phrases"]:

@@ -17,10 +17,10 @@ content/<id>.json ──► scripts/tts.py ──► scripts/build_timeline.py �
 ```
 
 1. **旁白**（`scripts/tts.py`）：逐句合成，量測實際長度；用 SenseVoice 離線語音辨識回聽每一句，
-   計算字錯率（CER）當發音檢查，並取得逐字時間戳，定位句中每個片語（以標點切分）的起點，
+   以帶聲調拼音比對當發音檢查（同音字不算錯），並取得逐字時間戳，定位句中每個片語（以標點切分）的起點，
    讓畫面動作（打叉、螢光標示）對上唸到的字。
 2. **時間軸**（`scripts/build_timeline.py`）：場景長度 = 進場前導 + 各句實長 + 句間停頓 + 收尾停留，
-   全部換算成幀。輸出 `src/data/<id>.timeline.json`（Remotion 讀取）與 `../work/<id>/timeline.md`（秒數表）。
+   全部換算成幀（收尾只保留閱讀畫面說明所需的時間）。輸出 `src/data/<id>.timeline.json`（Remotion 讀取）與 `../work/<id>/timeline.md`（秒數表）。
 3. **音軌**（`scripts/build_audio.py`）：旁白按幀精準擺放、標準化到 -14 LUFS；
    配樂與音效都是程式即時合成（無外部素材），配樂響度比旁白低 20 dB（約 10%）。
 4. **畫面**（`src/`）：Remotion（React）繪製，所有圖示與插畫皆為程式繪製的 SVG／CSS。
@@ -45,7 +45,7 @@ python3 scripts/qa.py content/video1.json
 `content/<id>.json` 的 `tts.engine` 決定引擎：
 
 - `edge`：edge-tts `zh-TW-HsiaoChenNeural`，語速 -5%。需要能連到 `speech.platform.bing.com`。
-- `kokoro`：Kokoro v1.1-zh（Apache-2.0），經 sherpa-onnx 離線推論，聲線 sid 45、speed 1.1。
+- `kokoro`：Kokoro v1.1-zh（Apache-2.0），經 sherpa-onnx 離線推論，聲線 sid 48、speed 1.3（約每秒 4.5 字）。
 
 離線模型放在 `../work/models/`（從 sherpa-onnx 的 GitHub Releases 下載）：
 

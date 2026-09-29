@@ -62,8 +62,8 @@ def limit_peaks(x: np.ndarray, ceiling_db: float) -> np.ndarray:
 
 
 def bgm(total: float) -> np.ndarray:
-    """溫和、穩定的配樂：Am–F–C–G 循環，84 BPM。回傳 (n, 2)。"""
-    bpm = 84
+    """溫和、穩定的配樂：Am–F–C–G 循環，96 BPM。回傳 (n, 2)。"""
+    bpm = 96
     bar = 4 * 60 / bpm
     chords = [[57, 60, 64], [53, 57, 60], [48, 55, 60, 64], [55, 59, 62]]  # Am F C G
     n = int(total * SR)

@@ -3,57 +3,57 @@
  "fps": 30,
  "width": 1920,
  "height": 1080,
- "durationInFrames": 2625,
+ "durationInFrames": 1752,
  "scenes": [
   {
    "id": "s1_inbox",
    "from": 0,
-   "duration": 240,
+   "duration": 194,
    "lines": [
     {
      "key": "s1_inbox_1",
      "file": "s1_inbox_1.wav",
      "sub": "主旨說你的帳號{r:快被停用}　你會怎麼做？",
-     "from": 42,
-     "duration": 122,
-     "seconds": 4.04,
+     "from": 45,
+     "duration": 104,
+     "seconds": 3.461,
      "phrases": [
       {
        "text": "主旨說你的帳號快被停用，",
-       "from": 42
+       "from": 45
       },
       {
        "text": "你會怎麼做？",
-       "from": 119
+       "from": 113
       }
      ]
     }
    ],
    "cues": {
     "mailArrive": 15,
-    "rowClick": 228
+    "rowClick": 182
    }
   },
   {
    "id": "s2_warning",
-   "from": 240,
-   "duration": 210,
+   "from": 194,
+   "duration": 158,
    "lines": [
     {
      "key": "s2_warning_1",
      "file": "s2_warning_1.wav",
      "sub": "先別急著點　這可能是一封{r:釣魚信}",
-     "from": 270,
-     "duration": 118,
-     "seconds": 3.912,
+     "from": 218,
+     "duration": 95,
+     "seconds": 3.141,
      "phrases": [
       {
        "text": "先別急著點，",
-       "from": 270
+       "from": 218
       },
       {
        "text": "這可能是一封釣魚信。",
-       "from": 319
+       "from": 256
       }
      ]
     }
@@ -62,24 +62,24 @@
   },
   {
    "id": "s3_sender",
-   "from": 450,
-   "duration": 450,
+   "from": 352,
+   "duration": 287,
    "lines": [
     {
      "key": "s3_sender_1",
      "file": "s3_sender_1.wav",
      "sub": "{y:第一看}　寄件人",
-     "from": 495,
-     "duration": 54,
-     "seconds": 1.779,
+     "from": 382,
+     "duration": 37,
+     "seconds": 1.217,
      "phrases": [
       {
        "text": "第一看，",
-       "from": 495
+       "from": 382
       },
       {
        "text": "寄件人。",
-       "from": 518
+       "from": 400
       }
      ]
     },
@@ -87,17 +87,17 @@
      "key": "s3_sender_2",
      "file": "s3_sender_2.wav",
      "sub": "名稱像是資訊部　{r:網域卻對不上}",
-     "from": 597,
-     "duration": 117,
-     "seconds": 3.895,
+     "from": 443,
+     "duration": 91,
+     "seconds": 3.009,
      "phrases": [
       {
        "text": "名稱像是資訊部，",
-       "from": 597
+       "from": 443
       },
       {
        "text": "網域卻對不上。",
-       "from": 658
+       "from": 494
       }
      ]
     }
@@ -106,24 +106,24 @@
   },
   {
    "id": "s4_link",
-   "from": 900,
-   "duration": 450,
+   "from": 639,
+   "duration": 287,
    "lines": [
     {
      "key": "s4_link_1",
      "file": "s4_link_1.wav",
      "sub": "{y:第二看}　連結",
-     "from": 945,
-     "duration": 53,
-     "seconds": 1.74,
+     "from": 669,
+     "duration": 35,
+     "seconds": 1.154,
      "phrases": [
       {
        "text": "第二看，",
-       "from": 945
+       "from": 669
       },
       {
        "text": "連結。",
-       "from": 970
+       "from": 687
       }
      ]
     },
@@ -131,21 +131,21 @@
      "key": "s4_link_2",
      "file": "s4_link_2.wav",
      "sub": "滑鼠移上去　{r:不要點}　看它真正會去哪裡",
-     "from": 1034,
-     "duration": 128,
-     "seconds": 4.24,
+     "from": 725,
+     "duration": 102,
+     "seconds": 3.391,
      "phrases": [
       {
        "text": "滑鼠移上去，",
-       "from": 1034
+       "from": 725
       },
       {
        "text": "不要點，",
-       "from": 1066
+       "from": 752
       },
       {
        "text": "看它真正會去哪裡。",
-       "from": 1093
+       "from": 775
       }
      ]
     }
@@ -154,24 +154,24 @@
   },
   {
    "id": "s5_tone",
-   "from": 1350,
-   "duration": 390,
+   "from": 926,
+   "duration": 274,
    "lines": [
     {
      "key": "s5_tone_1",
      "file": "s5_tone_1.wav",
      "sub": "{y:第三看}　語氣",
-     "from": 1386,
-     "duration": 51,
-     "seconds": 1.69,
+     "from": 950,
+     "duration": 35,
+     "seconds": 1.148,
      "phrases": [
       {
        "text": "第三看，",
-       "from": 1386
+       "from": 950
       },
       {
        "text": "語氣。",
-       "from": 1413
+       "from": 966
       }
      ]
     },
@@ -179,21 +179,21 @@
      "key": "s5_tone_2",
      "file": "s5_tone_2.wav",
      "sub": "催你{r:立刻處理}、要你{r:輸入密碼}　都很可疑",
-     "from": 1467,
-     "duration": 158,
-     "seconds": 5.255,
+     "from": 1003,
+     "duration": 122,
+     "seconds": 4.043,
      "phrases": [
       {
        "text": "催你立刻處理、",
-       "from": 1467
+       "from": 1003
       },
       {
        "text": "要你輸入密碼，",
-       "from": 1525
+       "from": 1050
       },
       {
        "text": "都很可疑。",
-       "from": 1575
+       "from": 1089
       }
      ]
     }
@@ -202,65 +202,65 @@
   },
   {
    "id": "s6_actions",
-   "from": 1740,
-   "duration": 390,
+   "from": 1200,
+   "duration": 202,
    "lines": [
     {
      "key": "s6_actions_1",
      "file": "s6_actions_1.wav",
      "sub": "{r:不點}、{r:不回覆}、{r:不輸入}　直接{g:回報給資訊部}",
-     "from": 1785,
-     "duration": 138,
-     "seconds": 4.572,
+     "from": 1224,
+     "duration": 103,
+     "seconds": 3.415,
      "phrases": [
       {
        "text": "不點、",
-       "from": 1785
+       "from": 1224
       },
       {
        "text": "不回覆、",
-       "from": 1799
+       "from": 1237
       },
       {
        "text": "不輸入，",
-       "from": 1825
+       "from": 1253
       },
       {
        "text": "直接回報給資訊部。",
-       "from": 1857
+       "from": 1276
       }
      ]
     }
    ],
    "cues": {
-    "reportClick": 1890,
-    "reportDone": 1896
+    "reportClick": 1303,
+    "reportDone": 1309
    }
   },
   {
    "id": "s7_ending",
-   "from": 2130,
-   "duration": 495,
+   "from": 1402,
+   "duration": 350,
    "lines": [
     {
      "key": "s7_ending_1",
      "file": "s7_ending_1.wav",
      "sub": "萬一已經點了　也別怕　{g:越快通知越好}",
-     "from": 2166,
-     "duration": 120,
-     "seconds": 3.977,
+     "from": 1426,
+     "duration": 97,
+     "seconds": 3.225,
      "phrases": [
       {
        "text": "萬一已經點了，",
-       "from": 2166
+       "from": 1426
       },
       {
        "text": "也別怕，",
-       "from": 2202
+       "from": 1457
       },
       {
        "text": "越快通知越好。",
-       "from": 2231
+       "from": 1484
       }
      ]
     },
@@ -268,23 +268,23 @@
      "key": "s7_ending_2",
      "file": "s7_ending_2.wav",
      "sub": "{y:三看一不點}　{g:有疑問就回報}",
-     "from": 2322,
-     "duration": 103,
-     "seconds": 3.411,
+     "from": 1553,
+     "duration": 79,
+     "seconds": 2.627,
      "phrases": [
       {
        "text": "三看一不點，",
-       "from": 2322
+       "from": 1553
       },
       {
        "text": "有疑問就回報。",
-       "from": 2371
+       "from": 1591
       }
      ]
     }
    ],
    "cues": {
-    "shield": 2231
+    "shield": 1484
    }
   }
  ],
@@ -294,19 +294,19 @@
    "sound": "chime"
   },
   {
-   "frame": 228,
+   "frame": 182,
    "sound": "click"
   },
   {
-   "frame": 1890,
+   "frame": 1303,
    "sound": "click"
   },
   {
-   "frame": 1896,
+   "frame": 1309,
    "sound": "success"
   },
   {
-   "frame": 2231,
+   "frame": 1484,
    "sound": "success"
   }
  ]

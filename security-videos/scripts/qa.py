@@ -51,6 +51,7 @@ def main(content_path: Path) -> None:
     v = next(s for s in info["streams"] if s["codec_type"] == "video")
     a = next(s for s in info["streams"] if s["codec_type"] == "audio")
     size_mb = int(info["format"]["size"]) / 1024 / 1024
+    lo, hi = content.get("durationRange", [85, 95])
     dur = float(info["format"]["duration"])
     spec = {
         "file": str(mp4.relative_to(ROOT)),
@@ -63,7 +64,7 @@ def main(content_path: Path) -> None:
         "audioDuration": float(a["duration"]),
     }
     checks = {
-        "長度 85–95 秒": 85 <= dur <= 95,
+        f"長度 {lo}–{hi} 秒": lo <= dur <= hi,
         "檔案 < 100 MB": size_mb < 100,
         "H.264 + AAC": v["codec_name"] == "h264" and a["codec_name"] == "aac",
         "1920x1080": (v["width"], v["height"]) == (1920, 1080),
