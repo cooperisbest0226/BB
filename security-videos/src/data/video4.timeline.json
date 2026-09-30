@@ -43,7 +43,9 @@
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "ransom": 92
+   }
   },
   {
    "id": "s2_spread",
@@ -239,7 +241,9 @@
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "shutter": 1018
+   }
   },
   {
    "id": "s6_prevent",
@@ -319,8 +323,23 @@
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "slogan": 1541
+   }
   }
  ],
- "sfx": []
+ "sfx": [
+  {
+   "frame": 92,
+   "sound": "click"
+  },
+  {
+   "frame": 1018,
+   "sound": "click"
+  },
+  {
+   "frame": 1541,
+   "sound": "success"
+  }
+ ]
 }

@@ -72,27 +72,38 @@ def main(content_path: Path) -> None:
         "影音長度差 < 50 ms": abs(float(v["duration"]) - float(a["duration"])) < 0.05,
     }
 
-    # 音畫同步：每句字幕的起始時間 vs 成品音訊中旁白的實際起音
+    # 音畫同步（兩段檢查）：
+    # 1) 成品 MP4 的音訊與原始混音做互相關，確認 AAC 編碼／合併後沒有整體位移
+    # 2) 在純旁白音軌上找每句的實際起音，和字幕出現時間比對（不受音效、配樂干擾）
     x = decode_audio(mp4)
-    speech_rms = np.sqrt(np.mean(x[np.abs(x) > 0.01] ** 2))
+    mix = decode_audio(ROOT / "work" / vid / "audio" / "mix.wav")
+    n = min(len(x), len(mix), SR * 20)
+    a, b = x[:n] - x[:n].mean(), mix[:n] - mix[:n].mean()
+    corr = np.fft.irfft(np.fft.rfft(a, 2 * n) * np.conj(np.fft.rfft(b, 2 * n)))
+    lag = int(np.argmax(np.concatenate([corr[-SR // 2:], corr[:SR // 2]]))) - SR // 2
+    spec["mp4VsMixOffsetMs"] = round(lag / SR * 1000, 1)
+    checks["成品與混音無位移（≤ 25 ms）"] = abs(lag) / SR <= 0.025
+
+    narr = decode_audio(ROOT / "work" / vid / "audio" / "narration.wav")
+    speech_rms = np.sqrt(np.mean(narr[np.abs(narr) > 0.01] ** 2))
     sync = []
     for scene in tl["scenes"]:
         for line in scene["lines"]:
             t_sub = line["from"] / fps
-            t_voice = onset(x, t_sub - 0.4, t_sub + 0.6, speech_rms * 0.25)
+            t_voice = onset(narr, t_sub - 0.4, t_sub + 0.6, speech_rms * 0.1)
             sync.append({"line": line["key"], "subtitle": round(t_sub, 3),
                          "voiceOnset": None if t_voice is None else round(t_voice, 3),
                          "diffMs": None if t_voice is None else round((t_voice - t_sub) * 1000)})
     diffs = [abs(s["diffMs"]) for s in sync if s["diffMs"] is not None]
     checks["旁白起音與字幕差 ≤ 100 ms"] = len(diffs) == len(sync) and max(diffs) <= 100
 
-    # 字幕寬度估算（58px 粗體＋字距 2px、左右留白 80px；畫面可用寬度 1760px）
+    # 字幕寬度估算（58px 粗體＋字距 2px：中文與全形字約 60px、英數與半形約 38px；左右留白 80px；可用寬度 1760px）
     widths = {}
     for scene in tl["scenes"]:
         for line in scene["lines"]:
             for k, part in enumerate(line["sub"].split("|")):
                 text = re.sub(r"\{[rgy]:([^}]+)\}", r"\1", part)
-                widths[f"{line['key']}.{k + 1}"] = len(text) * 60 + 80
+                widths[f"{line['key']}.{k + 1}"] = sum(38 if ord(ch) < 128 else 60 for ch in text) + 80
     checks["字幕寬度 ≤ 1760px"] = max(widths.values()) <= 1760
 
     # 抽幀：每個場景開頭 +1s、每句旁白中段、場景結尾前 0.5s
@@ -113,7 +124,8 @@ def main(content_path: Path) -> None:
     print(json.dumps(spec, ensure_ascii=False, indent=2))
     for k, ok in checks.items():
         print(("PASS " if ok else "FAIL ") + k)
-    print("sync diff (ms):", [s["diffMs"] for s in sync])
+    print("sync diff (ms):", [s["diffMs"] for s in sync], "| mp4 vs mix offset (ms):", spec["mp4VsMixOffsetMs"])
+    print("widest subtitle (px):", max(widths.values()))
     print(f"{len(shots)} frames -> {qa_dir}")
 
 

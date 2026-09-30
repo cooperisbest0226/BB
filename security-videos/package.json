@@ -9,7 +9,13 @@
     "render:video1": "scripts/render.sh video1 Video1",
     "qa:video1": "python3 scripts/qa.py content/video1.json",
     "render:video2": "scripts/render.sh video2 Video2",
-    "qa:video2": "python3 scripts/qa.py content/video2.json"
+    "qa:video2": "python3 scripts/qa.py content/video2.json",
+    "render:video3": "scripts/render.sh video3 Video3",
+    "qa:video3": "python3 scripts/qa.py content/video3.json",
+    "render:video4": "scripts/render.sh video4 Video4",
+    "qa:video4": "python3 scripts/qa.py content/video4.json",
+    "render:video5": "scripts/render.sh video5 Video5",
+    "qa:video5": "python3 scripts/qa.py content/video5.json"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.529",

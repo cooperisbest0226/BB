@@ -3,70 +3,72 @@
  "fps": 30,
  "width": 1920,
  "height": 1080,
- "durationInFrames": 1648,
+ "durationInFrames": 1670,
  "scenes": [
   {
    "id": "s1_added",
    "from": 0,
-   "duration": 202,
+   "duration": 203,
    "lines": [
     {
      "key": "s1_added_1",
      "file": "s1_added_1.wav",
-     "sub": "你被拉進一個群組　頭像和名字都是{y:總經理}",
+     "sub": "你被拉進一個群組　頭像和名字都是{y:董事長}",
      "from": 45,
-     "duration": 121,
-     "seconds": 4.014,
+     "duration": 122,
+     "seconds": 4.056,
      "phrases": [
       {
        "text": "你被拉進一個群組，",
        "from": 45
       },
       {
-       "text": "頭像和名字都是總經理。",
+       "text": "頭像和名字都是董事長。",
        "from": 101
       }
      ],
      "subs": [
       {
-       "text": "你被拉進一個群組　頭像和名字都是{y:總經理}",
+       "text": "你被拉進一個群組　頭像和名字都是{y:董事長}",
        "from": 45
       }
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "invite": 9
+   }
   },
   {
    "id": "s2_busy",
-   "from": 202,
+   "from": 203,
    "duration": 189,
    "lines": [
     {
      "key": "s2_busy_1",
      "file": "s2_busy_1.wav",
      "sub": "他說在開會　{r:不方便講電話}　要你先幫忙一件事",
-     "from": 220,
+     "from": 221,
      "duration": 141,
      "seconds": 4.681,
      "phrases": [
       {
        "text": "他說在開會，",
-       "from": 220
+       "from": 221
       },
       {
        "text": "不方便講電話，",
-       "from": 261
+       "from": 262
       },
       {
        "text": "要你先幫忙一件事。",
-       "from": 308
+       "from": 309
       }
      ],
      "subs": [
       {
        "text": "他說在開會　{r:不方便講電話}　要你先幫忙一件事",
-       "from": 220
+       "from": 221
       }
      ]
     }
@@ -75,38 +77,38 @@
   },
   {
    "id": "s3_asks",
-   "from": 391,
+   "from": 392,
    "duration": 201,
    "lines": [
     {
      "key": "s3_asks_1",
      "file": "s3_asks_1.wav",
      "sub": "{r:買點數}、{r:匯款}、{r:傳資料}　都是詐騙最常見的要求",
-     "from": 409,
+     "from": 410,
      "duration": 123,
      "seconds": 4.069,
      "phrases": [
       {
        "text": "買點數、",
-       "from": 409
+       "from": 410
       },
       {
        "text": "匯款、",
-       "from": 431
+       "from": 432
       },
       {
        "text": "傳資料，",
-       "from": 445
+       "from": 446
       },
       {
        "text": "都是詐騙最常見的要求。",
-       "from": 467
+       "from": 468
       }
      ],
      "subs": [
       {
        "text": "{r:買點數}、{r:匯款}、{r:傳資料}　都是詐騙最常見的要求",
-       "from": 409
+       "from": 410
       }
      ]
     }
@@ -115,30 +117,30 @@
   },
   {
    "id": "s4_fake",
-   "from": 592,
+   "from": 593,
    "duration": 288,
    "lines": [
     {
      "key": "s4_fake_1",
      "file": "s4_fake_1.wav",
      "sub": "照片和名字都能{r:冒用}　別只看頭像",
-     "from": 610,
+     "from": 611,
      "duration": 98,
      "seconds": 3.234,
      "phrases": [
       {
        "text": "照片和名字都能冒用，",
-       "from": 610
+       "from": 611
       },
       {
        "text": "別只看頭像。",
-       "from": 671
+       "from": 672
       }
      ],
      "subs": [
       {
        "text": "照片和名字都能{r:冒用}　別只看頭像",
-       "from": 610
+       "from": 611
       }
      ]
     },
@@ -146,27 +148,27 @@
      "key": "s4_fake_2",
      "file": "s4_fake_2.wav",
      "sub": "語氣{r:越急}、{r:越要你保密}　就越可疑",
-     "from": 723,
+     "from": 724,
      "duration": 97,
      "seconds": 3.226,
      "phrases": [
       {
        "text": "語氣越急、",
-       "from": 723
+       "from": 724
       },
       {
        "text": "越要你保密，",
-       "from": 761
+       "from": 762
       },
       {
        "text": "就越可疑。",
-       "from": 797
+       "from": 798
       }
      ],
      "subs": [
       {
        "text": "語氣{r:越急}、{r:越要你保密}　就越可疑",
-       "from": 723
+       "from": 724
       }
      ]
     }
@@ -175,30 +177,30 @@
   },
   {
    "id": "s5_call",
-   "from": 880,
+   "from": 881,
    "duration": 188,
    "lines": [
     {
      "key": "s5_call_1",
      "file": "s5_call_1.wav",
      "sub": "用你原本知道的電話　{g:直接打給本人確認}",
-     "from": 898,
+     "from": 899,
      "duration": 110,
      "seconds": 3.647,
      "phrases": [
       {
        "text": "用你原本知道的電話，",
-       "from": 898
+       "from": 899
       },
       {
        "text": "直接打給本人確認。",
-       "from": 954
+       "from": 955
       }
      ],
      "subs": [
       {
        "text": "用你原本知道的電話　{g:直接打給本人確認}",
-       "from": 898
+       "from": 899
       }
      ]
     }
@@ -207,70 +209,73 @@
   },
   {
    "id": "s6_report",
-   "from": 1068,
+   "from": 1069,
    "duration": 237,
    "lines": [
     {
      "key": "s6_report_1",
      "file": "s6_report_1.wav",
      "sub": "{r:不匯款}、{r:不買點數}、{r:不給資料}　截圖後{g:交給 Henry}",
-     "from": 1086,
+     "from": 1087,
      "duration": 159,
      "seconds": 5.276,
      "phrases": [
       {
        "text": "不匯款、",
-       "from": 1086
+       "from": 1087
       },
       {
        "text": "不買點數、",
-       "from": 1115
+       "from": 1116
       },
       {
        "text": "不給資料，",
-       "from": 1156
+       "from": 1157
       },
       {
        "text": "截圖後交給 Henry。",
-       "from": 1196
+       "from": 1197
       }
      ],
      "subs": [
       {
        "text": "{r:不匯款}、{r:不買點數}、{r:不給資料}　截圖後{g:交給 Henry}",
-       "from": 1086
+       "from": 1087
       }
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "reportClick": 1227,
+    "reportDone": 1233
+   }
   },
   {
    "id": "s7_slogan",
-   "from": 1305,
-   "duration": 343,
+   "from": 1306,
+   "duration": 364,
    "lines": [
     {
      "key": "s7_slogan_1",
      "file": "s7_slogan_1.wav",
-     "sub": "主管真的有需要　也會{g:願意等你確認}",
-     "from": 1329,
-     "duration": 101,
-     "seconds": 3.347,
+     "sub": "董事長真的有需要　也會{g:願意等你確認}",
+     "from": 1330,
+     "duration": 107,
+     "seconds": 3.565,
      "phrases": [
       {
-       "text": "主管真的有需要，",
-       "from": 1329
+       "text": "董事長真的有需要，",
+       "from": 1330
       },
       {
        "text": "也會願意等你確認。",
-       "from": 1376
+       "from": 1382
       }
      ],
      "subs": [
       {
-       "text": "主管真的有需要　也會{g:願意等你確認}",
-       "from": 1329
+       "text": "董事長真的有需要　也會{g:願意等你確認}",
+       "from": 1330
       }
      ]
     },
@@ -278,29 +283,48 @@
      "key": "s7_slogan_2",
      "file": "s7_slogan_2.wav",
      "sub": "{y:要錢要資料}　{g:先打給本人確認}",
-     "from": 1454,
+     "from": 1461,
      "duration": 89,
      "seconds": 2.938,
      "phrases": [
       {
        "text": "要錢要資料，",
-       "from": 1454
+       "from": 1461
       },
       {
        "text": "先打給本人確認。",
-       "from": 1495
+       "from": 1502
       }
      ],
      "subs": [
       {
        "text": "{y:要錢要資料}　{g:先打給本人確認}",
-       "from": 1454
+       "from": 1461
       }
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "slogan": 1461
+   }
   }
  ],
- "sfx": []
+ "sfx": [
+  {
+   "frame": 9,
+   "sound": "chime"
+  },
+  {
+   "frame": 1227,
+   "sound": "click"
+  },
+  {
+   "frame": 1233,
+   "sound": "success"
+  },
+  {
+   "frame": 1461,
+   "sound": "success"
+  }
+ ]
 }

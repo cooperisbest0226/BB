@@ -6,6 +6,9 @@
 |---|---|---|
 | 影片一：釣魚信辨識（三看一不點，有疑問就回報） | `content/video1.json` | `../output/video1_phishing.mp4` |
 | 影片二：AI 工具使用規範（貼之前先想一想，機密資料不外送） | `content/video2.json` | `../output/video2_ai_usage.mp4` |
+| 影片三：假冒主管群組詐騙（要錢要資料，先打給本人確認） | `content/video3.json` | `../output/video3_fake_boss_group.mp4` |
+| 影片四：勒索病毒應變（先斷網、不付款、快回報） | `content/video4.json` | `../output/video4_ransomware.mp4` |
+| 影片五：軟體更新與盜版軟體（更新不拖延，盜版不安裝） | `content/video5.json` | `../output/video5_updates_piracy.mp4` |
 
 ## 製作流程
 
@@ -32,6 +35,7 @@ content/<id>.json ──► scripts/tts.py ──► scripts/build_timeline.py �
 ```bash
 scripts/render.sh video1 Video1   # 產生 ../output/video1_phishing.mp4
 scripts/render.sh video2 Video2   # 產生 ../output/video2_ai_usage.mp4
+scripts/render.sh video3 Video3   # 影片三～五同理（npm run render:video3 …）
 python3 scripts/qa.py content/video1.json
 ```
 
@@ -72,7 +76,7 @@ curl -LO $B/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz
 
 - 改旁白或字幕：編輯 `content/<id>.json` 的 `tts`／`sub`（`{r:…}` 紅、`{g:…}` 綠、`{y:…}` 黃）。
   太長的句子在 `sub` 裡用 `|` 分段，字幕會依序換行顯示，旁白仍整句合成。
-- 「AI」要在 `say` 裡寫成 `A.I.`，而且後面不要直接接標點，Kokoro 才會唸成兩個字母。
+- 「AI」要在 `say` 裡寫成 `A.I.`，而且後面不要直接接標點，Kokoro 才會唸成兩個字母；「BPM」同理寫成 `B.P.M.`。
   讀音不對時加 `say`（實際送進 TTS 的文字），字幕不受影響。
 - 改節奏：調整各場景的 `lead`、`gapBefore`、`tail`。
 - 同步點（`cues`）用 `start`、`end`、`line:N`、`lineEnd:N`、`phrase:N.M` 加減秒數表示。

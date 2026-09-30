@@ -263,3 +263,116 @@ export const Magnifier: React.FC<P> = ({size = 48, color = C.white, style}) => (
     <path d="M40 40 L58 58" stroke={color} strokeWidth="8" strokeLinecap="round" />
   </svg>
 );
+
+export const Banknote: React.FC<P> = ({size = 110, style}) => (
+  <svg width={size} height={size * 0.62} viewBox="0 0 100 62" style={style}>
+    <rect x="3" y="3" width="94" height="56" rx="8" fill="#4CC38A" stroke="#2A8F5E" strokeWidth="4" />
+    <circle cx="50" cy="31" r="14" fill="none" stroke="#fff" strokeWidth="4" />
+    <text x="50" y="38" textAnchor="middle" fontSize="18" fontWeight="700" fill="#fff" fontFamily="DejaVu Sans, sans-serif">$</text>
+    <circle cx="18" cy="31" r="4" fill="#fff" />
+    <circle cx="82" cy="31" r="4" fill="#fff" />
+  </svg>
+);
+
+export const GiftCard: React.FC<P> = ({size = 110, style}) => (
+  <svg width={size} height={size * 0.68} viewBox="0 0 100 68" style={style}>
+    <rect x="3" y="3" width="94" height="62" rx="9" fill={C.yellow} />
+    <rect x="3" y="20" width="94" height="10" fill="#E08E0B" />
+    <rect x="12" y="40" width="48" height="8" rx="4" fill="#fff" opacity="0.9" />
+    <rect x="12" y="52" width="30" height="6" rx="3" fill="#fff" opacity="0.7" />
+    <path d="M76 40 l4 8 9 1 -7 6 2 9 -8-5 -8 5 2-9 -7-6 9-1 Z" fill="#fff" />
+  </svg>
+);
+
+export const Handset: React.FC<P> = ({size = 64, color = C.white, style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    <path
+      d="M18 6 C22 6 26 16 26 19 C26 22 21 24 21 27 C21 32 32 43 37 43 C40 43 42 38 45 38 C48 38 58 42 58 46 C58 52 52 58 46 58 C26 58 6 38 6 18 C6 12 12 6 18 6 Z"
+      fill={color}
+    />
+  </svg>
+);
+
+export const Camera: React.FC<P> = ({size = 64, color = C.white, style}) => (
+  <svg width={size} height={size * 0.8} viewBox="0 0 80 64" style={style}>
+    <path d="M26 8 H54 L60 18 H72 a4 4 0 0 1 4 4 V56 a4 4 0 0 1 -4 4 H8 a4 4 0 0 1 -4 -4 V22 a4 4 0 0 1 4 -4 H20 Z" fill={color} />
+    <circle cx="40" cy="38" r="14" fill={C.bg} />
+    <circle cx="40" cy="38" r="8" fill={color} />
+  </svg>
+);
+
+export const Trash: React.FC<P> = ({size = 90, color = C.white, style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    <rect x="10" y="12" width="44" height="7" rx="3" fill={color} />
+    <rect x="24" y="5" width="16" height="8" rx="3" fill={color} />
+    <path d="M14 22 H50 L46 58 H18 Z" fill={color} />
+    <path d="M26 30 V50 M38 30 V50" stroke={C.bg} strokeWidth="4" strokeLinecap="round" />
+  </svg>
+);
+
+export const Refresh: React.FC<P> = ({size = 90, color = C.white, style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    <path d="M52 30 A20 20 0 1 1 44 14" fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />
+    <path d="M40 4 L52 14 L38 22 Z" fill={color} />
+  </svg>
+);
+
+export const Power: React.FC<P> = ({size = 90, color = C.white, style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    <path d="M20 16 A22 22 0 1 0 44 16" fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />
+    <path d="M32 6 V30" stroke={color} strokeWidth="7" strokeLinecap="round" />
+  </svg>
+);
+
+export const Bug: React.FC<P> = ({size = 90, color = C.red, style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    <g stroke={color} strokeWidth="4" strokeLinecap="round">
+      <path d="M14 26 L4 20 M14 36 H4 M14 46 L4 52 M50 26 L60 20 M50 36 H60 M50 46 L60 52 M24 12 L18 4 M40 12 L46 4" />
+    </g>
+    <ellipse cx="32" cy="38" rx="17" ry="21" fill={color} />
+    <circle cx="32" cy="16" r="10" fill={color} />
+    <path d="M32 22 V58" stroke="#0F1B2D" strokeWidth="3" />
+    <circle cx="28" cy="14" r="2.5" fill="#fff" />
+    <circle cx="36" cy="14" r="2.5" fill="#fff" />
+  </svg>
+);
+
+export const Folder: React.FC<P> = ({size = 90, color = C.yellow, style}) => (
+  <svg width={size} height={size * 0.8} viewBox="0 0 80 64" style={style}>
+    <path d="M4 12 a4 4 0 0 1 4 -4 H28 L34 14 H72 a4 4 0 0 1 4 4 V56 a4 4 0 0 1 -4 4 H8 a4 4 0 0 1 -4 -4 Z" fill={color} />
+    <rect x="4" y="22" width="72" height="38" rx="4" fill={color} opacity="0.85" />
+  </svg>
+);
+
+export const Server: React.FC<P> = ({size = 80, color = '#9FB3CF', style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    {[6, 25, 44].map((y) => (
+      <g key={y}>
+        <rect x="8" y={y} width="48" height="15" rx="4" fill={color} />
+        <circle cx="16" cy={y + 7.5} r="2.5" fill="#4CC38A" />
+        <rect x="26" y={y + 5.5} width="22" height="4" rx="2" fill="#0F1B2D" opacity="0.4" />
+      </g>
+    ))}
+  </svg>
+);
+
+export const FormIcon: React.FC<P> = ({size = 100, style}) => (
+  <svg width={size} height={size * 1.15} viewBox="0 0 80 92" style={style}>
+    <rect x="6" y="6" width="68" height="82" rx="8" fill="#FFFFFF" stroke="#C8D3E2" strokeWidth="3" />
+    <rect x="26" y="1" width="28" height="12" rx="5" fill="#7C9CCB" />
+    {[28, 46, 64].map((y) => (
+      <g key={y}>
+        <rect x="16" y={y} width="12" height="12" rx="3" fill="none" stroke="#5B7BA8" strokeWidth="3" />
+        <path d={`M18 ${y + 6} l3 3 l6 -7`} stroke="#30A46C" strokeWidth="3" fill="none" />
+        <rect x="34" y={y + 3} width="30" height="6" rx="3" fill="#B7C2D2" />
+      </g>
+    ))}
+  </svg>
+);
+
+export const LegalMark: React.FC<P> = ({size = 48, color = C.white, style}) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" style={style}>
+    <circle cx="32" cy="32" r="27" fill="none" stroke={color} strokeWidth="5" />
+    <text x="32" y="44" textAnchor="middle" fontSize="34" fontWeight="700" fill={color} fontFamily="DejaVu Sans, sans-serif">§</text>
+  </svg>
+);

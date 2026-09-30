@@ -3,7 +3,7 @@
  "fps": 30,
  "width": 1920,
  "height": 1080,
- "durationInFrames": 1668,
+ "durationInFrames": 1805,
  "scenes": [
   {
    "id": "s1_later",
@@ -35,7 +35,11 @@
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "later1": 36,
+    "later2": 72,
+    "later3": 105
+   }
   },
   {
    "id": "s2_patch",
@@ -96,33 +100,53 @@
   {
    "id": "s3_install",
    "from": 525,
-   "duration": 219,
+   "duration": 282,
    "lines": [
     {
      "key": "s3_install_1",
      "file": "s3_install_1.wav",
-     "sub": "看到系統更新提醒　存好檔案　{g:就讓它完成安裝}",
+     "sub": "公司會{g:自動推送}系統更新",
      "from": 543,
-     "duration": 147,
-     "seconds": 4.894,
+     "duration": 64,
+     "seconds": 2.117,
      "phrases": [
       {
-       "text": "看到系統更新提醒，",
+       "text": "公司會自動推送系統更新。",
        "from": 543
-      },
-      {
-       "text": "存好檔案，",
-       "from": 601
-      },
-      {
-       "text": "就讓它完成安裝。",
-       "from": 638
       }
      ],
      "subs": [
       {
-       "text": "看到系統更新提醒　存好檔案　{g:就讓它完成安裝}",
+       "text": "公司會{g:自動推送}系統更新",
        "from": 543
+      }
+     ]
+    },
+    {
+     "key": "s3_install_2",
+     "file": "s3_install_2.wav",
+     "sub": "看到重新開機提醒　存好檔案　{g:就讓它完成}",
+     "from": 619,
+     "duration": 134,
+     "seconds": 4.437,
+     "phrases": [
+      {
+       "text": "看到重新開機提醒，",
+       "from": 619
+      },
+      {
+       "text": "存好檔案，",
+       "from": 677
+      },
+      {
+       "text": "就讓它完成。",
+       "from": 714
+      }
+     ],
+     "subs": [
+      {
+       "text": "看到重新開機提醒　存好檔案　{g:就讓它完成}",
+       "from": 619
       }
      ]
     }
@@ -131,90 +155,92 @@
   },
   {
    "id": "s4_fakeupdate",
-   "from": 744,
-   "duration": 285,
+   "from": 807,
+   "duration": 322,
    "lines": [
     {
      "key": "s4_fakeupdate_1",
      "file": "s4_fakeupdate_1.wav",
      "sub": "但{r:網頁突然跳出}要你下載的更新　多半是{r:陷阱}",
-     "from": 762,
+     "from": 825,
      "duration": 123,
      "seconds": 4.097,
      "phrases": [
       {
        "text": "但網頁突然跳出要你下載的更新，",
-       "from": 762
+       "from": 825
       },
       {
        "text": "多半是陷阱。",
-       "from": 848
+       "from": 911
       }
      ],
      "subs": [
       {
        "text": "但{r:網頁突然跳出}要你下載的更新　多半是{r:陷阱}",
-       "from": 762
+       "from": 825
       }
      ]
     },
     {
      "key": "s4_fakeupdate_2",
      "file": "s4_fakeupdate_2.wav",
-     "sub": "{r:不要下載}　{g:直接關掉網頁}",
-     "from": 897,
-     "duration": 78,
-     "seconds": 2.593,
+     "sub": "{g:真正的更新由公司推送}　網頁跳出的{r:不要下載}",
+     "from": 960,
+     "duration": 115,
+     "seconds": 3.821,
      "phrases": [
       {
-       "text": "不要下載，",
-       "from": 897
+       "text": "真正的更新由公司推送，",
+       "from": 960
       },
       {
-       "text": "直接關掉網頁。",
-       "from": 931
+       "text": "網頁跳出的不要下載。",
+       "from": 1027
       }
      ],
      "subs": [
       {
-       "text": "{r:不要下載}　{g:直接關掉網頁}",
-       "from": 897
+       "text": "{g:真正的更新由公司推送}　網頁跳出的{r:不要下載}",
+       "from": 960
       }
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "closeTab": 1051
+   }
   },
   {
    "id": "s5_pirate",
-   "from": 1029,
+   "from": 1129,
    "duration": 215,
    "lines": [
     {
      "key": "s5_pirate_1",
      "file": "s5_pirate_1.wav",
      "sub": "{r:破解版}和{r:盜版軟體}常夾帶惡意程式|也有{r:侵權}的法律風險",
-     "from": 1047,
+     "from": 1147,
      "duration": 137,
      "seconds": 4.545,
      "phrases": [
       {
        "text": "破解版和盜版軟體常夾帶惡意程式，",
-       "from": 1047
+       "from": 1147
       },
       {
        "text": "也有侵權的法律風險。",
-       "from": 1126
+       "from": 1226
       }
      ],
      "subs": [
       {
        "text": "{r:破解版}和{r:盜版軟體}常夾帶惡意程式",
-       "from": 1047
+       "from": 1147
       },
       {
        "text": "也有{r:侵權}的法律風險",
-       "from": 1126
+       "from": 1226
       }
      ]
     }
@@ -223,34 +249,38 @@
   },
   {
    "id": "s6_request",
-   "from": 1244,
-   "duration": 219,
+   "from": 1344,
+   "duration": 256,
    "lines": [
     {
      "key": "s6_request_1",
      "file": "s6_request_1.wav",
-     "sub": "需要新軟體　先提出申請　{g:交給 Henry 評估安裝}",
-     "from": 1262,
-     "duration": 141,
-     "seconds": 4.68,
+     "sub": "需要新軟體　用 {g:BPM 表單}申請　或{g:寫信說明}　交給 {g:Henry}",
+     "from": 1362,
+     "duration": 178,
+     "seconds": 5.925,
      "phrases": [
       {
        "text": "需要新軟體，",
-       "from": 1262
+       "from": 1362
       },
       {
-       "text": "先提出申請，",
-       "from": 1305
+       "text": "用 BPM 表單申請，",
+       "from": 1396
       },
       {
-       "text": "交給 Henry 評估安裝。",
-       "from": 1341
+       "text": "或寫信說明，",
+       "from": 1483
+      },
+      {
+       "text": "交給 Henry。",
+       "from": 1517
       }
      ],
      "subs": [
       {
-       "text": "需要新軟體　先提出申請　{g:交給 Henry 評估安裝}",
-       "from": 1262
+       "text": "需要新軟體　用 {g:BPM 表單}申請　或{g:寫信說明}　交給 {g:Henry}",
+       "from": 1362
       }
      ]
     }
@@ -259,36 +289,59 @@
   },
   {
    "id": "s7_slogan",
-   "from": 1463,
+   "from": 1600,
    "duration": 205,
    "lines": [
     {
      "key": "s7_slogan_1",
      "file": "s7_slogan_1.wav",
      "sub": "{y:更新不拖延}　{r:盜版不安裝}",
-     "from": 1487,
+     "from": 1624,
      "duration": 76,
      "seconds": 2.518,
      "phrases": [
       {
        "text": "更新不拖延，",
-       "from": 1487
+       "from": 1624
       },
       {
        "text": "盜版不安裝。",
-       "from": 1531
+       "from": 1668
       }
      ],
      "subs": [
       {
        "text": "{y:更新不拖延}　{r:盜版不安裝}",
-       "from": 1487
+       "from": 1624
       }
      ]
     }
    ],
-   "cues": {}
+   "cues": {
+    "slogan": 1624
+   }
   }
  ],
- "sfx": []
+ "sfx": [
+  {
+   "frame": 36,
+   "sound": "click"
+  },
+  {
+   "frame": 72,
+   "sound": "click"
+  },
+  {
+   "frame": 105,
+   "sound": "click"
+  },
+  {
+   "frame": 1051,
+   "sound": "click"
+  },
+  {
+   "frame": 1624,
+   "sound": "success"
+  }
+ ]
 }
