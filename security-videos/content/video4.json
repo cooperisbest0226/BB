@@ -1,0 +1,119 @@
+{
+  "id": "video4",
+  "title": "勒索病毒應變",
+  "output": "video4_ransomware.mp4",
+  "durationRange": [
+    55,
+    65
+  ],
+  "tts": {
+    "engine": "kokoro",
+    "kokoro": {
+      "sid": 45,
+      "speed": 1.3,
+      "takes": 8
+    },
+    "edge": {
+      "voice": "zh-TW-HsiaoChenNeural",
+      "rate": "-5%"
+    },
+    "google": {
+      "languageCode": "cmn-TW",
+      "voice": "cmn-TW-Wavenet-A",
+      "speakingRate": 1.1
+    },
+    "files": {
+      "dir": "voice/video4"
+    }
+  },
+  "note": "草稿：待確認旁白後再製作畫面。",
+  "scenes": [
+    {
+      "id": "s1_locked",
+      "lead": 1.5,
+      "tail": 1.5,
+      "lines": [
+        {
+          "tts": "檔案突然打不開，畫面跳出要你付款贖回，這就是勒索病毒。",
+          "sub": "檔案突然打不開　畫面跳出要你{r:付款贖回}|這就是{r:勒索病毒}"
+        }
+      ]
+    },
+    {
+      "id": "s2_spread",
+      "lead": 0.6,
+      "tail": 1.5,
+      "lines": [
+        {
+          "tts": "它會透過網路，把共用資料夾和其他電腦一起加密。",
+          "sub": "它會透過網路　把{r:共用資料夾}和{r:其他電腦}一起加密"
+        }
+      ]
+    },
+    {
+      "id": "s3_unplug",
+      "lead": 0.6,
+      "tail": 1.8,
+      "lines": [
+        {
+          "tts": "第一步，拔掉網路線、關閉無線網路，阻止它擴散。",
+          "sub": "{y:第一步}　{g:拔掉網路線}、{g:關閉無線網路}　阻止它擴散"
+        },
+        {
+          "tts": "如果拔不掉網路，就先關機。",
+          "sub": "如果拔不掉網路　{y:就先關機}",
+          "gapBefore": 0.5
+        }
+      ]
+    },
+    {
+      "id": "s4_dont",
+      "lead": 0.6,
+      "tail": 1.8,
+      "lines": [
+        {
+          "tts": "不要付款，也不要自己刪檔、找工具解密，保留現場。",
+          "sub": "{r:不要付款}　也不要自己刪檔、找工具解密　{y:保留現場}"
+        }
+      ]
+    },
+    {
+      "id": "s5_report",
+      "lead": 0.6,
+      "tail": 1.8,
+      "lines": [
+        {
+          "tts": "用手機拍下畫面，立刻回報，交給 Henry 處理。",
+          "sub": "用手機拍下畫面　立刻回報　{g:交給 Henry 處理}"
+        },
+        {
+          "tts": "越早回報，損失越小。",
+          "sub": "{g:越早回報}　損失越小",
+          "gapBefore": 0.4
+        }
+      ]
+    },
+    {
+      "id": "s6_prevent",
+      "lead": 0.6,
+      "tail": 2.0,
+      "lines": [
+        {
+          "tts": "平常做好備份、更新系統、不開可疑附件，就能大幅降低風險。",
+          "sub": "平常{g:做好備份}、{g:更新系統}、{g:不開可疑附件}|就能大幅降低風險"
+        }
+      ]
+    },
+    {
+      "id": "s7_slogan",
+      "lead": 0.8,
+      "tail": 3.5,
+      "lines": [
+        {
+          "tts": "先斷網、不付款、快回報。",
+          "sub": "{y:先斷網}、{r:不付款}、{g:快回報}"
+        }
+      ]
+    }
+  ]
+}

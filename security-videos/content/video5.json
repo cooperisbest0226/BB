@@ -1,0 +1,120 @@
+{
+  "id": "video5",
+  "title": "軟體更新與盜版軟體",
+  "output": "video5_updates_piracy.mp4",
+  "durationRange": [
+    55,
+    65
+  ],
+  "tts": {
+    "engine": "kokoro",
+    "kokoro": {
+      "sid": 45,
+      "speed": 1.3,
+      "takes": 8
+    },
+    "edge": {
+      "voice": "zh-TW-HsiaoChenNeural",
+      "rate": "-5%"
+    },
+    "google": {
+      "languageCode": "cmn-TW",
+      "voice": "cmn-TW-Wavenet-A",
+      "speakingRate": 1.1
+    },
+    "files": {
+      "dir": "voice/video5"
+    }
+  },
+  "note": "草稿：待確認旁白後再製作畫面。",
+  "scenes": [
+    {
+      "id": "s1_later",
+      "lead": 1.5,
+      "tail": 1.2,
+      "lines": [
+        {
+          "tts": "更新通知一直按稍後，等於把門一直開著。",
+          "sub": "更新通知一直按{r:稍後}　等於把門一直開著",
+          "say": "更新通知一直按稍後，等於把門一直開着。"
+        }
+      ]
+    },
+    {
+      "id": "s2_patch",
+      "lead": 0.6,
+      "tail": 1.8,
+      "lines": [
+        {
+          "tts": "更新會修補已知漏洞，駭客最愛找沒更新的電腦。",
+          "sub": "更新會{g:修補已知漏洞}　駭客最愛找{r:沒更新的電腦}"
+        },
+        {
+          "tts": "很多攻擊，用的都是早就有修補的漏洞。",
+          "sub": "很多攻擊　用的都是{y:早就有修補的漏洞}",
+          "gapBefore": 0.5
+        }
+      ]
+    },
+    {
+      "id": "s3_install",
+      "lead": 0.6,
+      "tail": 1.8,
+      "lines": [
+        {
+          "tts": "看到系統更新提醒，存好檔案，就讓它完成安裝。",
+          "sub": "看到系統更新提醒　存好檔案　{g:就讓它完成安裝}"
+        }
+      ]
+    },
+    {
+      "id": "s4_fakeupdate",
+      "lead": 0.6,
+      "tail": 1.8,
+      "lines": [
+        {
+          "tts": "但網頁突然跳出要你下載的更新，多半是陷阱。",
+          "sub": "但{r:網頁突然跳出}要你下載的更新　多半是{r:陷阱}"
+        },
+        {
+          "tts": "不要下載，直接關掉網頁。",
+          "sub": "{r:不要下載}　{g:直接關掉網頁}",
+          "gapBefore": 0.4
+        }
+      ]
+    },
+    {
+      "id": "s5_pirate",
+      "lead": 0.6,
+      "tail": 2.0,
+      "lines": [
+        {
+          "tts": "破解版和盜版軟體常夾帶惡意程式，也有侵權的法律風險。",
+          "sub": "{r:破解版}和{r:盜版軟體}常夾帶惡意程式|也有{r:侵權}的法律風險"
+        }
+      ]
+    },
+    {
+      "id": "s6_request",
+      "lead": 0.6,
+      "tail": 2.0,
+      "lines": [
+        {
+          "tts": "需要新軟體，先提出申請，交給 Henry 評估安裝。",
+          "sub": "需要新軟體　先提出申請　{g:交給 Henry 評估安裝}"
+        }
+      ]
+    },
+    {
+      "id": "s7_slogan",
+      "lead": 0.8,
+      "tail": 3.5,
+      "lines": [
+        {
+          "tts": "更新不拖延，盜版不安裝。",
+          "sub": "{y:更新不拖延}　{r:盜版不安裝}"
+        }
+      ]
+    }
+  ]
+}
