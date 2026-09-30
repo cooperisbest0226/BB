@@ -1,0 +1,326 @@
+{
+ "id": "video4",
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "durationInFrames": 1702,
+ "scenes": [
+  {
+   "id": "s1_locked",
+   "from": 0,
+   "duration": 252,
+   "lines": [
+    {
+     "key": "s1_locked_1",
+     "file": "s1_locked_1.wav",
+     "sub": "檔案突然打不開　畫面跳出要你{r:付款贖回}|這就是{r:勒索病毒}",
+     "from": 45,
+     "duration": 162,
+     "seconds": 5.384,
+     "phrases": [
+      {
+       "text": "檔案突然打不開，",
+       "from": 45
+      },
+      {
+       "text": "畫面跳出要你付款贖回，",
+       "from": 92
+      },
+      {
+       "text": "這就是勒索病毒。",
+       "from": 155
+      }
+     ],
+     "subs": [
+      {
+       "text": "檔案突然打不開　畫面跳出要你{r:付款贖回}",
+       "from": 45
+      },
+      {
+       "text": "這就是{r:勒索病毒}",
+       "from": 155
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s2_spread",
+   "from": 252,
+   "duration": 184,
+   "lines": [
+    {
+     "key": "s2_spread_1",
+     "file": "s2_spread_1.wav",
+     "sub": "它會透過網路　把{r:共用資料夾}和{r:其他電腦}一起加密",
+     "from": 270,
+     "duration": 121,
+     "seconds": 4.014,
+     "phrases": [
+      {
+       "text": "它會透過網路，",
+       "from": 270
+      },
+      {
+       "text": "把共用資料夾和其他電腦一起加密。",
+       "from": 311
+      }
+     ],
+     "subs": [
+      {
+       "text": "它會透過網路　把{r:共用資料夾}和{r:其他電腦}一起加密",
+       "from": 270
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s3_unplug",
+   "from": 436,
+   "duration": 316,
+   "lines": [
+    {
+     "key": "s3_unplug_1",
+     "file": "s3_unplug_1.wav",
+     "sub": "{y:第一步}　{g:拔掉網路線}、{g:關閉無線網路}　阻止它擴散",
+     "from": 454,
+     "duration": 154,
+     "seconds": 5.131,
+     "phrases": [
+      {
+       "text": "第一步，",
+       "from": 454
+      },
+      {
+       "text": "拔掉網路線、",
+       "from": 487
+      },
+      {
+       "text": "關閉無線網路，",
+       "from": 527
+      },
+      {
+       "text": "阻止它擴散。",
+       "from": 575
+      }
+     ],
+     "subs": [
+      {
+       "text": "{y:第一步}　{g:拔掉網路線}、{g:關閉無線網路}　阻止它擴散",
+       "from": 454
+      }
+     ]
+    },
+    {
+     "key": "s3_unplug_2",
+     "file": "s3_unplug_2.wav",
+     "sub": "如果拔不掉網路　{y:就先關機}",
+     "from": 623,
+     "duration": 75,
+     "seconds": 2.49,
+     "phrases": [
+      {
+       "text": "如果拔不掉網路，",
+       "from": 623
+      },
+      {
+       "text": "就先關機。",
+       "from": 668
+      }
+     ],
+     "subs": [
+      {
+       "text": "如果拔不掉網路　{y:就先關機}",
+       "from": 623
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s4_dont",
+   "from": 752,
+   "duration": 234,
+   "lines": [
+    {
+     "key": "s4_dont_1",
+     "file": "s4_dont_1.wav",
+     "sub": "{r:不要付款}　也不要自己刪檔、找工具解密　{y:保留現場}",
+     "from": 770,
+     "duration": 162,
+     "seconds": 5.385,
+     "phrases": [
+      {
+       "text": "不要付款，",
+       "from": 770
+      },
+      {
+       "text": "也不要自己刪檔、",
+       "from": 804
+      },
+      {
+       "text": "找工具解密，",
+       "from": 855
+      },
+      {
+       "text": "保留現場。",
+       "from": 903
+      }
+     ],
+     "subs": [
+      {
+       "text": "{r:不要付款}　也不要自己刪檔、找工具解密　{y:保留現場}",
+       "from": 770
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s5_report",
+   "from": 986,
+   "duration": 264,
+   "lines": [
+    {
+     "key": "s5_report_1",
+     "file": "s5_report_1.wav",
+     "sub": "用手機拍下畫面　立刻回報　{g:交給 Henry 處理}",
+     "from": 1004,
+     "duration": 110,
+     "seconds": 3.65,
+     "phrases": [
+      {
+       "text": "用手機拍下畫面，",
+       "from": 1004
+      },
+      {
+       "text": "立刻回報，",
+       "from": 1051
+      },
+      {
+       "text": "交給 Henry 處理。",
+       "from": 1082
+      }
+     ],
+     "subs": [
+      {
+       "text": "用手機拍下畫面　立刻回報　{g:交給 Henry 處理}",
+       "from": 1004
+      }
+     ]
+    },
+    {
+     "key": "s5_report_2",
+     "file": "s5_report_2.wav",
+     "sub": "{g:越早回報}　損失越小",
+     "from": 1126,
+     "duration": 70,
+     "seconds": 2.321,
+     "phrases": [
+      {
+       "text": "越早回報，",
+       "from": 1126
+      },
+      {
+       "text": "損失越小。",
+       "from": 1162
+      }
+     ],
+     "subs": [
+      {
+       "text": "{g:越早回報}　損失越小",
+       "from": 1126
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s6_prevent",
+   "from": 1250,
+   "duration": 267,
+   "lines": [
+    {
+     "key": "s6_prevent_1",
+     "file": "s6_prevent_1.wav",
+     "sub": "平常{g:做好備份}、{g:更新系統}、{g:不開可疑附件}|就能大幅降低風險",
+     "from": 1268,
+     "duration": 189,
+     "seconds": 6.274,
+     "phrases": [
+      {
+       "text": "平常做好備份、",
+       "from": 1268
+      },
+      {
+       "text": "更新系統、",
+       "from": 1321
+      },
+      {
+       "text": "不開可疑附件，",
+       "from": 1356
+      },
+      {
+       "text": "就能大幅降低風險。",
+       "from": 1403
+      }
+     ],
+     "subs": [
+      {
+       "text": "平常{g:做好備份}、{g:更新系統}、{g:不開可疑附件}",
+       "from": 1268
+      },
+      {
+       "text": "就能大幅降低風險",
+       "from": 1403
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s7_slogan",
+   "from": 1517,
+   "duration": 185,
+   "lines": [
+    {
+     "key": "s7_slogan_1",
+     "file": "s7_slogan_1.wav",
+     "sub": "{y:先斷網}、{r:不付款}、{g:快回報}",
+     "from": 1541,
+     "duration": 56,
+     "seconds": 1.856,
+     "phrases": [
+      {
+       "text": "先斷網、",
+       "from": 1541
+      },
+      {
+       "text": "不付款、",
+       "from": 1563
+      },
+      {
+       "text": "快回報。",
+       "from": 1581
+      }
+     ],
+     "subs": [
+      {
+       "text": "{y:先斷網}、{r:不付款}、{g:快回報}",
+       "from": 1541
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  }
+ ],
+ "sfx": []
+}

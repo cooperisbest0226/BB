@@ -1,0 +1,294 @@
+{
+ "id": "video5",
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "durationInFrames": 1668,
+ "scenes": [
+  {
+   "id": "s1_later",
+   "from": 0,
+   "duration": 198,
+   "lines": [
+    {
+     "key": "s1_later_1",
+     "file": "s1_later_1.wav",
+     "sub": "更新通知一直按{r:稍後}　等於把門一直開著",
+     "from": 45,
+     "duration": 117,
+     "seconds": 3.888,
+     "phrases": [
+      {
+       "text": "更新通知一直按稍後，",
+       "from": 45
+      },
+      {
+       "text": "等於把門一直開著。",
+       "from": 110
+      }
+     ],
+     "subs": [
+      {
+       "text": "更新通知一直按{r:稍後}　等於把門一直開著",
+       "from": 45
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s2_patch",
+   "from": 198,
+   "duration": 327,
+   "lines": [
+    {
+     "key": "s2_patch_1",
+     "file": "s2_patch_1.wav",
+     "sub": "更新會{g:修補已知漏洞}　駭客最愛找{r:沒更新的電腦}",
+     "from": 216,
+     "duration": 135,
+     "seconds": 4.474,
+     "phrases": [
+      {
+       "text": "更新會修補已知漏洞，",
+       "from": 216
+      },
+      {
+       "text": "駭客最愛找沒更新的電腦。",
+       "from": 279
+      }
+     ],
+     "subs": [
+      {
+       "text": "更新會{g:修補已知漏洞}　駭客最愛找{r:沒更新的電腦}",
+       "from": 216
+      }
+     ]
+    },
+    {
+     "key": "s2_patch_2",
+     "file": "s2_patch_2.wav",
+     "sub": "很多攻擊　用的都是{y:早就有修補的漏洞}",
+     "from": 366,
+     "duration": 105,
+     "seconds": 3.476,
+     "phrases": [
+      {
+       "text": "很多攻擊，",
+       "from": 366
+      },
+      {
+       "text": "用的都是早就有修補的漏洞。",
+       "from": 402
+      }
+     ],
+     "subs": [
+      {
+       "text": "很多攻擊　用的都是{y:早就有修補的漏洞}",
+       "from": 366
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s3_install",
+   "from": 525,
+   "duration": 219,
+   "lines": [
+    {
+     "key": "s3_install_1",
+     "file": "s3_install_1.wav",
+     "sub": "看到系統更新提醒　存好檔案　{g:就讓它完成安裝}",
+     "from": 543,
+     "duration": 147,
+     "seconds": 4.894,
+     "phrases": [
+      {
+       "text": "看到系統更新提醒，",
+       "from": 543
+      },
+      {
+       "text": "存好檔案，",
+       "from": 601
+      },
+      {
+       "text": "就讓它完成安裝。",
+       "from": 638
+      }
+     ],
+     "subs": [
+      {
+       "text": "看到系統更新提醒　存好檔案　{g:就讓它完成安裝}",
+       "from": 543
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s4_fakeupdate",
+   "from": 744,
+   "duration": 285,
+   "lines": [
+    {
+     "key": "s4_fakeupdate_1",
+     "file": "s4_fakeupdate_1.wav",
+     "sub": "但{r:網頁突然跳出}要你下載的更新　多半是{r:陷阱}",
+     "from": 762,
+     "duration": 123,
+     "seconds": 4.097,
+     "phrases": [
+      {
+       "text": "但網頁突然跳出要你下載的更新，",
+       "from": 762
+      },
+      {
+       "text": "多半是陷阱。",
+       "from": 848
+      }
+     ],
+     "subs": [
+      {
+       "text": "但{r:網頁突然跳出}要你下載的更新　多半是{r:陷阱}",
+       "from": 762
+      }
+     ]
+    },
+    {
+     "key": "s4_fakeupdate_2",
+     "file": "s4_fakeupdate_2.wav",
+     "sub": "{r:不要下載}　{g:直接關掉網頁}",
+     "from": 897,
+     "duration": 78,
+     "seconds": 2.593,
+     "phrases": [
+      {
+       "text": "不要下載，",
+       "from": 897
+      },
+      {
+       "text": "直接關掉網頁。",
+       "from": 931
+      }
+     ],
+     "subs": [
+      {
+       "text": "{r:不要下載}　{g:直接關掉網頁}",
+       "from": 897
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s5_pirate",
+   "from": 1029,
+   "duration": 215,
+   "lines": [
+    {
+     "key": "s5_pirate_1",
+     "file": "s5_pirate_1.wav",
+     "sub": "{r:破解版}和{r:盜版軟體}常夾帶惡意程式|也有{r:侵權}的法律風險",
+     "from": 1047,
+     "duration": 137,
+     "seconds": 4.545,
+     "phrases": [
+      {
+       "text": "破解版和盜版軟體常夾帶惡意程式，",
+       "from": 1047
+      },
+      {
+       "text": "也有侵權的法律風險。",
+       "from": 1126
+      }
+     ],
+     "subs": [
+      {
+       "text": "{r:破解版}和{r:盜版軟體}常夾帶惡意程式",
+       "from": 1047
+      },
+      {
+       "text": "也有{r:侵權}的法律風險",
+       "from": 1126
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s6_request",
+   "from": 1244,
+   "duration": 219,
+   "lines": [
+    {
+     "key": "s6_request_1",
+     "file": "s6_request_1.wav",
+     "sub": "需要新軟體　先提出申請　{g:交給 Henry 評估安裝}",
+     "from": 1262,
+     "duration": 141,
+     "seconds": 4.68,
+     "phrases": [
+      {
+       "text": "需要新軟體，",
+       "from": 1262
+      },
+      {
+       "text": "先提出申請，",
+       "from": 1305
+      },
+      {
+       "text": "交給 Henry 評估安裝。",
+       "from": 1341
+      }
+     ],
+     "subs": [
+      {
+       "text": "需要新軟體　先提出申請　{g:交給 Henry 評估安裝}",
+       "from": 1262
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s7_slogan",
+   "from": 1463,
+   "duration": 205,
+   "lines": [
+    {
+     "key": "s7_slogan_1",
+     "file": "s7_slogan_1.wav",
+     "sub": "{y:更新不拖延}　{r:盜版不安裝}",
+     "from": 1487,
+     "duration": 76,
+     "seconds": 2.518,
+     "phrases": [
+      {
+       "text": "更新不拖延，",
+       "from": 1487
+      },
+      {
+       "text": "盜版不安裝。",
+       "from": 1531
+      }
+     ],
+     "subs": [
+      {
+       "text": "{y:更新不拖延}　{r:盜版不安裝}",
+       "from": 1487
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  }
+ ],
+ "sfx": []
+}
