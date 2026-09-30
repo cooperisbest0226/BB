@@ -15,6 +15,14 @@
     "edge": {
       "voice": "zh-TW-HsiaoChenNeural",
       "rate": "-5%"
+    },
+    "google": {
+      "languageCode": "cmn-TW",
+      "voice": "cmn-TW-Wavenet-A",
+      "speakingRate": 1.1
+    },
+    "files": {
+      "dir": "voice/video1"
     }
   },
   "note": "sub = 字幕（{r:紅} {g:綠} {y:黃} 為強調色）；tts = 旁白原文；say = 選填，實際送進 TTS 的文字（修正破音字）；lead = 場景開始到第一句旁白的秒數；gapBefore = 與上一句的停頓秒數；tail = 最後一句結束後的停留秒數；cues = 動畫/音效同步點，格式 <錨點>[+/-秒]，錨點可用 start、end、line:N、lineEnd:N、phrase:N.M",

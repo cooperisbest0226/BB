@@ -6,6 +6,8 @@
 引擎：
 - edge   ：edge-tts（zh-TW-HsiaoChenNeural），需要能連到 speech.platform.bing.com。
 - kokoro ：Kokoro v1.1-zh（sherpa-onnx 離線推論，Apache-2.0），模型放在 ../work/models。
+- google ：Google Cloud Text-to-Speech，API 金鑰放在環境變數 GOOGLE_TTS_API_KEY。
+- files  ：使用現成音檔（本機產生的 edge-tts 或真人錄音），放在 voice/<id>/<場景>_<句>.mp3|wav|m4a。
 每句產生後會用 SenseVoice 離線語音辨識回聽，計算字錯率（CER）當作發音檢查。
 """
 import argparse
@@ -53,6 +55,51 @@ def synth_edge(text: str, cfg: dict, out: Path) -> None:
                     "-ac", "1", "-ar", str(SAMPLE_RATE), "-c:a", "pcm_s16le", str(out)], check=True)
 
 
+def to_wav_trimmed(src: Path, out: Path, threshold_db: int = -50) -> None:
+    """轉成 48 kHz 單聲道 wav；開頭靜音修到 30 ms、結尾保留 80 ms 尾音（前後留白交給時間軸控制）。"""
+    trim = (f"silenceremove=start_periods=1:start_threshold={threshold_db}dB:start_silence=0.03,"
+            f"areverse,silenceremove=start_periods=1:start_threshold={threshold_db}dB:start_silence=0.08,areverse")
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-af", f"highpass=f=60,{trim}",
+                    "-ac", "1", "-ar", str(SAMPLE_RATE), "-c:a", "pcm_s16le", str(out)], check=True)
+
+
+def synth_google(text: str, cfg: dict, out: Path) -> None:
+    """Google Cloud Text-to-Speech（REST），API 金鑰從環境變數 GOOGLE_TTS_API_KEY 讀取。"""
+    import base64
+    import urllib.request
+
+    key = os.environ.get("GOOGLE_TTS_API_KEY")
+    if not key:
+        raise SystemExit("找不到環境變數 GOOGLE_TTS_API_KEY")
+    body = {
+        "input": {"text": text},
+        "voice": {"languageCode": cfg["languageCode"], "name": cfg["voice"]},
+        "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": SAMPLE_RATE,
+                        "speakingRate": cfg.get("speakingRate", 1.0), "pitch": cfg.get("pitch", 0.0)},
+    }
+    req = urllib.request.Request(
+        "https://texttospeech.googleapis.com/v1/text:synthesize",
+        data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "X-Goog-Api-Key": key})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        audio = base64.b64decode(json.loads(r.read())["audioContent"])
+    raw = out.with_suffix(".raw.wav")
+    raw.write_bytes(audio)
+    to_wav_trimmed(raw, out)
+    raw.unlink()
+
+
+AUDIO_EXTS = (".wav", ".mp3", ".m4a", ".aac", ".ogg", ".flac")
+
+
+def find_voice_file(cfg: dict, key: str) -> Path:
+    """外部音檔（本機產生的 edge-tts 或真人錄音）：<dir>/<場景>_<句>.<副檔名>"""
+    d = Path(__file__).resolve().parents[1] / cfg["dir"]
+    for ext in AUDIO_EXTS:
+        if (d / f"{key}{ext}").exists():
+            return d / f"{key}{ext}"
+    raise SystemExit(f"找不到音檔：{d / key}.*（支援 {' '.join(AUDIO_EXTS)}）")
+
+
 _kokoro = None
 
 
@@ -74,11 +121,7 @@ def synth_kokoro(text: str, cfg: dict, out: Path) -> None:
     audio = _kokoro.generate(T2S.convert(text), sid=cfg["sid"], speed=cfg["speed"])
     raw = out.with_suffix(".raw.wav")
     sf.write(raw, np.asarray(audio.samples, dtype=np.float32), audio.sample_rate)
-    # 重取樣到 48 kHz；前後留白交給時間軸控制，這裡只把頭尾靜音修到 30 ms
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-af",
-                    "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.03,"
-                    "areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.03,areverse",
-                    "-ac", "1", "-ar", str(SAMPLE_RATE), "-c:a", "pcm_s16le", str(out)], check=True)
+    to_wav_trimmed(raw, out)
     raw.unlink()
 
 
@@ -214,14 +257,14 @@ def probe_seconds(path: Path) -> float:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("content")
-    ap.add_argument("--engine", choices=["kokoro", "edge"])
+    ap.add_argument("--engine", choices=["kokoro", "edge", "google", "files"])
     args = ap.parse_args()
 
     content = json.loads(Path(args.content).read_text(encoding="utf-8"))
     tts_cfg = content["tts"]
     engine = args.engine or tts_cfg["engine"]
     cfg = tts_cfg[engine]
-    synth = synth_kokoro if engine == "kokoro" else synth_edge
+    synth = {"kokoro": synth_kokoro, "edge": synth_edge, "google": synth_google}.get(engine)
 
     out_dir = WORK / content["id"] / "tts"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -232,11 +275,16 @@ def main() -> None:
     for scene in content["scenes"]:
         for i, line in enumerate(scene["lines"]):
             key = f"{scene['id']}_{i + 1}"
-            sig = hashlib.sha1(f"{line.get('say', line['tts'])}|{engine}|{json.dumps(cfg, sort_keys=True)}".encode()).hexdigest()[:12]
+            src = find_voice_file(cfg, key) if engine == "files" else None
+            basis = hashlib.sha1(src.read_bytes()).hexdigest() if src else line.get("say", line["tts"])
+            sig = hashlib.sha1(f"{basis}|{engine}|{json.dumps(cfg, sort_keys=True)}".encode()).hexdigest()[:12]
             wav = out_dir / f"{key}.wav"
             cached = old.get(key, {}).get("sig") == sig and wav.exists()
             if not cached:
-                synth(line.get("say", line["tts"]), cfg, wav)
+                if src:
+                    to_wav_trimmed(src, wav, threshold_db=-45)
+                else:
+                    synth(line.get("say", line["tts"]), cfg, wav)
             dur = probe_seconds(wav)
             hyp, toks = asr(wav)
             meta[key] = {
