@@ -5,6 +5,7 @@
 | 影片 | 內容設定 | 輸出 |
 |---|---|---|
 | 影片一：釣魚信辨識（三看一不點，有疑問就回報） | `content/video1.json` | `../output/video1_phishing.mp4` |
+| 影片二：AI 工具使用規範（貼之前先想一想，機密資料不外送） | `content/video2.json` | `../output/video2_ai_usage.mp4` |
 
 ## 製作流程
 
@@ -30,6 +31,7 @@ content/<id>.json ──► scripts/tts.py ──► scripts/build_timeline.py �
 
 ```bash
 scripts/render.sh video1 Video1   # 產生 ../output/video1_phishing.mp4
+scripts/render.sh video2 Video2   # 產生 ../output/video2_ai_usage.mp4
 python3 scripts/qa.py content/video1.json
 ```
 
@@ -64,6 +66,8 @@ curl -LO $B/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz
 ### 修改內容
 
 - 改旁白或字幕：編輯 `content/<id>.json` 的 `tts`／`sub`（`{r:…}` 紅、`{g:…}` 綠、`{y:…}` 黃）。
+  太長的句子在 `sub` 裡用 `|` 分段，字幕會依序換行顯示，旁白仍整句合成。
+- 「AI」要在 `say` 裡寫成 `A.I.`，而且後面不要直接接標點，Kokoro 才會唸成兩個字母。
   讀音不對時加 `say`（實際送進 TTS 的文字），字幕不受影響。
 - 改節奏：調整各場景的 `lead`、`gapBefore`、`refSeconds`。
 - 同步點（`cues`）用 `start`、`end`、`line:N`、`lineEnd:N`、`phrase:N.M` 加減秒數表示。

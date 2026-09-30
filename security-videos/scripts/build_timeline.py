@@ -22,6 +22,27 @@ def f(sec: float) -> int:
     return int(round(sec * FPS))
 
 
+def norm_len(text: str) -> int:
+    """去掉強調標記與標點後的字數（中文字與英數字）。"""
+    text = re.sub(r"\{[rgy]:([^}]+)\}", r"\1", text)
+    return len(re.findall(r"[\u4e00-\u9fff0-9A-Za-z]", text))
+
+
+def split_subs(sub: str, phrases: list[dict]) -> list[dict]:
+    """字幕以「|」分段：每段從字數對應的片語開始出現。"""
+    parts = sub.split("|")
+    starts, acc = [], 0
+    for ph in phrases:
+        starts.append((acc, ph["from"]))
+        acc += norm_len(ph["text"])
+    out, pos = [], 0
+    for part in parts:
+        frame = min(starts, key=lambda s: abs(s[0] - pos))[1]
+        out.append({"text": part, "from": frame})
+        pos += norm_len(part)
+    return out
+
+
 def resolve_cue(expr: str, scene_from: int, length: int, lines: list) -> int:
     """「phrase:1.4+1.1」→ 全片絕對幀。錨點：start、end、line:N、lineEnd:N、phrase:N.M"""
     m = re.fullmatch(r"(start|end|line:\d+|lineEnd:\d+|phrase:\d+\.\d+)([+-][\d.]+)?", expr)
@@ -68,6 +89,7 @@ def main(content_path: Path) -> None:
             ln["from"] += cursor
             for ph in ln["phrases"]:
                 ph["from"] += cursor
+            ln["subs"] = split_subs(ln["sub"], ln["phrases"])
         cues = {name: resolve_cue(c["at"], cursor, length, lines) for name, c in scene.get("cues", {}).items()}
         sfx += [{"frame": cues[name], "sound": c["sfx"]} for name, c in scene.get("cues", {}).items() if c.get("sfx")]
         scenes.append({"id": scene["id"], "from": cursor, "duration": length, "lines": lines, "cues": cues})

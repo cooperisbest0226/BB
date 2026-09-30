@@ -1,0 +1,308 @@
+{
+ "id": "video2",
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "durationInFrames": 1785,
+ "scenes": [
+  {
+   "id": "s1_paste",
+   "from": 0,
+   "duration": 239,
+   "lines": [
+    {
+     "key": "s1_paste_1",
+     "file": "s1_paste_1.wav",
+     "sub": "AI 讓工作變快　但你{y:貼進去的資料}　去了哪裡？",
+     "from": 54,
+     "duration": 149,
+     "seconds": 4.966,
+     "phrases": [
+      {
+       "text": "AI 讓工作變快，",
+       "from": 54
+      },
+      {
+       "text": "但你貼進去的資料，",
+       "from": 122
+      },
+      {
+       "text": "去了哪裡？",
+       "from": 175
+      }
+     ],
+     "subs": [
+      {
+       "text": "AI 讓工作變快　但你{y:貼進去的資料}　去了哪裡？",
+       "from": 54
+      }
+     ]
+    }
+   ],
+   "cues": {
+    "paste": 15,
+    "send": 122
+   }
+  },
+  {
+   "id": "s2_upload",
+   "from": 239,
+   "duration": 283,
+   "lines": [
+    {
+     "key": "s2_upload_1",
+     "file": "s2_upload_1.wav",
+     "sub": "外部 AI 服務可能{r:保存}你輸入的內容|一旦送出　公司就{r:收不回來}",
+     "from": 263,
+     "duration": 205,
+     "seconds": 6.811,
+     "phrases": [
+      {
+       "text": "外部 AI 服務可能保存你輸入的內容，",
+       "from": 263
+      },
+      {
+       "text": "一旦送出，",
+       "from": 380
+      },
+      {
+       "text": "公司就收不回來。",
+       "from": 420
+      }
+     ],
+     "subs": [
+      {
+       "text": "外部 AI 服務可能{r:保存}你輸入的內容",
+       "from": 263
+      },
+      {
+       "text": "一旦送出　公司就{r:收不回來}",
+       "from": 380
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s3_categories",
+   "from": 522,
+   "duration": 388,
+   "lines": [
+    {
+     "key": "s3_categories_1",
+     "file": "s3_categories_1.wav",
+     "sub": "這四類資料　{r:不要貼進外部 AI 服務}|客戶個資、合約與報價|程式碼與帳號密碼、未公開的財務與人事資料",
+     "from": 540,
+     "duration": 304,
+     "seconds": 10.123,
+     "phrases": [
+      {
+       "text": "這四類資料，",
+       "from": 540
+      },
+      {
+       "text": "不要貼進外部 AI 服務：",
+       "from": 580
+      },
+      {
+       "text": "客戶個資、",
+       "from": 641
+      },
+      {
+       "text": "合約與報價、",
+       "from": 683
+      },
+      {
+       "text": "程式碼與帳號密碼、",
+       "from": 724
+      },
+      {
+       "text": "未公開的財務與人事資料。",
+       "from": 778
+      }
+     ],
+     "subs": [
+      {
+       "text": "這四類資料　{r:不要貼進外部 AI 服務}",
+       "from": 540
+      },
+      {
+       "text": "客戶個資、合約與報價",
+       "from": 641
+      },
+      {
+       "text": "程式碼與帳號密碼、未公開的財務與人事資料",
+       "from": 724
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s4_deid",
+   "from": 910,
+   "duration": 228,
+   "lines": [
+    {
+     "key": "s4_deid_1",
+     "file": "s4_deid_1.wav",
+     "sub": "真的要問　先把{y:姓名、金額、公司名}{g:換成代號}",
+     "from": 934,
+     "duration": 138,
+     "seconds": 4.582,
+     "phrases": [
+      {
+       "text": "真的要問，",
+       "from": 934
+      },
+      {
+       "text": "先把姓名、",
+       "from": 968
+      },
+      {
+       "text": "金額、",
+       "from": 1000
+      },
+      {
+       "text": "公司名換成代號。",
+       "from": 1026
+      }
+     ],
+     "subs": [
+      {
+       "text": "真的要問　先把{y:姓名、金額、公司名}{g:換成代號}",
+       "from": 934
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s5_tools",
+   "from": 1138,
+   "duration": 244,
+   "lines": [
+    {
+     "key": "s5_tools_1",
+     "file": "s5_tools_1.wav",
+     "sub": "請優先使用{g:公司核可的工具}",
+     "from": 1156,
+     "duration": 71,
+     "seconds": 2.365,
+     "phrases": [
+      {
+       "text": "請優先使用公司核可的工具。",
+       "from": 1156
+      }
+     ],
+     "subs": [
+      {
+       "text": "請優先使用{g:公司核可的工具}",
+       "from": 1156
+      }
+     ]
+    },
+    {
+     "key": "s5_tools_2",
+     "file": "s5_tools_2.wav",
+     "sub": "想用新工具　{g:先問資訊部}",
+     "from": 1242,
+     "duration": 80,
+     "seconds": 2.646,
+     "phrases": [
+      {
+       "text": "想用新工具，",
+       "from": 1242
+      },
+      {
+       "text": "先問資訊部。",
+       "from": 1283
+      }
+     ],
+     "subs": [
+      {
+       "text": "想用新工具　{g:先問資訊部}",
+       "from": 1242
+      }
+     ]
+    }
+   ],
+   "cues": {}
+  },
+  {
+   "id": "s6_review",
+   "from": 1382,
+   "duration": 403,
+   "lines": [
+    {
+     "key": "s6_review_1",
+     "file": "s6_review_1.wav",
+     "sub": "AI 也會出錯　產出的內容{y:要自己檢查}",
+     "from": 1406,
+     "duration": 129,
+     "seconds": 4.285,
+     "phrases": [
+      {
+       "text": "AI 也會出錯，",
+       "from": 1406
+      },
+      {
+       "text": "產出的內容要自己檢查。",
+       "from": 1475
+      }
+     ],
+     "subs": [
+      {
+       "text": "AI 也會出錯　產出的內容{y:要自己檢查}",
+       "from": 1406
+      }
+     ]
+    },
+    {
+     "key": "s6_review_2",
+     "file": "s6_review_2.wav",
+     "sub": "{y:貼之前先想一想}　機密資料{g:不外送}",
+     "from": 1565,
+     "duration": 100,
+     "seconds": 3.316,
+     "phrases": [
+      {
+       "text": "貼之前先想一想，",
+       "from": 1565
+      },
+      {
+       "text": "機密資料不外送。",
+       "from": 1621
+      }
+     ],
+     "subs": [
+      {
+       "text": "{y:貼之前先想一想}　機密資料{g:不外送}",
+       "from": 1565
+      }
+     ]
+    }
+   ],
+   "cues": {
+    "lock": 1565
+   }
+  }
+ ],
+ "sfx": [
+  {
+   "frame": 15,
+   "sound": "click"
+  },
+  {
+   "frame": 122,
+   "sound": "click"
+  },
+  {
+   "frame": 1565,
+   "sound": "success"
+  }
+ ]
+}

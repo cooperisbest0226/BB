@@ -7,7 +7,9 @@
     "studio": "remotion studio",
     "typecheck": "tsc --noEmit",
     "render:video1": "scripts/render.sh video1 Video1",
-    "qa:video1": "python3 scripts/qa.py content/video1.json"
+    "qa:video1": "python3 scripts/qa.py content/video1.json",
+    "render:video2": "scripts/render.sh video2 Video2",
+    "qa:video2": "python3 scripts/qa.py content/video2.json"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.529",

@@ -90,8 +90,9 @@ def main(content_path: Path) -> None:
     widths = {}
     for scene in tl["scenes"]:
         for line in scene["lines"]:
-            text = re.sub(r"\{[rgy]:([^}]+)\}", r"\1", line["sub"])
-            widths[line["key"]] = len(text) * 60 + 80
+            for k, part in enumerate(line["sub"].split("|")):
+                text = re.sub(r"\{[rgy]:([^}]+)\}", r"\1", part)
+                widths[f"{line['key']}.{k + 1}"] = len(text) * 60 + 80
     checks["字幕寬度 ≤ 1760px"] = max(widths.values()) <= 1760
 
     # 抽幀：每個場景開頭 +1s、每句旁白中段、場景結尾前 0.5s

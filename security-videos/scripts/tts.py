@@ -148,7 +148,7 @@ def asr(wav: Path) -> tuple[str, list[tuple[str, float]]]:
 
 
 def norm(s: str) -> str:
-    return re.sub(r"[^一-鿿0-9a-zA-Z]", "", T2S.convert(s))
+    return re.sub(r"[^一-鿿0-9a-z]", "", T2S.convert(s).lower())
 
 
 def pinyin(s: str) -> list[str]:

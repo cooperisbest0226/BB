@@ -27,20 +27,32 @@ export const RichText: React.FC<{text: string}> = ({text}) => {
 
 const HOLD = 6; // 旁白結束後字幕多停留的幀數
 
+type Entry = {text: string; from: number; end: number};
+
+/** 每句旁白可拆成多段字幕；每段顯示到下一段開始，最後一段顯示到旁白結束後 HOLD 幀 */
+const entries = (tl: Timeline): Entry[] => {
+  const lines = tl.scenes.flatMap((s) => s.lines);
+  return lines.flatMap((l, i) => {
+    const next = lines[i + 1];
+    const lineEnd = Math.min(l.from + l.duration + HOLD, next ? next.from : Infinity);
+    return l.subs.map((sub, k) => ({
+      text: sub.text,
+      from: k === 0 ? l.from : sub.from,
+      end: k + 1 < l.subs.length ? l.subs[k + 1].from : lineEnd,
+    }));
+  });
+};
+
 export const Subtitles: React.FC<{tl: Timeline}> = ({tl}) => {
   const frame = useCurrentFrame();
-  const lines = tl.scenes.flatMap((s) => s.lines);
-  const idx = lines.findIndex((l, i) => {
-    const next = lines[i + 1];
-    const end = Math.min(l.from + l.duration + HOLD, next ? next.from : Infinity);
-    return frame >= l.from - 2 && frame < end;
-  });
-  if (idx < 0) return null;
-  const line = lines[idx];
-  const next = lines[idx + 1];
-  const end = Math.min(line.from + line.duration + HOLD, next ? next.from : Infinity);
-  const o = Math.min(easeIn(frame, line.from - 2, 5), easeOut(frame, end - 5, 5));
-  const y = (1 - easeIn(frame, line.from - 2, 6)) * 10;
+  const all = entries(tl);
+  const cur = all.find((e) => frame >= e.from - 2 && frame < e.end);
+  if (!cur) return null;
+  // 同一句內的分段之間不淡出，直接換字，避免閃爍
+  const joinedPrev = all.some((e) => e.end === cur.from);
+  const joinedNext = all.some((e) => e.from === cur.end);
+  const o = Math.min(joinedPrev ? 1 : easeIn(frame, cur.from - 2, 5), joinedNext ? 1 : easeOut(frame, cur.end - 5, 5));
+  const y = joinedPrev ? 0 : (1 - easeIn(frame, cur.from - 2, 6)) * 10;
 
   return (
     <div
@@ -72,7 +84,7 @@ export const Subtitles: React.FC<{tl: Timeline}> = ({tl}) => {
           textShadow: '0 2px 4px rgba(0,0,0,0.6)',
         }}
       >
-        <RichText text={line.sub} />
+        <RichText text={cur.text} />
       </div>
     </div>
   );
