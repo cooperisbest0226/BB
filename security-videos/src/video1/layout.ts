@@ -1,3 +1,5 @@
+import {BRAND} from '../brand';
+
 // 郵件視窗在「世界座標」中的位置（鏡頭縮放 1 時即為畫面座標）
 export const WIN = {x: 260, y: 110, w: 1400, h: 770};
 export const TITLE_H = 52;
@@ -18,12 +20,12 @@ export const MAIL = {
 export const INBOX = {sideW: 270, headerH: 78, rowH: 118};
 
 export const FAKE = {
-  senderName: '資訊部 IT Service Desk',
-  senderAddr: 'it-support@corp-examp1e.com',
-  fakeDomain: 'corp-examp1e.com',
-  realDomain: 'corp-example.com',
+  senderName: `${BRAND.company} 資訊部`,
+  senderAddr: 'it-support@cathaypovver.com.tw', // 兩個 v 冒充 w
+  fakeDomain: 'cathaypovver.com.tw',
+  realDomain: BRAND.domain,
   subject: '【緊急】您的帳號將於 24 小時後停用',
-  url: 'http://corp-examp1e.com/verify/login.php?id=7f3a9',
+  url: 'http://cathaypovver.com.tw/verify/login.php?id=7f3a9',
   time: '09:12',
 };
 

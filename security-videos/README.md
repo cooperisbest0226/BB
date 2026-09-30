@@ -65,9 +65,14 @@ curl -LO $B/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz
 
 ### 修改內容
 
+- 公司名稱、公司網域、回報窗口集中在 `src/brand.ts`（目前：國泰電業、cathaypower.com.tw、資訊部 Henry）。
+  影片一的仿冒網域 `cathaypovver.com.tw` 寫在 `src/video1/layout.ts`。
+- Kokoro 每次合成略有差異：`tts.kokoro.takes` 設定發音檢查有錯時最多重錄幾次，保留錯誤最少的一次。
+- 英文名字「Henry」要緊接在「給」後面（例如「交給 Henry」），Kokoro 才會唸清楚。
+
 - 改旁白或字幕：編輯 `content/<id>.json` 的 `tts`／`sub`（`{r:…}` 紅、`{g:…}` 綠、`{y:…}` 黃）。
   太長的句子在 `sub` 裡用 `|` 分段，字幕會依序換行顯示，旁白仍整句合成。
 - 「AI」要在 `say` 裡寫成 `A.I.`，而且後面不要直接接標點，Kokoro 才會唸成兩個字母。
   讀音不對時加 `say`（實際送進 TTS 的文字），字幕不受影響。
-- 改節奏：調整各場景的 `lead`、`gapBefore`、`refSeconds`。
+- 改節奏：調整各場景的 `lead`、`gapBefore`、`tail`。
 - 同步點（`cues`）用 `start`、`end`、`line:N`、`lineEnd:N`、`phrase:N.M` 加減秒數表示。

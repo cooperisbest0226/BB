@@ -10,7 +10,8 @@
     "engine": "kokoro",
     "kokoro": {
       "sid": 45,
-      "speed": 1.3
+      "speed": 1.3,
+      "takes": 8
     },
     "edge": {
       "voice": "zh-TW-HsiaoChenNeural",
@@ -25,7 +26,7 @@
       "dir": "voice/video2"
     }
   },
-  "note": "格式同 video1.json。sub 中的「|」表示同一句旁白的字幕分成多行依序出現（各段從對應片語開始），用於太長的句子。say 裡把 AI 寫成 A.I.，Kokoro 才會唸成兩個字母。 A.I. 後面若直接接標點，Kokoro 會把 I 唸歪，所以 s3 寫成「外部 AI 服務：」。",
+  "note": "格式同 video1.json。sub 中的「|」表示同一句旁白的字幕分成多行依序出現（各段從對應片語開始），用於太長的句子。say 裡把 AI 寫成 A.I.，Kokoro 才會唸成兩個字母。 A.I. 後面若直接接標點，Kokoro 會把 I 唸歪，所以 s3 寫成「外部 AI 服務：」。 Henry 要緊接在「給」後面，Kokoro 才會唸清楚，所以 s5 寫成「交給 Henry 確認」。",
   "scenes": [
     {
       "id": "s1_paste",
@@ -94,8 +95,8 @@
           "sub": "請優先使用{g:公司核可的工具}"
         },
         {
-          "tts": "想用新工具，先問資訊部。",
-          "sub": "想用新工具　{g:先問資訊部}",
+          "tts": "想用新工具，先問資訊部，交給 Henry 確認。",
+          "sub": "想用新工具　先問資訊部　{g:交給 Henry 確認}",
           "gapBefore": 0.5
         }
       ]

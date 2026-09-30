@@ -277,14 +277,27 @@ def main() -> None:
             key = f"{scene['id']}_{i + 1}"
             src = find_voice_file(cfg, key) if engine == "files" else None
             basis = hashlib.sha1(src.read_bytes()).hexdigest() if src else line.get("say", line["tts"])
-            sig = hashlib.sha1(f"{basis}|{engine}|{json.dumps(cfg, sort_keys=True)}".encode()).hexdigest()[:12]
+            voice_cfg = {k: v for k, v in cfg.items() if k != "takes"}  # 重錄次數不影響快取
+            sig = hashlib.sha1(f"{basis}|{engine}|{json.dumps(voice_cfg, sort_keys=True)}".encode()).hexdigest()[:12]
             wav = out_dir / f"{key}.wav"
             cached = old.get(key, {}).get("sig") == sig and wav.exists()
             if not cached:
                 if src:
                     to_wav_trimmed(src, wav, threshold_db=-45)
                 else:
-                    synth(line.get("say", line["tts"]), cfg, wav)
+                    # Kokoro 每次合成略有差異：發音檢查有錯時重錄，最多 takes 次，保留錯誤最少的一次
+                    best = None
+                    for take in range(cfg.get("takes", 1)):
+                        tmp = out_dir / f"{key}.take{take}.wav"
+                        synth(line.get("say", line["tts"]), cfg, tmp)
+                        ter = tone_error_rate(line["tts"], asr(tmp)[0])
+                        if best is None or ter < best[0]:
+                            best = (ter, tmp)
+                        if ter == 0:
+                            break
+                    best[1].replace(wav)
+                    for t in out_dir.glob(f"{key}.take*.wav"):
+                        t.unlink()
             dur = probe_seconds(wav)
             hyp, toks = asr(wav)
             meta[key] = {

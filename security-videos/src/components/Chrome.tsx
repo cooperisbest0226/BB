@@ -21,7 +21,7 @@ export const Backdrop: React.FC = () => (
 );
 
 /** 左上角主題標籤 */
-export const TopTag: React.FC<{label: string; opacity?: number}> = ({label, opacity = 1}) => (
+export const TopTag: React.FC<{label: string; company?: string; opacity?: number}> = ({label, company, opacity = 1}) => (
   <div
     style={{
       position: 'absolute',
@@ -43,6 +43,8 @@ export const TopTag: React.FC<{label: string; opacity?: number}> = ({label, opac
     }}
   >
     <Shield size={26} color={C.green} check={1} />
+    {company && <span style={{color: C.white}}>{company}</span>}
+    {company && <span style={{color: C.dim}}>｜</span>}
     {label}
   </div>
 );

@@ -32,9 +32,11 @@ def midi(n: float) -> float:
 
 
 def env_adsr(n: int, a: float, r: float) -> np.ndarray:
+    """起音 a 秒、釋音 r 秒的包絡；片段比起音或釋音還短時也能處理。"""
     e = np.ones(n)
-    na, nr = int(a * SR), int(r * SR)
-    e[:na] = np.linspace(0, 1, na) if na else 1
+    na, nr = min(int(a * SR), n), min(int(r * SR), n)
+    if na:
+        e[:na] = np.linspace(0, 1, na)
     if nr:
         e[-nr:] *= np.linspace(1, 0, nr)
     return e

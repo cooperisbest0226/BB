@@ -327,7 +327,7 @@ const MailView: React.FC<{s: MailState}> = ({s}) => {
         立即驗證帳號
       </div>
       <div style={{position: 'absolute', left: MAIL.padX, top: MAIL.signY - TITLE_H, fontSize: 25, color: C.inkSoft}}>
-        資訊部 敬上
+        {FAKE.senderName} 敬上
       </div>
       {/* 狀態列（滑鼠停在連結上時顯示真正網址） */}
       <div

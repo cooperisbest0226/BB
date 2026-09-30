@@ -5,6 +5,7 @@ import {Shield, Stopwatch} from '../components/Icons';
 import {Person} from '../components/Person';
 import {easeIn, easeOut, keyframes, pop, progress} from '../lib/anim';
 import {getScene, phraseAt, sceneEnd, Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 
 /** S7：萬一點了也別怕 → 結尾標語 */
@@ -87,6 +88,24 @@ export const EndingScene: React.FC<{tl: Timeline}> = ({tl}) => {
             }}
           >
             有疑問就<span style={{color: '#4CC38A'}}>回報</span>
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 852,
+              display: 'flex',
+              justifyContent: 'center',
+              ...slideUp(f, slogan2 + 40, 16),
+            }}
+          >
+            <div style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: 34, fontWeight: 700, color: C.muted}}>
+              <Shield size={34} color={C.green} check={1} />
+              <span style={{color: C.white}}>{BRAND.company} 資訊部</span>
+              <span style={{color: C.dim}}>｜</span>
+              回報窗口：<span style={{color: '#4CC38A'}}>{BRAND.contact}</span>
+            </div>
           </div>
           <div style={{position: 'absolute', left: 0, right: 0, top: 762, display: 'flex', justifyContent: 'center', gap: 18}}>
             {['看寄件人', '看連結', '看語氣', '不點'].map((t, i) => (

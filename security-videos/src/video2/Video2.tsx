@@ -4,6 +4,7 @@ import {Backdrop, TopTag} from '../components/Chrome';
 import {Subtitles} from '../components/Subtitles';
 import {progress} from '../lib/anim';
 import {Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 import timeline from '../data/video2.timeline.json';
 import {CategoriesScene} from './CategoriesScene';
@@ -28,7 +29,7 @@ export const Video2: React.FC = () => {
       <DeidScene tl={tl2} />
       <ToolsScene tl={tl2} />
       <ReviewScene tl={tl2} />
-      <TopTag label="資安宣導｜AI 工具使用規範" />
+      <TopTag company={BRAND.company} label="資安宣導｜AI 工具使用規範" />
       <Subtitles tl={tl2} />
       <AbsoluteFill style={{background: C.bgDeep, opacity: fadeOut}} />
     </AbsoluteFill>

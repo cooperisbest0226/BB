@@ -3,20 +3,20 @@
  "fps": 30,
  "width": 1920,
  "height": 1080,
- "durationInFrames": 1785,
+ "durationInFrames": 1815,
  "scenes": [
   {
    "id": "s1_paste",
    "from": 0,
-   "duration": 239,
+   "duration": 238,
    "lines": [
     {
      "key": "s1_paste_1",
      "file": "s1_paste_1.wav",
      "sub": "AI 讓工作變快　但你{y:貼進去的資料}　去了哪裡？",
      "from": 54,
-     "duration": 149,
-     "seconds": 4.966,
+     "duration": 148,
+     "seconds": 4.93,
      "phrases": [
       {
        "text": "AI 讓工作變快，",
@@ -46,38 +46,38 @@
   },
   {
    "id": "s2_upload",
-   "from": 239,
+   "from": 238,
    "duration": 283,
    "lines": [
     {
      "key": "s2_upload_1",
      "file": "s2_upload_1.wav",
      "sub": "外部 AI 服務可能{r:保存}你輸入的內容|一旦送出　公司就{r:收不回來}",
-     "from": 263,
+     "from": 262,
      "duration": 205,
      "seconds": 6.811,
      "phrases": [
       {
        "text": "外部 AI 服務可能保存你輸入的內容，",
-       "from": 263
+       "from": 262
       },
       {
        "text": "一旦送出，",
-       "from": 380
+       "from": 379
       },
       {
        "text": "公司就收不回來。",
-       "from": 420
+       "from": 422
       }
      ],
      "subs": [
       {
        "text": "外部 AI 服務可能{r:保存}你輸入的內容",
-       "from": 263
+       "from": 262
       },
       {
        "text": "一旦送出　公司就{r:收不回來}",
-       "from": 380
+       "from": 379
       }
      ]
     }
@@ -86,20 +86,20 @@
   },
   {
    "id": "s3_categories",
-   "from": 522,
-   "duration": 388,
+   "from": 521,
+   "duration": 391,
    "lines": [
     {
      "key": "s3_categories_1",
      "file": "s3_categories_1.wav",
      "sub": "這四類資料　{r:不要貼進外部 AI 服務}|客戶個資、合約與報價|程式碼與帳號密碼、未公開的財務與人事資料",
-     "from": 540,
-     "duration": 304,
-     "seconds": 10.123,
+     "from": 539,
+     "duration": 307,
+     "seconds": 10.221,
      "phrases": [
       {
        "text": "這四類資料，",
-       "from": 540
+       "from": 539
       },
       {
        "text": "不要貼進外部 AI 服務：",
@@ -107,33 +107,33 @@
       },
       {
        "text": "客戶個資、",
-       "from": 641
+       "from": 645
       },
       {
        "text": "合約與報價、",
-       "from": 683
+       "from": 681
       },
       {
        "text": "程式碼與帳號密碼、",
-       "from": 724
+       "from": 726
       },
       {
        "text": "未公開的財務與人事資料。",
-       "from": 778
+       "from": 780
       }
      ],
      "subs": [
       {
        "text": "這四類資料　{r:不要貼進外部 AI 服務}",
-       "from": 540
+       "from": 539
       },
       {
        "text": "客戶個資、合約與報價",
-       "from": 641
+       "from": 645
       },
       {
        "text": "程式碼與帳號密碼、未公開的財務與人事資料",
-       "from": 724
+       "from": 726
       }
      ]
     }
@@ -142,38 +142,38 @@
   },
   {
    "id": "s4_deid",
-   "from": 910,
-   "duration": 228,
+   "from": 912,
+   "duration": 227,
    "lines": [
     {
      "key": "s4_deid_1",
      "file": "s4_deid_1.wav",
      "sub": "真的要問　先把{y:姓名、金額、公司名}{g:換成代號}",
-     "from": 934,
-     "duration": 138,
-     "seconds": 4.582,
+     "from": 936,
+     "duration": 137,
+     "seconds": 4.542,
      "phrases": [
       {
        "text": "真的要問，",
-       "from": 934
+       "from": 936
       },
       {
        "text": "先把姓名、",
-       "from": 968
+       "from": 970
       },
       {
        "text": "金額、",
-       "from": 1000
+       "from": 1002
       },
       {
        "text": "公司名換成代號。",
-       "from": 1026
+       "from": 1024
       }
      ],
      "subs": [
       {
        "text": "真的要問　先把{y:姓名、金額、公司名}{g:換成代號}",
-       "from": 934
+       "from": 936
       }
      ]
     }
@@ -182,50 +182,54 @@
   },
   {
    "id": "s5_tools",
-   "from": 1138,
-   "duration": 244,
+   "from": 1139,
+   "duration": 273,
    "lines": [
     {
      "key": "s5_tools_1",
      "file": "s5_tools_1.wav",
      "sub": "請優先使用{g:公司核可的工具}",
-     "from": 1156,
+     "from": 1157,
      "duration": 71,
-     "seconds": 2.365,
+     "seconds": 2.366,
      "phrases": [
       {
        "text": "請優先使用公司核可的工具。",
-       "from": 1156
+       "from": 1157
       }
      ],
      "subs": [
       {
        "text": "請優先使用{g:公司核可的工具}",
-       "from": 1156
+       "from": 1157
       }
      ]
     },
     {
      "key": "s5_tools_2",
      "file": "s5_tools_2.wav",
-     "sub": "想用新工具　{g:先問資訊部}",
-     "from": 1242,
-     "duration": 80,
-     "seconds": 2.646,
+     "sub": "想用新工具　先問資訊部　{g:交給 Henry 確認}",
+     "from": 1243,
+     "duration": 109,
+     "seconds": 3.615,
      "phrases": [
       {
        "text": "想用新工具，",
-       "from": 1242
+       "from": 1243
       },
       {
-       "text": "先問資訊部。",
-       "from": 1283
+       "text": "先問資訊部，",
+       "from": 1286
+      },
+      {
+       "text": "交給 Henry 確認。",
+       "from": 1319
       }
      ],
      "subs": [
       {
-       "text": "想用新工具　{g:先問資訊部}",
-       "from": 1242
+       "text": "想用新工具　先問資訊部　{g:交給 Henry 確認}",
+       "from": 1243
       }
      ]
     }
@@ -234,30 +238,30 @@
   },
   {
    "id": "s6_review",
-   "from": 1382,
+   "from": 1412,
    "duration": 403,
    "lines": [
     {
      "key": "s6_review_1",
      "file": "s6_review_1.wav",
      "sub": "AI 也會出錯　產出的內容{y:要自己檢查}",
-     "from": 1406,
+     "from": 1436,
      "duration": 129,
-     "seconds": 4.285,
+     "seconds": 4.288,
      "phrases": [
       {
        "text": "AI 也會出錯，",
-       "from": 1406
+       "from": 1436
       },
       {
        "text": "產出的內容要自己檢查。",
-       "from": 1475
+       "from": 1505
       }
      ],
      "subs": [
       {
        "text": "AI 也會出錯　產出的內容{y:要自己檢查}",
-       "from": 1406
+       "from": 1436
       }
      ]
     },
@@ -265,29 +269,29 @@
      "key": "s6_review_2",
      "file": "s6_review_2.wav",
      "sub": "{y:貼之前先想一想}　機密資料{g:不外送}",
-     "from": 1565,
+     "from": 1595,
      "duration": 100,
-     "seconds": 3.316,
+     "seconds": 3.317,
      "phrases": [
       {
        "text": "貼之前先想一想，",
-       "from": 1565
+       "from": 1595
       },
       {
        "text": "機密資料不外送。",
-       "from": 1621
+       "from": 1651
       }
      ],
      "subs": [
       {
        "text": "{y:貼之前先想一想}　機密資料{g:不外送}",
-       "from": 1565
+       "from": 1595
       }
      ]
     }
    ],
    "cues": {
-    "lock": 1565
+    "lock": 1595
    }
   }
  ],
@@ -301,7 +305,7 @@
    "sound": "click"
   },
   {
-   "frame": 1565,
+   "frame": 1595,
    "sound": "success"
   }
  ]

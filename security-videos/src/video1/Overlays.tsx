@@ -152,16 +152,16 @@ export const DomainCompare: React.FC<{frame: number; at: number; opacity: number
     <div style={{display: 'flex', alignItems: 'center', gap: 22, height: 92, ...slideUp(frame, t, 24)}}>
       <Badge kind={ok ? 'check' : 'x'} size={62} p={easeIn(frame, t + 4, 10)} />
       <div style={{width: 150, fontSize: 32, fontWeight: 700, color: ok ? '#4CC38A' : '#FF6B6F'}}>{label}</div>
-      <div style={{fontFamily: MONO, fontSize: 56, letterSpacing: 1, color: C.white}}>
-        @corp-examp{diff(ch, ok ? C.green : C.red, showDiff)}e.com
+      <div style={{fontFamily: MONO, fontSize: 50, letterSpacing: 1, color: C.white}}>
+        @cathaypo{diff(ch, ok ? C.green : C.red, showDiff)}er.com.tw
       </div>
     </div>
   );
   return (
     <div style={{...panel, left: 260, top: 590, width: 1400, height: 300, padding: '22px 44px', boxSizing: 'border-box', opacity: Math.min(opacity, easeIn(frame, at, 10))}}>
       <div style={{fontSize: 26, color: C.muted, fontWeight: 700, marginBottom: 4}}>寄件網域比對</div>
-      {row(false, '這封信', '1', at + 4)}
-      {row(true, '公司網域', 'l', at + 14)}
+      {row(false, '這封信', 'vv', at + 4)}
+      {row(true, '公司網域', 'w', at + 14)}
       <div
         style={{
           position: 'absolute',
@@ -175,10 +175,14 @@ export const DomainCompare: React.FC<{frame: number; at: number; opacity: number
           ...slideUp(frame, at + 40, 20),
         }}
       >
-        數字 <span style={{color: '#FF6B6F', fontFamily: MONO}}>1</span>
+        <span style={{color: '#FF6B6F', fontFamily: MONO}}>vv</span>
         <span style={{color: C.yellow}}>　≠　</span>
-        字母 <span style={{color: '#4CC38A', fontFamily: MONO}}>l</span>
-        <div style={{fontSize: 26, color: C.muted, fontWeight: 400}}>差一個字，就是別人的網域</div>
+        <span style={{color: '#4CC38A', fontFamily: MONO}}>w</span>
+        <div style={{fontSize: 26, color: C.muted, fontWeight: 400, lineHeight: 1.45}}>
+          兩個 v 冒充 w
+          <br />
+          其實是別人的網域
+        </div>
       </div>
     </div>
   );
@@ -203,7 +207,7 @@ export const UrlCallout: React.FC<{frame: number; at: number; opacity: number}> 
       <div style={{fontSize: 26, color: C.muted, fontWeight: 700}}>按鈕實際會連到：</div>
       <div style={{fontFamily: MONO, fontSize: 31, marginTop: 12, whiteSpace: 'nowrap'}}>
         http://<span style={{color: '#FF6B6F', fontWeight: 700, borderBottom: `4px solid ${C.red}`}}>{FAKE.fakeDomain}</span>
-        /verify/login.php
+        /login.php
       </div>
       <div style={{display: 'flex', alignItems: 'center', gap: 14, marginTop: 20, fontSize: 30, fontWeight: 700, ...slideUp(frame, at + 14, 16)}}>
         <Badge kind="x" size={46} p={easeIn(frame, at + 18, 10)} />

@@ -4,6 +4,7 @@ import {Backdrop, TopTag} from '../components/Chrome';
 import {Subtitles} from '../components/Subtitles';
 import {progress} from '../lib/anim';
 import {Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 import timeline from '../data/video1.timeline.json';
 import {ActionsScene} from './ActionsScene';
@@ -22,7 +23,7 @@ export const Video1: React.FC = () => {
       <MailStage tl={tl1} />
       <ActionsScene tl={tl1} />
       <EndingScene tl={tl1} />
-      <TopTag label="資安宣導｜釣魚信辨識" />
+      <TopTag company={BRAND.company} label="資安宣導｜釣魚信辨識" />
       <Subtitles tl={tl1} />
       <AbsoluteFill style={{background: C.bgDeep, opacity: fadeOut}} />
     </AbsoluteFill>

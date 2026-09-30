@@ -4,6 +4,7 @@ import {Chip, popIn, slideUp} from '../components/Chrome';
 import {Badge, Flag, Shield} from '../components/Icons';
 import {easeIn, easeOut, pop} from '../lib/anim';
 import {getScene, phraseAt, sceneEnd, Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 
 const APPROVED = ['AI 助理（公司版）', '文件翻譯工具', '程式碼助理'];
@@ -86,7 +87,7 @@ const Panel: React.FC<{
   </div>
 );
 
-/** S5：優先使用公司核可的工具；新工具先問資訊部 */
+/** S5：優先使用公司核可的工具；新工具先交給資訊部確認 */
 export const ToolsScene: React.FC<{tl: Timeline}> = ({tl}) => {
   const f = useCurrentFrame();
   const s = getScene(tl, 's5_tools');
@@ -96,7 +97,7 @@ export const ToolsScene: React.FC<{tl: Timeline}> = ({tl}) => {
   const opacity = Math.min(easeIn(f, s.from, 12), easeOut(f, end - 10, 10));
   const approvedAt = s.lines[0].from + 6;
   const othersAt = s.lines[1].from;
-  const askAt = phraseAt(s, 2, 2); // 先問資訊部
+  const askAt = phraseAt(s, 2, 2); // 先問資訊部，交給 Henry 確認
 
   return (
     <AbsoluteFill style={{opacity, fontFamily: FONT}}>
@@ -128,7 +129,7 @@ export const ToolsScene: React.FC<{tl: Timeline}> = ({tl}) => {
       {f >= askAt && (
         <div style={{position: 'absolute', left: 1010, width: 720, top: 745, display: 'flex', justifyContent: 'center', ...popIn(f, askAt, 0.5)}}>
           <Chip color={C.green} size={44} icon={<Flag size={48} />} style={{padding: '14px 40px'}}>
-            先問資訊部
+            資訊部 {BRAND.contact} 確認後再用
           </Chip>
         </div>
       )}

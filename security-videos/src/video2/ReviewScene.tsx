@@ -1,9 +1,10 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {Chip, Circle, popIn, slideUp} from '../components/Chrome';
-import {Lock, Magnifier, Sparkle, WarningTriangle} from '../components/Icons';
+import {Lock, Magnifier, Shield, Sparkle, WarningTriangle} from '../components/Icons';
 import {easeIn, easeOut, progress} from '../lib/anim';
 import {getScene, phraseAt, phraseFrac, sceneEnd, Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 
 /** S6：AI 也會出錯 → 結尾標語 */
@@ -112,6 +113,24 @@ export const ReviewScene: React.FC<{tl: Timeline}> = ({tl}) => {
             }}
           >
             機密資料<span style={{color: '#4CC38A'}}>不外送</span>
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 852,
+              display: 'flex',
+              justifyContent: 'center',
+              ...slideUp(f, slogan2 + 40, 16),
+            }}
+          >
+            <div style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: 34, fontWeight: 700, color: C.muted}}>
+              <Shield size={34} color={C.green} check={1} />
+              <span style={{color: C.white}}>{BRAND.company} 資訊部</span>
+              <span style={{color: C.dim}}>｜</span>
+              AI 工具問題請教 <span style={{color: '#4CC38A'}}>{BRAND.contact}</span>
+            </div>
           </div>
           <div style={{position: 'absolute', left: 0, right: 0, top: 740, display: 'flex', justifyContent: 'center', gap: 18}}>
             {['不貼機密', '先換代號', '用核可工具', '自己檢查'].map((t, i) => (

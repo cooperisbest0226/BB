@@ -4,6 +4,7 @@ import {Chip, popIn} from '../components/Chrome';
 import {Badge, Cloud, Database, DataFile, Laptop, Shield, Sparkle} from '../components/Icons';
 import {easeIn, easeOut, keyframes, lerp, progress} from '../lib/anim';
 import {getScene, phraseAt, phraseFrac, sceneEnd, Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 
 const BOX = {x: 90, y: 180, w: 700, h: 610}; // 公司邊界
@@ -60,7 +61,7 @@ export const UploadScene: React.FC<{tl: Timeline}> = ({tl}) => {
       />
       <div style={{position: 'absolute', left: BOX.x + 30, top: BOX.y - 30}}>
         <Chip color={C.bgDeep} size={32} style={{border: `3px solid ${C.panelLine}`}} icon={<Shield size={34} />}>
-          公司內部
+          {BRAND.company} 公司內部
         </Chip>
       </div>
       <div style={{position: 'absolute', left: 250, top: 330}}>

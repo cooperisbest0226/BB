@@ -4,6 +4,7 @@ import {Cursor, Ripple, slideUp} from '../components/Chrome';
 import {Badge, CursorArrow, Flag, ReplyArrow} from '../components/Icons';
 import {easeIn, easeOut, keyframes, lerp, pop} from '../lib/anim';
 import {getScene, phraseAt, sceneEnd, Timeline} from '../lib/timeline';
+import {BRAND} from '../brand';
 import {C, FONT} from '../theme';
 
 const LinkIcon: React.FC = () => (
@@ -129,9 +130,9 @@ export const ActionsScene: React.FC<{tl: Timeline}> = ({tl}) => {
         <div
           style={{
             position: 'absolute',
-            left: btn.x - 300,
+            left: btn.x - 380,
             top: btn.y - 64,
-            width: 600,
+            width: 760,
             height: 128,
             borderRadius: 64,
             background: C.green,
@@ -147,7 +148,7 @@ export const ActionsScene: React.FC<{tl: Timeline}> = ({tl}) => {
           }}
         >
           {f >= done ? <Badge kind="check" size={74} p={easeIn(f, done, 10)} style={{marginLeft: -10}} /> : <Flag size={58} />}
-          {f >= done ? '已回報資訊部' : '回報資訊部'}
+          {f >= done ? `已回報資訊部 ${BRAND.contact}` : `回報資訊部 ${BRAND.contact}`}
         </div>
       )}
       {f >= reportAt + 4 && (
