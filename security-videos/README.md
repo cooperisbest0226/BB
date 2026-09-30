@@ -45,7 +45,7 @@ python3 scripts/qa.py content/video1.json
 `content/<id>.json` 的 `tts.engine` 決定引擎：
 
 - `edge`：edge-tts `zh-TW-HsiaoChenNeural`，語速 -5%。需要能連到 `speech.platform.bing.com`。
-- `kokoro`：Kokoro v1.1-zh（Apache-2.0），經 sherpa-onnx 離線推論，聲線 sid 48、speed 1.3（約每秒 4.5 字）。
+- `kokoro`：Kokoro v1.1-zh（Apache-2.0），經 sherpa-onnx 離線推論，聲線 sid 45、speed 1.3（約每秒 4.2 字）。
 - `google`：Google Cloud Text-to-Speech（預設 `cmn-TW-Wavenet-A` 台灣女聲），API 金鑰放在環境變數 `GOOGLE_TTS_API_KEY`。
 - `files`：使用現成音檔，放在 `voice/<id>/<場景>_<句>.mp3`（也可 wav／m4a），例如 `voice/video1/s1_inbox_1.mp3`。
   適用於在自己電腦用 `tools/make_voice_local.py` 產生的曉臻旁白，或真人錄音；頭尾靜音會自動修掉。

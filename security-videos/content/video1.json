@@ -9,7 +9,7 @@
   "tts": {
     "engine": "kokoro",
     "kokoro": {
-      "sid": 48,
+      "sid": 45,
       "speed": 1.3
     },
     "edge": {
