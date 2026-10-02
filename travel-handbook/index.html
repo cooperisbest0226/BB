@@ -199,6 +199,13 @@ svg{display:block;flex-shrink:0}
 .stop-row.sel .lt{background:#1C2433;color:#fff}
 .dm-pin.sel .dm-tag{background:#1C2433;color:#fff}.dm-pin.sel .dm-tag::after{border-top-color:#1C2433}
 .dm-pin.sel{z-index:9998!important}
+.dm-pop{display:flex;flex-direction:column;gap:6px;min-width:220px;font-family:var(--sans)}
+.dm-pop b{font-size:15px;color:#1C2433}
+.dm-pop small{font-size:12px;color:#5A6270}
+.dm-pop .row2{display:flex;gap:6px;margin-top:4px}
+.dm-pop button{flex:1;white-space:nowrap;height:36px;border-radius:10px;border:1px solid #DADDD6;background:#fff;color:#1C2433;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px}
+.dm-pop button.pri{background:#1C2433;border-color:#1C2433;color:#fff}
+.leaflet-popup-content{margin:12px 14px}
 .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .map-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;color:var(--muted);font-size:14px}
 .stops{gap:0;padding:6px}
@@ -425,7 +432,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -438,6 +445,9 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.9.1', date: '2026-10-02', notes: [
+    ['add', '路線地圖點任一個地點，會跳出小視窗：「Google 地圖」看店家資訊、評價、營業時間，或直接「導航」']
+  ]},
   { v: '1.9.0', date: '2026-10-02', notes: [
     ['add', '路線地圖可以「選幾個地點算距離」：複選 A、C、D 這樣的組合，依順序算開車時間、距離和每一段，地圖也會畫出來'],
     ['imp', '選相連的地點（例如 A、B、C）直接加總，不用再查；離線時顯示直線距離']
@@ -1797,12 +1807,30 @@ function focusDayMap(el) {
     if (i < 0) wrap._map.flyToBounds(wrap._bounds, { padding: [32, 32], duration: 0.6 });
     else wrap._map.flyTo(wrap._pts[i], Math.max(wrap._map.getZoom(), 16), { duration: 0.6 });
     wrap._markers.forEach((m, k) => { const e = m.getElement(); if (e) e.classList.toggle('on', k === i); });
+    wrap._map.closePopup();
+    // 從清單點的時候地圖可能已經捲出畫面，先捲回來
+    const mb = wrap.querySelector('.map-box'); if (mb) { const r = mb.getBoundingClientRect(); if (r.bottom < 80 || r.top > innerHeight - 120) mb.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    if (i >= 0) { const x = wrap._stops[i]; L.popup({ closeButton: false, offset: [0, -30], autoPanPadding: [20, 20] }).setLatLng(wrap._pts[i]).setContent(stopPopup(x, i)).openOn(wrap._map); }
     return;
   }
   const fr = wrap.querySelector('iframe'); if (!fr) { toast('地圖需要網路'); return; }
   const stops = dayStops(day).slice(0, EMBED_MAX_STOPS);
   fr.src = i >= 0 ? embedUrl('place', { q: stops[i].q }) : dayRouteUrl(stops);
 }
+// 地圖上點選地點時的小視窗：在 Google 地圖查看（店家資訊、評價、營業時間）／導航
+function stopPopup(x, i) {
+  const name = x.n && x.n !== x.q ? x.n : x.q;
+  return `<div class="dm-pop"><b>${stopLetter(i)} · ${h(name)}</b>${x.t || x.tag || name !== x.q ? `<small>${[x.t, x.tag, name !== x.q ? x.q : ''].filter(Boolean).map(h).join(' · ')}</small>` : ''}
+    <div class="row2"><button class="pri" data-act="gmapsOpen" data-q="${h(x.q)}">${icon('map', 14, 2.2)}Google 地圖</button><button data-act="mapNav" data-q="${h(x.q)}">${icon('nav', 14, 2.2)}導航</button></div></div>`;
+}
+// 用 Google 地圖打開地點：iPhone 有裝 Google 地圖 App 就直接開 App，沒裝改開網頁
+function openGoogleMaps(q) {
+  const web = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+  if (!isIOS()) { window.open(web, '_blank', 'noopener'); return; }
+  location.href = 'comgooglemaps://?q=' + encodeURIComponent(q);
+  setTimeout(() => { if (document.visibilityState === 'visible') window.open(web, '_blank', 'noopener'); }, 1500);
+}
+
 /* ----- 測距離：在地圖清單複選幾個地點（例如 A、C、D），依順序算開車時間與距離
  * 相連的地點（A B C）直接用全天路線的每段加總；有跳過的（A C D）才另外向 Google 查一次（會快取） */
 function haversine(a, b) {
@@ -1813,7 +1841,7 @@ function haversine(a, b) {
 function toggleMeasure(btn) {
   const wrap = btn.closest('.map-inline'); if (!wrap || !wrap._map) return;
   const on = wrap.dataset.measure !== '1';
-  wrap.dataset.measure = on ? '1' : ''; wrap._sel = new Set();
+  wrap.dataset.measure = on ? '1' : ''; wrap._sel = new Set(); wrap._map.closePopup();
   btn.innerHTML = on ? `${icon('check', 14, 2.4)}<span>完成</span>` : `${icon('route', 14, 2.2)}<span>選幾個地點算距離</span>`;
   $$('.stop-row', wrap).forEach((b) => b.classList.remove('on'));
   wrap._markers.forEach((m) => { const e = m.getElement(); if (e) e.classList.remove('on'); });
@@ -2868,6 +2896,8 @@ const A = {
   toggleMap: async () => { S.settings.mapOpen = !S.settings.mapOpen; S.mapFocus = null; await saveSettings(); render(); },
   mapFocus: (el) => focusDayMap(el),
   mapMeasure: (el) => toggleMeasure(el),
+  gmapsOpen: (el) => openGoogleMaps(el.dataset.q),
+  mapNav: (el) => openMap(el.dataset.q, null, driveOn()),
   editDayTitle: async (el) => {
     const d = parseInt(el.dataset.d, 10); const t = S.trip;
     const v = await promptSheet(`Day ${d} 標題`, '例如：東京 → 京都', (t.dayTitles || {})[d] || '');
