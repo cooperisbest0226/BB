@@ -33,6 +33,7 @@ travel-handbook/
 ├── index.html            主程式（HTML + CSS + JS 單檔）
 ├── sw.js                 Service Worker（離線快取）
 ├── manifest.webmanifest
+├── vendor/leaflet/       地圖元件（Leaflet 1.9.4，BSD-2 授權），畫全天路線用
 ├── vendor/qrcode.js     QR code 產生器（qrcode-generator 1.4.4，Kazuhiko Arase，MIT 授權）
 ├── icons/                App 圖示（180 / 192 / 512 / maskable / favicon）
 ├── worker/               分享後端（Cloudflare Worker），不是必要的
@@ -163,12 +164,21 @@ Invoke-RestMethod -Method Post -Uri "https://travel-handbook-share.cooperisbest0
 | GET | `/trips/:id` | 讀取（唯讀端使用） |
 | PUT | `/trips/:id` | 更新，需要 `Authorization: Bearer key` |
 | DELETE | `/trips/:id` | 停止分享，需要 key |
+| POST | `/dayroute` | 一整天依序經過每個地點的開車路線 `{ stops: [...], region? }` → `{ polyline, legs }`（每次最多 12 個地點，Essentials 計費） |
 | PUT／GET／DELETE | `/backup/:id` | 雲端備份。App 端 AES-GCM 加密後上傳，伺服器只存密文；`id` 和 `Authorization: Bearer token` 都由還原碼推算（PBKDF2），上限 8 MB |
 | POST | `/route` | 算開車車程 `{ from, to, region?, depart?, traffic? }` → `{ seconds, staticSeconds, meters, traffic }`，需要 `GOOGLE_MAPS_KEY`，只接受 `ALLOWED_ORIGINS` 來源 |
 
 - `id` 是 16 碼隨機字元，放在分享連結裡，拿到連結的人都能讀。
 - `key` 是 32 碼隨機字元，只存在規劃者手機，伺服器只保存它的 SHA-256。
 - 單份行程上限 256 KB。
+
+## 全天路線地圖
+
+行程頁「展開路線地圖」會依行程順序畫出 A → B → C → D 的開車路線，每個點標字母和時間，兩站之間顯示車程。
+
+- 路線由 Worker 的 `/dayroute` 向 Google Routes API 一次查完一整天（同一把 `GOOGLE_MAPS_KEY`，每天一次，查過存在手機 90 天）。
+- 地圖底圖用 [OpenStreetMap](https://www.openstreetmap.org/copyright)，用 Leaflet 畫，不需要額外金鑰。
+- 有地點 Google 找不到時，會改用下面的 Google 內嵌地圖。
 
 ## 內嵌地圖（Google Maps Embed API，免費）
 
