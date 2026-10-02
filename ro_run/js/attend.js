@@ -534,11 +534,14 @@ function renderSplit(){
       const got=splPaid(id,c), due=r.twd-got, done=due<=0;
       const exact=exactPayout(id,splFrom,splTo,c);
       const partial=partialPayouts(id,splFrom,splTo,c);
+      /* 還有待領 → 一律是「標記已領」（新增一筆），不會因為這段期間已經有過紀錄
+         就變成「取消」—— 以前會，一按就把之前所有已領一起刪掉。
+         領完了 → 「✓ 已領」，點它只撤回最近一次標記。 */
       const btn = done&&!exact
         ? `<span class="paidbtn on" aria-disabled="true"
              title="這是在別段期間結算掉的，要取消請回那段期間">✓ 已領</span>`
         : `<button class="paidbtn${done?' on':''}" data-pay="${id}" data-due="${due}" data-cur="${c}"
-             aria-pressed="${!!exact}">${exact?'✓ 已領':'標記已領'}</button>`;
+             aria-pressed="${done}">${done?'✓ 已領':'標記已領'}</button>`;
       const pills=`
           <span class="attpill">分潤 ${r.shares} 場</span>
           ${got?`<span class="attpill">應得 ${nf(r.twd)} · 已領 ${nf(got)}</span>`:''}
@@ -601,10 +604,11 @@ function payAll(cur){
   confirmSheet(`把 ${list.length} 人標記為已領？\n共 ${nf(total)} ${curLabel(cur)}（${splFilterText()}）。\n之後可以按「復原」，或逐一點「✓ 已領」取消。`, ()=>{
     commitUndoable('', ()=>{
       state.payouts=state.payouts||[];
+      /* 每次發放各記一筆，不併進同期間既有的紀錄：
+         併起來之後就分不出哪一部分是這次發的，取消時只能整筆刪掉。 */
+      const ts=Date.now();
       list.forEach(({r,due})=>{
-        const hit=exactPayout(r.memberId,from,to,cur);
-        if(hit) hit.twd=(Number(hit.twd)||0)+due;
-        else state.payouts.push({id:uid(), memberId:r.memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
+        state.payouts.push({id:uid(), memberId:r.memberId, from:from||'', to:to||'', cur, twd:due, ts});
       });
     }, `已標記 ${list.length} 人已領，共 ${nf(total)} ${curLabel(cur)}`);
   }, '全部標記已領');
@@ -746,21 +750,36 @@ function partialPayouts(memberId,from,to,cur){
     return aF<=bT && bF<=aT;                       // 有交集但不完整包含
   });
 }
+/* 這段期間（起訖完全相同）的最近一筆發放紀錄。同期間可以有好幾筆（分次發），
+   「取消」只撤回最近的那一筆，所以要挑時間最晚的。 */
 function exactPayout(memberId,from,to,cur){
-  return (state.payouts||[]).find(p=>p.memberId===memberId&&p.cur===cur
-    &&(p.from||'')===(from||'')&&(p.to||'')===(to||''))||null;
+  let hit=null;
+  (state.payouts||[]).forEach((p,i)=>{
+    if(p.memberId!==memberId||p.cur!==cur||(p.from||'')!==(from||'')||(p.to||'')!==(to||'')) return;
+    if(!hit||(Number(p.ts)||0)>=(Number(hit.p.ts)||0)) hit={p,i};
+  });
+  return hit?hit.p:null;
 }
-/* 標記已領＝把「目前還差的金額」記成一筆發放。再點一次撤銷這一段期間的紀錄。 */
+/* 標記已領＝把「目前還差的金額」另記成一筆發放，不改動之前已記的紀錄。
+   已經領完時再點＝撤回「最近一次」標記，之前分次發的照樣保留；
+   撤回可以從提示上復原，誤觸也救得回來。 */
 function togglePayout(memberId,due,cur){
   cur = cur==='R' ? 'R' : 'TWD';
   const from=splFrom, to=splTo;
+  if(due>0){
+    commit(()=>{
+      state.payouts=state.payouts||[];
+      state.payouts.push({id:uid(), memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
+    });
+    renderSplit();
+    toast(`${memberName(memberId)} 標記已領 ${nf(due)} ${curLabel(cur)}`);
+    return;
+  }
   const hit=exactPayout(memberId,from,to,cur);
-  commit(()=>{
-    state.payouts=state.payouts||[];
-    if(hit) state.payouts=state.payouts.filter(x=>x!==hit);
-    else state.payouts.push({id:uid(), memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
-  });
+  if(!hit) return;
+  const amt=Number(hit.twd)||0;
+  commitUndoable('', ()=>{
+    state.payouts=(state.payouts||[]).filter(x=>x.id!==hit.id);
+  }, `${memberName(memberId)} 已撤回最近一次標記（${nf(amt)} ${curLabel(cur)}），之前已領的照樣保留`);
   renderSplit();
-  toast(hit?`${memberName(memberId)} 已取消這段期間的${curLabel(cur)}領取紀錄`
-           :`${memberName(memberId)} 標記已領 ${nf(due)} ${curLabel(cur)}`);
 }
