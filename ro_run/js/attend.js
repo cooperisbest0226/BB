@@ -231,17 +231,26 @@ function splitCents(total, ws){
    - 單品交易：每一列各扣那一種材料，那一列的金額只依那一列的扣量分。
    - 佇列不夠扣（掉落物沒記或賣得比掉的多）的那一段，金額退回舊規則「當天通關場次平均分攤」，
      再找不到才列為未歸屬。不能因為掉落紀錄缺了就讓錢消失。
-   只有 attr==='auto' 的交易走這裡；手動指定（runs）與舊資料（day）維持原本算法。
 
-   順序與幣別無關：台幣與 R 幣的交易吃同一批材料，所以一定是「全部交易一起」依日期掃一遍，
-   而不是各幣別各掃各的。結果在同一個同步任務內快取，一次繪製只算一遍。 */
+   「每一筆」交易都會扣佇列，不只自動歸屬的：
+   - 手動指定（runs）先扣它指定的那幾場，不夠的再照先進先出扣；
+   - 舊資料（day）照先進先出扣。
+   這兩種的「錢」仍照原本的平均分攤，扣佇列只是為了記住哪些材料已經賣掉了。
+   以前只有自動交易會扣，舊交易賣掉的材料還留在佇列最前面，
+   新的自動交易就會把錢歸到那些早就賣完的老場次。
+   這份「每場還剩多少」也拿來鎖定手動選擇：已經被賣完的場次不能再被指定。
+
+   順序與幣別無關：台幣與 R 幣的交易吃同一批材料，所以一定是「全部交易一起」依日期掃一遍。
+   結果在同一個同步任務內快取，一次繪製只算一遍。excludeId 用在編輯某一筆時，
+   算「扣掉其他交易之後」還剩多少，那一筆自己扣的不算數；這種結果不快取。 */
 let fifoCache=null;
-function fifoAlloc(){
+function fifoSim(excludeId){
   const rev=readRev(), sales=state.sales||[];
-  if(fifoCache&&fifoCache.rev===rev&&fifoCache.sales===sales&&fifoCache.n===sales.length&&fifoCache.sched===state.schedule)
-    return fifoCache.map;
+  if(!excludeId&&fifoCache&&fifoCache.rev===rev&&fifoCache.sales===sales&&fifoCache.n===sales.length&&fifoCache.sched===state.schedule)
+    return fifoCache.sim;
 
   const queues=new Map();                       // 材料名 -> [{ptId, rem}]（舊 → 新）
+  const remain=new Map();                       // ptId -> {total, left}：每場掉了多少、還剩多少沒賣
   dates().forEach(k=>ptsOf(k).forEach(pt=>{
     if(!runEligible(pt)) return;
     (pt.drops||[]).forEach(d=>{
@@ -249,24 +258,29 @@ function fifoAlloc(){
       if(!n||q<=0) return;
       if(!queues.has(n)) queues.set(n,[]);
       queues.get(n).push({ptId:pt.id, rem:q});
+      const r=remain.get(pt.id)||{total:0,left:0}; r.total+=q; r.left+=q; remain.set(pt.id,r);
     });
   }));
-  const draw=(name,need)=>{
+  /* 從佇列扣 need 個；only 有給時只扣那幾場的（手動指定），否則從最前面扣 */
+  const draw=(name,need,only)=>{
     const q=queues.get(name)||[], parts=[];
     let left=need;
-    while(left>0&&q.length){
-      const h=q[0], t=Math.min(h.rem,left);
+    for(let i=0; left>0&&i<q.length; ){
+      const h=q[i];
+      if(only&&!only.has(h.ptId)){ i++; continue; }
+      const t=Math.min(h.rem,left);
       parts.push([h.ptId,t]); h.rem-=t; left-=t;
-      if(h.rem<=0) q.shift();
+      remain.get(h.ptId).left-=t;
+      if(h.rem<=0) q.splice(i,1); else i++;
     }
     return {parts, short:left};
   };
 
-  const map=new Map();                          // 交易 id -> {parts:Map(ptId->分), fallback:分}
-  sales.map((s,i)=>({s,i})).filter(({s})=>saleAttr(s)==='auto')
+  const map=new Map();                          // 自動交易 id -> {parts:Map(ptId->分), fallback:分}
+  sales.map((s,i)=>({s,i})).filter(({s})=>s.id!==excludeId)
     .sort((a,b)=>(a.s.date||'').localeCompare(b.s.date||'')||a.i-b.i)
     .forEach(({s})=>{
-      const cents=toCents(saleAmounts(s).amt);
+      const mode=saleAttr(s);
       let comps;
       if(isItemSale(s)){
         comps=saleItems(s).map(it=>({name:(it.name||'').trim(), need:Number(it.qty)||0, w:itemAmount(it)}))
@@ -277,6 +291,16 @@ function fifoAlloc(){
         const need=(Number(s.sets)||0)*Math.max(1,Number(s.per)||1);
         comps=need>0 ? SET_RECIPE.map(name=>({name,need,w:1})) : [];
       }
+      if(mode!=='auto'){
+        /* 只扣材料，不動錢 */
+        const only=mode==='runs' ? new Set(Array.isArray(s.runIds)?s.runIds:[]) : null;
+        comps.forEach(c=>{
+          const r=only&&only.size ? draw(c.name,c.need,only) : {short:c.need};
+          if(r.short>0) draw(c.name,r.short);
+        });
+        return;
+      }
+      const cents=toCents(saleAmounts(s).amt);
       const out={parts:new Map(), fallback:0};
       map.set(s.id,out);
       /* 即使金額是 0 也照扣材料：材料頁的「已售出」不看金額，兩邊的庫存要一致 */
@@ -289,8 +313,16 @@ function fifoAlloc(){
         out.fallback+=cs[cs.length-1];
       });
     });
-  fifoCache={rev,sales,n:sales.length,sched:state.schedule,map};
-  return map;
+  const sim={map, remain};
+  if(!excludeId) fifoCache={rev,sales,n:sales.length,sched:state.schedule,sim};
+  return sim;
+}
+function fifoAlloc(){ return fifoSim().map; }
+/* 某場的材料是否已經全部賣掉。沒記掉落物的場次回 false —— 沒有資料就不鎖，
+   不記掉落、只靠手動指定分錢的用法要照樣能用。 */
+function runSoldOut(ptId, excludeId){
+  const r=fifoSim(excludeId).remain.get(ptId);
+  return !!(r&&r.total>0&&r.left<=0);
 }
 
 function splitStats(from,to,cur){
@@ -612,29 +644,39 @@ function runPickSummary(ids, emptyText){
 
 /* 清單是懶建的：資料用久了會累積幾百天，每次渲染拍賣頁都重建一次
    幾百組 DOM 是實打實的負擔，所以只有展開時才產生。 */
-function runPickBodyHTML(ids){
+/* 已經被之前的交易賣完材料的場次要鎖住：自動歸屬已經把它們的材料分出去了，
+   再手動指定一次，同一批材料就會被算兩次錢。已勾選的不鎖（編輯舊交易時要能取消）。
+   excludeId 是正在編輯的那一筆：它自己扣掉的材料不算「別人賣掉的」。 */
+function runPickBodyHTML(ids, excludeId){
   const ks=dates().filter(k=>ptsOf(k).length).reverse();   // 新的在上面
   if(!ks.length) return `<div class="bench-empty" style="padding:12px">還沒有任何場次</div>`;
+  const sim=fifoSim(excludeId);
   return ks.map(k=>`<div class="rp-day">
     <div class="rp-d">${fmtDate(k)} ${fmtDow(k)}</div>
-    ${ptsOf(k).map(p=>`<label class="rp-r${isWipe(p)?' wiped':''}">
-      <input type="checkbox" value="${p.id}"${ids.includes(p.id)?' checked':''}>
+    ${ptsOf(k).map(p=>{
+      const r=sim.remain.get(p.id), on=ids.includes(p.id);
+      const sold=!!(r&&r.total>0&&r.left<=0);
+      const lock=sold&&!on;
+      const tag = sold ? '已賣完' : r&&r.total>0 ? `剩 ${nf(r.left)}/${nf(r.total)} 個` : '';
+      return `<label class="rp-r${isWipe(p)?' wiped':''}${lock?' locked':''}"${lock?' title="這場的材料已經賣完（被之前的交易對應走了），不能再指定"':''}>
+      <input type="checkbox" value="${p.id}"${on?' checked':''}${lock?' disabled':''}>
       <span class="rp-n">${esc(p.name)}${isWipe(p)?' · 翻車':''}</span>
+      ${tag?`<em class="rp-s${sold?' out':''}">${tag}</em>`:''}
       <em class="rp-c">${p.slots.length} 人</em>
-    </label>`).join('')}
+    </label>`;}).join('')}
   </div>`).join('');
 }
 
 /* 把一組「按鈕 + 收合清單」接起來。新增表單與編輯 sheet 共用，
    免得兩邊各寫一份、之後只改到其中一邊。 */
-function bindRunPicker(root, getIds, setIds, getEmpty){
+function bindRunPicker(root, getIds, setIds, getEmpty, excludeId){
   const btn=root.querySelector('[data-rp="btn"]');
   const body=root.querySelector('[data-rp="body"]');
   const paint=()=>{ btn.textContent=runPickSummary(getIds(), getEmpty&&getEmpty()); };
   btn.onclick=()=>{
     const open=btn.getAttribute('aria-expanded')==='true';
     if(open){ btn.setAttribute('aria-expanded','false'); body.hidden=true; return; }
-    body.innerHTML=runPickBodyHTML(getIds())+
+    body.innerHTML=runPickBodyHTML(getIds(), excludeId)+
       `<button type="button" class="minibtn rp-clear" data-rp="clear">改回自動歸屬</button>`;
     body.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.onchange=()=>{
       const cur=getIds().filter(x=>x!==cb.value);
