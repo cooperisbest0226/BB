@@ -173,7 +173,20 @@ svg{display:block;flex-shrink:0}
 .map-toggle .chev{transition:transform .2s;color:var(--muted)}
 .map-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .map-inline{display:flex;flex-direction:column;gap:10px}
-.map-inline .map-box{height:min(46vh,360px)}
+.map-inline .map-box{height:min(46vh,360px);z-index:0}
+.map-inline .stops{gap:0}
+.stop-row .st{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0}
+.stop-row.on .st{color:inherit}
+.stop-row small{max-width:42%;overflow:hidden;text-overflow:ellipsis}
+.stop-leg{display:flex;align-items:center;gap:5px;min-height:18px;padding:0 8px 0 42px;font-size:12px;color:var(--muted)}
+.stop-leg:empty{min-height:4px}
+.dm-pin{background:none;border:0}
+.dm-tag{position:absolute;left:0;top:0;transform:translate(-50%,calc(-100% - 7px));display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:14px;background:#fff;color:#1C2433;box-shadow:0 2px 8px rgba(0,0,0,.28);white-space:nowrap;font:700 12px/1 system-ui,sans-serif}
+.dm-tag.solo{padding-right:3px}
+.dm-tag b{width:20px;height:20px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.dm-tag::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-top-color:#fff;border-bottom:0}
+.dm-pin.on .dm-tag{background:#1C2433;color:#fff}.dm-pin.on .dm-tag::after{border-top-color:#1C2433}
+.dm-pin.on{z-index:9999!important}
 .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .map-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;color:var(--muted);font-size:14px}
 .stops{gap:0;padding:6px}
@@ -400,7 +413,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -413,6 +426,12 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.8.0', date: '2026-10-02', notes: [
+    ['imp', '全天路線地圖改成依行程順序 A → B → C → D 一路畫下來，每個點都標字母和時間'],
+    ['add', '地點清單每兩站之間顯示開車時間和距離'],
+    ['imp', '點清單或地圖上的點，地圖會直接移過去，不用重新載入'],
+    ['imp', '算全天路線時順便存好每段車程，行程頁不必再一段一段查']
+  ]},
   { v: '1.7.0', date: '2026-10-02', notes: [
     ['add', '行程頁每天可以直接展開路線地圖，列出 A、B、C 每個地點，點地點就切到那個位置'],
     ['imp', '展開或收合會記住，下次打開還是一樣']
@@ -866,9 +885,13 @@ function render() {
   const views = { today: renderToday, itin: renderItin, checks: renderChecks, more: renderMore };
   _wantRoutes = [];
   app.innerHTML = (views[S.tab] || renderToday)();
-  if (_wantRoutes.length) { const w = _wantRoutes; setTimeout(() => queueRoutes(w), 0); }
+  const w = _wantRoutes.length ? _wantRoutes : null;
   if (_wxWant.size) setTimeout(runWx, 0);
   if (S.tab === 'itin') { const sel = $('.day-chip.sel'); if (sel) sel.scrollIntoView({ inline: 'center', block: 'nearest' }); }
+  // 有展開地圖時先查全天路線（一次拿到每段車程），剩下沒查到的才一段一段查
+  const dm = $('#app .map-inline[data-daymap]');
+  if (dm) mountDayMap(dm).finally(() => { if (w) queueRoutes(w); });
+  else if (w) setTimeout(() => queueRoutes(w), 0);
 }
 function renderTabbar() {
   const tabs = [['today', '今日', 'sun'], ['itin', '行程', 'route'], ['checks', '清單', 'list'], ['more', '更多', 'more']];
@@ -1610,76 +1633,166 @@ function mapFrame(src, title, sm) {
 function dayStops(day) {
   const items = dayItems(day).filter((it) => locStart(it) || locEnd(it));
   let stops = [];
-  const push = (q, tag) => { q = (q || '').trim(); if (q && (!stops.length || stops[stops.length - 1].q !== q)) stops.push({ q, tag }); };
+  // t：到這個地點的時間；n：行程名稱（地圖標籤和清單用）
+  const push = (q, tag, t, n) => { q = (q || '').trim(); if (q && (!stops.length || stops[stops.length - 1].q !== q)) stops.push({ q, tag, t: t || '', n: n || '' }); };
   items.forEach((it, i) => {
     if (isFlight(it)) {
-      if (i === items.length - 1) push(it.place || it.from, '搭機');
-      else { stops = []; push(it.to, '落地'); }
+      if (i === items.length - 1) push(it.place || it.from, '搭機', it.time, it.title);
+      else { stops = []; push(it.to, '落地', it.arrTime, it.title); }
       return;
     }
-    push(locStart(it)); push(locEnd(it));
+    if (it.type === 'transit') { push(locStart(it), '', it.time, it.title); push(locEnd(it), '', it.arrTime, it.title); }
+    else push(locStart(it), '', it.time, it.title);
   });
   // 從前一晚的住宿出發（當天第一段是飛機就不加）
   if (items.length && !isFlight(items[0])) {
     let stay = null;
     for (let d = day - 1; d >= 1 && !stay; d--) stay = dayItems(d).filter((x) => x.type === 'stay' && x.place).pop() || null;
-    if (stay && stay.place.trim() !== (stops[0] && stops[0].q)) stops.unshift({ q: stay.place.trim(), tag: '住宿' });
+    if (stay && stay.place.trim() !== (stops[0] && stops[0].q)) stops.unshift({ q: stay.place.trim(), tag: '住宿', t: '', n: stay.title });
   }
   return stops;
 }
 function openDayMap(day) {
-  const all = dayStops(day);
-  if (!all.length) { toast('這天的行程還沒有填地點'); return; }
-  const stops = all.slice(0, EMBED_MAX_STOPS); const drive = driveOn();
-  // 大眾運輸路線不能經過多個地點；沒開車的旅程也用開車路線畫線（比步行少斷路），只當位置和順序的示意
-  const overview = () => stops.length === 1 ? embedUrl('place', { q: stops[0].q })
-    : embedUrl('directions', { origin: stops[0].q, destination: stops[stops.length - 1].q, mode: 'driving', ...(stops.length > 2 ? { waypoints: stops.slice(1, -1).map((x) => x.q).join('|') } : {}) });
-  const letter = (i) => String.fromCharCode(65 + i);
-  const title = day ? `Day ${day} 地圖` : '待排地點';
-  const note = stops.length === 1 ? '' : drive ? '開車路線，字母對應下方地點' : '線條只用來看位置和順序，不是建議路線；搭車方式請點行程裡的各段查看';
-  const sh = openSheet(title, `${mapFrame(overview(), title)}
-    ${note || all.length > stops.length ? `<p class="note-p" style="margin:8px 4px 0">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
-    <div style="height:10px"></div>
-    <div class="card stops">${stops.length > 1 ? `<button class="stop-row on" data-si="all"><span class="lt">${icon('route', 14)}</span><span class="q">全天路線</span></button>` : ''}
-      ${stops.map((x, i) => `<button class="stop-row ${stops.length === 1 ? 'on' : ''}" data-si="${i}"><span class="lt">${stops.length > 1 ? letter(i) : icon('pin', 14)}</span><span class="q">${h(x.q)}</span>${x.tag ? `<small>${x.tag}</small>` : ''}</button>`).join('')}</div>`);
-  sh.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-si]'); if (!b) return;
-    const fr = sh.querySelector('iframe'); if (!fr) { toast('地圖需要網路'); return; }
-    fr.src = b.dataset.si === 'all' ? overview() : embedUrl('place', { q: stops[+b.dataset.si].q });
-    $$('.stop-row', sh).forEach((x) => x.classList.toggle('on', x === b));
-  });
+  if (!dayStops(day).length) { toast('這天的行程還沒有填地點'); return; }
+  const sh = openSheet(day ? `Day ${day} 地圖` : '待排地點', dayMapBody(day));
+  mountDayMap(sh.querySelector('.map-inline'));
 }
-// 行程頁：每天標題下可展開／收合的路線地圖（開關狀態記住）
 function dayRouteUrl(stops) {
   return stops.length === 1 ? embedUrl('place', { q: stops[0].q })
     : embedUrl('directions', { origin: stops[0].q, destination: stops[stops.length - 1].q, mode: 'driving', ...(stops.length > 2 ? { waypoints: stops.slice(1, -1).map((x) => x.q).join('|') } : {}) });
 }
-function dayMapInline(day) {
-  if (!MAPS_EMBED_KEY) return '';
-  const all = dayStops(day); if (!all.length) return '';
-  const stops = all.slice(0, EMBED_MAX_STOPS); const open = !!S.settings.mapOpen;
-  let html = `<button class="map-toggle" data-act="toggleMap" aria-expanded="${open}">${icon('map', 16, 2.2)}<span>${open ? '收合路線地圖' : '展開路線地圖'}</span><small>${stops.length} 個地點</small><span class="chev">${icon('down', 16, 2.2)}</span></button>`;
-  if (!open) return html;
-  const f = S.mapFocus && S.mapFocus.day === day && stops[S.mapFocus.i] ? S.mapFocus.i : -1;
-  const src = f >= 0 ? embedUrl('place', { q: stops[f].q }) : dayRouteUrl(stops);
-  const note = stops.length === 1 ? '' : driveOn() ? '開車路線，字母對應下方地點' : '線條只用來看位置和順序，不是建議路線';
-  html += `<div class="map-inline">${mapFrame(src, day ? `Day ${day} 路線地圖` : '待排地點地圖')}
-    ${note || all.length > stops.length ? `<p class="note-p" style="margin:0 4px">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
-    <div class="card stops">${stops.length > 1 ? `<button class="stop-row ${f < 0 ? 'on' : ''}" data-act="mapFocus" data-d="${day}" data-si="-1"><span class="lt">${icon('route', 14)}</span><span class="q">全天路線</span></button>` : ''}
-      ${stops.map((x, i) => `<button class="stop-row ${f === i || stops.length === 1 ? 'on' : ''}" data-act="mapFocus" data-d="${day}" data-si="${i}"><span class="lt">${stops.length > 1 ? String.fromCharCode(65 + i) : icon('pin', 14)}</span><span class="q">${h(x.q)}</span>${x.tag ? `<small>${x.tag}</small>` : ''}</button>`).join('')}</div></div>`;
-  return html;
+const mapsAvailable = () => !!(MAPS_EMBED_KEY || apiBase());
+
+/* ----- 全天路線地圖：Worker 一次向 Google 查完 A→B→C→D 的開車路線（含每段時間、座標），
+ * 用 Leaflet + OpenStreetMap 畫出來，每個點標字母和時間。查過就存在手機裡（90 天）。 */
+const DR_MAX = 12; // 每次最多 12 個地點（中途點 10 個以內算 Essentials 計費），超過就分段
+let _dayRoutes = null, _drAdded = false;
+const drKey = (stops) => regionOf() + '|' + stops.map((x) => x.q).join('>');
+function decodePl(str) {
+  const pts = []; let i = 0, lat = 0, lng = 0;
+  while (i < str.length) {
+    for (let k = 0; k < 2; k++) {
+      let r = 0, sh = 0, c;
+      do { c = str.charCodeAt(i++) - 63; r |= (c & 31) << sh; sh += 5; } while (c >= 32);
+      const d = r & 1 ? ~(r >> 1) : r >> 1;
+      if (k === 0) lat += d; else lng += d;
+    }
+    pts.push([lat / 1e5, lng / 1e5]);
+  }
+  return pts;
 }
-// 點地點只換地圖，不重畫整頁
+async function getDayRoute(stops) {
+  if (!_dayRoutes) _dayRoutes = await metaGet('dayroutes', {});
+  const k = drKey(stops); const c = _dayRoutes[k];
+  if (c && (!c.err || Date.now() - c.at < routeRetryMs(c))) return c;
+  if (!apiBase() || !navigator.onLine || mapsOff()) return null;
+  const legs = [], pls = [];
+  try {
+    for (let i = 0; i < stops.length - 1; i += DR_MAX - 1) {
+      const r = await api('POST', '/dayroute', { stops: stops.slice(i, i + DR_MAX).map((x) => x.q), region: regionOf() });
+      legs.push(...r.legs); pls.push(r.polyline || '');
+    }
+  } catch (err) {
+    if (err.status === 501 || err.message === 'maps_denied') _routesPausedUntil = Date.now() + 600000;
+    if (err.status === 429) { _routesPausedUntil = Date.now() + (err.message === 'rate_limited' ? 60000 : 600000); return null; }
+    if (err.message !== 'no_route') return null;
+    _dayRoutes[k] = { err: 'no_route', at: Date.now() }; await metaSet('dayroutes', _dayRoutes); return _dayRoutes[k];
+  }
+  const v = { legs, pls, at: Date.now() };
+  const old = Date.now() - 90 * 86400000; Object.keys(_dayRoutes).forEach((x) => { if (!_dayRoutes[x].at || _dayRoutes[x].at < old) delete _dayRoutes[x]; });
+  _dayRoutes[k] = v; await metaSet('dayroutes', _dayRoutes);
+  // 每一段的車程順便存進兩點之間的快取，行程頁的「開車 X 分」就不必再查
+  let added = false;
+  stops.slice(1).forEach((b, i) => { const L = legs[i]; const rk = routeKey(stops[i].q, b.q); if (L && L.s != null && !(S.routes[rk] && !S.routes[rk].err)) { S.routes[rk] = { s: L.s, m: L.m, at: Date.now() }; added = true; } });
+  if (added) { await metaSet('routes', S.routes); markDirty(); _drAdded = true; }
+  return v;
+}
+let _lfP = null;
+function loadLeaflet() {
+  if (window.L && window.L.map) return Promise.resolve();
+  if (_lfP) return _lfP;
+  _lfP = new Promise((res, rej) => {
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'vendor/leaflet/leaflet.css'; document.head.appendChild(l);
+    const sc = document.createElement('script'); sc.src = 'vendor/leaflet/leaflet.js'; sc.onload = res; sc.onerror = () => { _lfP = null; rej(new Error('leaflet')); }; document.head.appendChild(sc);
+  });
+  return _lfP;
+}
+const stopLetter = (i) => (i < 26 ? String.fromCharCode(65 + i) : String(i + 1));
+function legText(a, b) { const r = S.routes[routeKey(a.q, b.q)]; return r && !r.err ? `${icon('car', 12)} 開車 ${durText(r.s * 1000) || '1 分'} · ${fmtKm(r.m)}` : ''; }
+function dayMapBody(day) {
+  const all = dayStops(day); const stops = all.slice(0, EMBED_MAX_STOPS);
+  const f = S.mapFocus && S.mapFocus.day === day && stops[S.mapFocus.i] ? S.mapFocus.i : -1;
+  const note = stops.length < 2 ? '' : driveOn() ? '依行程順序的開車路線，字母對應下方地點' : '依行程順序畫出位置，線條是開車路線，只供參考';
+  const box = navigator.onLine ? `<div class="map-box"><div class="map-off">${stops.length > 1 ? '路線計算中…' : ''}</div></div>` : mapFrame('', '');
+  const rows = stops.map((x, i) => {
+    const name = x.n && x.n !== x.q ? x.n : x.q; const sub = x.tag || (x.n && x.n !== x.q ? x.q : '');
+    return `${i ? `<div class="stop-leg" data-leg="${i - 1}">${legText(stops[i - 1], x)}</div>` : ''}<button class="stop-row ${f === i || stops.length === 1 ? 'on' : ''}" data-act="mapFocus" data-si="${i}"><span class="lt">${stops.length > 1 ? stopLetter(i) : icon('pin', 14)}</span>${x.t ? `<span class="st">${h(x.t)}</span>` : ''}<span class="q">${h(name)}</span>${sub ? `<small>${h(sub)}</small>` : ''}</button>`;
+  }).join('');
+  return `<div class="map-inline" data-daymap="${day}">${box}
+    ${note || all.length > stops.length ? `<p class="note-p" style="margin:0 4px">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
+    <div class="card stops">${stops.length > 1 ? `<button class="stop-row ${f < 0 ? 'on' : ''}" data-act="mapFocus" data-si="-1"><span class="lt">${icon('route', 14)}</span><span class="q">全天路線</span></button>` : ''}${rows}</div></div>`;
+}
+async function mountDayMap(wrap) {
+  if (!wrap || !navigator.onLine) return;
+  const day = +wrap.dataset.daymap; const stops = dayStops(day).slice(0, EMBED_MAX_STOPS);
+  const box = () => wrap.querySelector('.map-box');
+  const fallback = (msg) => {
+    if (!wrap.isConnected) return;
+    box().outerHTML = MAPS_EMBED_KEY ? mapFrame(dayRouteUrl(stops), '路線地圖') : `<div class="map-box"><div class="map-off">${h(msg)}</div></div>`;
+    if (msg && MAPS_EMBED_KEY && stops.length > 1) { const p = wrap.querySelector('.note-p'); if (p) p.textContent = msg + '，改用簡易地圖'; }
+  };
+  if (stops.length < 2) { fallback('只有一個地點'); return; }
+  let r = null; try { r = await getDayRoute(stops); } catch {}
+  if (!wrap.isConnected) return;
+  // 剛拿到新的每段車程：重畫一次，行程頁的「開車 X 分」也一起更新（重畫後用快取，不會再查）
+  if (_drAdded && wrap.closest('#app') && !$('#sheet')) { _drAdded = false; render(); return; }
+  _drAdded = false;
+  if (!r || r.err) { fallback(r && r.err === 'no_route' ? '有地點 Google 找不到，請把地點寫完整一點' : '路線暫時算不出來'); return; }
+  try { await loadLeaflet(); } catch { fallback('地圖元件載入失敗'); return; }
+  if (!wrap.isConnected) return;
+  const pts = stops.map((_, i) => (i === 0 ? r.legs[0].a : r.legs[i - 1].b)).filter(Boolean);
+  if (pts.length !== stops.length) { fallback('路線資料不完整'); return; }
+  const el = box(); el.innerHTML = '';
+  const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+  const line = r.pls.flatMap((p) => (p ? decodePl(p) : []));
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#C8432C';
+  if (line.length) L.polyline(line, { color: accent, weight: 5, opacity: 0.85 }).addTo(map);
+  const markers = stops.map((x, i) => L.marker(pts[i], { title: x.n || x.q, icon: L.divIcon({ className: 'dm-pin', html: `<div class="dm-tag ${x.t ? '' : 'solo'}"><b>${stopLetter(i)}</b>${x.t ? `<span>${h(x.t)}</span>` : ''}</div>`, iconSize: null }), zIndexOffset: (stops.length - i) * 10 })
+    .addTo(map).on('click', () => { const b = wrap.querySelector(`.stop-row[data-si="${i}"]`); if (b) focusDayMap(b); }));
+  const bounds = L.latLngBounds(line.length ? line : pts); pts.forEach((p) => bounds.extend(p));
+  map.fitBounds(bounds, { padding: [32, 32] });
+  Object.assign(wrap, { _map: map, _pts: pts, _markers: markers, _bounds: bounds });
+  setTimeout(() => { if (wrap.isConnected) { map.invalidateSize(); if (!(S.mapFocus && S.mapFocus.day === day)) map.fitBounds(bounds, { padding: [32, 32] }); } }, 350);
+  // 每段車程
+  $$('[data-leg]', wrap).forEach((d) => { const i = +d.dataset.leg; const L0 = r.legs[i]; if (L0 && L0.s != null) d.innerHTML = `${icon('car', 12)} 開車 ${durText(L0.s * 1000) || '1 分'} · ${fmtKm(L0.m)}`; });
+  if (S.mapFocus && S.mapFocus.day === day && pts[S.mapFocus.i]) { map.setView(pts[S.mapFocus.i], 16); markers[S.mapFocus.i].getElement().classList.add('on'); }
+}
+// 點清單裡的地點：地圖移過去，不重畫整頁
 function focusDayMap(el) {
-  const day = +el.dataset.d, i = +el.dataset.si;
+  const wrap = el.closest('.map-inline'); if (!wrap) return;
+  const day = +wrap.dataset.daymap, i = +el.dataset.si;
+  if (wrap.closest('#app')) S.mapFocus = i >= 0 ? { day, i } : null;
+  $$('.stop-row', wrap).forEach((b) => b.classList.toggle('on', b === el));
+  if (wrap._map) {
+    if (i < 0) wrap._map.flyToBounds(wrap._bounds, { padding: [32, 32], duration: 0.6 });
+    else wrap._map.flyTo(wrap._pts[i], Math.max(wrap._map.getZoom(), 16), { duration: 0.6 });
+    wrap._markers.forEach((m, k) => { const e = m.getElement(); if (e) e.classList.toggle('on', k === i); });
+    return;
+  }
+  const fr = wrap.querySelector('iframe'); if (!fr) { toast('地圖需要網路'); return; }
   const stops = dayStops(day).slice(0, EMBED_MAX_STOPS);
-  S.mapFocus = i >= 0 ? { day, i } : null;
-  const fr = $('.map-inline iframe'); if (!fr) { toast('地圖需要網路'); return; }
   fr.src = i >= 0 ? embedUrl('place', { q: stops[i].q }) : dayRouteUrl(stops);
-  $$('.map-inline .stop-row').forEach((b) => b.classList.toggle('on', b === el));
+}
+// 行程頁：每天標題下可展開／收合的路線地圖（開關狀態記住）
+function dayMapInline(day) {
+  if (!mapsAvailable()) return '';
+  const stops = dayStops(day).slice(0, EMBED_MAX_STOPS); if (!stops.length) return '';
+  const open = !!S.settings.mapOpen;
+  return `<button class="map-toggle" data-act="toggleMap" aria-expanded="${open}">${icon('map', 16, 2.2)}<span>${open ? '收合路線地圖' : '展開路線地圖'}</span><small>${stops.length} 個地點</small><span class="chev">${icon('down', 16, 2.2)}</span></button>${open ? dayMapBody(day) : ''}`;
 }
 function mapBtn(day) {
-  if (!MAPS_EMBED_KEY || !dayStops(day).length) return '';
+  if (!mapsAvailable() || !dayStops(day).length) return '';
   return `<button class="chip-btn" data-act="dayMap" data-d="${day}" aria-label="Day ${day} 地圖">${icon('map', 16, 2.2)}<span>地圖</span></button>`;
 }
 

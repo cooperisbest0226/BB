@@ -19,6 +19,10 @@
  *   - 限流：wrangler.toml 的 [[ratelimits]]（每個 IP 每分鐘 20 次、全部加起來每分鐘 60 次），超過回 429 rate_limited
  *     Origin 標頭可以被偽造（例如 PowerShell / curl），所以真正擋住濫用的是限流 + Google Cloud 的每日配額
  *
+ *   POST   /dayroute       一整天的開車路線（依序經過每個地點，一次查完）
+ *                          body: { stops: [地點...2~12 個], region? } → { polyline, legs: [{ s, m, a: [lat,lng], b: [lat,lng] }] }
+ *   - 中途點 10 個以內（共 12 個地點）都算 Essentials 計費；App 會自己分段
+ *
  *   PUT    /backup/:id     雲端備份（App 端加密後才上傳，這裡只存看不懂的密文）
  *   GET    /backup/:id     還原     Authorization: Bearer token（id 和 token 都由使用者的還原碼推算）
  *   DELETE /backup/:id     刪除備份
@@ -168,6 +172,51 @@ async function backup(req, env, cors, id) {
   return json({ error: 'method_not_allowed' }, 405, cors);
 }
 
+async function dayroute(req, env, cors) {
+  const allowed = (env.ALLOWED_ORIGINS || '*').split(',').map((s) => s.trim());
+  if (!allowed.includes('*') && !allowed.includes(req.headers.get('Origin') || '')) return json({ error: 'forbidden_origin' }, 403, cors);
+  if (!env.GOOGLE_MAPS_KEY) return json({ error: 'no_maps_key' }, 501, cors);
+  if (await rateLimited(env, req)) return json({ error: 'rate_limited' }, 429, cors);
+  let body;
+  try { body = JSON.parse(await req.text()); } catch { return json({ error: 'bad_json' }, 400, cors); }
+  const stops = Array.isArray(body.stops) ? body.stops.map((x) => String(x || '').trim().slice(0, 200)).filter(Boolean) : [];
+  if (stops.length < 2 || stops.length > 12) return json({ error: 'bad_body' }, 400, cors);
+  const region = /^[a-z]{2}$/i.test(body.region || '') ? body.region.toLowerCase() : undefined;
+  const gReq = {
+    origin: { address: stops[0] },
+    destination: { address: stops[stops.length - 1] },
+    intermediates: stops.slice(1, -1).map((a) => ({ address: a })),
+    travelMode: 'DRIVE',
+    routingPreference: 'TRAFFIC_UNAWARE',
+    languageCode: 'zh-TW',
+    units: 'METRIC'
+  };
+  if (region) gReq.regionCode = region;
+  const r = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY,
+      'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.legs.duration,routes.legs.staticDuration,routes.legs.distanceMeters,routes.legs.startLocation,routes.legs.endLocation'
+    },
+    body: JSON.stringify(gReq)
+  });
+  const g = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.log('dayroute_error', r.status, JSON.stringify({ stops, region, error: g.error && g.error.message }));
+    if (r.status === 403) return json({ error: 'maps_denied' }, 502, cors);
+    if (r.status === 429) return json({ error: 'maps_quota' }, 429, cors);
+    return json({ error: 'no_route' }, 422, cors);
+  }
+  const rt = g.routes && g.routes[0];
+  if (!rt || !rt.legs || rt.legs.length !== stops.length - 1) return json({ error: 'no_route' }, 422, cors);
+  const ll = (p) => (p && p.latLng ? [p.latLng.latitude, p.latLng.longitude] : null);
+  return json({
+    polyline: (rt.polyline && rt.polyline.encodedPolyline) || '',
+    legs: rt.legs.map((l) => ({ s: parseSec(l.staticDuration) ?? parseSec(l.duration), m: l.distanceMeters || 0, a: ll(l.startLocation), b: ll(l.endLocation) }))
+  }, 200, cors);
+}
+
 async function authorized(req, record) {
   const auth = req.headers.get('Authorization') || '';
   const key = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -184,6 +233,9 @@ export default {
     const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
     if (parts[0] === 'route' && parts.length === 1 && req.method === 'POST') {
       try { return await route(req, env, cors); } catch { return json({ error: 'server_error' }, 500, cors); }
+    }
+    if (parts[0] === 'dayroute' && parts.length === 1 && req.method === 'POST') {
+      try { return await dayroute(req, env, cors); } catch { return json({ error: 'server_error' }, 500, cors); }
     }
     if (parts[0] === 'backup' && parts.length === 2) {
       try { return await backup(req, env, cors, parts[1]); } catch { return json({ error: 'server_error' }, 500, cors); }
