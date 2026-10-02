@@ -4902,14 +4902,40 @@ def run(page):
     check("確定後每個人待領歸零，按鈕消失",
           page.evaluate("""() => [splitStats('', '', 'TWD').rows.every(r => r.twd - paidAmount(r.memberId, '', '', 'TWD') === 0),
                                   !!document.querySelector('#splCard [data-payall="TWD"]')]"""), [True, False])
-    check("同一段期間已有結算的人，差額併進原本那一筆，不另開",
-          page.evaluate("() => [state.payouts.filter(p => p.memberId === 'm1').length, state.payouts.find(p => p.memberId === 'm1').twd]"),
-          [1, 100])
+    check("同一段期間已有紀錄的人，差額另記一筆，不併進原本那一筆",
+          page.evaluate("() => state.payouts.filter(p => p.memberId === 'm1').map(p => p.twd)"),
+          [40, 60])
     page.click('.toast-act .toast-btn')
     page.wait_for_timeout(300)
     check("可以復原",
           page.evaluate("() => [state.payouts.length, state.payouts[0].twd, !!document.querySelector('#splCard [data-payall=\"TWD\"]')]"),
           [1, 40, True])
+
+    # ---------- 分次發放：取消只撤回最近一次 ----------
+    print("\n[v75] 分次發放與取消")
+    page.evaluate("""() => {
+        state.payouts = [{id:'p0', memberId:'m1', from:'', to:'', cur:'TWD', twd:60, ts:1}];
+        splFrom = ''; splTo = ''; persist(); render();
+    }""")
+    page.wait_for_timeout(200)
+    row_m1 = """[...document.querySelectorAll('#splList .splrow')].find(el =>
+        el.querySelector('.attrow-n').textContent.trim() === memberName('m1'))"""
+    check("領到一半（同期間已有紀錄）時，按鈕仍是「標記已領」，不是取消",
+          page.evaluate(f"() => {{ const r = {row_m1}; return [r.querySelector('.splamt').textContent.trim(), r.querySelector('.paidbtn').textContent.trim()]; }}"),
+          ["40", "標記已領"])
+    page.evaluate(f"() => {row_m1}.querySelector('.paidbtn').click()")
+    page.wait_for_timeout(250)
+    check("再標記一次：另記一筆 40，之前的 60 不動",
+          page.evaluate("() => state.payouts.filter(p => p.memberId === 'm1').map(p => p.twd)"), [60, 40])
+    page.evaluate(f"() => {row_m1}.querySelector('.paidbtn').click()")
+    page.wait_for_timeout(250)
+    check("領完後按「✓ 已領」只撤回最近一次，之前分次發的 60 照樣保留",
+          page.evaluate(f"() => {{ const r = {row_m1}; return [state.payouts.filter(p => p.memberId === 'm1').map(p => p.twd), r.querySelector('.splamt').textContent.trim()]; }}"),
+          [[60], "40"])
+    page.click('.toast-act .toast-btn')
+    page.wait_for_timeout(300)
+    check("撤回可以從提示上復原",
+          page.evaluate("() => state.payouts.filter(p => p.memberId === 'm1').map(p => p.twd)"), [60, 40])
 
     seed(page)
 
