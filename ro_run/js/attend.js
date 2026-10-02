@@ -286,9 +286,8 @@ function fifoSim(excludeId){
         comps=saleItems(s).map(it=>({name:(it.name||'').trim(), need:Number(it.qty)||0, w:itemAmount(it)}))
                           .filter(c=>c.name&&c.need>0);
       } else {
-        /* 每組幾個是記交易當下存下來的 s.per。不讀材料頁那個「每種 N 個」的輸入框 ——
-           那是畫面參數，改一下就會讓所有歷史交易的歸屬跟著變。 */
-        const need=(Number(s.sets)||0)*Math.max(1,Number(s.per)||1);
+        /* 每組幾個是記交易當下存下來的 s.per（見 salePer），之後改設定不會讓這筆的歸屬變動 */
+        const need=(Number(s.sets)||0)*salePer(s);
         comps=need>0 ? SET_RECIPE.map(name=>({name,need,w:1})) : [];
       }
       if(mode!=='auto'){

@@ -4052,6 +4052,26 @@ def run(page):
               return d.querySelector('input[value="fa"]').disabled;
           }"""), False)
 
+    check("舊整組交易沒存每組個數：材料頁與先進先出用同一個值（目前設定）",
+          page.evaluate("""() => {
+              state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'], SET_RECIPE.map(n => [n,10])) ] };
+              state.sales = [ {id:'old', date:'2026-07-01', mode:'set', cur:'TWD', sets:2, price:100,
+                               runIds:[], attr:'day', items:[]} ];
+              state.settings.perSet = 3; persist(); render();
+              const page = matInventory('','','',perSet()).sold['威力隕石碎片'];
+              const left = fifoSim().remain.get('fa').left;          // 12 種 × 10 − 12 種 × 6
+              state.settings.perSet = 1; persist(); render();
+              return [page, left];
+          }"""), [6, 48])
+
+    check("成交卡：自動交易對應不到掉落時，標出錢的實際去向",
+          page.evaluate("""() => {
+              state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'],[]) ] };
+              state.sales = [ mkItem('d1','2026-07-01','威力隕石碎片',5,100), mkItem('d2','2026-07-09','威力隕石碎片',5,100) ];
+              persist(); render();
+              return state.sales.map(s => { const d = document.createElement('div'); d.innerHTML = saleAttrChip(s); return d.textContent.trim(); });
+          }"""), ["自動 · 無掉落可對應，改當天平均", "自動 · 未歸屬"])
+
     # ---- 介面：記錄、編輯、顯示 ----
     page.evaluate("""() => {
         state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',30]]),
@@ -4076,6 +4096,23 @@ def run(page):
               state.sales.pop(); state.settings.perSet=1; persist();
               return [s.attr, s.per, s.runIds.length];
           }"""), ["auto", 3, 0])
+    check("組數超過目前可組成的組數，表單先提示",
+          page.evaluate("""() => {
+              saleMode = 'set'; saleSets = String(curSets + 3); salePrice = '100'; renderSales();
+              const a = (document.querySelector('#saleOut .salehint')||{textContent:''}).textContent;
+              saleSets = String(curSets); renderSales();
+              const b = !!document.querySelector('#saleOut .salehint');
+              saleSets = null; salePrice = ''; renderSales();
+              return [a.includes('只能組') && a.includes('當天平均'), b];
+          }"""), [True, False])
+    check("單品數量超過庫存，提示是哪一種材料不夠",
+          page.evaluate("""() => {
+              saleMode = 'item'; saleDraftItems = [{name:'威力隕石碎片', qty:'999', price:'1'}];
+              renderSaleItemRows(true); renderSales();
+              const t = (document.querySelector('#saleOut .salehint')||{textContent:''}).textContent;
+              saleMode = 'set'; saleDraftItems = []; renderSaleItemRows(true); renderSales();
+              return t.includes('威力隕石碎片 只剩');
+          }"""), True)
     check("新記交易時手動勾了場次 → attr 變成 runs",
           page.evaluate("""() => {
               saleRunIds = ['fa']; saleSets = '1'; salePrice = '500';

@@ -199,7 +199,7 @@ function matInventory(from,to,runName,per){
       const k=Number(sale.sets)||0;
       if(k>0){
         soldSets+=k; soldByCur[saleCur(sale)]+=k;
-        SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*per);
+        SET_RECIPE.forEach(n=>sold[n]=(sold[n]||0)+k*salePer(sale));
       }
     }
   });
