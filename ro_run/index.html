@@ -273,9 +273,10 @@ try{
         <datalist id="matNameList"></datalist>
       </div>
 
-      <!-- 歸屬場次：同一天排兩場、成員不一樣的時候，不綁場次就分不出這筆錢該給誰 -->
-      <div class="field" id="saleRunPick"><label>歸屬場次（可跨天複選）</label>
-        <button type="button" class="runpick" data-rp="btn" aria-expanded="false">未指定（當天平均分攤）</button>
+      <!-- 歸屬場次：預設依掉落物先進先出自動對應，每場產量不同也會依比例分。
+           只有特殊情況（例如要把這筆錢指定給某幾場）才需要展開手動選 -->
+      <div class="field" id="saleRunPick"><label>歸屬場次 <span class="lbl-hint">預設自動，不必選</span></label>
+        <button type="button" class="runpick" data-rp="btn" aria-expanded="false">自動（依掉落物先進先出）</button>
         <div class="runpick-body" data-rp="body" hidden></div>
       </div>
 

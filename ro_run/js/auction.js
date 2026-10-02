@@ -30,6 +30,24 @@ function presentCurs(sales){
 }
 /* 兩種幣別都有資料時，各區塊要掛一條幣別標頭，單一幣別時不用（跟舊版一樣乾淨） */
 function curHead(c,multi){ return multi?`<div class="curhead" data-cur="${c}">${curLabel(c)}</div>`:''; }
+/* 歸屬方式。auto＝依掉落物先進先出（新交易的預設）、runs＝手動指定場次、day＝舊的當天平均分攤。
+   沒有這個欄位的（舊資料、匯入的檔案）依語意推：有勾場次是 runs，沒勾是 day —— 跟遷移同一條規則，
+   而不是一律當 auto，不然舊交易的分潤會在沒有人動它的情況下變動。 */
+function saleAttr(s){
+  if(s&&(s.attr==='auto'||s.attr==='runs'||s.attr==='day')) return s.attr;
+  return (s&&Array.isArray(s.runIds)&&s.runIds.length) ? 'runs' : 'day';
+}
+const AUTO_LABEL='自動（依掉落物先進先出）';
+/* 成交卡上的歸屬小標：讓人看得出這筆錢是怎麼歸屬的，不用相信一個看不到的黑盒子 */
+function saleAttrChip(s){
+  const mode=saleAttr(s);
+  if(mode==='runs'){ const n=(s.runIds||[]).length; return `<span class="auc-chip attr">指定 ${n} 場</span>`; }
+  if(mode==='day') return `<span class="auc-chip attr">當天平均分攤</span>`;
+  const a=fifoAlloc().get(s.id), n=a?a.parts.size:0;
+  if(!n) return `<span class="auc-chip attr warn" title="找不到對應的掉落物">自動 · 未對應掉落</span>`;
+  return `<span class="auc-chip attr" title="依掉落物先進先出對應到的場次">自動歸屬 ${n} 場${a.fallback>0?' ＋其餘':''}</span>`;
+}
+
 /* 單品交易沒有「組數」的概念，累計組數只算整組交易 */
 function saleSetCount(s){ return isItemSale(s) ? 0 : (Number(s.sets)||0); }
 function saleItemQty(s){ return isItemSale(s) ? saleItems(s).reduce((a,it)=>a+(Number(it.qty)||0),0) : 0; }
@@ -392,7 +410,7 @@ function renderSaleLedger(sales, avgUnits){
         const x=saleAmounts(s), item=isItemSale(s), c=saleCur(s);
         const [cls,txt]= item ? ['flat',`單品 ${saleItems(s).filter(i=>Number(i.qty)>0).length} 項`]
                               : vsAvg(saleUnit(s), avgUnits[c]);
-        const chips = item
+        const chips0 = item
           ? saleItems(s).filter(i=>(i.name||'').trim()&&Number(i.qty)>0)
               .map(i=>`<span class="auc-chip" style="${msVars(matSeries(i.name))}">${esc(i.name)} ×${nf(i.qty)} @${nf(i.price)}</span>`)
           : [`<span class="auc-chip">${nf(s.sets)} 組</span>`,
@@ -408,7 +426,7 @@ function renderSaleLedger(sales, avgUnits){
           <div class="auc-mid">
             <span class="auc-t num">${nf(x.amt)}</span><span class="auc-u">${curLabel(c)}</span>
           </div>
-          <div class="auc-foot">${chips.join('')}</div>
+          <div class="auc-foot">${chips0.join('')}${saleAttrChip(s)}</div>
         </div>`;
       }).join('')}</div>
     </div>`;
@@ -523,14 +541,14 @@ document.getElementById('saleAdd').onclick=()=>{
       .filter(it=>it.name&&it.qty>0);
     if(!items.length)                    return toast('請至少填一列有名稱與數量的材料');
     if(items.some(it=>it.price<=0))      return toast('每一列都要填單價');
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'item',cur,sets:0,price:0,runIds,items}); });
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'item',cur,sets:0,price:0,runIds,attr:runIds.length?'runs':'auto',items}); });
     saleDraftItems=[{name:'',qty:'',price:''}];
     renderSaleItemRows(true);
   } else {
     const sets=Number(saleSets)||0, price=Number(salePrice)||0;
     if(sets<=0)   return toast('請先填組數');
     if(price<=0)  return toast(`請先填每組${curLabel(cur)}`);
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,runIds,items:[]}); });
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,per:Math.max(1,matPerSet),runIds,attr:runIds.length?'runs':'auto',items:[]}); });
   }
   /* 記完就把表單清乾淨。留著上一筆的組數與歸屬場次最危險：
      下一筆很容易在沒注意的情況下沿用舊的歸屬，而那直接決定錢分給誰。
@@ -563,8 +581,8 @@ function saleSheet(id){
         <option value="TWD"${saleCur(s)==='TWD'?' selected':''}>台幣</option>
         <option value="R"${saleCur(s)==='R'?' selected':''}>R 幣</option>
       </select></div>
-    <div class="field" id="editRunPick"><label>歸屬場次（可跨天複選）</label>
-      <button type="button" class="runpick" data-rp="btn" aria-expanded="false">未指定</button>
+    <div class="field" id="editRunPick"><label>歸屬場次 <span class="lbl-hint">預設自動，不必選</span></label>
+      <button type="button" class="runpick" data-rp="btn" aria-expanded="false">${AUTO_LABEL}</button>
       <div class="runpick-body" data-rp="body" hidden></div>
     </div>
     ${body}
@@ -598,8 +616,12 @@ function saleSheet(id){
     /* 在暫存副本上改，按取消就整份丟掉。場次清單不再跟著交易日期走 ——
        跨天複選之後，交易日期跟場次日期本來就沒有從屬關係了。 */
     let workRunIds=(Array.isArray(s.runIds)?s.runIds:[]).slice();
+    /* 歸屬方式也在暫存副本上改：指定場次 → runs；按「改回自動」→ auto；
+       什麼都沒碰的舊交易維持 day，儲存其他欄位時不會順便改掉它的分潤算法。 */
+    let workAttr=saleAttr(s);
     bindRunPicker(sh.querySelector('#editRunPick'),
-                  ()=>workRunIds, v=>{ workRunIds=v; });
+                  ()=>workRunIds, v=>{ workRunIds=v; workAttr=v.length?'runs':'auto'; },
+                  ()=>workAttr==='day' ? '當天平均分攤（舊設定）' : AUTO_LABEL);
     const addBtn=sh.querySelector('[data-s="addRow"]');
     if(addBtn) addBtn.onclick=()=>{ work.push({name:'',qty:'',price:''}); paintRows(); };
 
@@ -612,12 +634,12 @@ function saleSheet(id){
                         .filter(it=>it.name&&it.qty>0);
         if(!items.length)               return toast('請至少填一列有名稱與數量的材料');
         if(items.some(it=>it.price<=0)) return toast('每一列都要填單價');
-        commit(()=>{ Object.assign(s,{date,cur,runIds,items}); });
+        commit(()=>{ Object.assign(s,{date,cur,runIds,attr:workAttr,items}); });
       } else {
         const sets=Number(val(sh,'sets'))||0, price=Number(val(sh,'price'))||0;
         if(sets<=0)  return toast('請先填組數');
         if(price<=0) return toast('請先填每組價格');
-        commit(()=>{ Object.assign(s,{date,sets,price,cur,runIds}); });
+        commit(()=>{ Object.assign(s,{date,sets,price,cur,runIds,attr:workAttr}); });
       }
       closeSheet();
       toast('已更新交易明細');

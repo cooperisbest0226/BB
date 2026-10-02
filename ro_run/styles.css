@@ -657,6 +657,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .curhead[data-cur="R"]::before{background:var(--warn)}
 .curblock:first-child .curhead{margin-top:0}
 .curblock + .curblock{margin-top:6px}
+.lbl-hint{font-size:11px; font-weight:500; color:var(--faint); margin-left:6px}
+.auc-chip.attr{background:transparent; border:1px dashed var(--line); color:var(--faint)}
+.auc-chip.attr.warn{color:var(--warn); border-color:var(--warn)}
 .salecur{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px}
 .salecur-l{font-size:12.5px; color:var(--muted); font-weight:600}
 

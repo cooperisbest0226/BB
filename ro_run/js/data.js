@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v71';
+const APP_VERSION='v72';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -278,6 +278,19 @@ const MIGRATIONS=[
             金額一起存下來是刻意的：之後如果又補記了那段期間的交易，
             試算金額會變，但實際發出去的數字不該跟著被改寫。 */
   p=>{ if(!Array.isArray(p.payouts)) p.payouts=[]; },
+  /* 11 → 12：交易加上「歸屬方式」attr。
+            auto＝依掉落物先進先出自動歸屬（新交易的預設，賣出時不用再勾場次）；
+            runs＝使用者手動指定了場次；day＝舊的「未指定 → 當天通關場次平均分攤」。
+            舊交易一律照它原本的語意標記（有勾場次 → runs，沒勾 → day），
+            不自動轉成 auto：領取紀錄存的是當初實際發出去的金額，
+            若這一步偷偷改變了歷史交易的分配，應得與已領就對不起來。
+            要改成自動的交易，由使用者自己在編輯裡按「改回自動歸屬」。 */
+  p=>{
+    (p.sales||[]).forEach(s=>{
+      if(s.attr!=='auto'&&s.attr!=='runs'&&s.attr!=='day')
+        s.attr=(Array.isArray(s.runIds)&&s.runIds.length)?'runs':'day';
+    });
+  },
 ];
 const SCHEMA_VERSION=MIGRATIONS.length;
 

@@ -330,7 +330,7 @@ def run(page):
           ["#6", "#5", "#4", "#3", "#2", "#1"])
     check("成交卡片顯示組數與每組價（換算率已隨幣別拆分移除）",
           page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')[0]
-              .querySelectorAll('.auc-chip')].map(e=>e.textContent)"""),
+              .querySelectorAll('.auc-chip:not(.attr)')].map(e=>e.textContent)"""),
           ["14 組", "每組 155"])
 
     check("平均每組價用加權算（總額 ÷ 總組數）",
@@ -413,7 +413,7 @@ def run(page):
           }"""), ["單品 1 項", True])
     check("單品卡片把每種材料列成標籤",
           page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')[1]
-              .querySelectorAll('.auc-chip')].map(e=>e.textContent)"""),
+              .querySelectorAll('.auc-chip:not(.attr)')].map(e=>e.textContent)"""),
           ["威力隕石碎片 ×20 @10", "耐力隕石浮塵 ×10 @8"])
 
     check("單品行情依材料統計，依成交額由大到小",
@@ -476,7 +476,7 @@ def run(page):
               saleRunIds.length,
               document.querySelector('#saleRunPick [data-rp="btn"]').textContent.trim(),
               document.querySelector('#saleRunPick [data-rp="body"]').hidden]"""),
-          ["", 0, "未指定（當天平均分攤）", True])
+          ["", 0, "自動（依掉落物先進先出）", True])
 
     # ---------- 拍賣：日期區間篩選 ----------
     print("\n[auction] 成交紀錄日期區間篩選")
@@ -3047,9 +3047,9 @@ def run(page):
               return [days.length, runs.length, days[0]];
           }"""), [2, 3, "07/02 週四"])   # 新的日子排在最上面
 
-    check("預設未指定，摘要說明會退回當天平均分攤",
+    check("預設自動歸屬，摘要說明依掉落物先進先出",
           page.evaluate("""() => document.querySelector('#saleRunPick [data-rp="btn"]')
-              .textContent.trim()"""), "未指定（當天平均分攤）")
+              .textContent.trim()"""), "自動（依掉落物先進先出）")
 
     check("跨天勾選多場，摘要會標出場數與跨了幾天",
           page.evaluate("""() => {
@@ -3084,7 +3084,7 @@ def run(page):
               document.querySelector('#saleRunPick [data-rp="clear"]').click();
               return [saleRunIds.length,
                       document.querySelector('#saleRunPick [data-rp="btn"]').textContent.trim()];
-          }"""), [0, "未指定（當天平均分攤）"])
+          }"""), [0, "自動（依掉落物先進先出）"])
 
     check("已刪除的場次會從選擇中被濾掉，摘要不會出現對不到的數字",
           page.evaluate("""() => {
@@ -3807,6 +3807,241 @@ def run(page):
               return [h.includes('R 幣'), one,
                       document.querySelectorAll('#splList .splline').length];
           }"""), [True, 1, 0])
+
+    # ---------- 依掉落物先進先出歸屬 ----------
+    print("\n[fifo] 依掉落物先進先出歸屬")
+    seed(page)
+    SETUP = """() => {
+        const mk = (id, name, ids, drops, wipe) => ({id, name, capacity:12, wipe:!!wipe, videos:[],
+            drops:(drops||[]).map((d,i) => ({id:id+'d'+i, name:d[0], qty:d[1]})),
+            slots: ids.map(x => ({memberId:x}))});
+        window.mkRun = mk;
+        const item = (id, date, name, qty, price, extra) => Object.assign(
+            {id, date, mode:'item', cur:'TWD', sets:0, price:0, runIds:[], attr:'auto',
+             items:[{name, qty, price}]}, extra||{});
+        window.mkItem = item;
+        state.payouts = []; splFrom = ''; splTo = '';
+    }"""
+    page.evaluate(SETUP)
+
+    check("11→12 遷移：有勾場次的舊交易 → runs，沒勾的 → day，已有 attr 的不動",
+          page.evaluate("""() => {
+              const old = {schemaVersion:11, members:[], roles:[], schedule:{}, dayTimes:{}, payouts:[],
+                  sales:[{id:'a', date:'2026-01-01', mode:'set', cur:'TWD', sets:1, price:1, runIds:['x'], items:[]},
+                         {id:'b', date:'2026-01-01', mode:'set', cur:'TWD', sets:1, price:1, runIds:[], items:[]},
+                         {id:'c', date:'2026-01-01', mode:'set', cur:'TWD', sets:1, price:1, runIds:[], attr:'auto', items:[]}]};
+              const m = migrate(JSON.parse(JSON.stringify(old)));
+              return [m.schemaVersion === SCHEMA_VERSION, m.sales.map(x => x.attr)];
+          }"""), [True, ["runs", "day", "auto"]])
+
+    check("舊資料沒有 attr 欄位時，執行期也依語意判斷，不會當成 auto",
+          page.evaluate("""() => [saleAttr({runIds:['x']}), saleAttr({runIds:[]}), saleAttr({}), saleAttr({attr:'auto'})]"""),
+          ["runs", "day", "day", "auto"])
+
+    check("splitCents：加總精確等於總額，權重 0 退回平均",
+          page.evaluate("""() => [splitCents(1001,[1,1,1]), splitCents(100,[3,1]), splitCents(7,[0,0]), splitCents(0,[1,2])]
+              .map(a => [a.reduce((x,y)=>x+y,0), a.join('/')])"""),
+          [[1001, "334/334/333"], [100, "75/25"], [7, "4/3"], [0, "0/0"]])
+
+    # 單品：賣 40 個，A 場掉 30、B 場掉 10 → 錢依 3:1 分給 A、B，各場內成員平分
+    page.evaluate("""() => {
+        state.schedule = {
+          '2026-07-01':[ mkRun('fa','RUN A',['m1','m2'],[['威力隕石碎片',30]]) ],
+          '2026-07-02':[ mkRun('fb','RUN B',['m3'],[['威力隕石碎片',10]]) ]};
+        state.sales = [ mkItem('s1','2026-07-05','威力隕石碎片',40,100) ];
+        persist(); render();
+    }""")
+    check("產量不同的場次依掉落量比例分：A 掉 30、B 掉 10 → 3000 / 1000",
+          page.evaluate("""() => { const t = splitStats('','','TWD');
+              return [t.rows.map(r => [r.memberId, r.twd]), t.totalTwd, t.balanced, t.unassignedCount]; }"""),
+          [[["m1", 1500], ["m2", 1500], ["m3", 1000]], 4000, True, 0])
+
+    # 先進先出：第一筆吃掉 A 的前 20 個，第二筆從 A 剩下 10 個＋B 的 10 個
+    page.evaluate("""() => {
+        state.sales = [ mkItem('s1','2026-07-05','威力隕石碎片',20,100),
+                        mkItem('s2','2026-07-06','威力隕石碎片',20,100) ];
+        persist(); render();
+    }""")
+    check("先進先出：第一筆全落在最早的 A；第二筆吃 A 剩下的與 B",
+          page.evaluate("""() => { const a = fifoAlloc();
+              return [[...a.get('s1').parts], [...a.get('s2').parts], a.get('s1').fallback, a.get('s2').fallback]; }"""),
+          [[["fa", 200000]], [["fa", 100000], ["fb", 100000]], 0, 0])
+
+    check("交易的順序看日期，不看陣列順序：先記的後面那筆日期較早，先扣",
+          page.evaluate("""() => {
+              state.sales = [ mkItem('late','2026-07-09','威力隕石碎片',30,100),
+                              mkItem('early','2026-07-03','威力隕石碎片',10,100) ];
+              persist(); render();
+              const a = fifoAlloc();
+              return [[...a.get('early').parts], [...a.get('late').parts]];
+          }"""), [[["fa", 100000]], [["fa", 200000], ["fb", 100000]]])   # 單位是「分」
+
+    # 翻車場：就算舊資料裡還留著掉落物，也不會排進佇列
+    check("翻車場沒有掉落物可貢獻，分不到錢（即使舊資料殘留掉落紀錄）",
+          page.evaluate("""() => {
+              state.schedule = {
+                '2026-07-01':[ mkRun('fw','RUN W',['m1'],[['威力隕石碎片',100]], true),
+                               mkRun('fa','RUN A',['m2'],[['威力隕石碎片',10]]) ]};
+              state.sales = [ mkItem('s1','2026-07-05','威力隕石碎片',10,100) ];
+              persist(); render();
+              const t = splitStats('','','TWD');
+              return [t.rows.map(r => [r.memberId, r.twd]), t.balanced];
+          }"""), [[["m2", 1000]], True])
+
+    # 整組：12 種各 1 個算 1 組；賣 2 組，A 各掉 1、B 各掉 3 → 兩場各一半
+    page.evaluate("""() => {
+        const all = ['威力','耐力','專注','創造','咒數','智慧'].flatMap(n => [n+'隕石浮塵', n+'隕石碎片']);
+        window.allMat = all;
+        state.schedule = {
+          '2026-07-01':[ mkRun('fa','RUN A',['m1'], all.map(n => [n,1])) ],
+          '2026-07-02':[ mkRun('fb','RUN B',['m2'], all.map(n => [n,3])) ]};
+        state.sales = [ {id:'set1', date:'2026-07-05', mode:'set', cur:'TWD', sets:2, price:1000, per:1,
+                         runIds:[], attr:'auto', items:[]} ];
+        persist(); render();
+    }""")
+    check("整組交易：12 種材料各依扣量切，A 與 B 各拿一半",
+          page.evaluate("""() => { const t = splitStats('','','TWD');
+              return [t.rows.map(r => [r.memberId, r.twd]), t.balanced]; }"""),
+          [[["m1", 1000], ["m2", 1000]], True])
+
+    check("每組個數存在交易上，之後改材料頁的輸入框不會讓歷史歸屬變動",
+          page.evaluate("""() => {
+              const before = JSON.stringify([...fifoAlloc().get('set1').parts]);
+              matPerSet = 5; persist(); render();
+              const after = JSON.stringify([...fifoAlloc().get('set1').parts]);
+              matPerSet = 1; persist(); render();
+              return before === after;
+          }"""), True)
+
+    check("每組 2 個：賣 1 組要扣每種 2 個，A 只有 1 個、其餘從 B 補",
+          page.evaluate("""() => {
+              state.sales = [ {id:'set2', date:'2026-07-05', mode:'set', cur:'TWD', sets:1, price:1200, per:2,
+                               runIds:[], attr:'auto', items:[]} ];
+              persist(); render();
+              return [...fifoAlloc().get('set2').parts];
+          }"""), [["fa", 60000], ["fb", 60000]])   # 單位是「分」
+
+    # 掉落不夠：退回舊規則（當天通關場次），再沒有才列為未歸屬
+    page.evaluate("""() => {
+        state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',30]]) ] };
+        state.sales = [ mkItem('over','2026-07-01','威力隕石碎片',50,100) ];
+        persist(); render();
+    }""")
+    check("賣得比掉的多：不足的那段退回當天通關場次，錢不會消失",
+          page.evaluate("""() => { const t = splitStats('','','TWD');
+              return [t.rows.map(r => [r.memberId, r.twd]), t.totalTwd, t.unassignedCount, t.balanced]; }"""),
+          [[["m1", 5000]], 5000, 0, True])
+    check("賣得比掉的多、當天又沒有場次：不足的那段列為未歸屬並提示",
+          page.evaluate("""() => {
+              state.sales = [ mkItem('over','2026-09-01','威力隕石碎片',50,100) ];
+              persist(); render();
+              const t = splitStats('','','TWD');
+              return [t.totalTwd, t.unassignedTwd, t.unassignedCount];
+          }"""), [3000, 2000, 1])
+    check("完全沒有掉落紀錄的交易：整筆退回舊規則，不會靜靜消失",
+          page.evaluate("""() => {
+              state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'],[]) ] };
+              state.sales = [ mkItem('nod','2026-07-01','威力隕石碎片',5,100) ];
+              persist(); render();
+              const t = splitStats('','','TWD');
+              return [t.rows.map(r => [r.memberId, r.twd]), t.unassignedCount];
+          }"""), [[["m1", 500]], 0])
+
+    # 舊規則不能被動到
+    check("runs（手動指定）與 day（舊資料）維持原本的平均分攤",
+          page.evaluate("""() => {
+              state.schedule = {
+                '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',90]]),
+                               mkRun('fb','RUN B',['m2'],[['威力隕石碎片',10]]) ]};
+              state.sales = [ mkItem('man','2026-07-05','威力隕石碎片',10,100,{attr:'runs', runIds:['fa','fb']}),
+                              mkItem('old','2026-07-01','威力隕石碎片',10,100,{attr:'day'}) ];
+              persist(); render();
+              const t = splitStats('','','TWD');
+              return [t.rows.map(r => [r.memberId, r.twd]), t.balanced];
+          }"""), [[["m1", 1000], ["m2", 1000]], True])
+
+    check("兩種幣別吃同一條佇列：台幣先賣的先扣，R 幣後賣的接著扣",
+          page.evaluate("""() => {
+              state.schedule = {
+                '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',10]]) ],
+                '2026-07-02':[ mkRun('fb','RUN B',['m2'],[['威力隕石碎片',10]]) ]};
+              state.sales = [ mkItem('t','2026-07-05','威力隕石碎片',10,100),
+                              mkItem('r','2026-07-06','威力隕石碎片',10,5000000,{cur:'R'}) ];
+              persist(); render();
+              const t = splitStats('','','TWD'), r = splitStats('','','R');
+              return [t.rows.map(x => [x.memberId, x.twd]), r.rows.map(x => [x.memberId, x.twd])];
+          }"""), [[["m1", 1000]], [["m2", 50000000]]])
+
+    check("材料頁的庫存判斷：自動歸屬的交易看它實際扣到的場次日期",
+          page.evaluate("""() => {
+              state.schedule = { '2026-08-30':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',10]]) ] };
+              state.sales = [ mkItem('s','2026-09-05','威力隕石碎片',10,100) ];
+              persist(); render();
+              const s = state.sales[0];
+              return [saleInDateRange(s,'2026-08-01','2026-08-31'), saleInDateRange(s,'2026-09-01','2026-09-10')];
+          }"""), [True, False])
+
+    # ---- 介面：記錄、編輯、顯示 ----
+    page.evaluate("""() => {
+        state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',30]]),
+                                          mkRun('fb','RUN B',['m2'],[['威力隕石碎片',10]]) ] };
+        state.sales = [ mkItem('s1','2026-07-05','威力隕石碎片',40,100) ];
+        persist(); render();
+    }""")
+    page.click('.tab[data-view="auction"]')
+    page.click('#aucSeg [data-sub="asales"]')
+    page.wait_for_timeout(300)
+    check("記錄表單預設就是自動歸屬，按鈕上寫明",
+          page.evaluate("() => document.querySelector('#saleRunPick [data-rp=\"btn\"]').textContent.trim()"),
+          "自動（依掉落物先進先出）")
+    check("成交卡顯示自動歸屬了幾場",
+          page.evaluate("() => document.querySelector('#saleList .auccard .auc-chip.attr').textContent.trim()"),
+          "自動歸屬 2 場")
+    check("新記的整組交易帶 attr:auto 與當下的每組個數",
+          page.evaluate("""() => {
+              matPerSet = 3; saleSets = '1'; salePrice = '500';
+              document.getElementById('saleAdd').click();
+              const s = state.sales[state.sales.length - 1];
+              state.sales.pop(); matPerSet = 1; persist();
+              return [s.attr, s.per, s.runIds.length];
+          }"""), ["auto", 3, 0])
+    check("新記交易時手動勾了場次 → attr 變成 runs",
+          page.evaluate("""() => {
+              saleRunIds = ['fa']; saleSets = '1'; salePrice = '500';
+              document.getElementById('saleAdd').click();
+              const s = state.sales[state.sales.length - 1];
+              state.sales.pop(); persist();
+              return [s.attr, s.runIds];
+          }"""), ["runs", ["fa"]])
+
+    # 編輯舊交易：什麼都不動就存，維持 day；按「改回自動歸屬」才變 auto
+    page.evaluate("""() => {
+        state.sales = [ mkItem('old','2026-07-01','威力隕石碎片',10,100,{attr:'day'}) ];
+        persist(); render();
+    }""")
+    page.wait_for_timeout(200)
+    page.evaluate("() => saleSheet('old')")
+    page.wait_for_timeout(250)
+    check("編輯舊交易時按鈕標明這是舊的當天平均設定",
+          page.evaluate("() => document.querySelector('#editRunPick [data-rp=\"btn\"]').textContent.trim()"),
+          "當天平均分攤（舊設定）")
+    page.click('.sheet [data-s="save"]')
+    page.wait_for_timeout(200)
+    check("只改別的欄位存檔，不會順便把舊交易改成自動",
+          page.evaluate("() => state.sales[0].attr"), "day")
+    page.evaluate("() => saleSheet('old')")
+    page.wait_for_timeout(250)
+    page.click('#editRunPick [data-rp="btn"]')
+    page.click('#editRunPick [data-rp="clear"]')
+    check("按「改回自動歸屬」之後按鈕文字更新",
+          page.evaluate("() => document.querySelector('#editRunPick [data-rp=\"btn\"]').textContent.trim()"),
+          "自動（依掉落物先進先出）")
+    page.click('.sheet [data-s="save"]')
+    page.wait_for_timeout(200)
+    check("存檔後 attr 變成 auto", page.evaluate("() => state.sales[0].attr"), "auto")
+
+    page.evaluate("() => { state.sales = []; state.schedule = {}; state.payouts = []; persist(); render(); }")
+    seed(page)
 
     # ---------- 效能結構：讀取快取與延後繪製 ----------
     print("\n[perf] 讀取快取與延後繪製")

@@ -190,9 +190,107 @@ function runIndex(){
 function saleInDateRange(s,from,to){
   const inR=d=>(!from||d>=from)&&(!to||d<=to);
   const idx=runIndex();
-  const dts=(Array.isArray(s.runIds)?s.runIds:[])
-    .map(id=>idx.get(id)).filter(Boolean).map(e=>e.date);
+  /* 自動歸屬的交易，認的是它實際扣到材料的那幾場（先進先出）；
+     否則九月賣掉八月的材料，材料頁會把它算進九月的庫存裡。 */
+  const ids = saleAttr(s)==='auto'
+    ? [...((fifoAlloc().get(s.id)||{}).parts||new Map()).keys()]
+    : (Array.isArray(s.runIds)?s.runIds:[]);
+  const dts=ids.map(id=>idx.get(id)).filter(Boolean).map(e=>e.date);
   return dts.length ? dts.some(inR) : inR(s.date||'');
+}
+
+/* 能收錢的場次：通關，而且真的有人出場。
+   翻車就是沒打成功、沒有掉落物，沒有東西可以分；有錢卻沒有出場成員的場次
+   也一樣沒有分潤對象。這兩種都不是「先扣起來放公基金」，
+   而是根本不該進入分配 —— 錢會留在原本的交易上，由使用者自己去指定歸屬。 */
+const runEligible=pt=>isCleared(pt)&&pt.slots.some(x=>x.memberId);
+
+/* 把 total 分「分」依權重切成整數，加總精確等於 total（最大餘額法）。
+   權重全是 0 時退回平均，不會有一筆錢因為除以零消失。 */
+function splitCents(total, ws){
+  if(!ws.length) return [];
+  let sum=ws.reduce((a,b)=>a+b,0);
+  if(sum<=0){ ws=ws.map(()=>1); sum=ws.length; }
+  if(total<=0) return ws.map(()=>0);
+  const raw=ws.map(w=>total*w/sum), out=raw.map(Math.floor);
+  let left=total-out.reduce((a,b)=>a+b,0);
+  raw.map((r,i)=>[r-out[i],i]).sort((a,b)=>b[0]-a[0]||a[1]-b[1])
+     .forEach(([,i])=>{ if(left>0){ out[i]++; left--; } });
+  return out;
+}
+
+/* ── 依掉落物先進先出歸屬 ─────────────────────────────────
+   問題：材料是累積好幾場、好幾天才賣一次，而且每場產量都不同。
+   逐筆去勾「這筆算哪幾場」既麻煩，勾出來還是把錢平均攤 —— 產量多的場次沒有多拿。
+
+   做法：把每一種材料看成一條佇列，依場次日期由舊到新排好，每場掉了多少就排多少；
+   賣出時從佇列最前面（最早累積、還沒賣掉的）開始扣。扣到哪幾場的材料、各扣幾個，
+   那一筆錢就依這個數量比例分給那幾場。
+   - 翻車場沒有掉落物，佇列裡根本沒有它，自然分不到錢。
+   - 整組交易：12 種配方材料各扣 組數 × 每組個數，金額平均分給 12 個部分再各自依扣量切。
+   - 單品交易：每一列各扣那一種材料，那一列的金額只依那一列的扣量分。
+   - 佇列不夠扣（掉落物沒記或賣得比掉的多）的那一段，金額退回舊規則「當天通關場次平均分攤」，
+     再找不到才列為未歸屬。不能因為掉落紀錄缺了就讓錢消失。
+   只有 attr==='auto' 的交易走這裡；手動指定（runs）與舊資料（day）維持原本算法。
+
+   順序與幣別無關：台幣與 R 幣的交易吃同一批材料，所以一定是「全部交易一起」依日期掃一遍，
+   而不是各幣別各掃各的。結果在同一個同步任務內快取，一次繪製只算一遍。 */
+let fifoCache=null;
+function fifoAlloc(){
+  const rev=readRev(), sales=state.sales||[];
+  if(fifoCache&&fifoCache.rev===rev&&fifoCache.sales===sales&&fifoCache.n===sales.length&&fifoCache.sched===state.schedule)
+    return fifoCache.map;
+
+  const queues=new Map();                       // 材料名 -> [{ptId, rem}]（舊 → 新）
+  dates().forEach(k=>ptsOf(k).forEach(pt=>{
+    if(!runEligible(pt)) return;
+    (pt.drops||[]).forEach(d=>{
+      const n=(d.name||'').trim(), q=Number(d.qty)||0;
+      if(!n||q<=0) return;
+      if(!queues.has(n)) queues.set(n,[]);
+      queues.get(n).push({ptId:pt.id, rem:q});
+    });
+  }));
+  const draw=(name,need)=>{
+    const q=queues.get(name)||[], parts=[];
+    let left=need;
+    while(left>0&&q.length){
+      const h=q[0], t=Math.min(h.rem,left);
+      parts.push([h.ptId,t]); h.rem-=t; left-=t;
+      if(h.rem<=0) q.shift();
+    }
+    return {parts, short:left};
+  };
+
+  const map=new Map();                          // 交易 id -> {parts:Map(ptId->分), fallback:分}
+  sales.map((s,i)=>({s,i})).filter(({s})=>saleAttr(s)==='auto')
+    .sort((a,b)=>(a.s.date||'').localeCompare(b.s.date||'')||a.i-b.i)
+    .forEach(({s})=>{
+      const cents=toCents(saleAmounts(s).amt);
+      let comps;
+      if(isItemSale(s)){
+        comps=saleItems(s).map(it=>({name:(it.name||'').trim(), need:Number(it.qty)||0, w:itemAmount(it)}))
+                          .filter(c=>c.name&&c.need>0);
+      } else {
+        /* 每組幾個是記交易當下存下來的 s.per。不讀材料頁那個「每種 N 個」的輸入框 ——
+           那是畫面參數，改一下就會讓所有歷史交易的歸屬跟著變。 */
+        const need=(Number(s.sets)||0)*Math.max(1,Number(s.per)||1);
+        comps=need>0 ? SET_RECIPE.map(name=>({name,need,w:1})) : [];
+      }
+      const out={parts:new Map(), fallback:0};
+      map.set(s.id,out);
+      /* 即使金額是 0 也照扣材料：材料頁的「已售出」不看金額，兩邊的庫存要一致 */
+      const compCents=comps.length ? splitCents(cents, comps.map(c=>c.w)) : [];
+      if(!comps.length) out.fallback=cents;
+      comps.forEach((c,ci)=>{
+        const {parts,short}=draw(c.name,c.need);
+        const cs=splitCents(compCents[ci], [...parts.map(x=>x[1]), short]);
+        parts.forEach(([ptId],pi)=>{ if(cs[pi]>0) out.parts.set(ptId,(out.parts.get(ptId)||0)+cs[pi]); });
+        out.fallback+=cs[cs.length-1];
+      });
+    });
+  fifoCache={rev,sales,n:sales.length,sched:state.schedule,map};
+  return map;
 }
 
 function splitStats(from,to,cur){
@@ -203,11 +301,7 @@ function splitStats(from,to,cur){
   const sales=(state.sales||[]).filter(s=>saleCur(s)===cur);
   const inRange=d=>(!from||d>=from)&&(!to||d<=to);
 
-  /* 能收錢的場次：通關，而且真的有人出場。
-     翻車就是沒打成功、沒有掉落物，沒有東西可以分；有錢卻沒有出場成員的場次
-     也一樣沒有分潤對象。這兩種都不是「先扣起來放公基金」，
-     而是根本不該進入分配 —— 錢會留在原本的交易上，由使用者自己去指定歸屬。 */
-  const eligible=pt=>isCleared(pt)&&pt.slots.some(x=>x.memberId);
+  const eligible=runEligible;
 
   /* 第一步：把每一筆錢攤到場次上（單位：分）。
      這裡「不」先套日期區間 —— 區間要篩的是場次，不是交易。
@@ -224,10 +318,31 @@ function splitStats(from,to,cur){
     runSales.get(id).add(sid);
   };
 
+  /* 把 cents 平均分給一組場次（除不盡的分一分一分發給前幾場，每一分都落在某一場身上） */
+  const spread=(targets,cents,sid)=>{
+    const base=Math.floor(cents/targets.length);
+    let rem=cents-base*targets.length;
+    targets.forEach(p=>{ addPool(p.id, base+(rem-->0?1:0), sid); });
+  };
   sales.forEach(s=>{
     const cents=toCents(saleAmounts(s).amt);
     if(cents<=0) return;
-    /* 指定的場次可以跨天、可以多場：材料本來就是累積好幾場才一次賣掉的。
+    if(saleAttr(s)==='auto'){
+      /* 依掉落物先進先出歸屬的部分直接入各場的池子；
+         掉落不夠對應的那一段，退回「當天通關場次平均分攤」，再沒有才列為未歸屬 */
+      const a=fifoAlloc().get(s.id);
+      if(a){
+        a.parts.forEach((c,ptId)=>addPool(ptId,c,s.id));
+        if(a.fallback>0){
+          const targets=ptsOf(s.date||'').filter(eligible);
+          if(targets.length) spread(targets,a.fallback,s.id);
+          else { unassignedCents+=a.fallback; unassignedCount++; }
+        }
+        return;
+      }
+    }
+    /* runs / day：維持原本的算法。
+       指定的場次可以跨天、可以多場：材料本來就是累積好幾場才一次賣掉的。
        已刪除與翻車的場次都要濾掉，前者會讓錢攤給不存在的 id 然後消失，
        後者根本沒有分潤。 */
     let targets=(Array.isArray(s.runIds)?s.runIds:[])
@@ -236,10 +351,7 @@ function splitStats(from,to,cur){
        五場裡翻一場，那一場不該吃掉五分之一。 */
     if(!targets.length) targets=ptsOf(s.date||'').filter(eligible);
     if(!targets.length){ unassignedCents+=cents; unassignedCount++; return; }
-    /* 除不盡的分一分一分發給前幾場，每一分都落在某一場身上，不會有零頭沒去處 */
-    const base=Math.floor(cents/targets.length);
-    let rem=cents-base*targets.length;
-    targets.forEach(p=>{ addPool(p.id, base+(rem-->0?1:0), s.id); });
+    spread(targets,cents,s.id);
   });
 
   /* 第二步：只取「區間內的場次」，各自分給那場的人。
@@ -342,8 +454,8 @@ function renderSplit(){
   const warn = warnCurs.length
     ? `<div class="splwarn"><b>${warnCurs.reduce((a,c)=>a+sts[c].unassignedCount,0)} 筆交易還沒指定歸屬場次</b>
         ${warnCurs.map(c=>`${curLabel(c)} ${sts[c].unassignedCount} 筆共 ${nf(sts[c].unassignedTwd)}`).join('；')}，
-        因為找不到對應的場次，不會出現在任何期間的分潤裡。
-        到「成交紀錄」點那幾筆的編輯鈕，把歸屬場次選起來就會納入計算。</div>`
+        因為找不到對應的掉落物或通關場次，不會出現在任何期間的分潤裡。
+        先確認那幾天的掉落物有記，或到「成交紀錄」點那幾筆的編輯鈕，手動指定歸屬場次。</div>`
     : '';
 
   if(!curs.length){
@@ -487,8 +599,8 @@ bindFilterToggle('splFiltBtn','splFiltBody');
    要長按拖曳，實際上按不動。 */
 let saleRunIds=[];        // 新增交易表單目前選中的場次
 
-function runPickSummary(ids){
-  if(!ids.length) return '未指定（當天平均分攤）';
+function runPickSummary(ids, emptyText){
+  if(!ids.length) return emptyText||AUTO_LABEL;
   const idx=runIndex();
   if(ids.length===1){
     const e=idx.get(ids[0]);
@@ -515,15 +627,15 @@ function runPickBodyHTML(ids){
 
 /* 把一組「按鈕 + 收合清單」接起來。新增表單與編輯 sheet 共用，
    免得兩邊各寫一份、之後只改到其中一邊。 */
-function bindRunPicker(root, getIds, setIds){
+function bindRunPicker(root, getIds, setIds, getEmpty){
   const btn=root.querySelector('[data-rp="btn"]');
   const body=root.querySelector('[data-rp="body"]');
-  const paint=()=>{ btn.textContent=runPickSummary(getIds()); };
+  const paint=()=>{ btn.textContent=runPickSummary(getIds(), getEmpty&&getEmpty()); };
   btn.onclick=()=>{
     const open=btn.getAttribute('aria-expanded')==='true';
     if(open){ btn.setAttribute('aria-expanded','false'); body.hidden=true; return; }
     body.innerHTML=runPickBodyHTML(getIds())+
-      `<button type="button" class="minibtn rp-clear" data-rp="clear">清除選擇</button>`;
+      `<button type="button" class="minibtn rp-clear" data-rp="clear">改回自動歸屬</button>`;
     body.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.onchange=()=>{
       const cur=getIds().filter(x=>x!==cb.value);
       if(cb.checked) cur.push(cb.value);
