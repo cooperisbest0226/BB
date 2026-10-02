@@ -168,6 +168,12 @@ svg{display:block;flex-shrink:0}
 .ilist.dragging-list .leg{display:none}
 .map-box{position:relative;height:min(52vh,420px);border-radius:16px;overflow:hidden;background:var(--soft2);flex-shrink:0}
 .map-box.sm{height:180px}
+.map-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14px;font-weight:600;font-family:inherit}
+.map-toggle small{margin-left:auto;color:var(--muted);font-weight:400;font-size:13px}
+.map-toggle .chev{transition:transform .2s;color:var(--muted)}
+.map-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.map-inline{display:flex;flex-direction:column;gap:10px}
+.map-inline .map-box{height:min(46vh,360px)}
 .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .map-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;color:var(--muted);font-size:14px}
 .stops{gap:0;padding:6px}
@@ -394,7 +400,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -407,6 +413,10 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.7.0', date: '2026-10-02', notes: [
+    ['add', '行程頁每天可以直接展開路線地圖，列出 A、B、C 每個地點，點地點就切到那個位置'],
+    ['imp', '展開或收合會記住，下次打開還是一樣']
+  ]},
   { v: '1.6.0', date: '2026-09-29', notes: [
     ['add', '雲端備份：每天自動加密備份，換手機時用 20 碼還原碼拿回所有行程'],
     ['add', '給司機看：行程可以填當地文字地址，一鍵大字全螢幕顯示給計程車司機'],
@@ -1066,7 +1076,8 @@ function renderItin() {
     <section class="sec" style="padding-top:14px">
       <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">
         ${!isViewer() ? `<button class="day-title-btn" data-act="editDayTitle" data-d="${d}" style="max-width:100%"><h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>${icon('pencil', 14)}</button>` : `<h2>Day ${d}${title ? ' · ' + h(title) : ''}</h2>`}
-        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span>${sumLine(d)}${wxHtml(d)}</div>${mapBtn(d)}</div>
+        <span class="n">${mdLabel(date)} 週${wd(date)} · ${items.length} 項${costSum ? ' · 約 ' + fmtMoney(costSum, t.currency) : ''}</span>${sumLine(d)}${wxHtml(d)}</div></div>
+      ${dayMapInline(d)}
       ${cf.length ? `<div class="cf-card" role="alert">${icon('alert', 16)}<div>${cf.map((c) => `<div>${h(c.msg)}</div>`).join('')}</div></div>` : ''}
       <div class="ilist" id="ilist">${rows || `<div class="empty">這天還沒有安排</div>`}</div>
       ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="${d}">${icon('plus', 16, 2.2)}<span>新增到 Day ${d}</span></button>` : ''}
@@ -1092,7 +1103,8 @@ function wishBody() {
       ${!isViewer() ? `<button class="chip-btn" data-act="scheduleItem" data-id="${it.id}">排入</button>` : '<span style="width:8px"></span>'}
     </div>`).join('');
   return `<section class="sec" style="padding-top:14px">
-      <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0"><h2>待排</h2><span class="n">想去但還沒決定哪天 · ${items.length} 項</span></div>${mapBtn(0)}</div>
+      <div class="sec-head"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0"><h2>待排</h2><span class="n">想去但還沒決定哪天 · ${items.length} 項</span></div></div>
+      ${dayMapInline(0)}
       <div class="ilist">${rows || `<div class="empty">還沒有${!isViewer() ? '。先把想去的地方加進來，之後再按「排入」放到某一天' : ''}</div>`}</div>
       ${!isViewer() ? `<button class="add-row" data-act="newItem" data-day="0">${icon('plus', 16, 2.2)}<span>新增想去的地方</span></button>` : ''}
     </section>`;
@@ -1636,6 +1648,35 @@ function openDayMap(day) {
     fr.src = b.dataset.si === 'all' ? overview() : embedUrl('place', { q: stops[+b.dataset.si].q });
     $$('.stop-row', sh).forEach((x) => x.classList.toggle('on', x === b));
   });
+}
+// 行程頁：每天標題下可展開／收合的路線地圖（開關狀態記住）
+function dayRouteUrl(stops) {
+  return stops.length === 1 ? embedUrl('place', { q: stops[0].q })
+    : embedUrl('directions', { origin: stops[0].q, destination: stops[stops.length - 1].q, mode: 'driving', ...(stops.length > 2 ? { waypoints: stops.slice(1, -1).map((x) => x.q).join('|') } : {}) });
+}
+function dayMapInline(day) {
+  if (!MAPS_EMBED_KEY) return '';
+  const all = dayStops(day); if (!all.length) return '';
+  const stops = all.slice(0, EMBED_MAX_STOPS); const open = !!S.settings.mapOpen;
+  let html = `<button class="map-toggle" data-act="toggleMap" aria-expanded="${open}">${icon('map', 16, 2.2)}<span>${open ? '收合路線地圖' : '展開路線地圖'}</span><small>${stops.length} 個地點</small><span class="chev">${icon('down', 16, 2.2)}</span></button>`;
+  if (!open) return html;
+  const f = S.mapFocus && S.mapFocus.day === day && stops[S.mapFocus.i] ? S.mapFocus.i : -1;
+  const src = f >= 0 ? embedUrl('place', { q: stops[f].q }) : dayRouteUrl(stops);
+  const note = stops.length === 1 ? '' : driveOn() ? '開車路線，字母對應下方地點' : '線條只用來看位置和順序，不是建議路線';
+  html += `<div class="map-inline">${mapFrame(src, day ? `Day ${day} 路線地圖` : '待排地點地圖')}
+    ${note || all.length > stops.length ? `<p class="note-p" style="margin:0 4px">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
+    <div class="card stops">${stops.length > 1 ? `<button class="stop-row ${f < 0 ? 'on' : ''}" data-act="mapFocus" data-d="${day}" data-si="-1"><span class="lt">${icon('route', 14)}</span><span class="q">全天路線</span></button>` : ''}
+      ${stops.map((x, i) => `<button class="stop-row ${f === i || stops.length === 1 ? 'on' : ''}" data-act="mapFocus" data-d="${day}" data-si="${i}"><span class="lt">${stops.length > 1 ? String.fromCharCode(65 + i) : icon('pin', 14)}</span><span class="q">${h(x.q)}</span>${x.tag ? `<small>${x.tag}</small>` : ''}</button>`).join('')}</div></div>`;
+  return html;
+}
+// 點地點只換地圖，不重畫整頁
+function focusDayMap(el) {
+  const day = +el.dataset.d, i = +el.dataset.si;
+  const stops = dayStops(day).slice(0, EMBED_MAX_STOPS);
+  S.mapFocus = i >= 0 ? { day, i } : null;
+  const fr = $('.map-inline iframe'); if (!fr) { toast('地圖需要網路'); return; }
+  fr.src = i >= 0 ? embedUrl('place', { q: stops[i].q }) : dayRouteUrl(stops);
+  $$('.map-inline .stop-row').forEach((b) => b.classList.toggle('on', b === el));
 }
 function mapBtn(day) {
   if (!MAPS_EMBED_KEY || !dayStops(day).length) return '';
@@ -2638,7 +2679,9 @@ const A = {
   shareText: () => shareTripText(),
   checkDue: (el) => openDuePicker(el.dataset.id),
   navLeg: (el) => openMap(el.dataset.t, el.dataset.f, true),
-  selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); render(); },
+  selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); S.mapFocus = null; render(); },
+  toggleMap: async () => { S.settings.mapOpen = !S.settings.mapOpen; S.mapFocus = null; await saveSettings(); render(); },
+  mapFocus: (el) => focusDayMap(el),
   editDayTitle: async (el) => {
     const d = parseInt(el.dataset.d, 10); const t = S.trip;
     const v = await promptSheet(`Day ${d} 標題`, '例如：東京 → 京都', (t.dayTitles || {})[d] || '');
