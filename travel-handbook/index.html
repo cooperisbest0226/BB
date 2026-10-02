@@ -187,6 +187,18 @@ svg{display:block;flex-shrink:0}
 .dm-tag::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-top-color:#fff;border-bottom:0}
 .dm-pin.on .dm-tag{background:#1C2433;color:#fff}.dm-pin.on .dm-tag::after{border-top-color:#1C2433}
 .dm-pin.on{z-index:9999!important}
+.measure-btn{align-self:flex-start}
+.map-inline:not(.ready) .measure-btn{display:none}
+.map-inline[data-measure="1"] .measure-btn{background:#1C2433;border-color:#1C2433;color:#fff}
+.measure-bar{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:14px;background:var(--card);border:1.5px solid var(--ink)}
+.measure-bar[hidden]{display:none}
+.measure-bar b{font-size:15px}
+.measure-bar .big{font-size:20px;font-weight:800}
+.measure-bar .legs{font-size:13px;color:var(--muted);line-height:1.7}
+.measure-bar small{font-size:12px;color:var(--muted)}
+.stop-row.sel .lt{background:#1C2433;color:#fff}
+.dm-pin.sel .dm-tag{background:#1C2433;color:#fff}.dm-pin.sel .dm-tag::after{border-top-color:#1C2433}
+.dm-pin.sel{z-index:9998!important}
 .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .map-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;color:var(--muted);font-size:14px}
 .stops{gap:0;padding:6px}
@@ -413,7 +425,7 @@ svg{display:block;flex-shrink:0}
  * 旅行手冊 — 發新版檢查表：
  *   1. APP_VERSION（這裡）  2. CHANGELOG 最前面加一筆  3. sw.js 的 CACHE_NAME
  * ===================================================================== */
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const APP_AUTHOR = 'Henry';
 // 部署分享後端（worker/）後，把網址填在這裡，例如 'https://travel-handbook-share.你的帳號.workers.dev'
 // 留空也可以：到「更多 → 分享」手動填入。
@@ -426,6 +438,10 @@ const MAPS_EMBED_KEY = 'AIzaSyAAvOwsMW_kyRYbXuRN0zZ7EqRunnMfV-I';
 const HOME_TZ_DEFAULT = 'Asia/Taipei';
 
 const CHANGELOG = [
+  { v: '1.9.0', date: '2026-10-02', notes: [
+    ['add', '路線地圖可以「選幾個地點算距離」：複選 A、C、D 這樣的組合，依順序算開車時間、距離和每一段，地圖也會畫出來'],
+    ['imp', '選相連的地點（例如 A、B、C）直接加總，不用再查；離線時顯示直線距離']
+  ]},
   { v: '1.8.0', date: '2026-10-02', notes: [
     ['imp', '全天路線地圖改成依行程順序 A → B → C → D 一路畫下來，每個點都標字母和時間'],
     ['add', '地點清單每兩站之間顯示開車時間和距離'],
@@ -1730,6 +1746,7 @@ function dayMapBody(day) {
   }).join('');
   return `<div class="map-inline" data-daymap="${day}">${box}
     ${note || all.length > stops.length ? `<p class="note-p" style="margin:0 4px">${note}${all.length > stops.length ? `（地點太多，只顯示前 ${stops.length} 個）` : ''}</p>` : ''}
+    ${stops.length > 1 ? `<button class="chip-btn measure-btn" data-act="mapMeasure">${icon('route', 14, 2.2)}<span>選幾個地點算距離</span></button><div class="measure-bar" hidden role="status"></div>` : ''}
     <div class="card stops">${stops.length > 1 ? `<button class="stop-row ${f < 0 ? 'on' : ''}" data-act="mapFocus" data-si="-1"><span class="lt">${icon('route', 14)}</span><span class="q">全天路線</span></button>` : ''}${rows}</div></div>`;
 }
 async function mountDayMap(wrap) {
@@ -1762,7 +1779,8 @@ async function mountDayMap(wrap) {
     .addTo(map).on('click', () => { const b = wrap.querySelector(`.stop-row[data-si="${i}"]`); if (b) focusDayMap(b); }));
   const bounds = L.latLngBounds(line.length ? line : pts); pts.forEach((p) => bounds.extend(p));
   map.fitBounds(bounds, { padding: [32, 32] });
-  Object.assign(wrap, { _map: map, _pts: pts, _markers: markers, _bounds: bounds });
+  Object.assign(wrap, { _map: map, _pts: pts, _markers: markers, _bounds: bounds, _stops: stops, _route: r, _sel: new Set() });
+  wrap.classList.add('ready');
   setTimeout(() => { if (wrap.isConnected) { map.invalidateSize(); if (!(S.mapFocus && S.mapFocus.day === day)) map.fitBounds(bounds, { padding: [32, 32] }); } }, 350);
   // 每段車程
   $$('[data-leg]', wrap).forEach((d) => { const i = +d.dataset.leg; const L0 = r.legs[i]; if (L0 && L0.s != null) d.innerHTML = `${icon('car', 12)} 開車 ${durText(L0.s * 1000) || '1 分'} · ${fmtKm(L0.m)}`; });
@@ -1772,6 +1790,7 @@ async function mountDayMap(wrap) {
 function focusDayMap(el) {
   const wrap = el.closest('.map-inline'); if (!wrap) return;
   const day = +wrap.dataset.daymap, i = +el.dataset.si;
+  if (wrap.dataset.measure === '1') { if (i >= 0) { if (wrap._sel.has(i)) wrap._sel.delete(i); else wrap._sel.add(i); renderMeasure(wrap); } return; }
   if (wrap.closest('#app')) S.mapFocus = i >= 0 ? { day, i } : null;
   $$('.stop-row', wrap).forEach((b) => b.classList.toggle('on', b === el));
   if (wrap._map) {
@@ -1784,6 +1803,59 @@ function focusDayMap(el) {
   const stops = dayStops(day).slice(0, EMBED_MAX_STOPS);
   fr.src = i >= 0 ? embedUrl('place', { q: stops[i].q }) : dayRouteUrl(stops);
 }
+/* ----- 測距離：在地圖清單複選幾個地點（例如 A、C、D），依順序算開車時間與距離
+ * 相連的地點（A B C）直接用全天路線的每段加總；有跳過的（A C D）才另外向 Google 查一次（會快取） */
+function haversine(a, b) {
+  const R = 6371000, rad = Math.PI / 180, dLat = (b[0] - a[0]) * rad, dLng = (b[1] - a[1]) * rad;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function toggleMeasure(btn) {
+  const wrap = btn.closest('.map-inline'); if (!wrap || !wrap._map) return;
+  const on = wrap.dataset.measure !== '1';
+  wrap.dataset.measure = on ? '1' : ''; wrap._sel = new Set();
+  btn.innerHTML = on ? `${icon('check', 14, 2.4)}<span>完成</span>` : `${icon('route', 14, 2.2)}<span>選幾個地點算距離</span>`;
+  $$('.stop-row', wrap).forEach((b) => b.classList.remove('on'));
+  wrap._markers.forEach((m) => { const e = m.getElement(); if (e) e.classList.remove('on'); });
+  if (!on) { const all = wrap.querySelector('.stop-row[data-si="-1"]'); if (all) all.classList.add('on'); wrap._map.flyToBounds(wrap._bounds, { padding: [32, 32], duration: 0.6 }); }
+  renderMeasure(wrap);
+}
+async function renderMeasure(wrap) {
+  const bar = wrap.querySelector('.measure-bar'); const map = wrap._map;
+  const sel = [...wrap._sel].sort((a, b) => a - b);
+  $$('.stop-row[data-si]', wrap).forEach((b) => b.classList.toggle('sel', wrap._sel.has(+b.dataset.si)));
+  wrap._markers.forEach((m, k) => { const e = m.getElement(); if (e) e.classList.toggle('sel', wrap._sel.has(k)); });
+  if (wrap._selLine) { wrap._selLine.remove(); wrap._selLine = null; }
+  wrap._mToken = {}; const token = wrap._mToken;
+  if (wrap.dataset.measure !== '1') { bar.hidden = true; return; }
+  bar.hidden = false;
+  const label = sel.map(stopLetter).join(' → ');
+  if (sel.length < 2) { bar.innerHTML = `<b>${label || '還沒選地點'}</b><small>點清單或地圖上的地點，${sel.length ? '再選一個以上' : '例如 A、C、D'}，會依順序算距離</small>`; return; }
+  const pts = sel.map((i) => wrap._pts[i]);
+  const straight = pts.slice(1).reduce((t, p, k) => t + haversine(pts[k], p), 0);
+  const consecutive = sel.every((v, k) => !k || v === sel[k - 1] + 1);
+  let legs = null, line = null;
+  if (consecutive) legs = sel.slice(1).map((v) => wrap._route.legs[v - 1]);
+  else {
+    bar.innerHTML = `<b>${label}</b><small>計算開車路線中…</small>`;
+    // 等使用者選完（0.7 秒沒再點）才查，避免點到一半就花一次查詢
+    await new Promise((res) => setTimeout(res, 700)); if (wrap._mToken !== token || !wrap.isConnected) return;
+    let r = null; try { r = await getDayRoute(sel.map((i) => wrap._stops[i])); } catch {}
+    if (wrap._mToken !== token || !wrap.isConnected) return;
+    if (r && !r.err) { legs = r.legs; line = r.pls.flatMap((p) => (p ? decodePl(p) : [])); }
+  }
+  if (line && line.length) wrap._selLine = L.polyline(line, { color: '#1C2433', weight: 6, opacity: 0.9 }).addTo(map);
+  map.flyToBounds(L.latLngBounds(line && line.length ? line : pts).pad(0.15), { duration: 0.6 });
+  if (legs && legs.every((x) => x && x.s != null)) {
+    const sec = legs.reduce((t, x) => t + x.s, 0), m = legs.reduce((t, x) => t + (x.m || 0), 0);
+    bar.innerHTML = `<b>${label}</b><span class="big">開車 ${durText(sec * 1000) || '1 分'} · ${fmtKm(m)}</span>
+      ${legs.length > 1 ? `<div class="legs">${legs.map((x, k) => `${stopLetter(sel[k])} → ${stopLetter(sel[k + 1])}　${durText(x.s * 1000) || '1 分'} · ${fmtKm(x.m)}`).join('<br>')}</div>` : ''}
+      <small>直線距離 ${fmtKm(Math.round(straight))}</small>`;
+  } else {
+    bar.innerHTML = `<b>${label}</b><span class="big">直線距離 ${fmtKm(Math.round(straight))}</span><small>開車路線${navigator.onLine ? '暫時算不出來' : '要連網才能算'}，先顯示直線距離</small>`;
+  }
+}
+
 // 行程頁：每天標題下可展開／收合的路線地圖（開關狀態記住）
 function dayMapInline(day) {
   if (!mapsAvailable()) return '';
@@ -2795,6 +2867,7 @@ const A = {
   selDay: (el) => { S.selDay = parseInt(el.dataset.d, 10); S.mapFocus = null; render(); },
   toggleMap: async () => { S.settings.mapOpen = !S.settings.mapOpen; S.mapFocus = null; await saveSettings(); render(); },
   mapFocus: (el) => focusDayMap(el),
+  mapMeasure: (el) => toggleMeasure(el),
   editDayTitle: async (el) => {
     const d = parseInt(el.dataset.d, 10); const t = S.trip;
     const v = await promptSheet(`Day ${d} 標題`, '例如：東京 → 京都', (t.dayTitles || {})[d] || '');
