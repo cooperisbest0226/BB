@@ -116,46 +116,55 @@ async function exportImage(ks){
 /* 分潤結果圖：貼到群組是要讓人自己對帳的。
    沒有公基金之後驗算更單純——每人金額加起來就該等於總收入。 */
 function buildSplitExportNode(){
-  const st=splitStats(splFrom,splTo,aucCur);
+  const sts=splitAll();
+  const curs=CURS.filter(c=>sts[c]&&sts[c].saleCount);
+  const multi=curs.length>1;
   const range=(splFrom||splTo) ? splFilterText() : '全部日期';
-  /* 圖上標出誰領過了：貼到群組最常被問的就是「我領了沒」，
-     讓大家自己看比一個一個回答快。 */
   /* 圖上印的是「待領」——貼到群組要回答的問題是「我還可以領多少」。
-     已經領完的人標出來，不用一個一個回覆。 */
-  const dueOf=r=>r.twd-paidAmount(r.memberId,splFrom,splTo,aucCur);
-  const paidCount=st.rows.filter(r=>dueOf(r)<=0).length;
-  const rows=st.rows.map((r,i)=>{
-    const due=dueOf(r), got=r.twd-due;
-    return `<div class="ex-sp-r">
-      <span class="ex-sp-i">${i+1}</span>
-      <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
-      <span class="ex-sp-s">${got?`應得 ${nf(r.twd)} · 已領 ${nf(got)}`:`分潤 ${r.shares} 場`}</span>
-      ${due<=0?`<span class="ex-sp-p">已領完</span>`:''}
-      <span class="ex-sp-a">${nf(due)}</span>
-    </div>`;
-  }).join('');
-  const notes=[
-    st.unassignedCount?`另有 ${st.unassignedCount} 筆共 ${nf(st.unassignedTwd)} 尚未指定歸屬場次，未列入`:'',
-  ].filter(Boolean).map(t=>`<div class="ex-sp-note">${t}</div>`).join('');
-  const host=document.getElementById('exportHost');
-  host.innerHTML=`<div class="exportwrap" id="exportWrap">
-    <div class="ex-h">分潤試算（${curLabel(st.cur)}） · ${esc(range)}</div>
-    <div class="ex-sub">${st.saleCount} 筆交易 · ${st.rows.length} 人可分 · 產出於 ${fmtNow()}</div>
+     已經領完的人標出來，貼到群組最常被問的「我領了沒」就不用一個一個回答。
+     兩種幣別各自一段，每段有自己的標題與總收入，金額不會被誤讀成同一種單位。 */
+  const section=c=>{
+    const st=sts[c];
+    const dueOf=r=>r.twd-paidAmount(r.memberId,splFrom,splTo,c);
+    const paidCount=st.rows.filter(r=>dueOf(r)<=0).length;
+    const rows=st.rows.map((r,i)=>{
+      const due=dueOf(r), got=r.twd-due;
+      return `<div class="ex-sp-r">
+        <span class="ex-sp-i">${i+1}</span>
+        <span class="ex-sp-n">${esc(memberName(r.memberId))}</span>
+        <span class="ex-sp-s">${got?`應得 ${nf(r.twd)} · 已領 ${nf(got)}`:`分潤 ${r.shares} 場`}</span>
+        ${due<=0?`<span class="ex-sp-p">已領完</span>`:''}
+        <span class="ex-sp-a">${nf(due)}</span>
+      </div>`;
+    }).join('');
+    return `${multi?`<div class="ex-sp-cur">${curLabel(c)}</div>`:''}
     <div class="ex-sp-sum">
-      <span><b>${nf(st.totalTwd)}</b>總收入</span>
+      <span><b>${nf(st.totalTwd)}</b>總收入${multi?`（${curLabel(c)}）`:''}</span>
       <span><b>${st.sharedRuns}</b>場有收入</span>
       <span><b>${paidCount}/${st.rows.length}</b>人領完</span>
     </div>
-    <div class="ex-sp">${rows}</div>
+    <div class="ex-sp">${rows}</div>`;
+  };
+  const notes=CURS.filter(c=>sts[c]&&sts[c].unassignedCount).map(c=>
+    `<div class="ex-sp-note">另有 ${sts[c].unassignedCount} 筆${curLabel(c)}共 ${nf(sts[c].unassignedTwd)} 尚未指定歸屬場次，未列入</div>`).join('');
+  const nSales=curs.reduce((a,c)=>a+sts[c].saleCount,0);
+  const nPeople=new Set(curs.flatMap(c=>sts[c].rows.map(r=>r.memberId))).size;
+  const host=document.getElementById('exportHost');
+  host.innerHTML=`<div class="exportwrap" id="exportWrap">
+    <div class="ex-h">分潤試算${multi?'':`（${curLabel(curs[0]||'TWD')}）`} · ${esc(range)}</div>
+    <div class="ex-sub">${nSales} 筆交易 · ${nPeople} 人可分 · 產出於 ${fmtNow()}</div>
+    ${curs.map(section).join('')}
     ${notes}
-    <div class="ex-sp-note">金額為扣除已領之後的待領數字；收入全數分配，不留公基金</div>
+    <div class="ex-sp-note">金額為扣除已領之後的待領數字；收入全數分配，不留公基金${multi?'；台幣與 R 幣各自計算，不換算':''}</div>
   </div>`;
   return document.getElementById('exportWrap');
 }
 
 async function exportSplitImage(){
   const tag=(splFrom||splTo)?`${splFrom||'起'}_${splTo||'今'}`:'全部';
-  return shareNodeAsImage(buildSplitExportNode, `分潤試算_${aucCur==='R'?'R幣':'台幣'}_${tag}.png`);
+  const curs=CURS.filter(c=>{ const st=splitStats(splFrom,splTo,c); return st.saleCount; });
+  const cl=curs.length>1?'台幣+R幣':(curs[0]==='R'?'R幣':'台幣');
+  return shareNodeAsImage(buildSplitExportNode, `分潤試算_${cl}_${tag}.png`);
 }
 
 function exportCsv(ks){

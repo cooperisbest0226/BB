@@ -7,9 +7,10 @@
 let matFrom='', matTo='', matRunName='';
 /* 售出計算：curSets 由組數試算算出，用來「帶入目前組數」；台幣與 R 幣值記住上次輸入省得每次重打 */
 let curSets=0, saleSets=null, salePrice=null;
-/* 拍賣頁目前顯示的幣別。一筆交易只會是台幣或 R 幣，沒有換算，
-   所以統計、走勢、行情、分潤全部一次只看一種。 */
-let aucCur='TWD';
+/* 「記錄這筆交易」表單目前選的幣別。一筆交易只會是台幣或 R 幣，沒有換算，
+   但統計、走勢、行情、成交紀錄與分潤是兩種幣別並列顯示，不再需要來回切換；
+   這個變數只決定「新記的那一筆」算哪一種。 */
+let saleDraftCur='TWD';
 /* 記錄中的交易草稿：模式與單品明細列。明細列在按下「記錄這筆交易」前都只是試算，不進 state。 */
 let saleMode='set', saleDraftItems=[];
 /* 成交紀錄的日期區間篩選（空字串＝不限） */
@@ -88,7 +89,18 @@ const SET_RECIPE=[
   '威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
   '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片',
 ];
-let matPerSet=1;
+/* 每種材料幾個算 1 組。存在 settings 裡跨重開保留 ——
+   以前是工作階段變數，重開 App 就變回 1；而整組交易記錄時會把它存成那筆的 per，
+   先進先出靠它決定一組要扣幾個材料。忘記重設一次，那筆交易的歸屬就偏掉了。 */
+function perSet(){ return Math.max(1, parseInt(state.settings&&state.settings.perSet)||1); }
+function setPerSet(v){
+  const n=Math.max(1, parseInt(v)||1);
+  if(n===perSet()) return;
+  state.settings=state.settings||{};
+  state.settings.perSet=n;
+  persist();
+  matDirty=true;                 // 可組成組數要重算
+}
 
 /* 篩選摘要（收合狀態下那一行字） */
 function matFilterText(){
@@ -218,7 +230,7 @@ function renderMaterials(o){
     paintPresets('#matFiltBody', matFrom, matTo, 'preset');
   }
 
-  const per=Math.max(1,matPerSet);
+  const per=perSet();
   if(paint) setInputValue(document.getElementById('matPerSet'), per);
 
   /* 材料頁顯示的是「篩選範圍內」的庫存；拍賣頁的「帶入目前組數」則一律看全部資料。

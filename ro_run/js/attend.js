@@ -190,9 +190,107 @@ function runIndex(){
 function saleInDateRange(s,from,to){
   const inR=d=>(!from||d>=from)&&(!to||d<=to);
   const idx=runIndex();
-  const dts=(Array.isArray(s.runIds)?s.runIds:[])
-    .map(id=>idx.get(id)).filter(Boolean).map(e=>e.date);
+  /* 自動歸屬的交易，認的是它實際扣到材料的那幾場（先進先出）；
+     否則九月賣掉八月的材料，材料頁會把它算進九月的庫存裡。 */
+  const ids = saleAttr(s)==='auto'
+    ? [...((fifoAlloc().get(s.id)||{}).parts||new Map()).keys()]
+    : (Array.isArray(s.runIds)?s.runIds:[]);
+  const dts=ids.map(id=>idx.get(id)).filter(Boolean).map(e=>e.date);
   return dts.length ? dts.some(inR) : inR(s.date||'');
+}
+
+/* 能收錢的場次：通關，而且真的有人出場。
+   翻車就是沒打成功、沒有掉落物，沒有東西可以分；有錢卻沒有出場成員的場次
+   也一樣沒有分潤對象。這兩種都不是「先扣起來放公基金」，
+   而是根本不該進入分配 —— 錢會留在原本的交易上，由使用者自己去指定歸屬。 */
+const runEligible=pt=>isCleared(pt)&&pt.slots.some(x=>x.memberId);
+
+/* 把 total 分「分」依權重切成整數，加總精確等於 total（最大餘額法）。
+   權重全是 0 時退回平均，不會有一筆錢因為除以零消失。 */
+function splitCents(total, ws){
+  if(!ws.length) return [];
+  let sum=ws.reduce((a,b)=>a+b,0);
+  if(sum<=0){ ws=ws.map(()=>1); sum=ws.length; }
+  if(total<=0) return ws.map(()=>0);
+  const raw=ws.map(w=>total*w/sum), out=raw.map(Math.floor);
+  let left=total-out.reduce((a,b)=>a+b,0);
+  raw.map((r,i)=>[r-out[i],i]).sort((a,b)=>b[0]-a[0]||a[1]-b[1])
+     .forEach(([,i])=>{ if(left>0){ out[i]++; left--; } });
+  return out;
+}
+
+/* ── 依掉落物先進先出歸屬 ─────────────────────────────────
+   問題：材料是累積好幾場、好幾天才賣一次，而且每場產量都不同。
+   逐筆去勾「這筆算哪幾場」既麻煩，勾出來還是把錢平均攤 —— 產量多的場次沒有多拿。
+
+   做法：把每一種材料看成一條佇列，依場次日期由舊到新排好，每場掉了多少就排多少；
+   賣出時從佇列最前面（最早累積、還沒賣掉的）開始扣。扣到哪幾場的材料、各扣幾個，
+   那一筆錢就依這個數量比例分給那幾場。
+   - 翻車場沒有掉落物，佇列裡根本沒有它，自然分不到錢。
+   - 整組交易：12 種配方材料各扣 組數 × 每組個數，金額平均分給 12 個部分再各自依扣量切。
+   - 單品交易：每一列各扣那一種材料，那一列的金額只依那一列的扣量分。
+   - 佇列不夠扣（掉落物沒記或賣得比掉的多）的那一段，金額退回舊規則「當天通關場次平均分攤」，
+     再找不到才列為未歸屬。不能因為掉落紀錄缺了就讓錢消失。
+   只有 attr==='auto' 的交易走這裡；手動指定（runs）與舊資料（day）維持原本算法。
+
+   順序與幣別無關：台幣與 R 幣的交易吃同一批材料，所以一定是「全部交易一起」依日期掃一遍，
+   而不是各幣別各掃各的。結果在同一個同步任務內快取，一次繪製只算一遍。 */
+let fifoCache=null;
+function fifoAlloc(){
+  const rev=readRev(), sales=state.sales||[];
+  if(fifoCache&&fifoCache.rev===rev&&fifoCache.sales===sales&&fifoCache.n===sales.length&&fifoCache.sched===state.schedule)
+    return fifoCache.map;
+
+  const queues=new Map();                       // 材料名 -> [{ptId, rem}]（舊 → 新）
+  dates().forEach(k=>ptsOf(k).forEach(pt=>{
+    if(!runEligible(pt)) return;
+    (pt.drops||[]).forEach(d=>{
+      const n=(d.name||'').trim(), q=Number(d.qty)||0;
+      if(!n||q<=0) return;
+      if(!queues.has(n)) queues.set(n,[]);
+      queues.get(n).push({ptId:pt.id, rem:q});
+    });
+  }));
+  const draw=(name,need)=>{
+    const q=queues.get(name)||[], parts=[];
+    let left=need;
+    while(left>0&&q.length){
+      const h=q[0], t=Math.min(h.rem,left);
+      parts.push([h.ptId,t]); h.rem-=t; left-=t;
+      if(h.rem<=0) q.shift();
+    }
+    return {parts, short:left};
+  };
+
+  const map=new Map();                          // 交易 id -> {parts:Map(ptId->分), fallback:分}
+  sales.map((s,i)=>({s,i})).filter(({s})=>saleAttr(s)==='auto')
+    .sort((a,b)=>(a.s.date||'').localeCompare(b.s.date||'')||a.i-b.i)
+    .forEach(({s})=>{
+      const cents=toCents(saleAmounts(s).amt);
+      let comps;
+      if(isItemSale(s)){
+        comps=saleItems(s).map(it=>({name:(it.name||'').trim(), need:Number(it.qty)||0, w:itemAmount(it)}))
+                          .filter(c=>c.name&&c.need>0);
+      } else {
+        /* 每組幾個是記交易當下存下來的 s.per。不讀材料頁那個「每種 N 個」的輸入框 ——
+           那是畫面參數，改一下就會讓所有歷史交易的歸屬跟著變。 */
+        const need=(Number(s.sets)||0)*Math.max(1,Number(s.per)||1);
+        comps=need>0 ? SET_RECIPE.map(name=>({name,need,w:1})) : [];
+      }
+      const out={parts:new Map(), fallback:0};
+      map.set(s.id,out);
+      /* 即使金額是 0 也照扣材料：材料頁的「已售出」不看金額，兩邊的庫存要一致 */
+      const compCents=comps.length ? splitCents(cents, comps.map(c=>c.w)) : [];
+      if(!comps.length) out.fallback=cents;
+      comps.forEach((c,ci)=>{
+        const {parts,short}=draw(c.name,c.need);
+        const cs=splitCents(compCents[ci], [...parts.map(x=>x[1]), short]);
+        parts.forEach(([ptId],pi)=>{ if(cs[pi]>0) out.parts.set(ptId,(out.parts.get(ptId)||0)+cs[pi]); });
+        out.fallback+=cs[cs.length-1];
+      });
+    });
+  fifoCache={rev,sales,n:sales.length,sched:state.schedule,map};
+  return map;
 }
 
 function splitStats(from,to,cur){
@@ -203,11 +301,7 @@ function splitStats(from,to,cur){
   const sales=(state.sales||[]).filter(s=>saleCur(s)===cur);
   const inRange=d=>(!from||d>=from)&&(!to||d<=to);
 
-  /* 能收錢的場次：通關，而且真的有人出場。
-     翻車就是沒打成功、沒有掉落物，沒有東西可以分；有錢卻沒有出場成員的場次
-     也一樣沒有分潤對象。這兩種都不是「先扣起來放公基金」，
-     而是根本不該進入分配 —— 錢會留在原本的交易上，由使用者自己去指定歸屬。 */
-  const eligible=pt=>isCleared(pt)&&pt.slots.some(x=>x.memberId);
+  const eligible=runEligible;
 
   /* 第一步：把每一筆錢攤到場次上（單位：分）。
      這裡「不」先套日期區間 —— 區間要篩的是場次，不是交易。
@@ -224,10 +318,31 @@ function splitStats(from,to,cur){
     runSales.get(id).add(sid);
   };
 
+  /* 把 cents 平均分給一組場次（除不盡的分一分一分發給前幾場，每一分都落在某一場身上） */
+  const spread=(targets,cents,sid)=>{
+    const base=Math.floor(cents/targets.length);
+    let rem=cents-base*targets.length;
+    targets.forEach(p=>{ addPool(p.id, base+(rem-->0?1:0), sid); });
+  };
   sales.forEach(s=>{
     const cents=toCents(saleAmounts(s).amt);
     if(cents<=0) return;
-    /* 指定的場次可以跨天、可以多場：材料本來就是累積好幾場才一次賣掉的。
+    if(saleAttr(s)==='auto'){
+      /* 依掉落物先進先出歸屬的部分直接入各場的池子；
+         掉落不夠對應的那一段，退回「當天通關場次平均分攤」，再沒有才列為未歸屬 */
+      const a=fifoAlloc().get(s.id);
+      if(a){
+        a.parts.forEach((c,ptId)=>addPool(ptId,c,s.id));
+        if(a.fallback>0){
+          const targets=ptsOf(s.date||'').filter(eligible);
+          if(targets.length) spread(targets,a.fallback,s.id);
+          else { unassignedCents+=a.fallback; unassignedCount++; }
+        }
+        return;
+      }
+    }
+    /* runs / day：維持原本的算法。
+       指定的場次可以跨天、可以多場：材料本來就是累積好幾場才一次賣掉的。
        已刪除與翻車的場次都要濾掉，前者會讓錢攤給不存在的 id 然後消失，
        後者根本沒有分潤。 */
     let targets=(Array.isArray(s.runIds)?s.runIds:[])
@@ -236,10 +351,7 @@ function splitStats(from,to,cur){
        五場裡翻一場，那一場不該吃掉五分之一。 */
     if(!targets.length) targets=ptsOf(s.date||'').filter(eligible);
     if(!targets.length){ unassignedCents+=cents; unassignedCount++; return; }
-    /* 除不盡的分一分一分發給前幾場，每一分都落在某一場身上，不會有零頭沒去處 */
-    const base=Math.floor(cents/targets.length);
-    let rem=cents-base*targets.length;
-    targets.forEach(p=>{ addPool(p.id, base+(rem-->0?1:0), s.id); });
+    spread(targets,cents,s.id);
   });
 
   /* 第二步：只取「區間內的場次」，各自分給那場的人。
@@ -311,6 +423,15 @@ function splFilterText(){
   return splFrom ? `${fmtDate(splFrom)} 起` : `至 ${fmtDate(splTo)}`;
 }
 
+/* 兩種幣別各自成池、各自平帳，但畫在同一頁：同一個人合併成一列，
+   每種幣別一行金額、各自的「標記已領」。領取紀錄本來就綁幣別，所以不會互相干擾。 */
+function splitAll(){
+  const out={};
+  CURS.forEach(c=>{ const st=splitStats(splFrom,splTo,c); if(st.saleCount||st.unassignedCount) out[c]=st; });
+  return out;
+}
+function splPaid(memberId,cur){ return paidAmount(memberId,splFrom,splTo,cur); }
+
 function renderSplit(){
   setInputValue(document.getElementById('splFrom'), splFrom);
   setInputValue(document.getElementById('splTo'), splTo);
@@ -320,79 +441,109 @@ function renderSplit(){
   document.getElementById('splFiltClear').hidden=!filtering;
   paintPresets('#splFiltBody', splFrom, splTo, 'splpreset');
 
-  const st=splitStats(splFrom,splTo,aucCur);
+  const sts=splitAll();
+  const curs=CURS.filter(c=>sts[c]&&sts[c].saleCount);          // 這段期間真的有收入的幣別
+  const multi=curs.length>1;
   const card=document.getElementById('splCard'), host=document.getElementById('splList');
-  document.getElementById('splShare').hidden=!st.rows.length;
+  document.getElementById('splShare').hidden=!curs.length;
 
   /* 沒指定歸屬、當天又沒有通關場次的交易，掛不到任何一段期間上。
      這種錢最容易被漏掉：畫面只會顯示「沒有交易」，但錢其實躺在那裡。
-     一定要主動講出來，而且要講清楚怎麼修。 */
-  const warn = st.unassignedCount
-    ? `<div class="splwarn"><b>${st.unassignedCount} 筆交易還沒指定歸屬場次</b>
-        共 ${nf(st.unassignedTwd)}，因為找不到對應的場次，不會出現在任何期間的分潤裡。
-        到「成交紀錄」點那幾筆的編輯鈕，把歸屬場次選起來就會納入計算。</div>`
+     一定要主動講出來，而且要講清楚怎麼修。幣別各自列一行，金額單位不能混。 */
+  const warnCurs=CURS.filter(c=>sts[c]&&sts[c].unassignedCount);
+  const warn = warnCurs.length
+    ? `<div class="splwarn"><b>${warnCurs.reduce((a,c)=>a+sts[c].unassignedCount,0)} 筆交易還沒指定歸屬場次</b>
+        ${warnCurs.map(c=>`${curLabel(c)} ${sts[c].unassignedCount} 筆共 ${nf(sts[c].unassignedTwd)}`).join('；')}，
+        因為找不到對應的掉落物或通關場次，不會出現在任何期間的分潤裡。
+        先確認那幾天的掉落物有記，或到「成交紀錄」點那幾筆的編輯鈕，手動指定歸屬場次。</div>`
     : '';
 
-  if(!st.saleCount){
+  if(!curs.length){
     card.innerHTML='';
-    host.innerHTML=warn+`<div class="emptystate"><b>這個場次期間沒有${curLabel(aucCur)}收入</b>換一個期間或幣別，或先到「成交紀錄」記幾筆。</div>`;
+    host.innerHTML=warn+`<div class="emptystate"><b>這個場次期間沒有收入</b>換一個期間，或先到「成交紀錄」記幾筆。</div>`;
     return;
   }
 
   /* 沒有公基金了：收入全數分完，加總精確等於總收入。
-     所以摘要改成講「幾場有收入、幾人分潤」，那才是使用者要確認的事。 */
-  /* 領取進度放在摘要裡：發錢發到一半關掉 App 再打開，
-     第一眼要看得到「還有幾個人沒領」，而不是自己一列一列數。 */
-  const paidSum=st.rows.reduce((a,r)=>a+paidAmount(r.memberId,splFrom,splTo,aucCur),0);
-  const cleared=st.rows.filter(r=>
-    r.twd-paidAmount(r.memberId,splFrom,splTo,aucCur)<=0);
-  const paid={length:cleared.length};
-  card.innerHTML=`<div class="attsum">
+     所以摘要改成講「幾場有收入、幾人分潤」，那才是使用者要確認的事。
+     領取進度放在摘要裡：發錢發到一半關掉 App 再打開，
+     第一眼要看得到「還有幾個人沒領」，而不是自己一列一列數。
+     一種幣別一張摘要卡，各自算各自的已領與待發。 */
+  card.innerHTML=curs.map(c=>{
+    const st=sts[c];
+    const paidSum=st.rows.reduce((a,r)=>a+splPaid(r.memberId,c),0);
+    const cleared=st.rows.filter(r=>r.twd-splPaid(r.memberId,c)<=0).length;
+    return `<div class="attsum" data-cur="${c}"${multi?' style="margin-bottom:10px"':''}>
     <div class="attsum-h">
-      <span class="attsum-t">${st.saleCount} 筆${curLabel(aucCur)}交易 · ${st.sharedRuns} 場有收入</span>
+      <span class="attsum-t">${st.saleCount} 筆${curLabel(c)}交易 · ${st.sharedRuns} 場有收入</span>
       <span class="attsum-r num">${nf(st.totalTwd)}</span>
     </div>
     <div class="attsum-b">
-      <span class="attsum-k"><b class="num">${paid.length}/${st.rows.length}</b> 人領完</span>
+      <span class="attsum-k"><b class="num">${cleared}/${st.rows.length}</b> 人領完</span>
       <span class="attsum-k"><b class="num">${nf(Math.max(0,st.totalTwd-paidSum))}</b> 待發</span>
     </div>
-    ${st.rows.length&&paid.length===st.rows.length
-      ? `<div class="splnote done">這段期間的分潤都發完了</div>`:''}
-    ${paidSum>0&&paid.length<st.rows.length
+    ${st.rows.length&&cleared===st.rows.length
+      ? `<div class="splnote done">這段期間的${curLabel(c)}分潤都發完了</div>`:''}
+    ${paidSum>0&&cleared<st.rows.length
       ? `<div class="splnote">已發出 ${nf(paidSum)}，下方金額都是扣掉已領之後的待領數字</div>`:''}
     ${payAllBtn(st)}
-  </div>`;
+  </div>`; }).join('');
 
   /* 主要數字是「待領」而不是「應得」：發錢的人要看的是還差多少。
-     應得與已領放在下面一行，對帳時才追得回來這個數字怎麼來的。 */
-  host.innerHTML=warn+st.rows.map((r,i)=>{
-    const got=paidAmount(r.memberId,splFrom,splTo,aucCur);
-    const due=r.twd-got;
-    const done=due<=0;
-    const exact=exactPayout(r.memberId,splFrom,splTo,aucCur);
-    const partial=partialPayouts(r.memberId,splFrom,splTo,aucCur);
-    return `<div class="attrow splrow${done?' paid':''}">
+     應得與已領放在下面一行，對帳時才追得回來這個數字怎麼來的。
+     人的排序：單一幣別沿用金額由大到小；兩種幣別沒有共同單位可比，改依姓名排，位置才穩定。 */
+  const rowOf={}; curs.forEach(c=>{ rowOf[c]=new Map(sts[c].rows.map(r=>[r.memberId,r])); });
+  let ids=curs.length===1 ? sts[curs[0]].rows.map(r=>r.memberId)
+        : [...new Set(curs.flatMap(c=>sts[c].rows.map(r=>r.memberId)))]
+            .sort((a,b)=>memberName(a).localeCompare(memberName(b),'zh-Hant'));
+  host.innerHTML=warn+ids.map((id,i)=>{
+    const cells=curs.filter(c=>rowOf[c].has(id)).map(c=>{
+      const r=rowOf[c].get(id);
+      const got=splPaid(id,c), due=r.twd-got, done=due<=0;
+      const exact=exactPayout(id,splFrom,splTo,c);
+      const partial=partialPayouts(id,splFrom,splTo,c);
+      const btn = done&&!exact
+        ? `<span class="paidbtn on" aria-disabled="true"
+             title="這是在別段期間結算掉的，要取消請回那段期間">✓ 已領</span>`
+        : `<button class="paidbtn${done?' on':''}" data-pay="${id}" data-due="${due}" data-cur="${c}"
+             aria-pressed="${!!exact}">${exact?'✓ 已領':'標記已領'}</button>`;
+      const pills=`
+          <span class="attpill">分潤 ${r.shares} 場</span>
+          ${got?`<span class="attpill">應得 ${nf(r.twd)} · 已領 ${nf(got)}</span>`:''}
+          ${partial.length?`<span class="attpill bad">另有 ${partial.length} 筆跨期間的結算未扣除</span>`:''}`;
+      return {c, due, done, btn, pills};
+    });
+    const allDone=cells.every(x=>x.done);
+    if(!multi){
+      const x=cells[0];
+      return `<div class="attrow splrow${x.done?' paid':''}">
       <span class="attrow-i num">${i+1}</span>
       <div class="attrow-m">
         <div class="attrow-top">
-          <span class="attrow-n">${esc(memberName(r.memberId))}</span>
-          <span class="splamt num">${nf(due)}</span>
+          <span class="attrow-n">${esc(memberName(id))}</span>
+          <span class="splamt num">${nf(x.due)}</span>
         </div>
-        <div class="attrow-sub">
-          <span class="attpill">分潤 ${r.shares} 場</span>
-          ${got?`<span class="attpill">應得 ${nf(r.twd)} · 已領 ${nf(got)}</span>`:''}
-          ${partial.length?`<span class="attpill bad">另有 ${partial.length} 筆跨期間的結算未扣除</span>`:''}
-          ${done&&!exact
-            ? `<span class="paidbtn on" aria-disabled="true"
-                 title="這是在別段期間結算掉的，要取消請回那段期間">✓ 已領</span>`
-            : `<button class="paidbtn${done?' on':''}" data-pay="${r.memberId}" data-due="${due}"
-                 aria-pressed="${!!exact}">${exact?'✓ 已領':'標記已領'}</button>`}
-        </div>
+        <div class="attrow-sub">${x.pills}${x.btn}</div>
+      </div>
+    </div>`;
+    }
+    return `<div class="attrow splrow${allDone?' paid':''}">
+      <span class="attrow-i num">${i+1}</span>
+      <div class="attrow-m">
+        <div class="attrow-top"><span class="attrow-n">${esc(memberName(id))}</span></div>
+        ${cells.map(x=>`<div class="splline${x.done?' paid':''}" data-cur="${x.c}">
+          <div class="splline-top">
+            <span class="splcur" data-cur="${x.c}">${curLabel(x.c)}</span>
+            <span class="splamt num">${nf(x.due)}</span>
+            ${x.btn}
+          </div>
+          <div class="attrow-sub">${x.pills}</div>
+        </div>`).join('')}
       </div>
     </div>`;
   }).join('');
   host.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>
-    togglePayout(b.dataset.pay, Number(b.dataset.due)||0));
+    togglePayout(b.dataset.pay, Number(b.dataset.due)||0, b.dataset.cur));
 }
 
 /* ── 全部標記已領 ─────────────────────────────────────────
@@ -400,20 +551,21 @@ function renderSplit(){
    記下的是每個人當下的待領金額（跟逐一標記同一個規則）。
    這段期間已經有結算紀錄、但後來又多了待領的人（補記了交易），
    把差額加到那筆紀錄上，而不是再開一筆 —— 同一段期間只留一筆，
-   逐一點「✓ 已領」取消時才不會只取消掉一半。 */
+   逐一點「✓ 已領」取消時才不會只取消掉一半。
+   幣別各自一顆按鈕：發台幣跟發 R 幣是兩次不同的轉帳，不該被一鍵混在一起。 */
 function unpaidRows(st){
-  return st.rows.map(r=>({r, due:r.twd-paidAmount(r.memberId,splFrom,splTo,aucCur)})).filter(x=>x.due>0);
+  return st.rows.map(r=>({r, due:r.twd-paidAmount(r.memberId,splFrom,splTo,st.cur)})).filter(x=>x.due>0);
 }
 function payAllBtn(st){
   const list=unpaidRows(st);
   if(!list.length) return '';
   const total=list.reduce((a,x)=>a+x.due,0);
-  return `<button class="gbtn splpayall" id="splPayAll">全部標記已領<span class="num">${list.length} 人 · ${nf(total)}</span></button>`;
+  return `<button class="gbtn splpayall" data-payall="${st.cur}">全部標記已領<span class="num">${list.length} 人 · ${nf(total)}</span></button>`;
 }
-function payAll(){
-  const st=splitStats(splFrom,splTo,aucCur), list=unpaidRows(st);
+function payAll(cur){
+  const st=splitStats(splFrom,splTo,cur), list=unpaidRows(st);
   if(!list.length) return;
-  const total=list.reduce((a,x)=>a+x.due,0), from=splFrom, to=splTo, cur=aucCur;
+  const total=list.reduce((a,x)=>a+x.due,0), from=splFrom, to=splTo;
   confirmSheet(`把 ${list.length} 人標記為已領？\n共 ${nf(total)} ${curLabel(cur)}（${splFilterText()}）。\n之後可以按「復原」，或逐一點「✓ 已領」取消。`, ()=>{
     commitUndoable('', ()=>{
       state.payouts=state.payouts||[];
@@ -422,11 +574,12 @@ function payAll(){
         if(hit) hit.twd=(Number(hit.twd)||0)+due;
         else state.payouts.push({id:uid(), memberId:r.memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
       });
-    }, `已標記 ${list.length} 人已領，共 ${nf(total)}`);
+    }, `已標記 ${list.length} 人已領，共 ${nf(total)} ${curLabel(cur)}`);
   }, '全部標記已領');
 }
 document.getElementById('splCard').addEventListener('click',e=>{
-  if(e.target.closest('#splPayAll')) payAll();
+  const b=e.target.closest('[data-payall]');
+  if(b) payAll(b.dataset.payall==='R'?'R':'TWD');
 });
 
 function applySplPreset(p){
@@ -446,8 +599,8 @@ bindFilterToggle('splFiltBtn','splFiltBody');
    要長按拖曳，實際上按不動。 */
 let saleRunIds=[];        // 新增交易表單目前選中的場次
 
-function runPickSummary(ids){
-  if(!ids.length) return '未指定（當天平均分攤）';
+function runPickSummary(ids, emptyText){
+  if(!ids.length) return emptyText||AUTO_LABEL;
   const idx=runIndex();
   if(ids.length===1){
     const e=idx.get(ids[0]);
@@ -474,15 +627,15 @@ function runPickBodyHTML(ids){
 
 /* 把一組「按鈕 + 收合清單」接起來。新增表單與編輯 sheet 共用，
    免得兩邊各寫一份、之後只改到其中一邊。 */
-function bindRunPicker(root, getIds, setIds){
+function bindRunPicker(root, getIds, setIds, getEmpty){
   const btn=root.querySelector('[data-rp="btn"]');
   const body=root.querySelector('[data-rp="body"]');
-  const paint=()=>{ btn.textContent=runPickSummary(getIds()); };
+  const paint=()=>{ btn.textContent=runPickSummary(getIds(), getEmpty&&getEmpty()); };
   btn.onclick=()=>{
     const open=btn.getAttribute('aria-expanded')==='true';
     if(open){ btn.setAttribute('aria-expanded','false'); body.hidden=true; return; }
     body.innerHTML=runPickBodyHTML(getIds())+
-      `<button type="button" class="minibtn rp-clear" data-rp="clear">清除選擇</button>`;
+      `<button type="button" class="minibtn rp-clear" data-rp="clear">改回自動歸屬</button>`;
     body.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.onchange=()=>{
       const cur=getIds().filter(x=>x!==cb.value);
       if(cb.checked) cur.push(cb.value);
@@ -556,8 +709,9 @@ function exactPayout(memberId,from,to,cur){
     &&(p.from||'')===(from||'')&&(p.to||'')===(to||''))||null;
 }
 /* 標記已領＝把「目前還差的金額」記成一筆發放。再點一次撤銷這一段期間的紀錄。 */
-function togglePayout(memberId,due){
-  const from=splFrom, to=splTo, cur=aucCur;
+function togglePayout(memberId,due,cur){
+  cur = cur==='R' ? 'R' : 'TWD';
+  const from=splFrom, to=splTo;
   const hit=exactPayout(memberId,from,to,cur);
   commit(()=>{
     state.payouts=state.payouts||[];
@@ -565,6 +719,6 @@ function togglePayout(memberId,due){
     else state.payouts.push({id:uid(), memberId, from:from||'', to:to||'', cur, twd:due, ts:Date.now()});
   });
   renderSplit();
-  toast(hit?`${memberName(memberId)} 已取消這段期間的領取紀錄`
-           :`${memberName(memberId)} 標記已領 ${nf(due)}`);
+  toast(hit?`${memberName(memberId)} 已取消這段期間的${curLabel(cur)}領取紀錄`
+           :`${memberName(memberId)} 標記已領 ${nf(due)} ${curLabel(cur)}`);
 }
