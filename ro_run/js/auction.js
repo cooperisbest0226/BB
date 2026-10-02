@@ -630,7 +630,7 @@ function saleSheet(id){
     let workAttr=saleAttr(s);
     bindRunPicker(sh.querySelector('#editRunPick'),
                   ()=>workRunIds, v=>{ workRunIds=v; workAttr=v.length?'runs':'auto'; },
-                  ()=>workAttr==='day' ? '當天平均分攤（舊設定）' : AUTO_LABEL);
+                  ()=>workAttr==='day' ? '當天平均分攤（舊設定）' : AUTO_LABEL, s.id);
     const addBtn=sh.querySelector('[data-s="addRow"]');
     if(addBtn) addBtn.onclick=()=>{ work.push({name:'',qty:'',price:''}); paintRows(); };
 

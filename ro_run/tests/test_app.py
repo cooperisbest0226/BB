@@ -3991,6 +3991,67 @@ def run(page):
               return [saleInDateRange(s,'2026-08-01','2026-08-31'), saleInDateRange(s,'2026-09-01','2026-09-10')];
           }"""), [True, False])
 
+    # ---- 所有交易都扣佇列（錢的分法不變），手動選擇會鎖住已賣完的場次 ----
+    check("舊交易（當天平均）也扣佇列：之後的自動交易不會再拿走已賣掉的老材料",
+          page.evaluate("""() => {
+              state.schedule = {
+                '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',10]]) ],
+                '2026-07-02':[ mkRun('fb','RUN B',['m2'],[['威力隕石碎片',10]]) ]};
+              state.sales = [ mkItem('old','2026-07-01','威力隕石碎片',10,100,{attr:'day'}),
+                              mkItem('new','2026-07-05','威力隕石碎片',10,100) ];
+              persist(); render();
+              const t = splitStats('','','TWD');
+              return [[...fifoAlloc().get('new').parts], t.rows.map(r => [r.memberId, r.twd])];
+          }"""), [[["fb", 100000]], [["m1", 1000], ["m2", 1000]]])
+
+    check("手動指定的交易先扣它指定的場次，自動交易接著扣剩下的",
+          page.evaluate("""() => {
+              state.sales = [ mkItem('man','2026-07-03','威力隕石碎片',10,100,{attr:'runs', runIds:['fb']}),
+                              mkItem('new','2026-07-05','威力隕石碎片',10,100) ];
+              persist(); render();
+              return [...fifoAlloc().get('new').parts];
+          }"""), [["fa", 100000]])
+
+    check("每場剩多少：被賣完的回報 0，沒記掉落的場次不算賣完",
+          page.evaluate("""() => {
+              state.schedule['2026-07-02'].push(mkRun('fc','RUN C',['m3'],[]));
+              state.sales = [ mkItem('s','2026-07-05','威力隕石碎片',15,100) ];
+              persist(); render();
+              const r = fifoSim().remain;
+              return [r.get('fa'), r.get('fb'), runSoldOut('fa'), runSoldOut('fb'), runSoldOut('fc')];
+          }"""), [{"total": 10, "left": 0}, {"total": 10, "left": 5}, True, False, False])
+
+    page.click('.tab[data-view="auction"]')
+    page.click('#aucSeg [data-sub="asales"]')
+    page.wait_for_timeout(250)
+    page.click('#saleRunPick [data-rp="btn"]')
+    page.wait_for_timeout(150)
+    check("新增交易時，已賣完的場次鎖住不能勾，其他顯示剩餘數量",
+          page.evaluate("""() => [...document.querySelectorAll('#saleRunPick .rp-r')].map(l => [
+              l.querySelector('.rp-n').textContent.trim(),
+              l.querySelector('input').disabled,
+              (l.querySelector('.rp-s')||{textContent:''}).textContent.trim()])"""),
+          [["RUN B", False, "剩 5/10 個"], ["RUN C", False, ""], ["RUN A", True, "已賣完"]])
+    page.click('#saleRunPick [data-rp="btn"]')
+
+    page.evaluate("() => saleSheet('s')")
+    page.wait_for_timeout(250)
+    page.click('#editRunPick [data-rp="btn"]')
+    page.wait_for_timeout(150)
+    check("編輯那一筆時，它自己扣掉的材料不算：A 不會被鎖",
+          page.evaluate("""() => [...document.querySelectorAll('#editRunPick .rp-r')].map(l => [
+              l.querySelector('.rp-n').textContent.trim(), l.querySelector('input').disabled])"""),
+          [["RUN B", False], ["RUN C", False], ["RUN A", False]])
+    page.click('.sheet [data-s="cancel"]')
+    page.wait_for_timeout(200)
+
+    check("已勾選的場次就算賣完也不鎖（編輯時要能取消）",
+          page.evaluate("""() => {
+              const html = runPickBodyHTML(['fa']);
+              const d = document.createElement('div'); d.innerHTML = html;
+              return d.querySelector('input[value="fa"]').disabled;
+          }"""), False)
+
     # ---- 介面：記錄、編輯、顯示 ----
     page.evaluate("""() => {
         state.schedule = { '2026-07-01':[ mkRun('fa','RUN A',['m1'],[['威力隕石碎片',30]]),

@@ -658,6 +658,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0
 .curblock:first-child .curhead{margin-top:0}
 .curblock + .curblock{margin-top:6px}
 .salepers{margin:-2px 0 12px}
+.rp-s{font-style:normal; font-size:11px; color:var(--faint); white-space:nowrap; flex:0 0 auto}
+.rp-s.out{color:var(--warn); font-weight:600}
+.rp-r.locked{opacity:.5; cursor:not-allowed}
 .lbl-hint{font-size:11px; font-weight:500; color:var(--faint); margin-left:6px}
 .auc-chip.attr{background:transparent; border:1px dashed var(--line); color:var(--faint)}
 .auc-chip.attr.warn{color:var(--warn); border-color:var(--warn)}
