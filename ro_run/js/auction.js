@@ -33,6 +33,10 @@ function curHead(c,multi){ return multi?`<div class="curhead" data-cur="${c}">${
 /* 歸屬方式。auto＝依掉落物先進先出（新交易的預設）、runs＝手動指定場次、day＝舊的當天平均分攤。
    沒有這個欄位的（舊資料、匯入的檔案）依語意推：有勾場次是 runs，沒勾是 day —— 跟遷移同一條規則，
    而不是一律當 auto，不然舊交易的分潤會在沒有人動它的情況下變動。 */
+/* 一筆整組交易「每組幾個」。記錄時有存 per 就用那個值；
+   沒存的是 v72 以前的舊交易，用目前的設定。材料頁的「已售出」與先進先出的佇列
+   都走這一個函式 —— 以前一邊用目前設定、一邊固定當 1，兩頁講的庫存對不起來。 */
+function salePer(s){ return Math.max(1, parseInt(s&&s.per)||perSet()); }
 function saleAttr(s){
   if(s&&(s.attr==='auto'||s.attr==='runs'||s.attr==='day')) return s.attr;
   return (s&&Array.isArray(s.runIds)&&s.runIds.length) ? 'runs' : 'day';
@@ -44,7 +48,10 @@ function saleAttrChip(s){
   if(mode==='runs'){ const n=(s.runIds||[]).length; return `<span class="auc-chip attr">指定 ${n} 場</span>`; }
   if(mode==='day') return `<span class="auc-chip attr">當天平均分攤</span>`;
   const a=fifoAlloc().get(s.id), n=a?a.parts.size:0;
-  if(!n) return `<span class="auc-chip attr warn" title="找不到對應的掉落物">自動 · 未對應掉落</span>`;
+  /* 對應不到掉落物時，錢實際上退回當天平均分攤（當天也沒場次才是未歸屬），標籤要講真正的去向 */
+  if(!n) return ptsOf(s.date||'').some(runEligible)
+    ? `<span class="auc-chip attr warn" title="找不到可對應的掉落物，改用當天通關場次平均分攤">自動 · 無掉落可對應，改當天平均</span>`
+    : `<span class="auc-chip attr warn" title="找不到可對應的掉落物，當天也沒有通關場次">自動 · 未歸屬</span>`;
   return `<span class="auc-chip attr" title="依掉落物先進先出對應到的場次">自動歸屬 ${n} 場${a.fallback>0?' ＋其餘':''}</span>`;
 }
 
@@ -172,7 +179,25 @@ function paintSaleOut(){
     ? `${saleDraftItems.filter(it=>itemAmount(it)>0).length} 項明細`
     : `${nf(saleSets)} 組 × ${nf(salePrice)}`;
   document.getElementById('saleOut').innerHTML=
-    `<div class="calcline">總額 <em>${src}</em><b>${nf(a.amt)}</b></div>`;
+    `<div class="calcline">總額 <em>${src}</em><b>${nf(a.amt)}</b></div>${oversellHint()}`;
+}
+/* 賣得比庫存多：先進先出扣不到的那一段會改用當天平均分攤（或變成未歸屬）。
+   記錄前就講出來，通常是組數打錯，或掉落物還沒記。完全沒記掉落物的人不提示 ——
+   他們本來就只靠當天平均或手動指定分錢，每筆都跳警告只是噪音。 */
+function oversellHint(){
+  const inv=matInventory('','','',perSet());
+  if(!inv.dropSum) return '';
+  let msg='';
+  if(saleMode==='item'){
+    const want={};
+    saleDraftItems.forEach(it=>{ const n=(it.name||'').trim(), q=Number(it.qty)||0; if(n&&q>0) want[n]=(want[n]||0)+q; });
+    const over=Object.keys(want).filter(n=>want[n]>inv.remain(n));
+    if(over.length) msg=over.map(n=>`${esc(n)} 只剩 ${nf(inv.remain(n))} 個`).join('、');
+  } else {
+    const k=Number(saleSets)||0;
+    if(k>curSets) msg=`目前只能組 ${nf(curSets)} 組`;
+  }
+  return msg ? `<div class="salehint">${msg}，多出的部分對應不到掉落物，會改用當天平均分攤。確認數量或先補記掉落物。</div>` : '';
 }
 
 /* 一種幣別的累計：總額、組數、單品數與加權均價。
@@ -581,7 +606,7 @@ function saleSheet(id){
        <datalist id="editMatList">${allMaterialNames().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`
     : `<div class="field"><label>組數</label><input name="sets" type="number" min="0" step="1" inputmode="numeric" value="${esc(String(s.sets))}"></div>
        <div class="field"><label>每組價格</label><input name="price" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.price))}"></div>
-       <div class="field"><label>每種材料幾個 = 1 組 <span class="lbl-hint">自動歸屬用來決定扣多少材料</span></label><input name="per" type="number" min="1" step="1" inputmode="numeric" value="${esc(String(Math.max(1,Number(s.per)||1)))}"></div>`;
+       <div class="field"><label>每種材料幾個 = 1 組 <span class="lbl-hint">自動歸屬用來決定扣多少材料</span></label><input name="per" type="number" min="1" step="1" inputmode="numeric" value="${esc(String(salePer(s)))}"></div>`;
 
   sheet(item?'編輯單品交易':'編輯整組交易',`
     <div class="field"><label>日期</label><input name="date" type="date" value="${esc(s.date)}"></div>
