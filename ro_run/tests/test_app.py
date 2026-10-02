@@ -334,9 +334,7 @@ def run(page):
           ["14 組", "每組 155"])
 
     check("平均每組價用加權算（總額 ÷ 總組數）",
-          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
-              .find(c => c.querySelector('.stat-k').textContent === '平均每組')
-              .querySelector('.stat-v').textContent"""), "130")
+          page.evaluate("""() => document.querySelector('#saleCards .aucres-avg b').textContent"""), "130")
     check("高於／低於均價的標記分別出現",
           page.evaluate("""() => [document.querySelectorAll('.auc-badge.up').length,
                                   document.querySelectorAll('.auc-badge.down').length]"""),
@@ -406,9 +404,7 @@ def run(page):
               .find(c => c.querySelector('.stat-k').textContent === '累計售出單品')
               .querySelector('.stat-v').textContent"""), "60")
     check("平均每組價不被單品交易稀釋",
-          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
-              .find(c => c.querySelector('.stat-k').textContent === '平均每組')
-              .querySelector('.stat-v').textContent"""), "100")
+          page.evaluate("""() => document.querySelector('#saleCards .aucres-avg b').textContent"""), "100")
     check("單品交易的卡片標成單品，不比較每組均價",
           page.evaluate("""() => {
               const c = document.querySelectorAll('#saleList .auccard')[0];
@@ -3291,7 +3287,7 @@ def run(page):
     page.evaluate("""() => {
         state.sales = [{id:'s1', date:'2026-07-01', mode:'set', cur:'TWD',
                         sets:1, price:1000, runIds:['r1'], items:[]}];
-        state.payouts = []; splFrom = ''; splTo = ''; aucCur = 'TWD';
+        state.payouts = []; splFrom = ''; splTo = ''; saleDraftCur = 'TWD';
         persist(); render();
     }""")
     page.click('.tab[data-view="auction"]')
@@ -3663,7 +3659,7 @@ def run(page):
           {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:2, price:1000, runIds:[], items:[]},
           {id:'t2', date:'2026-07-02', mode:'set', cur:'TWD', sets:1, price:1500, runIds:[], items:[]},
           {id:'r1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:80000000, runIds:[], items:[]}];
-        aucCur = 'TWD'; aucFrom = ''; aucTo = ''; splFrom = ''; splTo = '';
+        saleDraftCur = 'TWD'; aucFrom = ''; aucTo = ''; splFrom = ''; splTo = '';
         persist(); render();
     }""")
     page.click('.tab[data-view="auction"]')
@@ -3682,46 +3678,60 @@ def run(page):
                       m.sales[1].items[0].price, m.sales[1].items[0].twd === undefined];
           }"""), ["TWD", 100, True, True, 10, True])
 
-    check("成交紀錄只列出目前幣別的交易",
-          page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard .auc-t')]
-              .map(e => e.textContent.trim())"""),
-          ["1,500", "2,000"])
+    # 兩種幣別並列：不再有整頁的幣別切換，統計、走勢、紀錄各算各的
+    check("成交紀錄兩種幣別都列出，各標自己的幣別",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .auccard')]
+              .map(c => [c.querySelector('.auc-t').textContent.trim(),
+                         c.querySelector('.auc-u').textContent.trim()])"""),
+          [["1,500", "台幣"], ["80,000,000", "R 幣"], ["2,000", "台幣"]])   # 新到舊；同日以編號大的在前
 
-    check("統計卡的金額只加總目前幣別",
-          page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat')]
-              .map(c => [c.querySelector('.stat-k').textContent,
-                         c.querySelector('.stat-v').textContent])
-              .find(([k]) => k === '累計總額')[1]"""), "3,500")
+    check("統計卡兩種幣別並列，各自加總、不互相混算",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .aucres-main')]
+              .map(c => [c.dataset.cur, c.querySelector('.stat-k').textContent.trim(),
+                         c.querySelector('.stat-v').textContent.trim(),
+                         c.querySelector('.aucres-avg b').textContent.trim()])"""),
+          [["TWD", "累計總額 · 台幣", "3,500", "1,167"],
+           ["R", "累計總額 · R 幣", "80,000,000", "80,000,000"]])
+
+    check("交易次數與組數只列一份（跟幣別無關）",
+          page.evaluate("""() => [...document.querySelectorAll('#saleCards .aucres-sub .stat')]
+              .map(c => [c.querySelector('.stat-k').textContent, c.querySelector('.stat-v').textContent])"""),
+          [["交易次數", "3"], ["累計售出組數", "4"], ["累計售出單品", "0"]])
+
+    check("頁面上已經沒有整頁的幣別切換，只剩記錄表單裡那一組",
+          page.evaluate("""() => [document.querySelectorAll('[data-cur].curseg button, .curseg button').length,
+              !!document.querySelector('.salebox #aucCurSeg'),
+              !!document.querySelector('.sec #aucCurSeg')]"""), [2, True, False])
 
     check("換算率那張卡已經不存在了",
           page.evaluate("""() => [...document.querySelectorAll('#saleCards .stat-k')]
               .map(e => e.textContent).includes('累計總 R 幣')"""), False)
 
-    # --- 切到 R 幣 ---
+    check("月小計一種幣別一行，不把兩種幣別加在一起",
+          page.evaluate("""() => [...document.querySelectorAll('#saleList .aucmon-h .aucmon-v')]
+              .map(e => e.textContent.replace(/\\s+/g,' ').trim())"""),
+          ["3,500台幣", "80,000,000R 幣"])
+
+    # --- 記錄表單的幣別 ---
+    page.click('#aucSeg [data-sub="asales"]')     # 表單在「成交紀錄」子分頁裡
     page.click('#aucCurSeg [data-cur="R"]')
     page.wait_for_timeout(350)
 
-    check("切幣別後整頁跟著換：紀錄、統計、欄位標籤",
+    check("切表單幣別只換欄位標籤，統計與紀錄不變",
           page.evaluate("""() => [
-              aucCur,
+              saleDraftCur,
               [...document.querySelectorAll('#saleList .auccard .auc-t')].map(e => e.textContent.trim()),
-              [...document.querySelectorAll('#saleCards .stat-k')].map(e => e.textContent)
-                  .filter(t => t.startsWith('累計總額')),
               document.getElementById('salePriceLabel').textContent.trim(),
               [...document.querySelectorAll('#aucCurSeg [data-cur]')]
                   .map(b => b.getAttribute('aria-selected'))]"""),
-          ["R", ["80,000,000"], ["累計總額"], "每組價格（R 幣）", ["false", "true"]])
-
-    check("成交卡片的單位標的是那筆自己的幣別",
-          page.evaluate("""() => document.querySelector('#saleList .auccard .auc-u').textContent.trim()"""),
-          "R 幣")
+          ["R", ["1,500", "80,000,000", "2,000"], "每組價格（R 幣）", ["false", "true"]])
 
     # 切幣別時 salePrice 會被清成 null，接著由 renderSales 重新沿用「該幣別」上一筆的價格。
     # 重點不是欄位變空，而是絕不能留著台幣的數字——那會記成一筆差好幾個數量級的 R 幣交易。
     check("切幣別後每組價格重新沿用該幣別上一筆，不會殘留台幣數字",
           page.evaluate("() => document.getElementById('salePrice').value"), "80000000")
 
-    check("新記錄的交易帶的是目前選的幣別",
+    check("新記錄的交易帶的是表單選的幣別",
           page.evaluate("""() => {
               document.getElementById('saleSets').value = '2';
               salePrice = '5000000'; saleSets = '2';
@@ -3731,7 +3741,7 @@ def run(page):
               return [s.cur, s.price, s.sets];
           }"""), ["R", 5000000, 2])
 
-    # --- 分潤跟著幣別走 ---
+    # --- 分潤：兩種幣別畫在同一頁 ---
     page.evaluate("""() => {
         const mk = (id,name,ids) => ({id, name, capacity:12, wipe:false, videos:[], drops:[],
                                       slots: ids.map(x => ({memberId:x}))});
@@ -3739,6 +3749,7 @@ def run(page):
         state.sales = [
           {id:'t1', date:'2026-07-01', mode:'set', cur:'TWD', sets:1, price:1000, runIds:['r1'], items:[]},
           {id:'x1', date:'2026-07-01', mode:'set', cur:'R',   sets:1, price:60000000, runIds:['r1'], items:[]}];
+        state.payouts = []; splFrom = ''; splTo = '';
         persist(); render();
     }""")
     page.wait_for_timeout(200)
@@ -3750,23 +3761,52 @@ def run(page):
                       r.totalTwd, r.rows.map(x => x.twd), r.balanced];
           }"""), [1000, [500, 500], True, 60000000, [30000000, 30000000], True])
 
-    check("分潤頁顯示的是目前幣別的池子",
-          page.evaluate("""() => {
-              aucCur = 'R'; renderSplit();
-              const a = document.querySelector('#splCard .attsum-r').textContent.trim();
-              aucCur = 'TWD'; renderSplit();
-              const b = document.querySelector('#splCard .attsum-r').textContent.trim();
-              return [a, b];
-          }"""), ["60,000,000", "1,000"])
+    check("分潤頁兩種幣別各一張摘要卡",
+          page.evaluate("""() => [...document.querySelectorAll('#splCard .attsum')]
+              .map(c => [c.dataset.cur, c.querySelector('.attsum-r').textContent.trim()])"""),
+          [["TWD", "1,000"], ["R", "60,000,000"]])
 
-    check("分潤圖的標題標明幣別，貼到群組不會被誤讀",
+    check("同一個人合併成一列，每種幣別一行金額",
+          page.evaluate("""() => [...document.querySelectorAll('#splList .splrow')].map(r =>
+              [r.querySelector('.attrow-n').textContent.trim(),
+               [...r.querySelectorAll('.splline')].map(l => [l.dataset.cur, l.querySelector('.splamt').textContent.trim()])])"""),
+          [["小明", [["TWD", "500"], ["R", "30,000,000"]]],
+           ["小華", [["TWD", "500"], ["R", "30,000,000"]]]])
+
+    check("領取紀錄分幣別：只標台幣已領，R 幣那行不受影響",
           page.evaluate("""() => {
-              aucCur = 'R'; buildSplitExportNode();
-              const h = document.querySelector('#exportHost .ex-h').textContent.trim();
+              document.querySelector('#splList .paidbtn[data-cur="TWD"]').click();
+              const row = document.querySelector('#splList .splrow');
+              return [state.payouts.map(p => [p.cur, p.twd]),
+                      [...row.querySelectorAll('.splline')].map(l => [l.dataset.cur, l.classList.contains('paid'),
+                                                                      l.querySelector('.splamt').textContent.trim()])];
+          }"""), [[["TWD", 500]], [["TWD", True, "0"], ["R", False, "30,000,000"]]])
+    page.evaluate("() => { state.payouts = []; persist(); render(); }")
+
+    check("每種幣別各有自己的「全部標記已領」",
+          page.evaluate("""() => [...document.querySelectorAll('#splCard [data-payall]')].map(b => b.dataset.payall)"""),
+          ["TWD", "R"])
+
+    check("分潤圖兩種幣別各一段，標題不寫單一幣別",
+          page.evaluate("""() => {
+              buildSplitExportNode();
+              const r = [document.querySelector('#exportHost .ex-h').textContent.trim(),
+                         [...document.querySelectorAll('#exportHost .ex-sp-cur')].map(e => e.textContent.trim()),
+                         document.querySelectorAll('#exportHost .ex-sp').length];
               document.getElementById('exportHost').innerHTML = '';
-              aucCur = 'TWD'; renderSplit();
-              return h.includes('R 幣');
-          }"""), True)
+              return r;
+          }"""), ["分潤試算 · 全部日期", ["台幣", "R 幣"], 2])
+
+    check("只有一種幣別時，分潤圖標題標明幣別，貼到群組不會被誤讀",
+          page.evaluate("""() => {
+              state.sales = state.sales.filter(s => s.cur === 'R'); persist(); render();
+              buildSplitExportNode();
+              const h = document.querySelector('#exportHost .ex-h').textContent.trim();
+              const one = document.querySelectorAll('#splCard .attsum').length;
+              document.getElementById('exportHost').innerHTML = '';
+              return [h.includes('R 幣'), one,
+                      document.querySelectorAll('#splList .splline').length];
+          }"""), [True, 1, 0])
 
     # ---------- 效能結構：讀取快取與延後繪製 ----------
     print("\n[perf] 讀取快取與延後繪製")
@@ -4070,7 +4110,7 @@ def run(page):
               const c = document.querySelector('#saleCards .aucres');
               return [!!c, c.querySelector('.aucres-main .stat-k').textContent,
                       [...c.querySelectorAll('.aucres-sub .stat-k')].map(e => e.textContent)];
-          }"""), [True, "累計總額", ["交易次數", "累計售出組數", "累計售出單品", "平均每組"]])
+          }"""), [True, "累計總額", ["交易次數", "累計售出組數", "累計售出單品"]])
     check("手機寬度下四個小數字排在同一列",
           page.evaluate("""() => {
               const t = [...document.querySelectorAll('#saleCards .aucres-sub .stat')].map(e => Math.round(e.getBoundingClientRect().top));
@@ -4513,15 +4553,15 @@ def run(page):
     page.evaluate("""() => {
         state.sales = [{id:'s1', date:'2026-08-05', mode:'set', cur:'TWD', sets:3, price:100, runIds:['ptB'], items:[]}];
         state.payouts = [{id:'p0', memberId:'m1', from:'', to:'', cur:'TWD', twd:40, ts:1}];
-        splFrom = ''; splTo = ''; aucCur = 'TWD'; persist(); render();
+        splFrom = ''; splTo = ''; saleDraftCur = 'TWD'; persist(); render();
     }""")
     page.click('.tab[data-view="auction"]')
     page.click('#aucSeg [data-sub="asplit"]')
     page.wait_for_timeout(250)
     check("按鈕寫出還有幾人、多少待發",
-          page.evaluate("() => document.getElementById('splPayAll').textContent.replace(/\\s+/g,' ').trim()"),
+          page.evaluate("() => document.querySelector('#splCard [data-payall=\"TWD\"]').textContent.replace(/\\s+/g,' ').trim()"),
           "全部標記已領3 人 · 260")
-    page.click('#splPayAll')
+    page.click('#splCard [data-payall="TWD"]')
     page.wait_for_timeout(400)
     check("先確認才動資料",
           page.evaluate("() => [!!document.querySelector('.sheet [data-s=\"yes\"]'), state.payouts.length]"), [True, 1])
@@ -4529,14 +4569,14 @@ def run(page):
     page.wait_for_timeout(300)
     check("確定後每個人待領歸零，按鈕消失",
           page.evaluate("""() => [splitStats('', '', 'TWD').rows.every(r => r.twd - paidAmount(r.memberId, '', '', 'TWD') === 0),
-                                  !!document.getElementById('splPayAll')]"""), [True, False])
+                                  !!document.querySelector('#splCard [data-payall="TWD"]')]"""), [True, False])
     check("同一段期間已有結算的人，差額併進原本那一筆，不另開",
           page.evaluate("() => [state.payouts.filter(p => p.memberId === 'm1').length, state.payouts.find(p => p.memberId === 'm1').twd]"),
           [1, 100])
     page.click('.toast-act .toast-btn')
     page.wait_for_timeout(300)
     check("可以復原",
-          page.evaluate("() => [state.payouts.length, state.payouts[0].twd, !!document.getElementById('splPayAll')]"),
+          page.evaluate("() => [state.payouts.length, state.payouts[0].twd, !!document.querySelector('#splCard [data-payall=\"TWD\"]')]"),
           [1, 40, True])
 
     seed(page)

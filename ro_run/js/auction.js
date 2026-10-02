@@ -21,6 +21,15 @@ function saleAmounts(s){
    因為分潤與統計寧可少算一筆也不該整頁掛掉。 */
 function saleCur(s){ return s&&s.cur==='R' ? 'R' : 'TWD'; }
 function curLabel(c){ return c==='R' ? 'R 幣' : '台幣'; }
+/* 兩種幣別並列顯示時的固定順序。沒有任何一筆交易的幣別不畫，
+   但一筆都沒有時還是留台幣，不然整張統計卡會是空的。 */
+const CURS=['TWD','R'];
+function presentCurs(sales){
+  const hit=CURS.filter(c=>sales.some(s=>saleCur(s)===c));
+  return hit.length?hit:['TWD'];
+}
+/* 兩種幣別都有資料時，各區塊要掛一條幣別標頭，單一幣別時不用（跟舊版一樣乾淨） */
+function curHead(c,multi){ return multi?`<div class="curhead" data-cur="${c}">${curLabel(c)}</div>`:''; }
 /* 單品交易沒有「組數」的概念，累計組數只算整組交易 */
 function saleSetCount(s){ return isItemSale(s) ? 0 : (Number(s.sets)||0); }
 function saleItemQty(s){ return isItemSale(s) ? saleItems(s).reduce((a,it)=>a+(Number(it.qty)||0),0) : 0; }
@@ -65,12 +74,11 @@ function vsAvg(unit, avg){
   return pct>0 ? ['up',`高於均價 ${pct.toFixed(0)}%`] : ['down',`低於均價 ${Math.abs(pct).toFixed(0)}%`];
 }
 
-/* 日期區間 + 幣別篩選：空字串代表那一端不設限。
-   幣別是硬條件，不是可選的篩選 —— 台幣與 R 幣沒有共同單位，
-   混在同一組統計裡算出來的均價與走勢都是假的。 */
+/* 日期區間篩選：空字串代表那一端不設限。
+   幣別不在這裡篩 —— 兩種幣別都留著，但統計、均價與走勢一律「各算各的」，
+   台幣與 R 幣沒有共同單位，混在同一組算出來的均價與走勢都是假的。 */
 function aucMatches(s){
   const d=s.date||'';
-  if(saleCur(s)!==aucCur) return false;
   if(aucFrom && d<aucFrom) return false;
   if(aucTo   && d>aucTo)   return false;
   return true;
@@ -149,21 +157,31 @@ function paintSaleOut(){
     `<div class="calcline">總額 <em>${src}</em><b>${nf(a.amt)}</b></div>`;
 }
 
+/* 一種幣別的累計：總額、組數、單品數與加權均價。
+   平均每組價用「加權」算（總額 ÷ 總組數），不是把每筆單價直接平均 ——
+   賣 100 組跟賣 1 組對均價的影響本來就不該一樣。 */
+function curSummary(sales){
+  const sum=sales.reduce((o,s)=>{ const x=saleAmounts(s);
+    o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); o.amt+=x.amt; return o; },{sets:0,qty:0,amt:0});
+  const setAmt=sales.filter(s=>!isItemSale(s)).reduce((a,s)=>a+saleAmounts(s).amt,0);
+  return {...sum, n:sales.length, avgUnit: sum.sets ? setAmt/sum.sets : 0};
+}
+
 function renderSales(){
   const all=state.sales||[];
   /* 沒動過的欄位：組數跟著目前可組成的組數走，每組價格沿用上一筆。
      沿用的對象要同時滿足兩個條件：是「整組」交易（單品交易的 price 是 0，
      抓到它欄位會變成 0），而且是「同一個幣別」（切到 R 幣卻帶入台幣價格更糟）。 */
-  const lastSet=[...all].reverse().find(x=>!isItemSale(x)&&saleCur(x)===aucCur);
+  const lastSet=[...all].reverse().find(x=>!isItemSale(x)&&saleCur(x)===saleDraftCur);
   if(saleSets===null)  saleSets=curSets;
   if(salePrice===null) salePrice = lastSet ? lastSet.price : '';
 
   setInputValue(document.getElementById('saleSets'), saleSets);
   setInputValue(document.getElementById('salePrice'), salePrice);
-  document.getElementById('salePriceLabel').textContent=`每組價格（${curLabel(aucCur)}）`;
+  document.getElementById('salePriceLabel').textContent=`每組價格（${curLabel(saleDraftCur)}）`;
   document.getElementById('saleLoad').textContent=`帶入目前組數 ${curSets}`;
   document.querySelectorAll('#aucCurSeg [data-cur]').forEach(b=>
-    b.setAttribute('aria-selected',String(b.dataset.cur===aucCur)));
+    b.setAttribute('aria-selected',String(b.dataset.cur===saleDraftCur)));
 
   document.querySelectorAll('#saleModeSeg [data-mode]').forEach(b=>
     b.setAttribute('aria-selected',String(b.dataset.mode===saleMode)));
@@ -179,45 +197,41 @@ function renderSales(){
   paintPresets('#aucFiltBody', aucFrom, aucTo, 'aucpreset');
   const sales=all.filter(aucMatches);
 
-  /* 累計。平均每組價用「加權」算（總額 ÷ 總組數），不是把每筆單價直接平均 ——
-     賣 100 組跟賣 1 組對均價的影響本來就不該一樣。 */
-  const sum=sales.reduce((o,s)=>{ const x=saleAmounts(s);
-    o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); o.amt+=x.amt; return o; },{sets:0,qty:0,amt:0});
-  const setSales=sales.filter(s=>!isItemSale(s));
-  const setAmt=setSales.reduce((a,s)=>a+saleAmounts(s).amt,0);
-  const avgUnit = sum.sets ? setAmt/sum.sets : 0;
-  /* 卡片標籤不重複幣別：頁面上方的幣別切換已經說了現在在看哪一種，
-     每張卡再掛一次「（台幣）」只是把標籤撐長。 */
-  /* 一張結果卡，跟材料頁的主結果卡同一種長相：最重要的累計總額放大，
-     其餘四個數字排成一列小字。原本是五張一樣大的卡，手機上兩欄疊三排，
-     第一眼看不出哪個數字才是重點，還佔掉大半個畫面。 */
+  /* 兩種幣別並列：每種幣別各算各的累計與均價，沒有任何換算。
+     只有一種幣別有資料時，畫面跟以前切到那種幣別時長得一樣。 */
+  const curs=presentCurs(sales), multi=curs.length>1;
+  const bycur={};
+  curs.forEach(c=>{ bycur[c]=curSummary(sales.filter(s=>saleCur(s)===c)); });
+  const tot=curs.reduce((o,c)=>{ o.n+=bycur[c].n; o.sets+=bycur[c].sets; o.qty+=bycur[c].qty; return o; },{n:0,sets:0,qty:0});
+
+  /* 一張結果卡：每種幣別的累計總額放大並排，其餘共通的數字排成一列小字。
+     交易次數、組數、單品數跟幣別無關（一組就是一組），所以只列一份；
+     平均每組是金額，一定要跟著幣別，掛在各自的總額底下。 */
   const sub=[
-    ['交易次數', nf(sales.length)],
-    ['累計售出組數', nf(sum.sets)],
-    ['累計售出單品', nf(sum.qty)],
-    ['平均每組', nf(Math.round(avgUnit))],
+    ['交易次數', nf(tot.n)],
+    ['累計售出組數', nf(tot.sets)],
+    ['累計售出單品', nf(tot.qty)],
   ];
-  document.getElementById('saleCards').innerHTML=`<div class="aucres">
-    <div class="stat aucres-main">
-      <div class="stat-k">累計總額</div>
-      <div class="aucres-vrow"><div class="stat-v num">${nf(sum.amt)}</div><span class="aucres-u">${curLabel(aucCur)}</span></div>
-    </div>
+  document.getElementById('saleCards').innerHTML=`<div class="aucres${multi?' multi':''}">
+    <div class="aucres-mains">${curs.map(c=>`
+      <div class="stat aucres-main" data-cur="${c}">
+        <div class="stat-k">累計總額${multi?` · ${curLabel(c)}`:''}</div>
+        <div class="aucres-vrow"><div class="stat-v num">${nf(bycur[c].amt)}</div>${multi?'':`<span class="aucres-u">${curLabel(c)}</span>`}</div>
+        <div class="aucres-avg">平均每組 <b class="num">${nf(Math.round(bycur[c].avgUnit))}</b></div>
+      </div>`).join('')}</div>
     <div class="aucres-sub">${sub.map(([k,v])=>
       `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v num">${v}</div></div>`).join('')}</div>
   </div>`;
 
-  renderSaleTrend(sales, setSales, avgUnit);
-  renderSaleQuotes(sales);
-  renderSaleLedger(sales, avgUnit);
+  const avgUnits={}; curs.forEach(c=>avgUnits[c]=bycur[c].avgUnit);
+  renderSaleTrend(sales, curs, avgUnits);
+  renderSaleQuotes(sales, curs);
+  renderSaleLedger(sales, avgUnits);
 }
 
-/* 成交走勢：上卡是每組成交價的折線（只看整組交易），下卡是近 6 個月的成交額長條（兩種模式都算）。 */
-function renderSaleTrend(sales, setSales, avgUnit){
-  const host=document.getElementById('saleTrend');
-  if(sales.length<2){
-    host.innerHTML=`<div class="bench-empty">這個範圍累積兩筆以上的成交紀錄後，這裡會顯示每組成交價的走勢與月度成交額</div>`;
-    return;
-  }
+/* 一種幣別的成交走勢：上卡是每組成交價的折線（只看整組交易），下卡是近 6 個月的成交額長條。 */
+function saleTrendHTML(c, sales, avgUnit){
+  const setSales=sales.filter(s=>!isItemSale(s));
   let lineCard='';
   if(setSales.length>=2){
     const ordered=salesByDate(setSales);
@@ -229,7 +243,7 @@ function renderSaleTrend(sales, setSales, avgUnit){
         <div class="trend-h">
           <div class="trend-hm">
             <div class="trend-k">最近一次整組成交價</div>
-            <div class="trend-v num">${nf(saleUnit(latest))}<small>${curLabel(aucCur)} / 組</small></div>
+            <div class="trend-v num">${nf(saleUnit(latest))}<small>${curLabel(c)} / 組</small></div>
           </div>
           <span class="trend-badge ${cls}">${txt}</span>
         </div>
@@ -253,7 +267,7 @@ function renderSaleTrend(sales, setSales, avgUnit){
   const mons=Object.keys(byMon).sort().slice(-6);
   const mmax=Math.max(1,...mons.map(k=>byMon[k].twd));
 
-  host.innerHTML=lineCard+`
+  return lineCard+`
     <div class="trendcard" style="margin-top:11px">
       <div class="trend-k">近 ${mons.length} 個月成交額</div>
       <div class="mbars">${mons.map(k=>{
@@ -267,8 +281,21 @@ function renderSaleTrend(sales, setSales, avgUnit){
       }).join('')}</div>
     </div>`;
 }
+/* 成交走勢：每種幣別各畫一組。單一幣別不足兩筆時維持原本的提示；
+   兩種幣別時，累積不到兩筆的那種直接略過，不放一張空卡佔位置。 */
+function renderSaleTrend(sales, curs, avgUnits){
+  const host=document.getElementById('saleTrend');
+  const multi=curs.length>1;
+  const parts=curs.map(c=>{
+    const cs=sales.filter(s=>saleCur(s)===c);
+    return cs.length>=2 ? `<div class="curblock">${curHead(c,multi)}${saleTrendHTML(c,cs,avgUnits[c])}</div>` : '';
+  }).filter(Boolean);
+  host.innerHTML = parts.length ? parts.join('')
+    : `<div class="bench-empty">這個範圍累積兩筆以上的成交紀錄後，這裡會顯示每組成交價的走勢與月度成交額</div>`;
+}
 
-/* 單品行情：把所有單品交易攤平，依材料統計加權均價、最近成交價與累計數量。 */
+/* 單品行情：把所有單品交易攤平，依材料統計加權均價、最近成交價與累計數量。
+   傳進來的必須已經是單一幣別，不同幣別的單價不能放進同一個均價。 */
 function materialQuotes(sales){
   const q={};
   salesByDate(sales.filter(isItemSale)).forEach(({s})=>{
@@ -285,27 +312,29 @@ function materialQuotes(sales){
     .sort((a,b)=>b.twd-a.twd);
 }
 
-function renderSaleQuotes(sales){
+function renderSaleQuotes(sales, curs){
   const host=document.getElementById('saleQuotes');
-  const list=materialQuotes(sales);
-  if(!list.length){
-    host.innerHTML=`<div class="bench-empty">用「單品出售」記錄交易後，這裡會依材料統計歷史均價與最近成交價</div>`;
-    return;
-  }
-  host.innerHTML=`<div class="quotelist">${list.map(e=>{
-    const [cls,txt]=vsAvg(e.lastUnit, e.avg);
-    return `<div class="quoterow" style="${msVars(matSeries(e.name))}">
-      <span class="quote-dot"></span>
-      <div class="quote-m">
-        <div class="quote-n">${esc(e.name)}</div>
-        <div class="quote-s">累計 ${nf(e.qty)} 個 · ${e.n} 次成交 · ${fmtDate(e.lastDate)}</div>
-      </div>
-      <div class="quote-p">
-        <div class="quote-avg num">${nf(Math.round(e.avg*10)/10)}<small>均價</small></div>
-        <span class="auc-badge ${cls}">最近 ${nf(e.lastUnit)}</span>
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+  const multi=curs.length>1;
+  const parts=curs.map(c=>{
+    const list=materialQuotes(sales.filter(s=>saleCur(s)===c));
+    if(!list.length) return '';
+    return `<div class="curblock">${curHead(c,multi)}<div class="quotelist">${list.map(e=>{
+      const [cls,txt]=vsAvg(e.lastUnit, e.avg);
+      return `<div class="quoterow" style="${msVars(matSeries(e.name))}">
+        <span class="quote-dot"></span>
+        <div class="quote-m">
+          <div class="quote-n">${esc(e.name)}</div>
+          <div class="quote-s">累計 ${nf(e.qty)} 個 · ${e.n} 次成交 · ${fmtDate(e.lastDate)}</div>
+        </div>
+        <div class="quote-p">
+          <div class="quote-avg num">${nf(Math.round(e.avg*10)/10)}<small>均價</small></div>
+          <span class="auc-badge ${cls}">最近 ${nf(e.lastUnit)}</span>
+        </div>
+      </div>`;
+    }).join('')}</div></div>`;
+  }).filter(Boolean);
+  host.innerHTML = parts.length ? parts.join('')
+    : `<div class="bench-empty">用「單品出售」記錄交易後，這裡會依材料統計歷史均價與最近成交價</div>`;
 }
 
 /* 成交紀錄：依月份分堆，每堆一個小結列，底下是一張張落槌卡片。 */
@@ -322,7 +351,7 @@ let ledgerMonths=LEDGER_MONTHS;
 /* 換篩選、換幣別等於換一份帳，要回到只顯示最近幾個月 */
 function resetLedgerPaging(){ ledgerMonths=LEDGER_MONTHS; }
 
-function renderSaleLedger(sales, avgUnit){
+function renderSaleLedger(sales, avgUnits){
   const host=document.getElementById('saleList');
   if(!sales.length){
     host.innerHTML=`<div class="bench-empty">${(state.sales||[]).length
@@ -345,27 +374,30 @@ function renderSaleLedger(sales, avgUnit){
 
   host.innerHTML=keys.map(k=>{
     const rows=groups[k].slice().reverse();             // 月份內也是新的在前
-    const mt=rows.reduce((o,{s})=>{ const x=saleAmounts(s);
-      o.twd+=x.amt; o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); return o; },{twd:0,sets:0,qty:0});
+    /* 月小計：金額一種幣別一行，組數與單品數跟幣別無關只算一份 */
+    const mt=rows.reduce((o,{s})=>{ const x=saleAmounts(s), c=saleCur(s);
+      o.amt[c]=(o.amt[c]||0)+x.amt; o.sets+=saleSetCount(s); o.qty+=saleItemQty(s); return o; },{amt:{},sets:0,qty:0});
     const bits=[`${rows.length} 筆`];
     if(mt.sets) bits.push(`${nf(mt.sets)} 組`);
     if(mt.qty)  bits.push(`${nf(mt.qty)} 個單品`);
+    const multi=Object.keys(mt.amt).length>1;
     return `<div class="aucmon">
       <div class="aucmon-h">
         <span class="aucmon-t">${fmtMonth(k)}</span>
         <span class="aucmon-k">${bits.join(' · ')}</span>
-        <span class="aucmon-v num">${nf(mt.twd)}</span>
+        <span class="aucmon-vs">${CURS.filter(c=>c in mt.amt).map(c=>
+          `<span class="aucmon-v num" data-cur="${c}">${nf(mt.amt[c])}${multi?`<small>${curLabel(c)}</small>`:''}</span>`).join('')}</span>
       </div>
       <div class="auclist">${rows.map(({s,lot})=>{
-        const x=saleAmounts(s), item=isItemSale(s);
+        const x=saleAmounts(s), item=isItemSale(s), c=saleCur(s);
         const [cls,txt]= item ? ['flat',`單品 ${saleItems(s).filter(i=>Number(i.qty)>0).length} 項`]
-                              : vsAvg(saleUnit(s), avgUnit);
+                              : vsAvg(saleUnit(s), avgUnits[c]);
         const chips = item
           ? saleItems(s).filter(i=>(i.name||'').trim()&&Number(i.qty)>0)
               .map(i=>`<span class="auc-chip" style="${msVars(matSeries(i.name))}">${esc(i.name)} ×${nf(i.qty)} @${nf(i.price)}</span>`)
           : [`<span class="auc-chip">${nf(s.sets)} 組</span>`,
              `<span class="auc-chip">每組 ${nf(s.price)}</span>`];
-        return `<div class="auccard">
+        return `<div class="auccard" data-cur="${c}">
           <div class="auc-top">
             <span class="auc-lot num ${item?'item':''}">#${lot}</span>
             <span class="auc-date">${fmtDate(s.date)} ${fmtDow(s.date)}</span>
@@ -374,7 +406,7 @@ function renderSaleLedger(sales, avgUnit){
             <button class="salerow-x" data-act="delSale" data-id="${s.id}" aria-label="刪除這筆交易">×</button>
           </div>
           <div class="auc-mid">
-            <span class="auc-t num">${nf(x.amt)}</span><span class="auc-u">${curLabel(saleCur(s))}</span>
+            <span class="auc-t num">${nf(x.amt)}</span><span class="auc-u">${curLabel(c)}</span>
           </div>
           <div class="auc-foot">${chips.join('')}</div>
         </div>`;
@@ -457,17 +489,16 @@ const saleLive=(id,set)=>document.getElementById(id).oninput=e=>{ set(e.target.v
 saleLive('saleSets',  v=>saleSets=v);
 saleLive('salePrice', v=>salePrice=v);
 
-/* 幣別切換：整個拍賣頁（統計、走勢、行情、成交紀錄、分潤）都跟著換。
+/* 記錄表單的幣別：只決定「新記的這一筆」是台幣還是 R 幣，不影響下面任何統計。
    切換時把「每組價格」清成 null，讓它重新沿用該幣別上一筆的價格 ——
    留著台幣的數字再按記錄，就會記成一筆金額差好幾個數量級的 R 幣交易。 */
 document.querySelectorAll('#aucCurSeg [data-cur]').forEach(b=>b.onclick=()=>{
-  if(aucCur===b.dataset.cur) return;
-  aucCur=b.dataset.cur;
-  resetLedgerPaging();
+  if(saleDraftCur===b.dataset.cur) return;
+  saleDraftCur=b.dataset.cur;
   salePrice=null;
   saleDraftItems.forEach(it=>it.price='');
   renderSaleItemRows(true);
-  renderSales(); renderSplit();
+  renderSales();
 });
 document.getElementById('saleLoad').onclick=()=>{ saleSets=curSets; renderSales(); };
 
@@ -485,7 +516,7 @@ document.getElementById('saleItemAdd').onclick=()=>{
 
 document.getElementById('saleAdd').onclick=()=>{
   const runIds=saleRunIds.slice();
-  const cur=aucCur;
+  const cur=saleDraftCur;
   if(saleMode==='item'){
     const items=saleDraftItems
       .map(it=>({name:(it.name||'').trim(), qty:Number(it.qty)||0, price:Number(it.price)||0}))

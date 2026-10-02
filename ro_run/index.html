@@ -231,12 +231,7 @@ try{
 
   <!-- 拍賣：材料售出的試算與長期成交紀錄 -->
   <section class="view" id="view-auction">
-    <div class="sec"><span class="sec-t">拍賣</span><div class="sec-line"></div>
-      <div class="curseg" role="tablist" id="aucCurSeg" aria-label="幣別">
-        <button role="tab" aria-selected="true"  data-cur="TWD">台幣</button>
-        <button role="tab" aria-selected="false" data-cur="R">R 幣</button>
-      </div>
-    </div>
+    <div class="sec"><span class="sec-t">拍賣</span><div class="sec-line"></div></div>
 
     <div class="subseg" role="tablist" id="aucSeg" style="margin-bottom:14px">
       <button role="tab" aria-selected="true"  data-sub="asales">成交紀錄</button>
@@ -245,6 +240,14 @@ try{
 
     <div class="subview active" id="sub-asales">
     <div class="salebox">
+      <!-- 幣別只管這一筆要記成哪一種；下面的統計、走勢、紀錄兩種幣別一起顯示，不用切換 -->
+      <div class="salecur">
+        <span class="salecur-l">這筆收的是</span>
+        <div class="curseg" role="tablist" id="aucCurSeg" aria-label="這筆交易的幣別">
+          <button role="tab" aria-selected="true"  data-cur="TWD">台幣</button>
+          <button role="tab" aria-selected="false" data-cur="R">R 幣</button>
+        </div>
+      </div>
       <div class="subseg" role="tablist" id="saleModeSeg" style="margin-bottom:13px">
         <button role="tab" aria-selected="true"  data-mode="set">整組出售</button>
         <button role="tab" aria-selected="false" data-mode="item">單品出售</button>
