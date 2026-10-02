@@ -89,7 +89,18 @@ const SET_RECIPE=[
   '威力隕石浮塵','耐力隕石浮塵','專注隕石浮塵','創造隕石浮塵','咒數隕石浮塵','智慧隕石浮塵',
   '威力隕石碎片','耐力隕石碎片','專注隕石碎片','創造隕石碎片','咒數隕石碎片','智慧隕石碎片',
 ];
-let matPerSet=1;
+/* 每種材料幾個算 1 組。存在 settings 裡跨重開保留 ——
+   以前是工作階段變數，重開 App 就變回 1；而整組交易記錄時會把它存成那筆的 per，
+   先進先出靠它決定一組要扣幾個材料。忘記重設一次，那筆交易的歸屬就偏掉了。 */
+function perSet(){ return Math.max(1, parseInt(state.settings&&state.settings.perSet)||1); }
+function setPerSet(v){
+  const n=Math.max(1, parseInt(v)||1);
+  if(n===perSet()) return;
+  state.settings=state.settings||{};
+  state.settings.perSet=n;
+  persist();
+  matDirty=true;                 // 可組成組數要重算
+}
 
 /* 篩選摘要（收合狀態下那一行字） */
 function matFilterText(){
@@ -219,7 +230,7 @@ function renderMaterials(o){
     paintPresets('#matFiltBody', matFrom, matTo, 'preset');
   }
 
-  const per=Math.max(1,matPerSet);
+  const per=perSet();
   if(paint) setInputValue(document.getElementById('matPerSet'), per);
 
   /* 材料頁顯示的是「篩選範圍內」的庫存；拍賣頁的「帶入目前組數」則一律看全部資料。

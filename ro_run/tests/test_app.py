@@ -1434,7 +1434,7 @@ def run(page):
                      '專注隕石浮塵':28,'創造隕石浮塵':48,'咒數隕石浮塵':46,'智慧隕石浮塵':36};
         state.schedule['2026-08-05'][0].drops =
             Object.entries(tot).map(([n,q],i)=>({id:'sd'+i, name:n, qty:q}));
-        matPerSet = 1; persist(); render();
+        state.settings.perSet=1; persist(); render();
     }""")
     page.click('.tab[data-view="stats"]')
     page.wait_for_timeout(250)
@@ -1467,7 +1467,7 @@ def run(page):
           }"""), [1, "再 1", True])
 
     # 每種 5 個時整體往下掉，標示要跟著改
-    page.evaluate("() => { matPerSet = 5; renderMaterials(); }")
+    page.evaluate("() => { state.settings.perSet=5; renderMaterials(); }")
     page.wait_for_timeout(300)
     check("每種材料 5 個時可組成組數跟著改",
           page.evaluate("""() => document.querySelector('#matCards .mres-v').textContent.replace('組','')"""), "1")
@@ -1485,7 +1485,7 @@ def run(page):
               return [before.length > 0, before !== after];
           }"""), [True, True])
 
-    page.evaluate("() => { matPerSet = 5; }")
+    page.evaluate("() => { state.settings.perSet=5; }")
     page.click('.tab[data-view="board"]')
     page.wait_for_timeout(150)
 
@@ -1586,7 +1586,7 @@ def run(page):
     check("清空後成員歸零", page.evaluate("() => state.members.length"), 0)
     check("清空後 settings 回到預設值",
           page.evaluate("() => state.settings"),
-          {"theme": "system", "defaultTime": "20:00", "defaultCap": 12})
+          {"theme": "system", "defaultTime": "20:00", "defaultCap": 12, "perSet": 1})
     check("清空前有自動下載備份", bool(downloaded), True)
 
     # ---------- 壓力測試修復 ----------
@@ -1886,7 +1886,7 @@ def run(page):
                 drops: MATS.map((n,i) => ({id:'d'+di+i, name:n, qty: n==='咒數隕石浮塵' ? 2 : 6})),
                 videos:[]}];
         });
-        curDate='2026-08-05'; matFrom=''; matTo=''; matRunName=''; matPerSet=5; matOpenDays=null;
+        curDate='2026-08-05'; matFrom=''; matTo=''; matRunName=''; state.settings.perSet=5; matOpenDays=null;
         persist(); render();
     }""")
     page.click('.tab[data-view="stats"]')
@@ -2058,13 +2058,23 @@ def run(page):
           }"""), ["碎片", "浮塵", "未知", "稀微"])
 
     # --- 組數預設 ---
-    # matPerSet 是工作階段變數，前面的測試改過它，直接讀當下的值驗不到「預設」。
-    # 重新載入頁面才是使用者第一次開啟時看到的狀態。
+    # 每組個數現在存在設定裡：新資料預設 1，改過之後重新載入要保留
+    check("組數預設為 1 個 = 1 組（全新資料）",
+          page.evaluate("""() => seed().settings.perSet"""), 1)
+    page.evaluate("""() => { const el = document.getElementById('matPerSet');
+        el.value = '4'; el.dispatchEvent(new Event('input')); flushPersist(); }""")
     page.reload()
     page.wait_for_load_state("networkidle")
-    check("組數預設為 1 個 = 1 組（重新載入後）",
-          page.evaluate("""() => [document.getElementById('matPerSet').value, matPerSet]"""),
-          ["1", 1])
+    page.click('.tab[data-view="stats"]')
+    page.click('#matSeg [data-sub="sets"]')
+    page.wait_for_timeout(200)
+    check("每組個數重新載入後保留，材料頁與記錄表單同一個值",
+          page.evaluate("""() => [document.getElementById('matPerSet').value, perSet(),
+                                     (renderSales(), document.getElementById('salePerSet').value)]"""),
+          ["4", 4, "4"])
+    page.evaluate("() => { state.settings.perSet = 1; persist(); render(); }")
+    page.click('.tab[data-view="board"]')      # 後面的測試預設停在陣容頁
+    page.wait_for_timeout(200)
 
     # ---------- PWA 強化 ----------
     print("\n[pwa] 儲存保護、分享目標、復原、離線、觸控")
@@ -3490,7 +3500,7 @@ def run(page):
                 state.sales.push({id:'si', date:'2026-06-10', mode:'item', cur:'TWD',
                                   sets:0, price:0, runIds:['g1'],
                                   items:[{name:SET_RECIPE[0], qty:soldItems, price:10}]});
-            matFrom = ''; matTo = ''; matPerSet = 1;
+            matFrom = ''; matTo = ''; state.settings.perSet=1;
             persist(); renderMaterials();
             return [curSets, document.querySelector('#matCards .mres-v').textContent.trim()];
         }""", [qty, sold_sets, sold_items])
@@ -3529,9 +3539,9 @@ def run(page):
                               sets:5, price:100, runIds:['g1'], items:[]}];
               state.schedule['2026-06-10'][0].drops =
                   SET_RECIPE.map((n,i) => ({id:'d'+i, name:n, qty:16}));
-              matPerSet = 3; matFrom = ''; matTo = ''; renderMaterials();
+              state.settings.perSet=3; matFrom = ''; matTo = ''; renderMaterials();
               const nv = document.querySelector('#matCards .mres-nv').textContent.trim();
-              matPerSet = 1;
+              state.settings.perSet=1;
               // 16 掉落 − 5 組×3 = 剩 1 個，每組要 3 個 → 可組 0 組、再 2 個進下一組
               return [curSets, nv];
           }"""), [0, "1 個 · 再 2 個進下一組"])
@@ -3547,7 +3557,7 @@ def run(page):
                  runIds:['g1'], items:[]},
                 {id:'b', date:'2026-06-10', mode:'set', cur:'R', sets:116, price:100,
                  runIds:['g1'], items:[]}];
-              matPerSet = 1; matFrom = ''; matTo = ''; renderMaterials();
+              state.settings.perSet=1; matFrom = ''; matTo = ''; renderMaterials();
               const t = document.querySelector('#matCards .mres-sold')
                   .textContent.replace(/\\s+/g,' ').trim();
               return [curSets, t.includes('已售出 232 組（台幣 116 組 · R 幣 116 組）'),
@@ -3907,9 +3917,9 @@ def run(page):
     check("每組個數存在交易上，之後改材料頁的輸入框不會讓歷史歸屬變動",
           page.evaluate("""() => {
               const before = JSON.stringify([...fifoAlloc().get('set1').parts]);
-              matPerSet = 5; persist(); render();
+              state.settings.perSet=5; persist(); render();
               const after = JSON.stringify([...fifoAlloc().get('set1').parts]);
-              matPerSet = 1; persist(); render();
+              state.settings.perSet=1; persist(); render();
               return before === after;
           }"""), True)
 
@@ -3999,10 +4009,10 @@ def run(page):
           "自動歸屬 2 場")
     check("新記的整組交易帶 attr:auto 與當下的每組個數",
           page.evaluate("""() => {
-              matPerSet = 3; saleSets = '1'; salePrice = '500';
+              state.settings.perSet=3; saleSets = '1'; salePrice = '500';
               document.getElementById('saleAdd').click();
               const s = state.sales[state.sales.length - 1];
-              state.sales.pop(); matPerSet = 1; persist();
+              state.sales.pop(); state.settings.perSet=1; persist();
               return [s.attr, s.per, s.runIds.length];
           }"""), ["auto", 3, 0])
     check("新記交易時手動勾了場次 → attr 變成 runs",
@@ -4013,6 +4023,32 @@ def run(page):
               state.sales.pop(); persist();
               return [s.attr, s.runIds];
           }"""), ["runs", ["fa"]])
+
+    check("記錄表單直接改每組個數：寫回設定，新交易存下這個值",
+          page.evaluate("""() => {
+              const el = document.getElementById('salePerSet');
+              el.value = '5'; el.dispatchEvent(new Event('input'));
+              saleSets = '1'; salePrice = '500';
+              document.getElementById('saleAdd').click();
+              const s = state.sales[state.sales.length - 1];
+              state.sales.pop();
+              return [perSet(), s.per];
+          }"""), [5, 5])
+    page.click('.tab[data-view="stats"]')
+    page.wait_for_timeout(250)
+    check("切到材料頁時，組數試算的輸入框也是同一個值",
+          page.evaluate("() => document.getElementById('matPerSet').value"), "5")
+    page.evaluate("() => { state.settings.perSet = 1; persist(); render(); }")
+    page.click('.tab[data-view="auction"]')
+    page.wait_for_timeout(250)
+    page.evaluate("""() => { state.sales = [ {id:'ps', date:'2026-07-05', mode:'set', cur:'TWD', sets:1, price:100,
+        per:2, runIds:[], attr:'auto', items:[]} ]; persist(); render(); }""")
+    page.evaluate("() => saleSheet('ps')")
+    page.wait_for_timeout(250)
+    page.fill('.sheet [name="per"]', '6')
+    page.click('.sheet [data-s="save"]')
+    page.wait_for_timeout(200)
+    check("編輯整組交易可以修正那筆的每組個數", page.evaluate("() => state.sales[0].per"), 6)
 
     # 編輯舊交易：什麼都不動就存，維持 day；按「改回自動歸屬」才變 auto
     page.evaluate("""() => {
@@ -4490,7 +4526,7 @@ def run(page):
     page.evaluate("""() => {
         state.schedule['2026-08-01'][0].drops = SET_RECIPE.map((n,i) => ({id:'a'+i, name:n, qty:4}));
         state.schedule['2026-08-05'][0].drops = SET_RECIPE.map((n,i) => ({id:'b'+i, name:n, qty:3}));
-        state.sales = []; matPerSet = 1; persist(); render();
+        state.sales = []; state.settings.perSet=1; persist(); render();
     }""")
     page.click('.tab[data-view="stats"]')
     page.wait_for_timeout(200)

@@ -8,7 +8,7 @@
    ══════════════════════════════════════════════════════════ */
 const KEY='pt-manager-v1';
 /* App 版本流水號：每次交付新版就手動 +1（沒有建置流程可以自動產生，純手動維護的計數器） */
-const APP_VERSION='v72';
+const APP_VERSION='v73';
 const APP_AUTHOR='BB';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const PALETTE=['#4f46e5','#0ea5e9','#0f9d76','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#475569'];
@@ -136,7 +136,7 @@ function roJobIdByName(name){
 function seed(){
   const roles=FOURTH_JOBS.map((j,i)=>({id:uid(),name:j.name,color:PALETTE[i%PALETTE.length],icon:j.icon,order:i}));
   return {schemaVersion:SCHEMA_VERSION,members:[],roles,schedule:{},sales:[],payouts:[],dayTimes:{},
-    settings:{theme:'system',defaultTime:'20:00',defaultCap:12}};
+    settings:{theme:'system',defaultTime:'20:00',defaultCap:12,perSet:1}};
 }
 
 /* 時間不再屬於單場 RUN，改由 dayTimes 依日期保管（見 5→6 遷移） */

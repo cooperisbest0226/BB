@@ -196,6 +196,7 @@ function renderSales(){
 
   setInputValue(document.getElementById('saleSets'), saleSets);
   setInputValue(document.getElementById('salePrice'), salePrice);
+  setInputValue(document.getElementById('salePerSet'), perSet());
   document.getElementById('salePriceLabel').textContent=`每組價格（${curLabel(saleDraftCur)}）`;
   document.getElementById('saleLoad').textContent=`帶入目前組數 ${curSets}`;
   document.querySelectorAll('#aucCurSeg [data-cur]').forEach(b=>
@@ -469,7 +470,7 @@ function applyMatPreset(p){
 }
 document.getElementById('matFrom').onchange=e=>{ matFrom=e.target.value; renderMaterials(); };document.getElementById('matTo').onchange=e=>{ matTo=e.target.value; renderMaterials(); };
 document.getElementById('matRun').onchange=e=>{ matRunName=e.target.value; renderMaterials(); };
-document.getElementById('matPerSet').oninput=e=>{ matPerSet=Math.max(1,parseInt(e.target.value)||1); renderMaterials(); };
+document.getElementById('matPerSet').oninput=e=>{ setPerSet(e.target.value); renderMaterials(); };
 /* 只綁材料篩選裡的那四顆。原本用全域 [data-preset]，會連 PT 計算的星數快捷鈕
    （data-preset="0,5,5,3,5"）一起綁上，按 825PT 會順手把材料篩選重設成「全部」。 */
 document.querySelectorAll('#matFiltBody [data-preset]').forEach(b=>b.onclick=()=>applyMatPreset(b.dataset.preset));
@@ -506,6 +507,13 @@ document.getElementById('aucTo').onchange  =e=>{ aucTo=e.target.value;   resetLe
 const saleLive=(id,set)=>document.getElementById(id).oninput=e=>{ set(e.target.value); renderSales(); };
 saleLive('saleSets',  v=>saleSets=v);
 saleLive('salePrice', v=>salePrice=v);
+/* 每組個數：跟材料頁「組數試算」是同一個設定，改哪邊都一樣。
+   改了之後「帶入目前組數」要重算，所以先重掃材料再重畫。 */
+document.getElementById('salePerSet').oninput=e=>{
+  setPerSet(e.target.value);
+  if(saleSets!==null&&Number(saleSets)===curSets) saleSets=null;   // 原本是帶入的值就跟著更新
+  renderMaterials({scanOnly:true}); renderSales();
+};
 
 /* 記錄表單的幣別：只決定「新記的這一筆」是台幣還是 R 幣，不影響下面任何統計。
    切換時把「每組價格」清成 null，讓它重新沿用該幣別上一筆的價格 ——
@@ -548,7 +556,7 @@ document.getElementById('saleAdd').onclick=()=>{
     const sets=Number(saleSets)||0, price=Number(salePrice)||0;
     if(sets<=0)   return toast('請先填組數');
     if(price<=0)  return toast(`請先填每組${curLabel(cur)}`);
-    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,per:Math.max(1,matPerSet),runIds,attr:runIds.length?'runs':'auto',items:[]}); });
+    commit(()=>{ (state.sales=state.sales||[]).push({id:uid(),date:todayKey(),mode:'set',cur,sets,price,per:perSet(),runIds,attr:runIds.length?'runs':'auto',items:[]}); });
   }
   /* 記完就把表單清乾淨。留著上一筆的組數與歸屬場次最危險：
      下一筆很容易在沒注意的情況下沿用舊的歸屬，而那直接決定錢分給誰。
@@ -572,7 +580,8 @@ function saleSheet(id){
        <div id="editItemRows"></div>
        <datalist id="editMatList">${allMaterialNames().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`
     : `<div class="field"><label>組數</label><input name="sets" type="number" min="0" step="1" inputmode="numeric" value="${esc(String(s.sets))}"></div>
-       <div class="field"><label>每組價格</label><input name="price" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.price))}"></div>`;
+       <div class="field"><label>每組價格</label><input name="price" type="number" min="0" step="any" inputmode="decimal" value="${esc(String(s.price))}"></div>
+       <div class="field"><label>每種材料幾個 = 1 組 <span class="lbl-hint">自動歸屬用來決定扣多少材料</span></label><input name="per" type="number" min="1" step="1" inputmode="numeric" value="${esc(String(Math.max(1,Number(s.per)||1)))}"></div>`;
 
   sheet(item?'編輯單品交易':'編輯整組交易',`
     <div class="field"><label>日期</label><input name="date" type="date" value="${esc(s.date)}"></div>
@@ -639,7 +648,8 @@ function saleSheet(id){
         const sets=Number(val(sh,'sets'))||0, price=Number(val(sh,'price'))||0;
         if(sets<=0)  return toast('請先填組數');
         if(price<=0) return toast('請先填每組價格');
-        commit(()=>{ Object.assign(s,{date,sets,price,cur,runIds,attr:workAttr}); });
+        const per=Math.max(1,parseInt(val(sh,'per'))||1);
+        commit(()=>{ Object.assign(s,{date,sets,price,per,cur,runIds,attr:workAttr}); });
       }
       closeSheet();
       toast('已更新交易明細');
